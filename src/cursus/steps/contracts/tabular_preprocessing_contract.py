@@ -11,6 +11,7 @@ TABULAR_PREPROCESSING_CONTRACT = ScriptContract(
     entry_point="tabular_preprocessing.py",
     expected_input_paths={
         "DATA": "/opt/ml/processing/input/data",
+        "DATA_SECONDARY": "/opt/ml/processing/input/data_secondary",
         "SIGNATURE": "/opt/ml/processing/input/signature",
     },
     expected_output_paths={"processed_data": "/opt/ml/processing/output"},

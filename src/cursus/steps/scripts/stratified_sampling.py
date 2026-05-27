@@ -1,14 +1,37 @@
 #!/usr/bin/env python
+"""
+Stratified Sampling Script
+
+Applies stratified sampling to input data with four allocation strategies:
+1. Balanced — equal samples per stratum (class imbalance correction)
+2. Proportional with minimum — proportional allocation with floor constraints (causal analysis)
+3. Optimal (Neyman) — variance-weighted allocation (minimizes sampling error)
+4. External proportional — sample to match an external reference distribution with multiplier
+
+Features:
+- Sampling with replacement (allow_replacement) for oversampling when target > available
+- NaN guard: warns and excludes NaN strata values
+- Empty DataFrame guard: returns empty result gracefully
+- Per-split diagnostics JSON output (requested vs achieved per stratum)
+- Format preservation: reads and writes CSV/TSV/Parquet maintaining input format
+- Split-aware: processes train/val splits for training job type, copies test unchanged
+- Reference counts loaded from sidecar file (reference_counts.json) or env var fallback
+
+Input: /opt/ml/processing/input/data/{split}/{split}_processed_data.{csv|tsv|parquet}
+Output: /opt/ml/processing/output/{split}/{split}_processed_data.{csv|tsv|parquet}
+Diagnostics: /opt/ml/processing/output/{split}/sampling_diagnostics.json
+"""
+
 import os
 import argparse
+import json
 import logging
 import sys
 import traceback
 from pathlib import Path
-from typing import Dict, Optional, Callable, Any, Tuple
+from typing import Dict, Optional, Callable, Any
+
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
 
 
 # --- Stratified Sampling Core Logic ---
@@ -16,10 +39,11 @@ from sklearn.model_selection import train_test_split
 
 class StratifiedSampler:
     """
-    Stratified sampling implementation with three core allocation strategies:
+    Stratified sampling implementation with four allocation strategies:
     1. Balanced allocation - for class imbalance
     2. Proportional with minimum constraints - for causal analysis
     3. Optimal allocation (Neyman) - for variance optimization
+    4. External proportional - sample to match an external reference distribution
     """
 
     def __init__(self, random_state: int = 42):
@@ -28,6 +52,7 @@ class StratifiedSampler:
             "balanced": self._balanced_allocation,
             "proportional_min": self._proportional_with_min,
             "optimal": self._optimal_allocation,
+            "external_proportional": self._external_proportional,
         }
 
     def sample(
@@ -38,6 +63,9 @@ class StratifiedSampler:
         strategy: str = "balanced",
         min_samples_per_stratum: int = 10,
         variance_column: Optional[str] = None,
+        reference_counts: Optional[Dict[str, int]] = None,
+        multiplier: float = 1.0,
+        allow_replacement: bool = False,
     ) -> pd.DataFrame:
         """
         Perform stratified sampling on a DataFrame.
@@ -46,9 +74,12 @@ class StratifiedSampler:
             df: Input DataFrame
             strata_column: Column name to stratify by
             target_size: Total desired sample size
-            strategy: Sampling strategy ('balanced', 'proportional_min', 'optimal')
+            strategy: Sampling strategy ('balanced', 'proportional_min', 'optimal', 'external_proportional')
             min_samples_per_stratum: Minimum samples per stratum
             variance_column: Column for variance calculation (needed for optimal strategy)
+            reference_counts: External reference distribution {stratum: count} (for external_proportional)
+            multiplier: Multiplier for reference counts (e.g., 5.0 for 5× oversampling)
+            allow_replacement: Allow sampling with replacement when target > available
 
         Returns:
             Sampled DataFrame
@@ -58,16 +89,41 @@ class StratifiedSampler:
                 f"Unknown strategy: {strategy}. Available: {list(self.strategies.keys())}"
             )
 
+        # Guard: empty DataFrame
+        if df.empty:
+            logging.warning("Empty DataFrame received, returning empty result")
+            return pd.DataFrame(columns=df.columns)
+
+        # Guard: NaN in strata column
+        nan_count = df[strata_column].isna().sum()
+        if nan_count > 0:
+            logging.warning(
+                f"Found {nan_count} NaN values in strata column '{strata_column}'. "
+                f"Excluding from sampling."
+            )
+            df = df.dropna(subset=[strata_column]).copy()
+
         # Get stratum information
         strata_info = self._get_strata_info(df, strata_column, variance_column)
 
-        # Calculate allocation
-        allocation = self.strategies[strategy](
-            strata_info, target_size, min_samples_per_stratum
-        )
+        # Calculate allocation (external_proportional needs extra params)
+        if strategy == "external_proportional":
+            allocation = self.strategies[strategy](
+                strata_info,
+                target_size,
+                min_samples_per_stratum,
+                reference_counts=reference_counts,
+                multiplier=multiplier,
+            )
+        else:
+            allocation = self.strategies[strategy](
+                strata_info, target_size, min_samples_per_stratum
+            )
 
         # Perform sampling
-        return self._perform_sampling(df, strata_column, allocation)
+        return self._perform_sampling(
+            df, strata_column, allocation, allow_replacement=allow_replacement
+        )
 
     def _get_strata_info(
         self,
@@ -75,18 +131,18 @@ class StratifiedSampler:
         strata_column: str,
         variance_column: Optional[str] = None,
     ) -> Dict:
-        """Extract stratum information from DataFrame."""
+        """Extract stratum size and variance information from DataFrame."""
         strata_info = {}
 
         for stratum in df[strata_column].unique():
             stratum_df = df[df[strata_column] == stratum]
-            info = {"size": len(stratum_df), "data": stratum_df}
+            info = {"size": len(stratum_df)}
 
             if variance_column and variance_column in df.columns:
                 info["variance"] = stratum_df[variance_column].var()
                 info["std"] = stratum_df[variance_column].std()
             else:
-                info["variance"] = 1.0  # Default variance
+                info["variance"] = 1.0
                 info["std"] = 1.0
 
             strata_info[stratum] = info
@@ -203,8 +259,35 @@ class StratifiedSampler:
 
         return allocation
 
+    def _external_proportional(
+        self,
+        strata_info: Dict,
+        target_size: int,
+        min_samples: int,
+        reference_counts: Optional[Dict[str, int]] = None,
+        multiplier: float = 1.0,
+    ) -> Dict[Any, int]:
+        """
+        External proportional allocation — sample to match an external reference distribution.
+        Each stratum gets reference_count × multiplier samples.
+        """
+        if not reference_counts:
+            raise ValueError(
+                "external_proportional strategy requires reference_counts "
+                "(from sidecar file or REFERENCE_COUNTS_JSON env var)"
+            )
+        allocation = {}
+        for stratum in strata_info:
+            ref_count = reference_counts.get(str(stratum), 0)
+            allocation[stratum] = max(min_samples, int(ref_count * multiplier))
+        return allocation
+
     def _perform_sampling(
-        self, df: pd.DataFrame, strata_column: str, allocation: Dict[Any, int]
+        self,
+        df: pd.DataFrame,
+        strata_column: str,
+        allocation: Dict[Any, int],
+        allow_replacement: bool = False,
     ) -> pd.DataFrame:
         """Perform the actual sampling based on allocation."""
         sampled_dfs = []
@@ -216,8 +299,12 @@ class StratifiedSampler:
                     sampled = stratum_df.sample(
                         n=sample_size, random_state=self.random_state
                     )
+                elif allow_replacement and len(stratum_df) > 0:
+                    sampled = stratum_df.sample(
+                        n=sample_size, replace=True, random_state=self.random_state
+                    )
                 else:
-                    sampled = stratum_df  # Take all available if not enough
+                    sampled = stratum_df
                 sampled_dfs.append(sampled)
 
         if sampled_dfs:
@@ -346,10 +433,12 @@ def main(
     sampling_strategy = environ_vars.get("SAMPLING_STRATEGY", "balanced")
     target_sample_size = int(environ_vars.get("TARGET_SAMPLE_SIZE", 1000))
     min_samples_per_stratum = int(environ_vars.get("MIN_SAMPLES_PER_STRATUM", 10))
-    variance_column = environ_vars.get(
-        "VARIANCE_COLUMN"
-    )  # Optional for optimal strategy
+    variance_column = environ_vars.get("VARIANCE_COLUMN")
     random_state = int(environ_vars.get("RANDOM_STATE", 42))
+    sampling_multiplier = float(environ_vars.get("SAMPLING_MULTIPLIER", "1.0"))
+    allow_replacement = environ_vars.get("ALLOW_REPLACEMENT", "false").lower() == "true"
+    filter_column = environ_vars.get("SAMPLING_FILTER_COLUMN", "")
+    filter_value = environ_vars.get("SAMPLING_FILTER_VALUE", "")
 
     # Extract paths - no defaults, require explicit paths
     input_data_dir = input_paths.get("input_data")
@@ -368,10 +457,35 @@ def main(
     if not strata_column:
         raise RuntimeError("STRATA_COLUMN environment variable must be set.")
 
-    if sampling_strategy not in ["balanced", "proportional_min", "optimal"]:
+    valid_strategies = [
+        "balanced",
+        "proportional_min",
+        "optimal",
+        "external_proportional",
+    ]
+    if sampling_strategy not in valid_strategies:
         raise RuntimeError(
-            f"Invalid SAMPLING_STRATEGY: {sampling_strategy}. Must be one of: balanced, proportional_min, optimal"
+            f"Invalid SAMPLING_STRATEGY: {sampling_strategy}. "
+            f"Must be one of: {valid_strategies}"
         )
+
+    # Load reference counts for external_proportional strategy
+    reference_counts = None
+    if sampling_strategy == "external_proportional":
+        reference_path = Path(input_data_dir) / "reference_counts.json"
+        if reference_path.exists():
+            reference_counts = json.loads(reference_path.read_text())
+            log(f"[INFO] Loaded reference counts from sidecar: {reference_path}")
+        else:
+            ref_json = environ_vars.get("REFERENCE_COUNTS_JSON", "")
+            if ref_json:
+                reference_counts = json.loads(ref_json)
+                log("[INFO] Loaded reference counts from REFERENCE_COUNTS_JSON env var")
+            else:
+                raise RuntimeError(
+                    "external_proportional strategy requires reference_counts.json "
+                    "sidecar file in input directory or REFERENCE_COUNTS_JSON env var"
+                )
 
     # Initialize sampler
     sampler = StratifiedSampler(random_state=random_state)
@@ -384,6 +498,9 @@ def main(
     log(f"[INFO] Strata column: {strata_column}")
     log(f"[INFO] Target sample size: {target_sample_size}")
     log(f"[INFO] Min samples per stratum: {min_samples_per_stratum}")
+    log(
+        f"[INFO] Multiplier: {sampling_multiplier}, allow_replacement: {allow_replacement}"
+    )
 
     # Determine which splits to process based on job_type
     if job_type == "training":
@@ -425,20 +542,52 @@ def main(
                 )
                 variance_column = None
 
-            # Calculate target size for this split (could be different per split)
-            split_target_size = min(
-                target_sample_size, len(df)
-            )  # Don't exceed available data
+            # Calculate target size for this split
+            # For external_proportional, target_size is ignored (allocation from reference_counts)
+            if sampling_strategy == "external_proportional":
+                split_target_size = target_sample_size
+            else:
+                split_target_size = min(target_sample_size, len(df))
 
-            # Perform stratified sampling
-            sampled_df = sampler.sample(
-                df=df,
-                strata_column=strata_column,
-                target_size=split_target_size,
-                strategy=sampling_strategy,
-                min_samples_per_stratum=min_samples_per_stratum,
-                variance_column=variance_column,
-            )
+            # Apply filter: sample only matching rows, pass rest through
+            if filter_column and filter_value and filter_column in df.columns:
+                to_sample = df[df[filter_column] == filter_value].copy()
+                to_passthrough = df[df[filter_column] != filter_value].copy()
+                log(
+                    f"[INFO] Filter: sampling {len(to_sample)} rows "
+                    f"({filter_column}=={filter_value}), "
+                    f"passing through {len(to_passthrough)} rows"
+                )
+
+                if not to_sample.empty:
+                    sampled_df = sampler.sample(
+                        df=to_sample,
+                        strata_column=strata_column,
+                        target_size=split_target_size,
+                        strategy=sampling_strategy,
+                        min_samples_per_stratum=min_samples_per_stratum,
+                        variance_column=variance_column,
+                        reference_counts=reference_counts,
+                        multiplier=sampling_multiplier,
+                        allow_replacement=allow_replacement,
+                    )
+                else:
+                    sampled_df = to_sample
+
+                sampled_df = pd.concat([sampled_df, to_passthrough], ignore_index=True)
+            else:
+                # No filter — sample entire DataFrame (original behavior)
+                sampled_df = sampler.sample(
+                    df=df,
+                    strata_column=strata_column,
+                    target_size=split_target_size,
+                    strategy=sampling_strategy,
+                    min_samples_per_stratum=min_samples_per_stratum,
+                    variance_column=variance_column,
+                    reference_counts=reference_counts,
+                    multiplier=sampling_multiplier,
+                    allow_replacement=allow_replacement,
+                )
 
             log(
                 f"[INFO] Sampled {split_name} data: {len(sampled_df)} rows from {len(df)} original rows"
@@ -451,6 +600,29 @@ def main(
             # Save sampled data (preserve format)
             _save_sampled_data(sampled_df, output_dir, split_name, detected_format, log)
             sampled_splits[split_name] = sampled_df
+
+            # Save sampling diagnostics
+            diagnostics = {
+                "strategy": sampling_strategy,
+                "strata_column": strata_column,
+                "input_size": len(df),
+                "output_size": len(sampled_df),
+                "allow_replacement": allow_replacement,
+                "multiplier": sampling_multiplier,
+                "per_stratum": {
+                    str(s): {
+                        "available": int((df[strata_column] == s).sum()),
+                        "sampled": int((sampled_df[strata_column] == s).sum()),
+                        "replacement_used": int((sampled_df[strata_column] == s).sum())
+                        > int((df[strata_column] == s).sum()),
+                    }
+                    for s in sampled_df[strata_column].unique()
+                },
+            }
+            diag_path = Path(output_dir) / split_name / "sampling_diagnostics.json"
+            diag_path.parent.mkdir(parents=True, exist_ok=True)
+            diag_path.write_text(json.dumps(diagnostics, indent=2, default=str))
+            log(f"[INFO] Saved diagnostics to {diag_path}")
 
         except Exception as e:
             log(f"[ERROR] Failed to process {split_name} split: {str(e)}")
@@ -479,8 +651,7 @@ if __name__ == "__main__":
             "--job_type",
             type=str,
             required=True,
-            choices=["training", "validation", "testing", "calibration"],
-            help="One of ['training','validation','testing','calibration']",
+            help="Job type (e.g., 'training', 'validation', 'testing', 'calibration', 'sampling')",
         )
         args = parser.parse_args()
 
@@ -494,6 +665,11 @@ if __name__ == "__main__":
         MIN_SAMPLES_PER_STRATUM = int(os.environ.get("MIN_SAMPLES_PER_STRATUM", 10))
         VARIANCE_COLUMN = os.environ.get("VARIANCE_COLUMN")  # Optional
         RANDOM_STATE = int(os.environ.get("RANDOM_STATE", 42))
+        SAMPLING_MULTIPLIER = float(os.environ.get("SAMPLING_MULTIPLIER", "1.0"))
+        ALLOW_REPLACEMENT = os.environ.get("ALLOW_REPLACEMENT", "false")
+        REFERENCE_COUNTS_JSON = os.environ.get("REFERENCE_COUNTS_JSON", "")
+        SAMPLING_FILTER_COLUMN = os.environ.get("SAMPLING_FILTER_COLUMN", "")
+        SAMPLING_FILTER_VALUE = os.environ.get("SAMPLING_FILTER_VALUE", "")
 
         # Define standard SageMaker paths - use contract-declared paths directly
         INPUT_DATA_DIR = "/opt/ml/processing/input/data"
@@ -508,7 +684,7 @@ if __name__ == "__main__":
         logger = logging.getLogger(__name__)
 
         # Log key parameters
-        logger.info(f"Starting stratified sampling with parameters:")
+        logger.info("Starting stratified sampling with parameters:")
         logger.info(f"  Job Type: {args.job_type}")
         logger.info(f"  Strata Column: {STRATA_COLUMN}")
         logger.info(f"  Sampling Strategy: {SAMPLING_STRATEGY}")
@@ -531,6 +707,11 @@ if __name__ == "__main__":
             "MIN_SAMPLES_PER_STRATUM": str(MIN_SAMPLES_PER_STRATUM),
             "VARIANCE_COLUMN": VARIANCE_COLUMN,
             "RANDOM_STATE": str(RANDOM_STATE),
+            "SAMPLING_MULTIPLIER": str(SAMPLING_MULTIPLIER),
+            "ALLOW_REPLACEMENT": ALLOW_REPLACEMENT,
+            "REFERENCE_COUNTS_JSON": REFERENCE_COUNTS_JSON,
+            "SAMPLING_FILTER_COLUMN": SAMPLING_FILTER_COLUMN,
+            "SAMPLING_FILTER_VALUE": SAMPLING_FILTER_VALUE,
         }
 
         # Execute the main processing logic

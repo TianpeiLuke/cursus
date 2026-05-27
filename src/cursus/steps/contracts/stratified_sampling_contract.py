@@ -21,46 +21,50 @@ STRATIFIED_SAMPLING_CONTRACT = ScriptContract(
         "MIN_SAMPLES_PER_STRATUM": "10",
         "VARIANCE_COLUMN": "",
         "RANDOM_STATE": "42",
+        "SAMPLING_MULTIPLIER": "1.0",
+        "ALLOW_REPLACEMENT": "false",
+        "REFERENCE_COUNTS_JSON": "",
+        "SAMPLING_FILTER_COLUMN": "",
+        "SAMPLING_FILTER_VALUE": "",
     },
     framework_requirements={
         "pandas": ">=1.3.0",
-        "numpy": ">=1.21.0",
-        "scikit-learn": ">=1.0.0",
     },
     description="""
-    Stratified sampling script that:
-    1. Reads processed data from tabular_preprocessing output structure
-    2. Applies stratified sampling with configurable allocation strategies
-    3. Maintains folder structure compatibility for seamless pipeline integration
-    4. Handles different job types (training vs non-training)
-    
-    Contract aligned with actual script implementation:
-    - Inputs: DATA (required) - reads from /opt/ml/processing/input/data
-    - Outputs: processed_data (primary) - writes to /opt/ml/processing/output
-    - Arguments: job_type (required) - defines processing mode (training/validation/testing/calibration)
-    
-    Script Implementation Details:
-    - Reads CSV files from split subdirectories (train/, val/, test/)
-    - Supports three allocation strategies:
-      * balanced: Equal samples per stratum (class imbalance)
-      * proportional_min: Proportional with minimum constraints (causal analysis)
-      * optimal: Neyman allocation for variance optimization
-    - For training job_type: samples train/val splits, copies test unchanged
-    - For non-training job_types: samples only the specified split
-    - Outputs sampled files maintaining same folder structure as input
-    - Preserves test set integrity for training workflows
-    
+    Stratified sampling script with four allocation strategies and production robustness.
+
+    Strategies:
+    - balanced: Equal samples per stratum (class imbalance correction)
+    - proportional_min: Proportional allocation with floor constraints (causal analysis)
+    - optimal: Neyman variance-weighted allocation (minimizes sampling error)
+    - external_proportional: Sample to match external reference distribution with multiplier
+
+    Features:
+    - Sampling with replacement when target exceeds available per stratum
+    - NaN guard: warns and excludes NaN strata values automatically
+    - Empty DataFrame guard: returns empty result gracefully
+    - Per-split diagnostics JSON output (requested vs achieved per stratum)
+    - Format preservation: reads and writes CSV/TSV/Parquet maintaining input format
+    - Reference counts from sidecar file (reference_counts.json) or env var fallback
+
+    Job Type Handling:
+    - training: Samples train/val splits, copies test unchanged
+    - Other (validation/testing/calibration/sampling): Samples only that split
+
+    Input: /opt/ml/processing/input/data/{split}/{split}_processed_data.{csv|tsv|parquet}
+           /opt/ml/processing/input/data/reference_counts.json (optional sidecar)
+    Output: /opt/ml/processing/output/{split}/{split}_processed_data.{csv|tsv|parquet}
+            /opt/ml/processing/output/{split}/sampling_diagnostics.json
+
     Environment Variables:
     - STRATA_COLUMN (required): Column name to stratify by
-    - SAMPLING_STRATEGY (optional): One of 'balanced', 'proportional_min', 'optimal'
-    - TARGET_SAMPLE_SIZE (optional): Total desired sample size per split
-    - MIN_SAMPLES_PER_STRATUM (optional): Minimum samples per stratum for statistical power
-    - VARIANCE_COLUMN (optional): Column for variance calculation (needed for optimal strategy)
-    - RANDOM_STATE (optional): Random seed for reproducibility
-    
-    Integration Points:
-    - Input compatible with: tabular_preprocessing output
-    - Output compatible with: xgboost_training input, other downstream processing steps
-    - Maintains SageMaker processing path contracts
+    - SAMPLING_STRATEGY: One of 'balanced', 'proportional_min', 'optimal', 'external_proportional'
+    - TARGET_SAMPLE_SIZE: Total desired sample size per split (ignored for external_proportional)
+    - MIN_SAMPLES_PER_STRATUM: Minimum samples per stratum for statistical power
+    - VARIANCE_COLUMN: Column for variance calculation (optimal strategy)
+    - RANDOM_STATE: Random seed for reproducibility
+    - SAMPLING_MULTIPLIER: Multiplier for external reference counts (e.g., 5.0)
+    - ALLOW_REPLACEMENT: Enable over-sampling with replacement ('true'/'false')
+    - REFERENCE_COUNTS_JSON: Fallback JSON when sidecar file absent
     """,
 )

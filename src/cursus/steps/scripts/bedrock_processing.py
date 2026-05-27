@@ -1,9 +1,30 @@
 """
 Bedrock Processing Script
 
-Processes input data through AWS Bedrock models using generated prompt templates
-and validation schemas from the Bedrock Prompt Template Generation step.
-Supports template-driven response processing with dynamic Pydantic model creation.
+Processes input data through AWS Bedrock models with LLM-driven analysis.
+Supports three invocation modes:
+1. invoke_model (Anthropic format) — default, with assistant prefilling for JSON output
+2. Structured output (tool_use) — guaranteed schema compliance, 0% parse failures
+3. Converse API — model-agnostic, supports Nova/Llama/Mistral without format changes
+
+Features:
+- Self-contained mode: prompt template and validation schema embedded in config (no
+  upstream BedrockPromptTemplateGeneration step required). Fallback chain: upstream
+  step output > env var config > error.
+- Dynamic Pydantic model creation from JSON validation schemas
+- Concurrent processing with configurable thread pool and rate limiting
+- Circuit breaker: trips after N consecutive failures, blocks for recovery period
+- Adaptive rate limiting: auto-tunes req/s based on observed throttle rate
+- Checkpoint/resume: saves progress per batch, resumes on restart
+- Inference profile management with automatic fallback to on-demand models
+- Input field truncation to prevent API payload errors
+- Unicode quote repair for German-style quotes in LLM responses
+
+Input: /opt/ml/processing/input/data (CSV/Parquet from upstream step)
+       /opt/ml/processing/input/templates (optional — prompts.json)
+       /opt/ml/processing/input/schema (optional — validation_schema_*.json)
+Output: /opt/ml/processing/output/data (original data + llm_* prefixed columns)
+        /opt/ml/processing/output/summary (processing_summary_*.json)
 """
 
 import os
@@ -169,7 +190,7 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
         logger.info("✓ PACKAGE INSTALLATION COMPLETED SUCCESSFULLY")
         logger.info("=" * 70)
 
-    except Exception as e:
+    except Exception:
         logger.error("=" * 70)
         logger.error("✗ PACKAGE INSTALLATION FAILED")
         logger.error("=" * 70)
@@ -198,16 +219,14 @@ print("***********************Package Installation Complete*********************
 import json
 import argparse
 import pandas as pd
-import boto3
 import traceback
 import re
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Callable
 import logging
 from datetime import datetime
-from pydantic import BaseModel, ValidationError, create_model, Field
+from pydantic import ValidationError, create_model, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
-import glob
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -468,6 +487,20 @@ class BedrockProcessor:
         self.last_request_times = {}
         self.time_lock = threading.Lock()
 
+        # Circuit breaker state (P5)
+        self._cb_threshold = config.get("circuit_breaker_threshold", 5)
+        self._cb_recovery_sec = config.get("circuit_breaker_recovery_sec", 60)
+        self._cb_failures = 0
+        self._cb_state = "closed"
+        self._cb_last_failure_time = 0.0
+        self._cb_lock = threading.Lock()
+
+        # Adaptive rate limiting state (P6)
+        self._adaptive_rate_enabled = config.get("adaptive_rate_limiting", False)
+        self._max_rate = config.get("rate_limit_per_second", 10)
+        self._min_rate = 1
+        self._throttle_window: list = []
+
         # Input truncation configuration
         self.max_input_field_length = config.get("max_input_field_length", 300000)
         self.truncation_enabled = config.get("truncation_enabled", True)
@@ -515,6 +548,124 @@ class BedrockProcessor:
                     time.sleep(min_interval - elapsed)
 
             self.last_request_times[thread_id] = time.time()
+
+    def _circuit_breaker_check(self):
+        """Check circuit breaker state before making a request."""
+        with self._cb_lock:
+            if self._cb_state == "closed":
+                return
+            if self._cb_state == "open":
+                elapsed = time.time() - self._cb_last_failure_time
+                if elapsed >= self._cb_recovery_sec:
+                    self._cb_state = "half-open"
+                    logger.info(
+                        f"Circuit breaker: half-open after {elapsed:.0f}s cooldown"
+                    )
+                    return
+                remaining = self._cb_recovery_sec - elapsed
+                raise RuntimeError(
+                    f"Circuit breaker OPEN: {remaining:.0f}s remaining "
+                    f"({self._cb_failures} consecutive failures)"
+                )
+
+    def _circuit_breaker_record_success(self):
+        """Record successful request — reset circuit breaker."""
+        with self._cb_lock:
+            if self._cb_state == "half-open":
+                logger.info("Circuit breaker: closing (recovery confirmed)")
+            self._cb_failures = 0
+            self._cb_state = "closed"
+
+    def _circuit_breaker_record_failure(self):
+        """Record failed request — potentially trip circuit breaker."""
+        with self._cb_lock:
+            self._cb_failures += 1
+            self._cb_last_failure_time = time.time()
+            if self._cb_failures >= self._cb_threshold:
+                self._cb_state = "open"
+                logger.warning(
+                    f"Circuit breaker TRIPPED: {self._cb_failures} consecutive failures. "
+                    f"Blocking for {self._cb_recovery_sec}s."
+                )
+
+    def _adapt_rate(self, was_throttled: bool):
+        """Adjust rate limit based on recent throttle history."""
+        if not self._adaptive_rate_enabled:
+            return
+        now = time.time()
+        self._throttle_window.append((now, was_throttled))
+        cutoff = now - 60
+        self._throttle_window = [
+            (t, th) for t, th in self._throttle_window if t > cutoff
+        ]
+        if len(self._throttle_window) < 10:
+            return
+        throttle_rate = sum(1 for _, th in self._throttle_window if th) / len(
+            self._throttle_window
+        )
+        if throttle_rate > 0.05:
+            new_rate = max(self._min_rate, self.rate_limit_per_second // 2)
+            if new_rate != self.rate_limit_per_second:
+                logger.warning(
+                    f"Adaptive rate: {throttle_rate:.1%} throttled, "
+                    f"{self.rate_limit_per_second} → {new_rate} req/s"
+                )
+                self.rate_limit_per_second = new_rate
+        elif throttle_rate < 0.01 and self.rate_limit_per_second < self._max_rate:
+            new_rate = min(self._max_rate, self.rate_limit_per_second + 2)
+            if new_rate != self.rate_limit_per_second:
+                logger.info(
+                    f"Adaptive rate: {throttle_rate:.1%} throttled, "
+                    f"{self.rate_limit_per_second} → {new_rate} req/s"
+                )
+                self.rate_limit_per_second = new_rate
+
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
+    def _invoke_bedrock_converse(self, prompt: str) -> Dict[str, Any]:
+        """Invoke Bedrock using the model-agnostic Converse API (supports Nova/Llama/Mistral)."""
+        self._circuit_breaker_check()
+
+        if self.concurrency_mode == "concurrent":
+            self._enforce_rate_limit()
+            client = self._get_thread_local_bedrock_client()
+        else:
+            client = self.bedrock_client
+
+        messages = [{"role": "user", "content": [{"text": prompt}]}]
+        inference_config = {
+            "maxTokens": int(self.config["max_tokens"]),
+            "temperature": float(self.config["temperature"]),
+            "topP": float(self.config["top_p"]),
+        }
+        kwargs = {
+            "modelId": self.effective_model_id,
+            "messages": messages,
+            "inferenceConfig": inference_config,
+        }
+        if self.config.get("system_prompt"):
+            kwargs["system"] = [{"text": self.config["system_prompt"]}]
+
+        try:
+            response = client.converse(**kwargs)
+            self._circuit_breaker_record_success()
+            self._adapt_rate(was_throttled=False)
+            response_text = response["output"]["message"]["content"][0]["text"]
+            return {"content": [{"text": response_text}]}
+        except Exception as e:
+            self._circuit_breaker_record_failure()
+            if "ThrottlingException" in str(e) or "TooManyRequestsException" in str(e):
+                self._adapt_rate(was_throttled=True)
+            fallback_model = self.config.get("fallback_model_id")
+            if fallback_model and "ValidationException" in str(e):
+                logger.warning(f"Converse API: falling back to {fallback_model}")
+                kwargs["modelId"] = fallback_model
+                response = client.converse(**kwargs)
+                self._circuit_breaker_record_success()
+                response_text = response["output"]["message"]["content"][0]["text"]
+                return {"content": [{"text": response_text}]}
+            raise
 
     def _configure_inference_profile(self):
         """Configure inference profile settings based on model and environment."""
@@ -819,13 +970,11 @@ class BedrockProcessor:
         stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
     )
     def _invoke_bedrock(self, prompt: str) -> Dict[str, Any]:
-        """Invoke Bedrock with intelligent fallback strategy and retry logic."""
-        # Enforce rate limiting for concurrent processing
+        """Invoke Bedrock with circuit breaker, adaptive rate, and fallback."""
+        self._circuit_breaker_check()
+
         if self.concurrency_mode == "concurrent":
             self._enforce_rate_limit()
-
-        # Use thread-local client for concurrent processing, main client for sequential
-        if self.concurrency_mode == "concurrent":
             client = self._get_thread_local_bedrock_client()
         else:
             client = self.bedrock_client
@@ -847,7 +996,6 @@ class BedrockProcessor:
         if self.config.get("system_prompt"):
             request_body["system"] = self.config["system_prompt"]
 
-        # Try primary model/profile first
         try:
             response = client.invoke_model(
                 modelId=self.effective_model_id,
@@ -855,10 +1003,15 @@ class BedrockProcessor:
                 contentType="application/json",
                 accept="application/json",
             )
+            self._circuit_breaker_record_success()
+            self._adapt_rate(was_throttled=False)
             return json.loads(response["body"].read())
 
         except Exception as e:
-            # Fallback to on-demand model if inference profile fails
+            if "ThrottlingException" in str(e) or "TooManyRequestsException" in str(e):
+                self._adapt_rate(was_throttled=True)
+            self._circuit_breaker_record_failure()
+
             fallback_model = self.config.get("fallback_model_id")
             if fallback_model and "ValidationException" in str(e):
                 logger.warning(
@@ -871,12 +1024,97 @@ class BedrockProcessor:
                         contentType="application/json",
                         accept="application/json",
                     )
+                    self._circuit_breaker_record_success()
                     return json.loads(response["body"].read())
                 except Exception as fallback_error:
                     logger.error(f"Fallback model also failed: {fallback_error}")
                     raise fallback_error
-            else:
-                raise e
+            raise
+
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
+    def _invoke_bedrock_with_structured_output(self, prompt: str) -> Dict[str, Any]:
+        """Invoke Bedrock using tool_use for guaranteed schema compliance (0% parse failures)."""
+        self._circuit_breaker_check()
+
+        if self.concurrency_mode == "concurrent":
+            self._enforce_rate_limit()
+            client = self._get_thread_local_bedrock_client()
+        else:
+            client = self.bedrock_client
+
+        tool_schema = {
+            "type": "object",
+            "properties": self.validation_schema.get("properties", {}),
+            "required": self.validation_schema.get("required", []),
+        }
+
+        request_body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": int(self.config["max_tokens"]),
+            "temperature": float(self.config["temperature"]),
+            "top_p": float(self.config["top_p"]),
+            "messages": [{"role": "user", "content": prompt}],
+            "tools": [
+                {
+                    "name": "structured_response",
+                    "description": "Return the structured analysis response",
+                    "input_schema": tool_schema,
+                }
+            ],
+            "tool_choice": {"type": "tool", "name": "structured_response"},
+        }
+
+        if self.config.get("system_prompt"):
+            request_body["system"] = self.config["system_prompt"]
+
+        try:
+            response = client.invoke_model(
+                modelId=self.effective_model_id,
+                body=json.dumps(request_body),
+                contentType="application/json",
+                accept="application/json",
+            )
+            response_body = json.loads(response["body"].read())
+
+            for block in response_body.get("content", []):
+                if (
+                    block.get("type") == "tool_use"
+                    and block.get("name") == "structured_response"
+                ):
+                    self._circuit_breaker_record_success()
+                    self._adapt_rate(was_throttled=False)
+                    return {"content": [{"text": json.dumps(block["input"])}]}
+
+            raise ValueError("No tool_use block found in response")
+
+        except Exception as e:
+            if "ThrottlingException" in str(e) or "TooManyRequestsException" in str(e):
+                self._adapt_rate(was_throttled=True)
+            self._circuit_breaker_record_failure()
+
+            fallback_model = self.config.get("fallback_model_id")
+            if fallback_model and "ValidationException" in str(e):
+                logger.warning(
+                    f"Structured output: inference profile failed, falling back to: {fallback_model}"
+                )
+                response = client.invoke_model(
+                    modelId=fallback_model,
+                    body=json.dumps(request_body),
+                    contentType="application/json",
+                    accept="application/json",
+                )
+                response_body = json.loads(response["body"].read())
+                for block in response_body.get("content", []):
+                    if (
+                        block.get("type") == "tool_use"
+                        and block.get("name") == "structured_response"
+                    ):
+                        self._circuit_breaker_record_success()
+                        return {"content": [{"text": json.dumps(block["input"])}]}
+                raise ValueError("No tool_use block found in fallback response")
+            raise
 
     def _parse_response_with_pydantic(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -987,8 +1225,13 @@ class BedrockProcessor:
             # Format prompt using template placeholders
             prompt = self._format_prompt(row_data)
 
-            # Invoke Bedrock
-            response = self._invoke_bedrock(prompt)
+            # Invoke Bedrock (route: structured output > converse API > invoke_model)
+            if self.config.get("use_structured_output") and self.validation_schema:
+                response = self._invoke_bedrock_with_structured_output(prompt)
+            elif self.config.get("use_converse_api"):
+                response = self._invoke_bedrock_converse(prompt)
+            else:
+                response = self._invoke_bedrock(prompt)
 
             # Parse response with Pydantic validation
             parsed_result = self._parse_response_with_pydantic(response)
@@ -1060,6 +1303,7 @@ class BedrockProcessor:
     ) -> pd.DataFrame:
         """
         Process a batch of data through Bedrock using concurrent processing.
+        Supports checkpoint/resume for long-running jobs.
 
         Args:
             df: Input DataFrame
@@ -1094,9 +1338,51 @@ class BedrockProcessor:
                 f"Missing DataFrame columns for placeholders: {missing_placeholders}"
             )
 
+        # Checkpoint/resume: load progress from previous run if available
+        output_dir = Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        checkpoint_file = output_dir / "_checkpoint_progress.json"
+        completed_batches = 0
+
+        if checkpoint_file.exists():
+            try:
+                checkpoint = json.loads(checkpoint_file.read_text())
+                completed_batches = checkpoint.get("completed_batches", 0)
+                if completed_batches > 0:
+                    logger.info(
+                        f"Checkpoint found: resuming from batch {completed_batches + 1}/{total_batches} "
+                        f"(skipping {completed_batches} completed batches)"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to load checkpoint, starting fresh: {e}")
+                completed_batches = 0
+
+        # Load intermediate results from completed batches
+        if completed_batches > 0 and save_intermediate:
+            for b in range(1, completed_batches + 1):
+                prev_file = output_dir / f"batch_{b:04d}_results.parquet"
+                if prev_file.exists():
+                    prev_df = pd.read_parquet(prev_file)
+                    results.extend(prev_df.to_dict("records"))
+                else:
+                    logger.warning(
+                        f"Checkpoint references batch {b} but file not found, reprocessing from here"
+                    )
+                    completed_batches = b - 1
+                    results = results[: (completed_batches * batch_size)]
+                    break
+            logger.info(
+                f"Loaded {len(results)} records from {completed_batches} checkpoint batches"
+            )
+
         for i in range(0, len(df), batch_size):
-            batch_df = df.iloc[i : i + batch_size].copy()
             batch_num = i // batch_size + 1
+
+            # Skip already-completed batches
+            if batch_num <= completed_batches:
+                continue
+
+            batch_df = df.iloc[i : i + batch_size].copy()
 
             logger.info(
                 f"Processing batch {batch_num}/{total_batches} ({len(batch_df)} records) with {self.max_concurrent_workers} workers"
@@ -1153,16 +1439,26 @@ class BedrockProcessor:
 
             results.extend(batch_results)
 
-            # Save intermediate results
+            # Save intermediate results + checkpoint
             if save_intermediate:
                 intermediate_df = pd.DataFrame(batch_results)
-                output_dir = Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
-                output_dir.mkdir(parents=True, exist_ok=True)
                 intermediate_file = (
                     output_dir / f"batch_{batch_num:04d}_results.parquet"
                 )
                 intermediate_df.to_parquet(intermediate_file, index=False)
-                logger.info(f"Saved intermediate results to {intermediate_file}")
+                checkpoint_file.write_text(
+                    json.dumps(
+                        {"completed_batches": batch_num, "total_batches": total_batches}
+                    )
+                )
+                logger.info(
+                    f"Saved batch {batch_num} + checkpoint ({batch_num}/{total_batches})"
+                )
+
+        # Clean up checkpoint on successful completion
+        if checkpoint_file.exists():
+            checkpoint_file.unlink()
+            logger.info("All batches complete — checkpoint removed")
 
         results_df = pd.DataFrame(results)
         logger.info(f"Completed concurrent processing {len(results_df)} records")
@@ -1200,6 +1496,7 @@ class BedrockProcessor:
     ) -> pd.DataFrame:
         """
         Process a batch of data through Bedrock using sequential processing.
+        Supports checkpoint/resume for long-running jobs.
 
         Args:
             df: Input DataFrame
@@ -1232,9 +1529,51 @@ class BedrockProcessor:
                 f"Missing DataFrame columns for placeholders: {missing_placeholders}"
             )
 
+        # Checkpoint/resume: load progress from previous run if available
+        output_dir = Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        checkpoint_file = output_dir / "_checkpoint_progress.json"
+        completed_batches = 0
+
+        if checkpoint_file.exists():
+            try:
+                checkpoint = json.loads(checkpoint_file.read_text())
+                completed_batches = checkpoint.get("completed_batches", 0)
+                if completed_batches > 0:
+                    logger.info(
+                        f"Checkpoint found: resuming from batch {completed_batches + 1}/{total_batches} "
+                        f"(skipping {completed_batches} completed batches)"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to load checkpoint, starting fresh: {e}")
+                completed_batches = 0
+
+        # Load intermediate results from completed batches
+        if completed_batches > 0 and save_intermediate:
+            for b in range(1, completed_batches + 1):
+                prev_file = output_dir / f"batch_{b:04d}_results.parquet"
+                if prev_file.exists():
+                    prev_df = pd.read_parquet(prev_file)
+                    results.extend(prev_df.to_dict("records"))
+                else:
+                    logger.warning(
+                        f"Checkpoint references batch {b} but file not found, reprocessing from here"
+                    )
+                    completed_batches = b - 1
+                    results = results[: (completed_batches * batch_size)]
+                    break
+            logger.info(
+                f"Loaded {len(results)} records from {completed_batches} checkpoint batches"
+            )
+
         for i in range(0, len(df), batch_size):
-            batch_df = df.iloc[i : i + batch_size].copy()
             batch_num = i // batch_size + 1
+
+            # Skip already-completed batches
+            if batch_num <= completed_batches:
+                continue
+
+            batch_df = df.iloc[i : i + batch_size].copy()
 
             logger.info(
                 f"Processing batch {batch_num}/{total_batches} ({len(batch_df)} records)"
@@ -1265,16 +1604,26 @@ class BedrockProcessor:
 
             results.extend(batch_results)
 
-            # Save intermediate results
+            # Save intermediate results + checkpoint
             if save_intermediate:
                 intermediate_df = pd.DataFrame(batch_results)
-                output_dir = Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
-                output_dir.mkdir(parents=True, exist_ok=True)
                 intermediate_file = (
                     output_dir / f"batch_{batch_num:04d}_results.parquet"
                 )
                 intermediate_df.to_parquet(intermediate_file, index=False)
-                logger.info(f"Saved intermediate results to {intermediate_file}")
+                checkpoint_file.write_text(
+                    json.dumps(
+                        {"completed_batches": batch_num, "total_batches": total_batches}
+                    )
+                )
+                logger.info(
+                    f"Saved batch {batch_num} + checkpoint ({batch_num}/{total_batches})"
+                )
+
+        # Clean up checkpoint on successful completion
+        if checkpoint_file.exists():
+            checkpoint_file.unlink()
+            logger.info("All batches complete — checkpoint removed")
 
         results_df = pd.DataFrame(results)
         logger.info(f"Completed sequential processing {len(results_df)} records")
@@ -1384,6 +1733,75 @@ def load_validation_schema(
 
     except Exception as e:
         raise ValueError(f"Failed to load validation schema from {schema_file}: {e}")
+
+
+def _load_templates_with_fallback(
+    input_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    log: Callable[[str], None],
+) -> Dict[str, Any]:
+    """Load templates: upstream step → env var → error."""
+    if "prompt_templates" in input_paths:
+        templates_path = input_paths["prompt_templates"]
+        if Path(templates_path).exists():
+            try:
+                return load_prompt_templates(templates_path, log)
+            except Exception as e:
+                log(
+                    f"[WARN] Failed to load from upstream step: {e}, trying env var fallback"
+                )
+
+    user_prompt = environ_vars.get("BEDROCK_USER_PROMPT_TEMPLATE", "")
+    if user_prompt:
+        log("[INFO] Using config-embedded template (self-contained mode)")
+        placeholders_str = environ_vars.get("BEDROCK_INPUT_PLACEHOLDERS", "[]")
+        try:
+            placeholders = json.loads(placeholders_str)
+        except json.JSONDecodeError:
+            placeholders = []
+        return {
+            "system_prompt": environ_vars.get("BEDROCK_SYSTEM_PROMPT", ""),
+            "user_prompt_template": user_prompt,
+            "input_placeholders": placeholders,
+        }
+
+    raise ValueError(
+        "No prompt templates available. Provide either:\n"
+        "  1. Upstream BedrockPromptTemplateGeneration step, OR\n"
+        "  2. BEDROCK_USER_PROMPT_TEMPLATE env var (config-embedded mode)"
+    )
+
+
+def _load_schema_with_fallback(
+    input_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    log: Callable[[str], None],
+) -> Dict[str, Any]:
+    """Load schema: upstream step → env var → empty (graceful degradation)."""
+    if "validation_schema" in input_paths:
+        schema_path = input_paths["validation_schema"]
+        if Path(schema_path).exists():
+            try:
+                return load_validation_schema(schema_path, log)
+            except Exception as e:
+                log(
+                    f"[WARN] Failed to load schema from upstream: {e}, trying env var fallback"
+                )
+
+    schema_str = environ_vars.get("BEDROCK_VALIDATION_SCHEMA", "{}")
+    if schema_str and schema_str != "{}":
+        try:
+            schema = json.loads(schema_str)
+            if "properties" in schema:
+                log(
+                    "[INFO] Using config-embedded validation schema (self-contained mode)"
+                )
+                return schema
+        except json.JSONDecodeError as e:
+            log(f"[WARN] Failed to parse BEDROCK_VALIDATION_SCHEMA: {e}")
+
+    log("[WARN] No validation schema — using basic JSON parsing only")
+    return {}
 
 
 def process_split_directory(
@@ -1551,26 +1969,15 @@ def main(
         job_type = job_args.job_type
         log(f"Processing with job_type: {job_type}")
 
-        # Load prompt templates from Template Generation step (REQUIRED)
-        if "prompt_templates" not in input_paths:
-            raise ValueError(
-                "prompt_templates input is required for Bedrock Processing"
-            )
-
-        templates = load_prompt_templates(input_paths["prompt_templates"], log)
+        # Load prompt templates with fallback chain (upstream > env var > error)
+        templates = _load_templates_with_fallback(input_paths, environ_vars, log)
         log(
-            f"Loaded templates: system_prompt={bool(templates.get('system_prompt'))}, user_prompt_template={bool(templates.get('user_prompt_template'))}"
+            f"Loaded templates: system_prompt={bool(templates.get('system_prompt'))}, "
+            f"user_prompt_template={bool(templates.get('user_prompt_template'))}"
         )
 
-        # Load validation schema from Template Generation step (REQUIRED)
-        if "validation_schema" not in input_paths:
-            raise ValueError(
-                "validation_schema input is required for Bedrock Processing"
-            )
-
-        validation_schema = load_validation_schema(
-            input_paths["validation_schema"], log
-        )
+        # Load validation schema with fallback chain (upstream > env var > empty)
+        validation_schema = _load_schema_with_fallback(input_paths, environ_vars, log)
         log(
             f"Loaded validation schema with {len(validation_schema.get('properties', {}))} properties"
         )
@@ -1627,6 +2034,21 @@ def main(
             == "true",
             "log_truncations": environ_vars.get(
                 "BEDROCK_LOG_TRUNCATIONS", "true"
+            ).lower()
+            == "true",
+            # Structured output mode
+            "use_structured_output": environ_vars.get(
+                "BEDROCK_USE_STRUCTURED_OUTPUT", "false"
+            ).lower()
+            == "true",
+            # Converse API mode (model-agnostic, supports Nova/Llama/Mistral)
+            "use_converse_api": environ_vars.get(
+                "BEDROCK_USE_CONVERSE_API", "false"
+            ).lower()
+            == "true",
+            # Adaptive rate limiting
+            "adaptive_rate_limiting": environ_vars.get(
+                "BEDROCK_ADAPTIVE_RATE_LIMITING", "false"
             ).lower()
             == "true",
         }

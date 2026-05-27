@@ -1,11 +1,13 @@
-from typing import Dict, Optional, Any, List
-from pathlib import Path
+from typing import Dict, Optional, Any, List, TYPE_CHECKING
 import logging
-import importlib
 
-from sagemaker.workflow.steps import ProcessingStep, Step
+from sagemaker.workflow.steps import ProcessingStep
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.sklearn import SKLearnProcessor
+
+if TYPE_CHECKING:
+    from ...core.deps.registry_manager import RegistryManager
+    from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
 from ..configs.config_stratified_sampling_step import StratifiedSamplingConfig
 from ...core.base.builder_base import StepBuilderBase
@@ -103,6 +105,7 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
             "balanced",
             "proportional_min",
             "optimal",
+            "external_proportional",
         ]:
             raise ValueError(
                 f"Invalid sampling_strategy: {self.config.sampling_strategy}"
@@ -172,6 +175,18 @@ class StratifiedSamplingStepBuilder(StepBuilderBase):
         # Add variance_column if specified
         if self.config.variance_column:
             env_vars["VARIANCE_COLUMN"] = self.config.variance_column
+
+        # Add external proportional sampling fields
+        env_vars["SAMPLING_MULTIPLIER"] = str(self.config.sampling_multiplier)
+        env_vars["ALLOW_REPLACEMENT"] = str(self.config.allow_replacement).lower()
+        if self.config.reference_counts_json:
+            env_vars["REFERENCE_COUNTS_JSON"] = self.config.reference_counts_json
+
+        # Add pass-through filter fields
+        if self.config.sampling_filter_column:
+            env_vars["SAMPLING_FILTER_COLUMN"] = self.config.sampling_filter_column
+        if self.config.sampling_filter_value:
+            env_vars["SAMPLING_FILTER_VALUE"] = self.config.sampling_filter_value
 
         return env_vars
 

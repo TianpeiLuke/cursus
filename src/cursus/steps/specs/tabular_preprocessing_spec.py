@@ -39,6 +39,8 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
                 "DummyDataLoading",
                 "DataLoad",
                 "ProcessingStep",
+                "BedrockProcessing",
+                "StratifiedSampling",
             ],
             semantic_keywords=[
                 "data",
@@ -63,6 +65,28 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
             ],
             data_type="S3Uri",
             description="Raw tabular data for preprocessing. Supports all job types: training, validation, testing, and calibration",
+        ),
+        DependencySpec(
+            logical_name="DATA_SECONDARY",
+            dependency_type=DependencyType.PROCESSING_OUTPUT,
+            required=False,
+            compatible_sources=[
+                "CradleDataLoading",
+                "DummyDataLoading",
+                "DataLoad",
+                "ProcessingStep",
+                "BedrockProcessing",
+                "StratifiedSampling",
+            ],
+            semantic_keywords=[
+                "data",
+                "secondary",
+                "additional",
+                "supplementary",
+                "second_source",
+            ],
+            data_type="S3Uri",
+            description="Optional secondary data input for multi-source preprocessing (e.g., second Cradle output)",
         ),
         DependencySpec(
             logical_name="SIGNATURE",

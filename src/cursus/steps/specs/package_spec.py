@@ -32,7 +32,12 @@ PACKAGE_SPEC = StepSpecification(
             logical_name="model_input",
             dependency_type=DependencyType.MODEL_ARTIFACTS,
             required=True,
-            compatible_sources=["XGBoostTraining", "TrainingStep", "ModelStep"],
+            compatible_sources=[
+                "XGBoostTraining",
+                "TrainingStep",
+                "ModelStep",
+                "PyTorchTraining",
+            ],
             semantic_keywords=[
                 "model",
                 "artifacts",

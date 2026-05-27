@@ -15,10 +15,6 @@ from ...core.base.specification_base import (
     NodeType,
 )
 from ...registry.step_names import get_spec_step_type
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ..contracts.bedrock_processing_contract import BEDROCK_PROCESSING_CONTRACT
 
 
 # Import the contract at runtime to avoid circular imports
@@ -62,7 +58,7 @@ BEDROCK_PROCESSING_SPEC = StepSpecification(
         DependencySpec(
             logical_name="prompt_templates",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=True,
+            required=False,
             compatible_sources=["BedrockPromptTemplateGeneration"],
             semantic_keywords=[
                 "templates",
@@ -76,7 +72,7 @@ BEDROCK_PROCESSING_SPEC = StepSpecification(
         DependencySpec(
             logical_name="validation_schema",
             dependency_type=DependencyType.PROCESSING_OUTPUT,
-            required=True,
+            required=False,
             compatible_sources=["BedrockPromptTemplateGeneration"],
             semantic_keywords=[
                 "schema",

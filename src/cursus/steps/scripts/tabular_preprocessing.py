@@ -228,26 +228,26 @@ def _read_file_to_df(
         raise ValueError(f"Unsupported file type: {file_path}")
 
 
-def _read_shard_wrapper(args: tuple) -> pd.DataFrame:
+def _read_shard_wrapper(args: tuple) -> dict:
     """
-    Wrapper function for parallel shard reading.
+    Wrapper function for parallel shard reading with error isolation.
 
     Args:
         args: Tuple of (shard_path, signature_columns, shard_index, total_shards)
 
     Returns:
-        DataFrame from the shard
+        Dict with 'status' ('success'/'error'), 'df' (on success), 'path', and 'error' (on failure)
     """
     shard_path, signature_columns, idx, total = args
     try:
         df = _read_file_to_df(shard_path, signature_columns)
-        # Log progress (will be captured by parent process)
         print(
             f"[INFO] Processed shard {idx + 1}/{total}: {shard_path.name} ({df.shape[0]} rows)"
         )
-        return df
+        return {"status": "success", "df": df, "path": str(shard_path)}
     except Exception as e:
-        raise RuntimeError(f"Failed to read shard {shard_path.name}: {e}")
+        print(f"[WARNING] Failed to read shard {shard_path.name}: {e}")
+        return {"status": "error", "error": str(e), "path": str(shard_path)}
 
 
 def _batch_concat_dataframes(dfs: list, batch_size: int = 10) -> pd.DataFrame:
@@ -316,6 +316,10 @@ def _combine_shards_streaming(
     result_df = None
     total_rows = 0
 
+    import time as _time
+
+    start_time = _time.time()
+
     # Process shards in streaming batches
     for batch_start in range(0, total_shards, streaming_batch_size):
         batch_end = min(batch_start + streaming_batch_size, total_shards)
@@ -332,9 +336,19 @@ def _combine_shards_streaming(
         # Read current batch of shards
         if max_workers > 1 and len(batch_args) > 1:
             with Pool(processes=max_workers) as pool:
-                batch_dfs = pool.map(_read_shard_wrapper, batch_args)
+                results = pool.map(_read_shard_wrapper, batch_args)
         else:
-            batch_dfs = [_read_shard_wrapper(args) for args in batch_args]
+            results = [_read_shard_wrapper(args) for args in batch_args]
+
+        # Extract successful DataFrames (error isolation)
+        batch_dfs = [r["df"] for r in results if r["status"] == "success"]
+        batch_failures = [r for r in results if r["status"] == "error"]
+        if batch_failures:
+            print(f"[WARNING] {len(batch_failures)} shards failed in batch {batch_num}")
+
+        if not batch_dfs:
+            print(f"[WARNING] No data in batch {batch_num}, skipping")
+            continue
 
         # Concatenate batch
         batch_result = _batch_concat_dataframes(batch_dfs, concat_batch_size)
@@ -342,6 +356,16 @@ def _combine_shards_streaming(
         total_rows += batch_rows
 
         print(f"[INFO] Batch {batch_num} combined: {batch_rows} rows")
+
+        # Progress + ETA
+        elapsed = _time.time() - start_time
+        rate = batch_end / elapsed if elapsed > 0 else 0
+        remaining = total_shards - batch_end
+        eta = remaining / rate if rate > 0 else 0
+        print(
+            f"[PROGRESS] {batch_end}/{total_shards} shards ({batch_end / total_shards:.0%}), "
+            f"ETA={eta:.0f}s"
+        )
 
         # Incrementally concatenate with result
         if result_df is None:
@@ -360,14 +384,14 @@ def _combine_shards_streaming(
 
 
 def combine_shards(
-    input_dir: str,
+    input_dir,
     signature_columns: Optional[list] = None,
     max_workers: Optional[int] = None,
     batch_size: int = 10,
     streaming_batch_size: Optional[int] = None,
 ) -> pd.DataFrame:
     """
-    Detect and combine all supported data shards in a directory using parallel processing.
+    Detect and combine all supported data shards from one or more directories.
 
     Used by BATCH MODE only.
 
@@ -379,7 +403,7 @@ def combine_shards(
     all DataFrames into memory simultaneously. This is the most memory-efficient mode.
 
     Args:
-        input_dir: Directory containing data shards
+        input_dir: Directory or list of directories containing data shards
         signature_columns: Optional column names for CSV/TSV files
         max_workers: Maximum number of parallel workers (default: cpu_count)
         batch_size: Number of DataFrames to concatenate at once (default: 10)
@@ -391,9 +415,11 @@ def combine_shards(
     Returns:
         Combined DataFrame from all shards
     """
-    input_path = Path(input_dir)
-    if not input_path.is_dir():
-        raise RuntimeError(f"Input directory does not exist: {input_dir}")
+    # Support single dir or list of dirs
+    if isinstance(input_dir, (list, tuple)):
+        input_dirs = input_dir
+    else:
+        input_dirs = [input_dir]
 
     patterns = [
         "part-*.csv",
@@ -404,15 +430,31 @@ def combine_shards(
         "part-*.snappy.parquet",
         "part-*.parquet.gz",
     ]
-    # Use set() to deduplicate: "part-*.parquet" and "part-*.snappy.parquet"
-    # overlap because glob's * matches dots, so .snappy.parquet files match both.
-    all_shards = sorted(set(p for pat in patterns for p in input_path.glob(pat)))
+
+    all_shards = []
+    seen_names = set()
+    for dir_path in input_dirs:
+        input_path = Path(dir_path)
+        if not input_path.is_dir():
+            raise RuntimeError(f"Input directory does not exist: {dir_path}")
+        dir_shards = sorted(set(p for pat in patterns for p in input_path.glob(pat)))
+        for s in dir_shards:
+            if s.name not in seen_names:
+                all_shards.append(s)
+                seen_names.add(s.name)
+
+    all_shards = sorted(all_shards)
+
+    # Skip empty shards
+    all_shards = [s for s in all_shards if s.stat().st_size > 0]
 
     if not all_shards:
         raise RuntimeError(f"No CSV/JSON/Parquet shards found under {input_dir}")
 
     total_shards = len(all_shards)
-    print(f"[INFO] Found {total_shards} shards to process")
+    print(
+        f"[INFO] Found {total_shards} shards to process (from {len(input_dirs)} directories)"
+    )
 
     try:
         # Determine optimal number of workers
@@ -439,21 +481,48 @@ def combine_shards(
             return result_df
 
         # ORIGINAL MODE: Load all shards then concatenate
-        # Read shards in parallel
+        # Use ThreadPoolExecutor for I/O-bound shard reading (avoids IPC serialization)
+        from concurrent.futures import ThreadPoolExecutor
+
         if max_workers > 1 and total_shards > 1:
-            with Pool(processes=max_workers) as pool:
-                dataframes = pool.map(_read_shard_wrapper, shard_args)
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                results = list(executor.map(_read_shard_wrapper, shard_args))
         else:
-            # Fall back to sequential processing for single shard or single worker
             print("[INFO] Using sequential processing (single worker or single shard)")
-            dataframes = [_read_shard_wrapper(args) for args in shard_args]
+            results = [_read_shard_wrapper(args) for args in shard_args]
+
+        # Separate successes from failures (error recovery)
+        failures = [r for r in results if r["status"] == "error"]
+        dataframes = [r["df"] for r in results if r["status"] == "success"]
+
+        if failures:
+            print(f"[WARNING] {len(failures)}/{len(results)} shards failed:")
+            for f in failures[:5]:
+                print(f"  - {f['path']}: {f['error']}")
+            failure_rate = len(failures) / len(results)
+            if failure_rate > 0.05:
+                raise RuntimeError(
+                    f"Shard failure rate {failure_rate:.1%} exceeds 5% threshold. "
+                    f"Failed: {[f['path'] for f in failures]}"
+                )
 
         if not dataframes:
             raise RuntimeError("No data was loaded from any shards")
 
+        # Schema validation across shards
+        reference_cols = set(dataframes[0].columns)
+        for i, df in enumerate(dataframes[1:], 1):
+            if set(df.columns) != reference_cols:
+                extra = set(df.columns) - reference_cols
+                missing = reference_cols - set(df.columns)
+                print(
+                    f"[WARNING] Shard {i} schema mismatch: "
+                    f"extra={extra or '{}'}, missing={missing or '{}'}"
+                )
+
         # Log total rows before concatenation
         total_rows = sum(df.shape[0] for df in dataframes)
-        print(f"[INFO] Loaded {total_rows} total rows from {total_shards} shards")
+        print(f"[INFO] Loaded {total_rows} total rows from {len(dataframes)} shards")
 
         # Concatenate using batch approach
         print(f"[INFO] Concatenating DataFrames with batch_size={batch_size}")
@@ -473,7 +542,7 @@ def combine_shards(
 
 
 def process_batch_mode_preprocessing(
-    input_data_dir: str,
+    input_data_dir,
     input_signature_dir: str,
     output_dir: str,
     signature_columns: Optional[list],
@@ -495,7 +564,7 @@ def process_batch_mode_preprocessing(
     Uses stratified splits for training jobs when labels are available.
 
     Args:
-        input_data_dir: Directory containing input shards
+        input_data_dir: Directory or list of directories containing input shards
         input_signature_dir: Directory containing signature file
         output_dir: Base output directory
         signature_columns: Optional column names from signature file
@@ -581,8 +650,14 @@ def process_batch_mode_preprocessing(
             proc_path = subfolder / f"{split_name}_processed_data.parquet"
             split_df.to_parquet(proc_path, index=False)
 
+        # Output verification
+        if not proc_path.exists() or proc_path.stat().st_size == 0:
+            raise RuntimeError(
+                f"Output verification failed: {proc_path} is empty or missing"
+            )
         log(
-            f"[BATCH] Saved {proc_path} (format={output_format}, shape={split_df.shape})"
+            f"[BATCH] Saved {proc_path} (format={output_format}, shape={split_df.shape}, "
+            f"size={proc_path.stat().st_size / 1024:.1f} KB)"
         )
 
     log("[BATCH] Preprocessing complete in batch mode")
@@ -1007,9 +1082,13 @@ def write_splits_to_shards(
             split_counters[split_name] += 1
 
 
-def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
-    """Find all input shards in directory."""
-    input_path = Path(input_dir)
+def find_input_shards(input_dir, log_func: Callable) -> List[Path]:
+    """Find all input shards in one or more directories."""
+    if isinstance(input_dir, (list, tuple)):
+        input_dirs = input_dir
+    else:
+        input_dirs = [input_dir]
+
     patterns = [
         "part-*.csv",
         "part-*.csv.gz",
@@ -1019,14 +1098,21 @@ def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
         "part-*.snappy.parquet",
         "part-*.parquet.gz",
     ]
-    # Use set() to deduplicate: "part-*.parquet" and "part-*.snappy.parquet"
-    # overlap because glob's * matches dots, so .snappy.parquet files match both.
-    all_shards = sorted(set(p for pat in patterns for p in input_path.glob(pat)))
+
+    all_shards = []
+    for dir_path in input_dirs:
+        input_path = Path(dir_path)
+        dir_shards = sorted(set(p for pat in patterns for p in input_path.glob(pat)))
+        all_shards.extend(dir_shards)
+
+    all_shards = sorted(all_shards)
 
     if not all_shards:
         raise RuntimeError(f"No shards found in {input_dir}")
 
-    log_func(f"[STREAMING] Found {len(all_shards)} input shards")
+    log_func(
+        f"[STREAMING] Found {len(all_shards)} input shards from {len(input_dirs)} directories"
+    )
     return all_shards
 
 
@@ -1781,7 +1867,7 @@ def process_single_split_streaming_fully_parallel_generic(
 
 
 def process_fully_parallel_mode_preprocessing_generic(
-    input_dir: str,
+    input_dir,
     output_dir: str,
     signature_columns: Optional[list],
     job_type: str,
@@ -1800,7 +1886,7 @@ def process_fully_parallel_mode_preprocessing_generic(
     No global coordination needed - each shard processes independently.
 
     Args:
-        input_dir: Directory containing input shards
+        input_dir: Directory or list of directories containing input shards
         output_dir: Base output directory
         signature_columns: Optional column names
         job_type: Job type
@@ -1821,7 +1907,7 @@ def process_fully_parallel_mode_preprocessing_generic(
     log("[FULLY_PARALLEL] Starting fully parallel mode (1:1 shard mapping)")
     log(f"[FULLY_PARALLEL] Job type: {job_type}")
 
-    # Find input shards
+    # Find input shards (supports list of dirs)
     all_shards = find_input_shards(input_dir, log)
 
     # Determine optimal workers
@@ -1910,6 +1996,7 @@ def main(
 
     # Extract paths
     input_data_dir = input_paths["DATA"]
+    input_data_secondary_dir = input_paths.get("DATA_SECONDARY")
     input_signature_dir = input_paths["SIGNATURE"]
     output_dir = output_paths["processed_data"]
     # Use print function if no logger is provided
@@ -1942,11 +2029,19 @@ def main(
         log(f"[WARNING] Invalid OUTPUT_FORMAT '{output_format}', defaulting to CSV")
         output_format = "csv"
 
+    # Build input directory list (primary + optional secondary)
+    input_dirs = [input_data_dir]
+    if input_data_secondary_dir and Path(input_data_secondary_dir).exists():
+        input_dirs.append(input_data_secondary_dir)
+        log(
+            f"[INFO] DATA_SECONDARY present: combining from {len(input_dirs)} input directories"
+        )
+
     # 4. ROUTING: Choose between batch mode and fully parallel streaming mode
     if enable_true_streaming:
         log("[INFO] Using FULLY PARALLEL STREAMING MODE (1:1 shard mapping)")
         return process_fully_parallel_mode_preprocessing_generic(
-            input_dir=input_data_dir,
+            input_dir=input_dirs if len(input_dirs) > 1 else input_data_dir,
             output_dir=output_dir,
             signature_columns=signature_columns,
             job_type=job_type,
@@ -1961,7 +2056,7 @@ def main(
     else:
         log("[INFO] Using BATCH MODE (loads full DataFrame)")
         return process_batch_mode_preprocessing(
-            input_data_dir=input_data_dir,
+            input_data_dir=input_dirs if len(input_dirs) > 1 else input_data_dir,
             input_signature_dir=input_signature_dir,
             output_dir=output_dir,
             signature_columns=signature_columns,
@@ -1999,6 +2094,7 @@ if __name__ == "__main__":
 
         # Define standard SageMaker paths as constants
         INPUT_DATA_DIR = "/opt/ml/processing/input/data"
+        INPUT_DATA_SECONDARY_DIR = "/opt/ml/processing/input/data_secondary"
         INPUT_SIGNATURE_DIR = "/opt/ml/processing/input/signature"
         OUTPUT_DIR = "/opt/ml/processing/output"
 
@@ -2021,7 +2117,11 @@ if __name__ == "__main__":
         logger.info(f"  Output Directory: {OUTPUT_DIR}")
 
         # Set up path dictionaries
-        input_paths = {"DATA": INPUT_DATA_DIR, "SIGNATURE": INPUT_SIGNATURE_DIR}
+        input_paths = {
+            "DATA": INPUT_DATA_DIR,
+            "DATA_SECONDARY": INPUT_DATA_SECONDARY_DIR,
+            "SIGNATURE": INPUT_SIGNATURE_DIR,
+        }
 
         output_paths = {"processed_data": OUTPUT_DIR}
 

@@ -9,7 +9,7 @@ is properly categorized according to the three-tier design:
 3. Derived Fields (Tier 3) - Fields calculated from other fields, private with read-only properties
 """
 
-from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr
+from pydantic import Field, field_validator, model_validator
 from typing import Dict, Optional, Any, TYPE_CHECKING
 from pathlib import Path
 import logging
@@ -79,6 +79,32 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         description="Column for variance calculation (needed for optimal strategy)",
     )
 
+    sampling_multiplier: float = Field(
+        default=1.0,
+        ge=0.1,
+        description="Multiplier for external reference counts (e.g., 5.0 for 5× oversampling).",
+    )
+
+    allow_replacement: bool = Field(
+        default=False,
+        description="Allow sampling with replacement when target exceeds available per stratum.",
+    )
+
+    reference_counts_json: Optional[str] = Field(
+        default=None,
+        description="JSON string of reference distribution {stratum: count}. Fallback when reference_counts.json sidecar file is absent.",
+    )
+
+    sampling_filter_column: Optional[str] = Field(
+        default=None,
+        description="Column to filter on before sampling. Only matching rows are sampled; rest pass through unchanged.",
+    )
+
+    sampling_filter_value: Optional[str] = Field(
+        default=None,
+        description="Value to match in filter_column for sampling subset selection.",
+    )
+
     random_state: int = Field(
         default=42,
         ge=0,
@@ -129,7 +155,7 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         """
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -139,7 +165,7 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         """
         Ensure sampling_strategy is one of the allowed values.
         """
-        allowed = {"balanced", "proportional_min", "optimal"}
+        allowed = {"balanced", "proportional_min", "optimal", "external_proportional"}
         if v not in allowed:
             raise ValueError(f"sampling_strategy must be one of {allowed}, got '{v}'")
         return v
@@ -208,11 +234,19 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
             "target_sample_size": self.target_sample_size,
             "min_samples_per_stratum": self.min_samples_per_stratum,
             "random_state": self.random_state,
+            "sampling_multiplier": self.sampling_multiplier,
+            "allow_replacement": self.allow_replacement,
         }
 
-        # Only include variance_column if it's set
+        # Only include optional fields if set
         if self.variance_column is not None:
             sampling_fields["variance_column"] = self.variance_column
+        if self.reference_counts_json is not None:
+            sampling_fields["reference_counts_json"] = self.reference_counts_json
+        if self.sampling_filter_column is not None:
+            sampling_fields["sampling_filter_column"] = self.sampling_filter_column
+        if self.sampling_filter_value is not None:
+            sampling_fields["sampling_filter_value"] = self.sampling_filter_value
 
         # Combine fields (sampling fields take precedence if overlap)
         init_fields = {**base_fields, **sampling_fields}

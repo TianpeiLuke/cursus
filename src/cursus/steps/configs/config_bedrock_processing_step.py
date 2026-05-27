@@ -7,7 +7,6 @@ using the three-tier design pattern for optimal user experience and maintainabil
 
 from pydantic import Field, PrivateAttr, model_validator, field_validator
 from typing import Dict, Any, Optional, List
-from pathlib import Path
 import json
 import logging
 
@@ -146,6 +145,45 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         description="Log detailed information about truncated fields for debugging and monitoring",
     )
 
+    # Config-embedded template support (self-contained mode)
+    bedrock_user_prompt_template: Optional[str] = Field(
+        default=None,
+        description="User prompt template with {placeholder} syntax. If provided, BedrockPromptTemplateGeneration step is not needed.",
+    )
+
+    bedrock_system_prompt: Optional[str] = Field(
+        default=None,
+        description="System prompt for Bedrock API. Used only in config-embedded mode.",
+    )
+
+    bedrock_input_placeholders: Optional[List[str]] = Field(
+        default=None,
+        description="List of input placeholder names mapping to DataFrame columns.",
+    )
+
+    bedrock_validation_schema: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="JSON validation schema for Pydantic response model creation.",
+    )
+
+    # Structured output mode
+    bedrock_use_structured_output: bool = Field(
+        default=False,
+        description="Use tool_use for guaranteed schema compliance (0% parse failures).",
+    )
+
+    # Converse API mode
+    bedrock_use_converse_api: bool = Field(
+        default=False,
+        description="Use Converse API (model-agnostic) instead of invoke_model. Enables Nova/Llama/Mistral.",
+    )
+
+    # Adaptive rate limiting
+    bedrock_adaptive_rate_limiting: bool = Field(
+        default=False,
+        description="Auto-tune rate limit based on observed throttle rate.",
+    )
+
     # Processing step overrides
     processing_entry_point: str = Field(
         default="bedrock_processing.py",
@@ -245,6 +283,27 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
                 ).lower(),
                 "BEDROCK_LOG_TRUNCATIONS": str(self.bedrock_log_truncations).lower(),
                 "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
+                # Config-embedded template support (self-contained mode)
+                "BEDROCK_USER_PROMPT_TEMPLATE": self.bedrock_user_prompt_template or "",
+                "BEDROCK_SYSTEM_PROMPT": self.bedrock_system_prompt or "",
+                "BEDROCK_INPUT_PLACEHOLDERS": json.dumps(
+                    self.bedrock_input_placeholders
+                )
+                if self.bedrock_input_placeholders
+                else "[]",
+                "BEDROCK_VALIDATION_SCHEMA": json.dumps(self.bedrock_validation_schema)
+                if self.bedrock_validation_schema
+                else "{}",
+                # Structured output mode
+                "BEDROCK_USE_STRUCTURED_OUTPUT": str(
+                    self.bedrock_use_structured_output
+                ).lower(),
+                # Converse API mode
+                "BEDROCK_USE_CONVERSE_API": str(self.bedrock_use_converse_api).lower(),
+                # Adaptive rate limiting
+                "BEDROCK_ADAPTIVE_RATE_LIMITING": str(
+                    self.bedrock_adaptive_rate_limiting
+                ).lower(),
             }
 
         return self._bedrock_environment_variables
@@ -296,7 +355,7 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         """Validate job_type is one of the allowed values."""
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                "job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -466,6 +525,25 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         # Only include optional fields if they're set
         if self.bedrock_fallback_model_id is not None:
             bedrock_fields["bedrock_fallback_model_id"] = self.bedrock_fallback_model_id
+        if self.bedrock_user_prompt_template is not None:
+            bedrock_fields["bedrock_user_prompt_template"] = (
+                self.bedrock_user_prompt_template
+            )
+        if self.bedrock_system_prompt is not None:
+            bedrock_fields["bedrock_system_prompt"] = self.bedrock_system_prompt
+        if self.bedrock_input_placeholders is not None:
+            bedrock_fields["bedrock_input_placeholders"] = (
+                self.bedrock_input_placeholders
+            )
+        if self.bedrock_validation_schema is not None:
+            bedrock_fields["bedrock_validation_schema"] = self.bedrock_validation_schema
+        bedrock_fields["bedrock_use_structured_output"] = (
+            self.bedrock_use_structured_output
+        )
+        bedrock_fields["bedrock_use_converse_api"] = self.bedrock_use_converse_api
+        bedrock_fields["bedrock_adaptive_rate_limiting"] = (
+            self.bedrock_adaptive_rate_limiting
+        )
 
         # Combine base fields and Bedrock fields (Bedrock fields take precedence if overlap)
         init_fields = {**base_fields, **bedrock_fields}
