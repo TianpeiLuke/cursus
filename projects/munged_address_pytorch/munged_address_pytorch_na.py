@@ -38,7 +38,7 @@ def create_munged_address_training_dag() -> PipelineDAG:
 
     # Phase 1: Tag generation (extract munged order IDs → upload to EDX)
     dag.add_node("CradleDataLoading_tagging")
-    dag.add_node("DataUploading_tagging")
+    dag.add_node("EdxUploading_tagging")
 
     # Phase 2: Address extraction (pull addresses using EDX tags as join key)
     dag.add_node("CradleDataLoading_munged")
@@ -71,9 +71,9 @@ def create_munged_address_training_dag() -> PipelineDAG:
     dag.add_node("Registration")
 
     # Phase 1 edges: Tag generation → upload
-    dag.add_edge("CradleDataLoading_tagging", "DataUploading_tagging")
+    dag.add_edge("CradleDataLoading_tagging", "EdxUploading_tagging")
 
-    # Note: No edge from DataUploading_tagging → CradleDataLoading_munged.
+    # Note: No edge from EdxUploading_tagging → CradleDataLoading_munged.
     # DataUploading is a SINK node (no outputs). CradleDataLoading_munged uses
     # the EDX ARN statically in config — Cradle waits for EDX data to be ready.
 

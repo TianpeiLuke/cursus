@@ -517,7 +517,7 @@ def combine_shards(
                 missing = reference_cols - set(df.columns)
                 print(
                     f"[WARNING] Shard {i} schema mismatch: "
-                    f"extra={extra or '{}'}, missing={missing or '{}'}"
+                    f"extra={extra}, missing={missing}"
                 )
 
         # Log total rows before concatenation

@@ -44,6 +44,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "Processing",
         "description": "Upload processed data to BDT (EDX/Andes) via SAIS SDK delegation",
     },
+    "EdxUploading": {
+        "config_class": "EdxUploadingConfig",
+        "builder_step_name": "EdxUploadingStepBuilder",
+        "spec_type": "EdxUploading",
+        "sagemaker_step_type": "Processing",
+        "description": "Upload S3 data to EDX via EdxDataLoader (SINK node, no Kale required)",
+    },
     # Processing Steps
     "TabularPreprocessing": {
         "config_class": "TabularPreprocessingConfig",

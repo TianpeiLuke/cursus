@@ -50,6 +50,16 @@ except ImportError as e:
     DataUploadingStepBuilder = None
     DATA_UPLOADING_AVAILABLE = False
 
+# Import EdxUploadingStepBuilder
+try:
+    from .builder_edx_uploading_step import EdxUploadingStepBuilder
+
+    EDX_UPLOADING_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"EdxUploadingStepBuilder not available: {e}")
+    EdxUploadingStepBuilder = None
+    EDX_UPLOADING_AVAILABLE = False
+
 from .builder_currency_conversion_step import CurrencyConversionStepBuilder
 from .builder_dummy_data_loading_step import DummyDataLoadingStepBuilder
 from .builder_dummy_training_step import DummyTrainingStepBuilder
