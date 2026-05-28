@@ -91,6 +91,10 @@ def main(input_paths, output_paths, environ_vars, job_args, logger=None):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--job_type", type=str, default="training")
+    args = parser.parse_args()
+
     input_paths = {"DATA": "/opt/ml/processing/input/data"}
     output_paths = {"processed_data": "/opt/ml/processing/output"}
 
@@ -106,8 +110,6 @@ if __name__ == "__main__":
         "TEST_VAL_RATIO": os.environ.get("TEST_VAL_RATIO", "0.5"),
         "OUTPUT_FORMAT": os.environ.get("OUTPUT_FORMAT", "csv"),
     }
-
-    args = argparse.Namespace()
 
     try:
         main(input_paths, output_paths, environ_vars, args)

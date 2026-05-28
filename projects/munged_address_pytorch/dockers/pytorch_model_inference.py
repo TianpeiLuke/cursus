@@ -183,10 +183,18 @@ class InferenceModel(pl.LightningModule):
 
 
 def find_data_file(data_dir: str) -> str:
-    """Find first CSV/Parquet file in directory."""
+    """Find first CSV/Parquet file in directory (checks root then subdirectories)."""
+    from pathlib import Path
+
+    root = Path(data_dir)
+    # Check root level first
     for fname in sorted(os.listdir(data_dir)):
         if fname.endswith((".csv", ".tsv", ".parquet")):
             return os.path.join(data_dir, fname)
+    # Fallback: recursive search (handles {job_type}/{job_type}_processed_data.{ext} convention)
+    for f in sorted(root.rglob("*")):
+        if f.is_file() and f.suffix in (".csv", ".tsv", ".parquet"):
+            return str(f)
     raise FileNotFoundError(f"No data file found in {data_dir}")
 
 
@@ -220,11 +228,15 @@ def main(
     os.makedirs(output_dir, exist_ok=True)
 
     batch_size = int(environ_vars.get("BATCH_SIZE", "64"))
+    id_field = environ_vars.get("ID_FIELD", "")
+    label_field = environ_vars.get("LABEL_FIELD", "")
 
     logger.info(f"Model dir: {model_dir}")
     logger.info(f"Data dir: {data_dir}")
     logger.info(f"Output dir: {output_dir}")
     logger.info(f"Batch size: {batch_size}")
+    logger.info(f"ID field: {id_field or '(none)'}")
+    logger.info(f"Label field: {label_field or '(none)'}")
 
     # Load hyperparameters (parent process — before spawn)
     hparam_path = os.path.join(model_dir, "hyperparameters.json")

@@ -50,6 +50,7 @@ DATA_LOADING_SPEC = StepSpecification(
         ),
         OutputSpec(
             logical_name="METADATA",
+            aliases=[],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri",
             data_type="S3Uri",

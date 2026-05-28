@@ -119,7 +119,10 @@ def main(input_paths, output_paths, environ_vars, job_args, logger=None):
     available_cols = [c for c in keep_cols if c in df_combined.columns]
     df_combined = df_combined[available_cols]
 
-    output_file = output_dir / f"processed_data.{output_format}"
+    job_type = getattr(job_args, "job_type", "sampling") if job_args else "sampling"
+    split_dir = output_dir / job_type
+    split_dir.mkdir(parents=True, exist_ok=True)
+    output_file = split_dir / f"{job_type}_processed_data.{output_format}"
     if output_format == "parquet":
         df_combined.to_parquet(output_file, index=False)
     else:
@@ -128,6 +131,10 @@ def main(input_paths, output_paths, environ_vars, job_args, logger=None):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--job_type", type=str, default="sampling")
+    args = parser.parse_args()
+
     input_paths = {
         "DATA": "/opt/ml/processing/input/data",
         "DATA_SECONDARY": "/opt/ml/processing/input/data_secondary",
@@ -142,8 +149,6 @@ if __name__ == "__main__":
         "STRATA_COLUMN": os.environ.get("STRATA_COLUMN", "marketplaceId"),
         "OUTPUT_FORMAT": os.environ.get("OUTPUT_FORMAT", "parquet"),
     }
-
-    args = argparse.Namespace()
 
     try:
         main(input_paths, output_paths, environ_vars, args)
