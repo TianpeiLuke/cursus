@@ -1,0 +1,20 @@
+{
+  "configuration": {
+    "shared": {
+      "pipeline_name": "bjjin-MungedAddressDetection-pytorch-NA",
+      "pipeline_description": "Munged Address Detection DistilBERT Training Pipeline NA",
+      "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/bjjin-MungedAddressDetection-pytorch-NA_0.0.1",
+      "aws_region": "us-east-1",
+      "pipeline_version": "0.0.1"
+    },
+    "specific": {
+    }
+  },
+  "metadata": {
+    "author": "bjjin",
+    "model_class": "pytorch",
+    "region": "NA",
+    "service_name": "MungedAddressDetection",
+    "created": "2026-05-27"
+  }
+}
