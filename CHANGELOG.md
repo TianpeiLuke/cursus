@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-26
+
+### Added
+
+- **`EdxUploading` step (new step type)** — S3 → EDX manifest uploads via `EdxDataLoader`, runs in the SAIS Docker container as a SageMaker `ProcessingStep`. Ships the full five-layer step bundle:
+  - `cursus/steps/scripts/edx_upload.py` — reads files from `/opt/ml/processing/input/data` and uploads each to an EDX manifest. Sink step (no S3 output). Parallel uploads via `ThreadPoolExecutor(max_workers=4)`. Uses `secure_ai_sandbox_python_lib.session.Session` (`SandboxSession`) under the hood.
+  - `cursus/steps/configs/config_edx_uploading_step.py` — `EdxUploadingConfig(ProcessingStepConfigBase)`. Tier-1 essential fields: `edx_provider`, `edx_subject`, `edx_dataset`, `edx_manifest_key`. The manifest key supports two modes: (a) static key like `'munged_na'` → ARN ends with `/["munged_na"]`; (b) template key with placeholders like `'{marketplace},{dataset_date},{job_id}'`, resolved at runtime from `edx_manifest_key_parts` + environ. Derived `edx_arn_base` builds `arn:amazon:edx:iad::manifest/{provider}/{subject}/{dataset}` automatically.
+  - `cursus/steps/contracts/edx_uploading_contract.py` — script contract.
+  - `cursus/steps/specs/edx_uploading_spec.py` — step specification.
+  - `cursus/steps/builders/builder_edx_uploading_step.py` — step builder.
+- **`projects/munged_address_pytorch/`** — new end-to-end example project: a Munged Address Detection DistilBERT training pipeline (NA marketplace). Demonstrates a 4-phase Cursus DAG (`create_munged_address_training_dag()`):
+  1. Tag generation → upload to EDX via the new `EdxUploading` step,
+  2. Cradle data loading using the EDX tags as join key,
+  3. Bedrock LLM strangeness scoring,
+  4. Stratified sampling + tabular preprocessing + DistilBERT training.
+  Includes `munged_address_pytorch_na.py` orchestrator (`MungedAddressTrainingPipelineNA`), `pipeline_configs/config_NA.json`, and SageMaker Docker scripts (`percentile_model_calibration.py`, `tabular_preprocessing_sampling_munged.py`, `tabular_preprocessing_training_munged.py`).
+- **Logical-name aliases on data-loading and packaging specs** — `cradle_data_loading_spec.py` outputs now expose alias lists (`DATA` ↔ `input_data` / `data` / `training_data` / `processed_data`; `METADATA` ↔ `metadata`; `SIGNATURE` ↔ `signature` / `schema`); `package_spec.py` and `bedrock_processing_spec.py` gain matching alias entries. Aliases let downstream DAG edges bind to either the canonical logical name or a domain-friendly synonym without breaking existing wiring.
+
+### Changed
+
+- **`bedrock_processing` script + config — major rework** (`+467 / -45` lines in the script, `+82` in the config). Introduces three invocation modes selectable by config:
+  1. `invoke_model` (Anthropic format) with assistant prefilling for JSON output — default;
+  2. **Structured output via `tool_use`** — guaranteed schema compliance, 0% parse failures;
+  3. **Converse API** — model-agnostic, supports Nova / Llama / Mistral without per-model format changes.
+  Adds **self-contained mode** so an upstream `BedrockPromptTemplateGeneration` step is no longer required: prompt template (`bedrock_user_prompt_template`), system prompt (`bedrock_system_prompt`), input placeholders (`bedrock_input_placeholders`), and validation schema (`bedrock_validation_schema`) can all be embedded in the config. Fallback chain: upstream step output > config-embedded > error. Also adds: dynamic Pydantic model creation from JSON validation schemas; configurable thread pool + adaptive rate limiting (auto-tunes req/s from observed throttle rate); circuit breaker that trips after N consecutive failures; checkpoint/resume per batch; inference-profile management with on-demand fallback; input-field truncation; Unicode quote repair for German-style quotes in LLM responses.
+- **`stratified_sampling` script + builder + config + contract — substantially expanded** (`+218 / -37` lines in the script). Four allocation strategies are now supported: `balanced` (equal per stratum), `proportional_with_minimum` (proportional + floor constraints), `optimal` (Neyman variance-weighted), and `external_proportional` (sample to match a reference distribution with multiplier). Adds sampling-with-replacement for oversampling, NaN-stratum guard, empty-DataFrame guard, per-split diagnostics JSON (requested vs achieved per stratum), CSV/TSV/Parquet format preservation, split-aware processing (train/val sampled, test copied unchanged), and reference-counts loading via sidecar `reference_counts.json` or env-var fallback.
+- **`tabular_preprocessing` script + spec** (`+140 / -40` lines). Adds `optimize_dtypes` shared utility for memory-efficient dtype downcasting and additional preprocessing affordances used by the munged-address pipeline; spec gains 24 lines of output-binding additions.
+
 ## [1.5.3] - 2026-05-21
 
 ### Added

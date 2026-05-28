@@ -40,7 +40,6 @@ DATA_LOADING_SPEC = StepSpecification(
             logical_name="DATA",
             aliases=[
                 "input_data",
-                "data",
                 "training_data",
                 "processed_data",
             ],
@@ -51,7 +50,6 @@ DATA_LOADING_SPEC = StepSpecification(
         ),
         OutputSpec(
             logical_name="METADATA",
-            aliases=["metadata"],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri",
             data_type="S3Uri",
@@ -59,7 +57,7 @@ DATA_LOADING_SPEC = StepSpecification(
         ),
         OutputSpec(
             logical_name="SIGNATURE",
-            aliases=["signature", "schema"],
+            aliases=["schema"],
             output_type=DependencyType.PROCESSING_OUTPUT,
             property_path="properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri",
             data_type="S3Uri",
