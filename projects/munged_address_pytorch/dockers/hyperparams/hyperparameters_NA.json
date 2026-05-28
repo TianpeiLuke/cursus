@@ -5,7 +5,7 @@
   "label_name": "__tag__",
   "id_name": "orderDate",
   "tab_field_list": [],
-  "cat_field_list": [],
+  "cat_field_list": ["shippingAddress", "marketplaceId"],
   "full_field_list": [],
   "is_binary": true,
   "num_classes": 2,
@@ -31,5 +31,7 @@
   "reinit_layers": 2,
   "run_scheduler": true,
   "load_ckpt": false,
-  "fixed_tokenizer_length": true
+  "fixed_tokenizer_length": true,
+  "address_column": "saddr",
+  "address_delimiter": "|||"
 }
