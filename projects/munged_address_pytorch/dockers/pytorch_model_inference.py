@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 from subprocess import check_call
 
-USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "false").lower() == "true"
+USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "true").lower() == "true"
 
 
 def _get_secure_pypi_access_token() -> str:
@@ -321,9 +321,13 @@ def main(
     logger.info("=" * 70)
     logger.info(f"Starting inference: {gpu_count} GPU(s), strategy=auto")
     if gpu_count > 1:
-        logger.info(f"Multi-GPU: Lightning will use ddp_spawn ({gpu_count} child processes)")
+        logger.info(
+            f"Multi-GPU: Lightning will use ddp_spawn ({gpu_count} child processes)"
+        )
         logger.info("Note: each child process logs independently with 'Rank N:' prefix")
-        logger.info("Parent process will resume after all children complete and merge results")
+        logger.info(
+            "Parent process will resume after all children complete and merge results"
+        )
     elif gpu_count == 1:
         logger.info("Single GPU inference (no spawn)")
     else:

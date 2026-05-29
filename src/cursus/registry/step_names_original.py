@@ -30,6 +30,13 @@ STEP_NAMES = {
         "sagemaker_step_type": "CradleDataLoading",
         "description": "Cradle data loading step",
     },
+    "RedshiftDataLoading": {
+        "config_class": "RedshiftDataLoadingConfig",
+        "builder_step_name": "RedshiftDataLoadingStepBuilder",
+        "spec_type": "RedshiftDataLoading",
+        "sagemaker_step_type": "RedshiftDataLoading",
+        "description": "Redshift SQL data loading step (source node with optional EDX upload)",
+    },
     "DummyDataLoading": {
         "config_class": "DummyDataLoadingConfig",
         "builder_step_name": "DummyDataLoadingStepBuilder",

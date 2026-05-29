@@ -32,6 +32,7 @@ EDX_UPLOADING_SPEC = StepSpecification(
             required=True,
             compatible_sources=[
                 "CradleDataLoading",
+                "RedshiftDataLoading",
                 "TabularPreprocessing",
                 "StratifiedSampling",
                 "BedrockProcessing",

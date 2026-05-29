@@ -16,7 +16,6 @@ AUTHOR = "bjjin"
 PIPELINE_VERSION = "0.0.1"
 PIPELINE_DESCRIPTION = "Munged Address Detection DistilBERT Training Pipeline"
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

@@ -880,7 +880,7 @@ def generate_csv_payload(
                         )
                     )
 
-        return ",".join(values)
+        return ",".join(f'"{v}"' if "," in str(v) else str(v) for v in values)
 
     # Fallback to old logic if model_dir not provided (backward compatibility)
     values = []
@@ -946,7 +946,7 @@ def generate_csv_payload(
             else:
                 values.append(str(default_numeric_value))
 
-    return ",".join(values)
+    return ",".join(f'"{v}"' if "," in str(v) else str(v) for v in values)
 
 
 def generate_json_payload(

@@ -37,6 +37,7 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
             compatible_sources=[
                 "CradleDataLoading",
                 "DummyDataLoading",
+                "RedshiftDataLoading",
                 "DataLoad",
                 "ProcessingStep",
                 "BedrockProcessing",
@@ -73,6 +74,7 @@ TABULAR_PREPROCESSING_SPEC = StepSpecification(
             compatible_sources=[
                 "CradleDataLoading",
                 "DummyDataLoading",
+                "RedshiftDataLoading",
                 "DataLoad",
                 "ProcessingStep",
                 "BedrockProcessing",

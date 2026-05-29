@@ -2240,7 +2240,9 @@ def main(
                 )
 
             if not input_files:
-                raise ValueError(f"No input files found in {input_path} or {input_path}/{job_type}/")
+                raise ValueError(
+                    f"No input files found in {input_path} or {input_path}/{job_type}/"
+                )
 
             processing_stats["total_files"] = len(input_files)
 

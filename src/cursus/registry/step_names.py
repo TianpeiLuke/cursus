@@ -345,6 +345,7 @@ def validate_sagemaker_step_type(sagemaker_type: str) -> bool:
         "Utility",
         "Lambda",
         "CradleDataLoading",
+        "RedshiftDataLoading",
         "MimsModelRegistrationProcessing",
     }
     return sagemaker_type in valid_types
