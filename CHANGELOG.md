@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2026-05-28
+
+### Fixed
+
+- **`sagemaker` dependency upper bound** — `sagemaker>=2.248.0` → `sagemaker>=2.248.0,<3`. The SageMaker SDK 3.x release ships a fundamentally restructured layout (the `sagemaker.workflow.pipeline_context` submodule was removed; even `sagemaker.__version__` is gone). With no upper bound, `pip install cursus` resolved `sagemaker==3.12.0`, after which any `from cursus.steps import *` raised `ModuleNotFoundError: No module named 'sagemaker.workflow'` at `cursus/core/base/builder_base.py:8`. Every fresh public-PyPI install of cursus 1.5.x — 1.7.0 was broken in this way. The 1.7.1 cap pins to the 2.x line until cursus is ported to the 3.x layout. Same defensive-cap shape as the `pydantic<3` cap added in 1.5.2.
+- **Add `pytz` to direct dependencies** — sagemaker 2.x's `sagemaker/workflow/pipeline.py` does `import pytz` at module top-level but does *not* declare it in `Requires-Dist`. cursus imports that module transitively via `cursus.core.assembler.pipeline_assembler`, so a clean `pip install cursus` produced a `ModuleNotFoundError: No module named 'pytz'` at first import. Declaring `pytz` as a direct cursus dep papers over the sagemaker packaging gap so users get a functional install out of the box.
+
 ## [1.7.0] - 2026-05-28
 
 ### Added
