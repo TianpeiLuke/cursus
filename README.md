@@ -23,6 +23,8 @@ pip install cursus[pytorch,gbm]
 pip install cursus[all]
 ```
 
+> **SageMaker SDK compatibility:** The current `cursus` 1.x line targets **SageMaker SDK 2.x**. Pin `pip install "cursus<2"` to stay on this line. The `2.x` line (forthcoming) will target SageMaker SDK 3.x; that work happens on `main` and is published from there once ready.
+
 ### 30-Second Example
 
 ```python
