@@ -8,7 +8,7 @@ via EdxDataLoader. This is a SINK node — no SageMaker outputs.
 from ...core.base.contract_base import ScriptContract
 
 EDX_UPLOADING_CONTRACT = ScriptContract(
-    entry_point="edx_upload.py",
+    entry_point="edx_uploading.py",
     expected_input_paths={
         "input_data": "/opt/ml/processing/input/data",
     },

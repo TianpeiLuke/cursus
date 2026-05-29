@@ -67,7 +67,7 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
         default=None, description="Job type suffix for step naming (e.g., 'tagging')"
     )
     processing_entry_point: str = Field(
-        default="edx_upload.py", description="Entry point script for EDX upload"
+        default="edx_uploading.py", description="Entry point script for EDX upload"
     )
     edx_manifest_key_parts: Optional[Dict[str, str]] = Field(
         default=None,
