@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-05-28
+
+### Added
+
+- **`RedshiftDataLoading` step (new step type)** — SQL execution against a Redshift cluster, writing CSV output to S3 (and optionally uploading to EDX as a side effect). Adopted from the SAIS SDK MODS workflow. Source node in the DAG (no upstream dependencies). Ships the full five-layer step bundle:
+  - `cursus/steps/scripts/redshift_data_loading.py` — container script. Supports two connectors: `pg8000` (PostgreSQL wire protocol) and `redshift_connector` (Amazon's official client). Optional `Andes3` IAM authentication with session tags. Reads a flattened `step_config.json` (`clusterSpecification` / `querySpecification` / `outputSpecification`).
+  - `cursus/steps/configs/config_redshift_data_loading_step.py` — `RedshiftDataLoadingConfig(BasePipelineConfig)`. Tier-1 essential fields: `cluster_id`, `db_name`, `role_arn`, `cluster_endpoint`, `query`. Tier-2 with defaults: `connector_type` (default `redshift_connector`), `port` (5439), `is_using_andes3` (True), `output_data_source_type` (`S3` / `EDX`), `edx_arn` (required iff EDX mode), `drop_header`, `job_type`, `max_runtime_in_seconds` (12h default). Pydantic model-level validation enforces "EDX mode requires `edx_arn`" and "`connector_type` ∈ {pg8000, redshift_connector}". The computed `step_config_json` re-assembles the 3-spec dict that the container script consumes.
+  - `cursus/steps/contracts/redshift_data_loading_contract.py` — script contract.
+  - `cursus/steps/specs/redshift_data_loading_spec.py` — step specification (source node, no dependencies, two outputs).
+  - `cursus/steps/builders/builder_redshift_data_loading_step.py` — step builder.
+  - Registered in `cursus/registry/step_names.py` + `step_names_original.py` as `RedshiftDataLoading`.
+- **`munged_address_pytorch/dockers/pytorch_training.py`** (NEW, 597 lines) — simplified DistilBERT binary classifier for Munged Address Detection. Text-only (no multimodal, no risk tables, no imputation, no streaming), ~400 actual lines vs the generic 1,631-line trainer. Reads `/opt/ml/input/data/{train,val,test}/{split}_processed_data.csv` with columns `shippingAddress`, `__tag__`, `orderDate`, `marketplaceId`. Outputs `model.pth`, `model.onnx`, tokenizer, hyperparameters, predictions, and TensorBoard logs.
+- **`munged_address_pytorch/dockers/scripts/bedrock_processing.py`** (NEW, 2,493 lines) — project-local Bedrock processing docker script tailored to the munged-address use case.
+- **`munged_address_pytorch/dockers/scripts/tabular_preprocessing.py`** (NEW, 2,159 lines) — project-local tabular preprocessing docker script.
+- **`munged_address_pytorch/generate_config_na.py`** (NEW, 508 lines) — programmatically generates `pipeline_configs/config_NA.json` from code using `DAGConfigFactory`, `CradleJobSpecificationConfig`, `EdxDataSourceConfig`, and friends — replaces hand-edited JSON with a code-driven build.
+- **`munged_address_pytorch/dockers/requirements-gpu-secure.txt`** (NEW) — security-scanned GPU requirements for the SageMaker container build.
+- **`munged_address_pytorch/dockers/scripts/calibration/standard_calibration_dictionary.json`** (NEW) — calibration reference data used by the inference handler.
+
+### Changed
+
+- **`EdxUploadingConfig` — dual-mode input** (`+96 / -23` lines). Now accepts either a direct ARN OR the previous component-based form, matching the pattern already used by `EdxDataSourceConfig` in CradleDataLoading:
+  1. **Direct ARN mode**: pass `edx_arn=arn:amazon:edx:iad::manifest/{provider}/{subject}/{dataset}/["{key}"]`; components are parsed automatically.
+  2. **Component-based mode** (previous default): pass `edx_provider`, `edx_subject`, `edx_dataset`, `edx_manifest_key`.
+
+  All five Tier-1 fields are now `Optional`, with a `model_validator` enforcing "at least one mode satisfied" at construction time. Backwards-compatible — existing component-based configs continue to work unchanged.
+- **`munged_address_pytorch` docker scripts trimmed** — `pytorch_inference_handler.py` shrunk from 1,905 → much smaller, `pytorch_model_inference.py` shrunk from 1,638 → much smaller. The deletions match the same scope reduction as the new training script — multimodal / risk-table / imputation paths removed because Munged Address Detection is text-only.
+- **`bedrock_processing` script (top-level)** — small adjustments (+31 lines) to align with the project-local docker variant.
+- **Spec touch-ups for Redshift compatibility:**
+  - `edx_uploading_spec.py`: added `RedshiftDataLoading` to compatible upstream sources (Redshift → EDX upload as a side-effect pipeline).
+  - `tabular_preprocessing_spec.py`: added `RedshiftDataLoading` to compatible sources on both primary and secondary `DATA` dependencies (×2).
+  - `cradle_data_loading_spec.py`: minor `aliases=[]` placeholder addition.
+- **Project orchestrator small touches** — `munged_address_pytorch_na.py` (-1 line), `package.py` and `payload.py` (top-level + project copies, ±3-4 lines each), `tabular_preprocessing_sampling_munged.py` (+148/-… reorg), `tabular_preprocessing_training_munged.py` (+109/-… reorg), `hyperparameters_NA.json` (6-line adjustment).
+
 ## [1.6.0] - 2026-05-26
 
 ### Added
