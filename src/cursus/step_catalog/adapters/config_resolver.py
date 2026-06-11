@@ -95,11 +95,42 @@ class StepConfigResolverAdapter:
                             iter(available_configs.values())
                         )
 
+            # Safety check: detect duplicate step name collisions
+            # Two nodes resolving to configs that produce the same step name
+            # will cause MODS _validate_no_duplicated_steps to reject at runtime.
+            self._warn_duplicate_step_names(resolved_configs)
+
             return resolved_configs
 
         except Exception as e:
             self.logger.error(f"Error resolving config map: {e}")
             return {}
+
+    def _warn_duplicate_step_names(self, resolved_configs: Dict[str, Any]) -> None:
+        """Detect and warn when multiple nodes would produce the same step name."""
+        step_name_sources: Dict[str, List[str]] = {}
+        for node_name, config in resolved_configs.items():
+            config_type = type(config).__name__
+            step_type = self._config_class_to_step_type(config_type)
+            job_type = getattr(config, "job_type", None)
+            if job_type:
+                generated_step_name = f"{step_type}-{job_type.capitalize()}"
+            else:
+                generated_step_name = step_type
+
+            if generated_step_name not in step_name_sources:
+                step_name_sources[generated_step_name] = []
+            step_name_sources[generated_step_name].append(node_name)
+
+        for step_name, source_nodes in step_name_sources.items():
+            if len(source_nodes) > 1:
+                self.logger.warning(
+                    f"DUPLICATE STEP NAME COLLISION: Nodes {source_nodes} would all "
+                    f"produce step name '{step_name}'. This will cause "
+                    f"'Steps with duplicated name {step_name} found' at execution time. "
+                    f"Fix: ensure each node has a matching config key, or rename nodes "
+                    f"to match their intended config types."
+                )
 
     def _direct_name_matching(
         self, node_name: str, configs: Dict[str, Any]
@@ -157,7 +188,10 @@ class StepConfigResolverAdapter:
         """
         Match based on job_type attribute and node naming patterns.
 
-        Based on legacy implementation from StepConfigResolver.
+        Based on legacy implementation from StepConfigResolver, with added
+        step-type cross-validation to prevent mismatches (e.g., a calibration
+        node resolving to a CradleDataLoading config just because both have
+        job_type="calibration").
 
         Args:
             node_name: DAG node name
@@ -182,6 +216,12 @@ class StepConfigResolverAdapter:
         if not detected_job_type:
             return matches
 
+        # Extract the implied step type from the node name (e.g.,
+        # "PercentileModelCalibration_calibration" → "PercentileModelCalibration")
+        node_step_type = None
+        if "_" in node_name:
+            node_step_type = node_name.rsplit("_", 1)[0].lower()
+
         # Find configs with matching job_type (legacy logic)
         for config_name, config in configs.items():
             if hasattr(config, "job_type"):
@@ -190,6 +230,29 @@ class StepConfigResolverAdapter:
                 # Check for job type match (legacy logic)
                 job_type_keywords = self.JOB_TYPE_KEYWORDS.get(detected_job_type, [])
                 if any(keyword in config_job_type for keyword in job_type_keywords):
+                    # Cross-validate: the config's class base type must be
+                    # compatible with the node's implied step type. This prevents
+                    # e.g. CradleDataLoadingConfig matching a ModelCalibration node.
+                    config_class_name = type(config).__name__
+                    config_base_type = (
+                        config_class_name.lower()
+                        .replace("config", "")
+                        .replace("step", "")
+                    )
+
+                    if node_step_type and config_base_type:
+                        # Reject if neither name is a substring of the other
+                        if (
+                            config_base_type not in node_step_type
+                            and node_step_type not in config_base_type
+                        ):
+                            self.logger.debug(
+                                f"Skipping config '{config_name}' ({config_class_name}) "
+                                f"for node '{node_name}': step type mismatch "
+                                f"(config base='{config_base_type}', node type='{node_step_type}')"
+                            )
+                            continue
+
                     # Calculate confidence based on how well the node name matches the config type
                     config_type_confidence = self._calculate_config_type_confidence(
                         node_name, config
@@ -428,13 +491,29 @@ class StepConfigResolverAdapter:
             try:
                 from ...core.compiler.exceptions import ResolutionError
 
-                raise ResolutionError(f"No configuration found for node: {node_name}")
+                raise ResolutionError(
+                    f"No configuration found for node: {node_name}",
+                    failed_nodes=[node_name],
+                    suggestions=[
+                        f"Add a config key '{node_name}' to your config JSON",
+                        f"Or add '{node_name}' to metadata.config_types with the correct config class",
+                    ],
+                )
             except ImportError:
-                # Fallback if ResolutionError is not available
                 raise ValueError(f"No configuration found for node: {node_name}")
 
         # Return the highest confidence match
         best_match = max(all_matches, key=lambda x: x[1])
+
+        # Warn if best match confidence is below threshold — likely a misresolution
+        if best_match[1] < self.confidence_threshold:
+            config_type = type(best_match[0]).__name__
+            self.logger.warning(
+                f"Low-confidence resolution for node '{node_name}': "
+                f"matched to {config_type} with confidence {best_match[1]:.2f} "
+                f"via {best_match[2]}. Consider adding an explicit config key."
+            )
+
         return best_match
 
     def resolve_config_for_step(
