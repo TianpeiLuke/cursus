@@ -67,7 +67,7 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
         default=None, description="Job type suffix for step naming (e.g., 'tagging')"
     )
     processing_entry_point: str = Field(
-        default="edx_uploading.py", description="Entry point script for EDX upload"
+        default="edx_upload.py", description="Entry point script for EDX upload"
     )
     edx_manifest_key_parts: Optional[Dict[str, str]] = Field(
         default=None,
@@ -91,22 +91,28 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
                 self.edx_arn,
             )
             if match:
-                self.edx_provider = self.edx_provider or match.group(1)
-                self.edx_subject = self.edx_subject or match.group(2)
-                self.edx_dataset = self.edx_dataset or match.group(3)
-                self.edx_manifest_key = self.edx_manifest_key or match.group(4)
+                # Use object.__setattr__ to avoid triggering validate_assignment recursion
+                if not self.edx_provider:
+                    object.__setattr__(self, "edx_provider", match.group(1))
+                if not self.edx_subject:
+                    object.__setattr__(self, "edx_subject", match.group(2))
+                if not self.edx_dataset:
+                    object.__setattr__(self, "edx_dataset", match.group(3))
+                if not self.edx_manifest_key:
+                    object.__setattr__(self, "edx_manifest_key", match.group(4))
             else:
                 # Try simpler split for ARNs without manifest key brackets
-                parts = self.edx_arn.replace("arn:amazon:edx:iad::manifest/", "").split(
-                    "/"
-                )
+                parts = self.edx_arn.replace("arn:amazon:edx:iad::manifest/", "").split("/")
                 if len(parts) >= 3:
-                    self.edx_provider = self.edx_provider or parts[0]
-                    self.edx_subject = self.edx_subject or parts[1]
-                    self.edx_dataset = self.edx_dataset or parts[2]
+                    if not self.edx_provider:
+                        object.__setattr__(self, "edx_provider", parts[0])
+                    if not self.edx_subject:
+                        object.__setattr__(self, "edx_subject", parts[1])
+                    if not self.edx_dataset:
+                        object.__setattr__(self, "edx_dataset", parts[2])
                     if len(parts) > 3 and not self.edx_manifest_key:
                         key_part = "/".join(parts[3:])
-                        self.edx_manifest_key = key_part.strip('[]"')
+                        object.__setattr__(self, "edx_manifest_key", key_part.strip('[]"'))
         else:
             # Mode 2: Require all components
             missing = []
