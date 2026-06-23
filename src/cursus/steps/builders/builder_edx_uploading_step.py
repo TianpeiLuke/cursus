@@ -97,6 +97,12 @@ class EdxUploadingStepBuilder(StepBuilderBase):
                 self.config.edx_manifest_key_parts
             )
 
+        # Explicit ordered column projection for the upload. Passed as a JSON array string; the
+        # script reads EDX_OUTPUT_COLUMNS and projects to exactly this set before writing the
+        # headerless TSV. Omitted when unset so the script keeps its hardcoded default.
+        if self.config.edx_output_columns:
+            env_vars["EDX_OUTPUT_COLUMNS"] = json.dumps(self.config.edx_output_columns)
+
         return env_vars
 
     def _get_inputs(self, inputs: Dict[str, Any]) -> List[ProcessingInput]:

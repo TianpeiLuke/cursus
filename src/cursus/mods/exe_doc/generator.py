@@ -59,10 +59,12 @@ class ExecutionDocumentGenerator:
         from .cradle_helper import CradleDataLoadingHelper
         from .registration_helper import RegistrationHelper
         from .data_uploading_helper import DataUploadingHelper
+        from .redshift_data_loading_helper import RedshiftDataLoadingHelper
 
         self.cradle_helper = CradleDataLoadingHelper()
         self.registration_helper = RegistrationHelper()
         self.data_uploading_helper = DataUploadingHelper()
+        self.redshift_data_loading_helper = RedshiftDataLoadingHelper()
 
         # Load configurations using simplified approach
         self.configs = self._load_configs()
@@ -72,6 +74,7 @@ class ExecutionDocumentGenerator:
             self.cradle_helper,
             self.registration_helper,
             self.data_uploading_helper,
+            self.redshift_data_loading_helper,
         ]
 
         self.logger.info(
@@ -153,6 +156,16 @@ class ExecutionDocumentGenerator:
                     f"Processing {len(data_uploading_steps)} data uploading steps: {data_uploading_steps}"
                 )
                 self._fill_data_uploading_configurations(dag, pipeline_configs)
+
+            # Step 5: Process redshift data loading steps if any
+            redshift_steps = self._filter_steps_by_helper(
+                relevant_steps, self.redshift_data_loading_helper
+            )
+            if redshift_steps:
+                self.logger.info(
+                    f"Processing {len(redshift_steps)} redshift data loading steps: {redshift_steps}"
+                )
+                self._fill_redshift_configurations(dag, pipeline_configs)
 
             self.logger.info("Successfully generated execution document")
             return execution_document
@@ -607,4 +620,54 @@ class ExecutionDocumentGenerator:
                 except Exception as e:
                     self.logger.warning(
                         f"Failed to extract DataUploading config for step {step_name}: {e}"
+                    )
+
+    def _fill_redshift_configurations(
+        self, dag: PipelineDAG, pipeline_configs: Dict[str, Any]
+    ) -> None:
+        """
+        Fill RedshiftDataLoading configurations in the execution document.
+
+        Args:
+            dag: PipelineDAG instance
+            pipeline_configs: Dictionary of pipeline step configurations
+        """
+        helper = self.redshift_data_loading_helper
+
+        redshift_steps = []
+        for step_name in dag.nodes:
+            config = self._get_config_for_step(step_name)
+            if config and helper.can_handle_step(step_name, config):
+                redshift_steps.append(step_name)
+
+        if not redshift_steps:
+            self.logger.debug("No RedshiftDataLoading steps found in DAG")
+            return
+
+        for step_name in redshift_steps:
+            config = self._get_config_for_step(step_name)
+            if config:
+                exec_step_name = helper.get_execution_step_name(step_name, config)
+
+                if exec_step_name not in pipeline_configs:
+                    self.logger.warning(
+                        f"RedshiftDataLoading step '{exec_step_name}' not found in execution document"
+                    )
+                    continue
+
+                # Add STEP_TYPE if missing
+                if "STEP_TYPE" not in pipeline_configs[exec_step_name]:
+                    pipeline_configs[exec_step_name]["STEP_TYPE"] = (
+                        helper.get_step_type()
+                    )
+
+                try:
+                    step_config = helper.extract_step_config(step_name, config)
+                    pipeline_configs[exec_step_name]["STEP_CONFIG"] = step_config
+                    self.logger.info(
+                        f"Updated execution config for RedshiftDataLoading step: {exec_step_name}"
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to extract RedshiftDataLoading config for step {step_name}: {e}"
                     )

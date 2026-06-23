@@ -11,7 +11,7 @@ Supports two input modes:
 
 import re
 from pydantic import Field, computed_field, model_validator
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -67,7 +67,7 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
         default=None, description="Job type suffix for step naming (e.g., 'tagging')"
     )
     processing_entry_point: str = Field(
-        default="edx_upload.py", description="Entry point script for EDX upload"
+        default="edx_uploading.py", description="Entry point script for EDX upload"
     )
     edx_manifest_key_parts: Optional[Dict[str, str]] = Field(
         default=None,
@@ -75,6 +75,20 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
             "Optional dict of placeholder values for template manifest keys.\n"
             "Only used when edx_manifest_key contains {placeholders}.\n"
             "Example: {'marketplace': 'NA', 'dataset_date': '2026-05-27'}"
+        ),
+    )
+    edx_output_columns: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Optional explicit, ORDERED list of columns to upload. The script projects the "
+            "concatenated dataframe to exactly this set (filling missing as empty, dropping extras) "
+            "before writing the headerless TSV. This is the positional contract the downstream "
+            "Cradle SCORED read consumes — it MUST match the consuming step's "
+            "EdxDataSourceConfig.schema_overrides in count AND order, since EDX is headerless and "
+            "parsed positionally. If omitted, the script falls back to its hardcoded "
+            "CANONICAL_OUTPUT_COLUMNS default.\n"
+            "Example: ['saddr', 'marketplaceId', 'orderDate', '__cohort__', "
+            "'llm_strangeness_rating', 'llm_parse_status', 'llm_validation_passed', 'llm_status']"
         ),
     )
 
