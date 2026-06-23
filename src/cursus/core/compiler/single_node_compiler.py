@@ -468,6 +468,9 @@ class SingleNodeCompiler:
 
         # Generate single-node pipeline using new method
         pipeline_name = pipeline_name or f"{target_node}-isolated"
+        pipeline_name = pipeline_name.replace(
+            "_", "-"
+        )  # SageMaker only allows [a-zA-Z0-9-]
         pipeline = assembler.generate_single_node_pipeline(
             target_node=target_node,
             manual_inputs=manual_inputs,

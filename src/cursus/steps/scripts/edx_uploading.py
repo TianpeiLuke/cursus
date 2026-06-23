@@ -16,7 +16,7 @@ import sys
 import uuid
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from secure_ai_sandbox_python_lib.session import Session as SandboxSession
@@ -28,6 +28,92 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 MAX_WORKERS = 4
+
+
+# Characters that MUST NOT survive into a headerless TSV that is read positionally:
+#   \t (delimiter) shifts columns; \n \r \v \f inject phantom rows; " triggers pandas quote-wrapping
+#   that a positional tab-splitter misreads; \x00 and other C0 control chars abort some parsers.
+_TSV_BREAK_RE = r"[\t\r\n\v\f]+"
+_TSV_STRIP_RE = r"[\"\x00-\x08\x0b\x0c\x0e-\x1f]"
+
+
+def _parse_output_columns(raw) -> Optional[List[str]]:
+    """Parse the optional EDX_OUTPUT_COLUMNS contract (JSON array string, list, or empty)."""
+    if not raw:
+        return None
+    if isinstance(raw, str):
+        raw = json.loads(raw)
+    if not isinstance(raw, list) or not raw:
+        return None
+    return [str(c) for c in raw]
+
+
+def _assert_tsv_safe(df, log):
+    """Fail-loud guardrail: after sanitization, no cell may still contain a tab/newline/CR/quote.
+    A single bad cell would shift columns or inject rows in the headerless positional read, so we
+    refuse to upload rather than silently corrupt the EDX manifest."""
+    import re as _re
+
+    bad = _re.compile(r'[\t\r\n"]')
+    for col in df.columns:
+        mask = df[col].astype(str).str.contains(bad, regex=True, na=False)
+        if mask.any():
+            n = int(mask.sum())
+            sample = df.loc[mask, col].astype(str).iloc[0][:80]
+            raise ValueError(
+                f"TSV guardrail: column '{col}' still has {n} cell(s) with a delimiter/break/quote "
+                f"after sanitization (e.g. {sample!r}). Refusing to upload a corruptible file."
+            )
+
+
+def _project_file_to_tsv(file_path: Path, output_columns: List[str], log) -> Path:
+    """Read a parquet/CSV shard, project to an ORDERED canonical column set, and write a headerless
+    TSV next to it.
+
+    EDX is read positionally with a headerless schema, so the uploaded width must be deterministic:
+      - missing canonical columns are added as empty (so every row has exactly len(output_columns))
+      - non-canonical columns are dropped (parse-failure rows otherwise leak extra columns and
+        widen the union)
+      - NaN is filled to "" (so absent values do not serialize as the literal "nan")
+      - delimiter/break/quote chars are stripped, then a guardrail asserts none remain (so a cell
+        cannot shift fields or inject rows), and the write uses QUOTE_NONE so pandas never re-adds
+        quotes.
+    Returns the path to the projected headerless TSV.
+    """
+    import csv as _csv
+
+    import pandas as pd
+
+    if file_path.suffix == ".parquet":
+        df = pd.read_parquet(file_path)
+    else:
+        df = pd.read_csv(file_path)
+
+    missing = [c for c in output_columns if c not in df.columns]
+    if missing:
+        log(f"[WARN] {file_path.name}: missing columns {missing}; filling empty")
+        for c in missing:
+            df[c] = ""
+    dropped = [c for c in df.columns if c not in output_columns]
+    if dropped:
+        log(f"[INFO] {file_path.name}: dropping non-canonical columns {dropped}")
+
+    df = df[output_columns].copy().fillna("")
+    for c in df.columns:
+        df[c] = (
+            df[c]
+            .astype(str)
+            .str.replace(_TSV_BREAK_RE, " ", regex=True)
+            .str.replace(_TSV_STRIP_RE, "", regex=True)
+        )
+    _assert_tsv_safe(df, log)
+
+    tsv_path = file_path.with_suffix(".projected.tsv")
+    df.to_csv(
+        tsv_path, sep="\t", header=False, index=False, quoting=_csv.QUOTE_NONE, escapechar="\\"
+    )
+    log(f"[INFO] {file_path.name}: projected to {len(output_columns)} cols -> {tsv_path.name}")
+    return tsv_path
 
 
 def upload_file(edx_loader, manifest_arn, file_path, file_index, total_files):
@@ -90,6 +176,22 @@ def main(
 
     log(f"[INFO] Found {len(files)} file(s) to upload")
 
+    # Optional ordered column projection. When EDX_OUTPUT_COLUMNS is provided, each parquet/CSV
+    # shard is reprojected to that exact column set and rewritten as a headerless TSV before upload,
+    # guaranteeing a deterministic positional layout for the downstream Cradle read. When unset, the
+    # original raw-passthrough behavior is preserved (files uploaded byte-for-byte as-is).
+    output_columns = _parse_output_columns(environ_vars.get("EDX_OUTPUT_COLUMNS"))
+    if output_columns:
+        log(f"[INFO] Projecting all shards to canonical columns: {output_columns}")
+        projected = []
+        for f in files:
+            try:
+                projected.append(_project_file_to_tsv(f, output_columns, log))
+            except Exception as e:
+                log(f"[ERROR] Failed to project {f.name}: {e}")
+                raise
+        files = projected
+
     # Construct manifest ARN
     key_components = [k.strip() for k in manifest_key.split(",")]
     if len(key_components) == 1:
@@ -137,6 +239,7 @@ if __name__ == "__main__":
         "EDX_DATASET_ARN": os.environ.get("EDX_DATASET_ARN", ""),
         "EDX_MANIFEST_KEY": os.environ.get("EDX_MANIFEST_KEY", ""),
         "EDX_MANIFEST_KEY_PARTS": os.environ.get("EDX_MANIFEST_KEY_PARTS", "{}"),
+        "EDX_OUTPUT_COLUMNS": os.environ.get("EDX_OUTPUT_COLUMNS", ""),
         "MODS_WORKFLOW_EXECUTION_ID": os.environ.get("MODS_WORKFLOW_EXECUTION_ID", ""),
     }
 

@@ -121,6 +121,17 @@ class StratifiedSampler:
             )
 
         # Perform sampling
+        # When allow_replacement is True, uncap allocations that were limited by stratum size
+        # (balanced/proportional_min/optimal all cap at info["size"], making replacement a no-op)
+        if allow_replacement:
+            num_strata = len(strata_info)
+            desired_per_stratum = max(
+                min_samples_per_stratum, target_size // num_strata
+            )
+            for stratum in allocation:
+                if allocation[stratum] < desired_per_stratum:
+                    allocation[stratum] = desired_per_stratum
+
         return self._perform_sampling(
             df, strata_column, allocation, allow_replacement=allow_replacement
         )
@@ -532,6 +543,7 @@ def main(
                 )
 
             # Check if variance column exists (for optimal strategy)
+            effective_variance_column = variance_column
             if (
                 sampling_strategy == "optimal"
                 and variance_column
@@ -540,7 +552,7 @@ def main(
                 log(
                     f"[WARNING] Variance column '{variance_column}' not found. Using default variance for optimal allocation."
                 )
-                variance_column = None
+                effective_variance_column = None
 
             # Calculate target size for this split
             # For external_proportional, target_size is ignored (allocation from reference_counts)
@@ -566,7 +578,7 @@ def main(
                         target_size=split_target_size,
                         strategy=sampling_strategy,
                         min_samples_per_stratum=min_samples_per_stratum,
-                        variance_column=variance_column,
+                        variance_column=effective_variance_column,
                         reference_counts=reference_counts,
                         multiplier=sampling_multiplier,
                         allow_replacement=allow_replacement,
@@ -583,7 +595,7 @@ def main(
                     target_size=split_target_size,
                     strategy=sampling_strategy,
                     min_samples_per_stratum=min_samples_per_stratum,
-                    variance_column=variance_column,
+                    variance_column=effective_variance_column,
                     reference_counts=reference_counts,
                     multiplier=sampling_multiplier,
                     allow_replacement=allow_replacement,

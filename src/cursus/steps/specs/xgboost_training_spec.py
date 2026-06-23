@@ -41,6 +41,9 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
                 "LabelRulesetExecution",
                 "ProcessingStep",
                 "DataLoad",
+                # Stacked/two-stage models (e.g. NEAT Auto-Appeal AAM) feed an XGBoost head from a
+                # PyTorchModelInference step that emits [tabular | embedding] train/val/test splits.
+                "PyTorchModelInference",
             ],
             semantic_keywords=[
                 "data",
@@ -50,6 +53,7 @@ XGBOOST_TRAINING_SPEC = StepSpecification(
                 "processed",
                 "train",
                 "tabular",
+                "embedding",
             ],
             data_type="S3Uri",
             description="Training dataset S3 location with train/val/test subdirectories",

@@ -86,6 +86,13 @@ class TabularPreprocessingStepBuilder(StepBuilderBase):
             "validation",
             "testing",
             "calibration",
+            "sampling",
+            "scoring",
+            "tagging",
+            "sampling",
+            "scoring",
+            "tagging",
+            "sampling",
         ]:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 

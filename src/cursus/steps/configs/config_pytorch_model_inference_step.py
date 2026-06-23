@@ -95,6 +95,15 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
         description="Whether to use large instance type for processing (inference typically needs less resources)",
     )
 
+    # Two-stage stacked models (e.g. NEAT Auto-Appeal AAM) set this so the inference script emits
+    # the encoder's encode() embedding joined onto the tabular features as train/val/test split
+    # dirs (the input layout a downstream XGBoost-stack training step consumes), instead of the
+    # default class-probability predictions. Default off → no behavior change for any other project.
+    embedding_mode: bool = Field(
+        default=False,
+        description="If true, emit [tabular | encoder-embedding] split dirs for a downstream GBM stack.",
+    )
+
     model_config = ProcessingStepConfigBase.model_config
 
     # ===== Derived Fields (Tier 3) =====
@@ -187,6 +196,7 @@ class PyTorchModelInferenceConfig(ProcessingStepConfigBase):
                 "OUTPUT_FORMAT": self.output_format,
                 "JSON_ORIENT": self.json_orient,
                 "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
+                "EMBEDDING_MODE": str(self.embedding_mode).lower(),
             }
         )
 

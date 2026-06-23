@@ -253,9 +253,9 @@ class UnifiedDependencyResolver:
 
         # Sort by score (highest first)
         candidates.sort(
-            key=lambda x: float(x["score"])
-            if isinstance(x["score"], (int, float, str))
-            else 0.0,
+            key=lambda x: (
+                float(x["score"]) if isinstance(x["score"], (int, float, str)) else 0.0
+            ),
             reverse=True,
         )
         return candidates

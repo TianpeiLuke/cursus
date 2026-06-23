@@ -19,6 +19,7 @@ EDX_UPLOADING_CONTRACT = ScriptContract(
     required_env_vars=["EDX_DATASET_ARN", "EDX_MANIFEST_KEY"],
     optional_env_vars={
         "EDX_MANIFEST_KEY_PARTS": "{}",
+        "EDX_OUTPUT_COLUMNS": "",
         "AWS_STS_REGIONAL_ENDPOINTS": "regional",
         "AWS_DEFAULT_REGION": "us-east-1",
     },
@@ -38,6 +39,11 @@ EDX_UPLOADING_CONTRACT = ScriptContract(
     - EDX_DATASET_ARN (required): Base ARN for EDX dataset
     - EDX_MANIFEST_KEY (required): Manifest key (static or template with {placeholders})
     - EDX_MANIFEST_KEY_PARTS: JSON dict of placeholder values for template keys
+    - EDX_OUTPUT_COLUMNS: JSON array of an explicit, ORDERED column list to upload. The script
+      projects the dataframe to exactly this set (filling missing as empty, dropping extras) before
+      writing the headerless TSV. This is the positional contract the downstream Cradle read
+      consumes, so it must match the consuming EdxDataSourceConfig.schema_overrides in count + order.
+      If empty/unset, the script uses its hardcoded default column list.
     - AWS_STS_REGIONAL_ENDPOINTS: Must be 'regional' for SAIS
     - AWS_DEFAULT_REGION: AWS region (default: us-east-1)
 

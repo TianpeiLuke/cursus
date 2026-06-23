@@ -183,6 +183,9 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
             "validation",
             "testing",
             "calibration",
+            "sampling",
+            "scoring",
+            "tagging",
         ]:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
@@ -233,9 +236,9 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
 
         if (
             self.config.bedrock_max_concurrent_workers <= 0
-            or self.config.bedrock_max_concurrent_workers > 20
+            or self.config.bedrock_max_concurrent_workers > 100
         ):
-            raise ValueError("bedrock_max_concurrent_workers must be between 1 and 20")
+            raise ValueError("bedrock_max_concurrent_workers must be between 1 and 100")
 
         if (
             self.config.bedrock_rate_limit_per_second <= 0

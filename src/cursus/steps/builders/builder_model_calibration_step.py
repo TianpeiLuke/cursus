@@ -131,7 +131,15 @@ class ModelCalibrationStepBuilder(StepBuilderBase):
             )
 
         # Validate job_type
-        valid_job_types = {"training", "calibration", "validation", "testing"}
+        valid_job_types = {
+            "training",
+            "calibration",
+            "validation",
+            "testing",
+            "sampling",
+            "scoring",
+            "tagging",
+        }
         if self.config.job_type not in valid_job_types:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 

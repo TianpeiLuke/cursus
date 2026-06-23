@@ -243,7 +243,11 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
         # (7) Validate spec-contract alignment if both are available
         if self.spec and self.contract:
             # Check if output logical names in spec match expected output paths in contract
-            for output in self.spec.outputs:
+            for output in (
+                self.spec.outputs.values()
+                if isinstance(self.spec.outputs, dict)
+                else self.spec.outputs
+            ):
                 logical_name = output.logical_name
                 if logical_name not in self.contract.expected_output_paths:
                     logger.warning(
@@ -406,7 +410,11 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
 
         # Use specification-based property path if available
         if self.spec and hasattr(step, "_spec"):
-            for output in self.spec.outputs:
+            for output in (
+                self.spec.outputs.values()
+                if isinstance(self.spec.outputs, dict)
+                else self.spec.outputs
+            ):
                 if output.logical_name == logical_name:
                     property_path = output.property_path
                     if property_path:

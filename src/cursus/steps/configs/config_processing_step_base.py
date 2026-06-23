@@ -52,6 +52,17 @@ class ProcessingStepConfigBase(BasePipelineConfig):
         description="Set to True to use large instance type, False for small instance type.",
     )
 
+    # NVMe/KMS volume encryption control
+    skip_volume_kms: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Override volume KMS encryption for this processing step. "
+            "None = auto-detect from instance type (NVMe instances skip KMS). "
+            "True = always skip volume_kms_key. "
+            "False = always apply volume_kms_key."
+        ),
+    )
+
     # Script and directory settings
     processing_source_dir: Optional[str] = Field(
         default=None,

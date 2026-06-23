@@ -174,6 +174,9 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
             "validation",
             "testing",
             "calibration",
+            "sampling",
+            "scoring",
+            "tagging",
         ]:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
@@ -207,9 +210,9 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
 
         if (
             self.config.bedrock_max_concurrent_workers <= 0
-            or self.config.bedrock_max_concurrent_workers > 20
+            or self.config.bedrock_max_concurrent_workers > 100
         ):
-            raise ValueError("bedrock_max_concurrent_workers must be between 1 and 20")
+            raise ValueError("bedrock_max_concurrent_workers must be between 1 and 100")
 
         if (
             self.config.bedrock_rate_limit_per_second <= 0
@@ -541,10 +544,18 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
         script_path = self.config.get_script_path()
         self.log_info("Using script path: %s", script_path)
 
+        # Split into entry_point and source_dir (same pattern as PyTorchModelInference)
+        script_path_obj = Path(script_path)
+        source_dir = str(script_path_obj.parent)
+        entry_point = script_path_obj.name
+        self.log_info("Using entry point: %s", entry_point)
+        self.log_info("Using source directory: %s", source_dir)
+
         # Use processor.run() to generate step_args for FrameworkProcessor
         # This ensures proper Python execution setup by SageMaker
         step_args = processor.run(
-            code=script_path,
+            code=entry_point,
+            source_dir=source_dir,
             inputs=proc_inputs,
             outputs=proc_outputs,
             arguments=job_args,

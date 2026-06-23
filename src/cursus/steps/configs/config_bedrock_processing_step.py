@@ -116,8 +116,8 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
     bedrock_max_concurrent_workers: int = Field(
         default=5,
         ge=1,
-        le=20,
-        description="Number of concurrent threads for concurrent processing (recommended: 3-10)",
+        le=100,
+        description="Number of concurrent threads for concurrent processing (recommended: 3-50)",
     )
 
     bedrock_rate_limit_per_second: int = Field(

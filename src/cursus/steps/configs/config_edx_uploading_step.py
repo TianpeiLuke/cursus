@@ -102,7 +102,9 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
                     object.__setattr__(self, "edx_manifest_key", match.group(4))
             else:
                 # Try simpler split for ARNs without manifest key brackets
-                parts = self.edx_arn.replace("arn:amazon:edx:iad::manifest/", "").split("/")
+                parts = self.edx_arn.replace("arn:amazon:edx:iad::manifest/", "").split(
+                    "/"
+                )
                 if len(parts) >= 3:
                     if not self.edx_provider:
                         object.__setattr__(self, "edx_provider", parts[0])
@@ -112,7 +114,9 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
                         object.__setattr__(self, "edx_dataset", parts[2])
                     if len(parts) > 3 and not self.edx_manifest_key:
                         key_part = "/".join(parts[3:])
-                        object.__setattr__(self, "edx_manifest_key", key_part.strip('[]"'))
+                        object.__setattr__(
+                            self, "edx_manifest_key", key_part.strip('[]"')
+                        )
         else:
             # Mode 2: Require all components
             missing = []

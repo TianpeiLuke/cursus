@@ -157,6 +157,12 @@ class TemporalSequenceNormalizationStepBuilder(StepBuilderBase):
             "validation",
             "testing",
             "calibration",
+            "sampling",
+            "scoring",
+            "tagging",
+            "sampling",
+            "scoring",
+            "tagging",
         ]:
             raise ValueError(f"Invalid job_type: {self.config.job_type}")
 
