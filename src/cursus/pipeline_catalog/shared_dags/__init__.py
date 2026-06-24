@@ -1,158 +1,117 @@
 """
 Shared DAG Definitions for Pipeline Catalog
 
-This module provides shared DAG creation functions that can be used by both
-standard and MODS pipeline compilers, ensuring consistency while avoiding
-code duplication.
+JSON-based DAG store. Each DAG is a .dag.json file containing nodes, edges,
+and metadata. The catalog_index.json provides a queryable index of all DAGs.
+
+Usage:
+    from cursus.api.dag import import_dag_from_json
+    dag = import_dag_from_json("path/to/some.dag.json")
+
+    # Or use the catalog:
+    from cursus.pipeline_catalog.shared_dags import load_shared_dag, get_all_shared_dags
+    dag = load_shared_dag("bedrock_pytorch_incremental_edx")
 """
 
-from typing import Dict, Any, List
-from pydantic import BaseModel, Field, field_validator
+import json
+import logging
+from typing import Dict, Any, List, Optional
+from pathlib import Path
+
 from ...api.dag.base_dag import PipelineDAG
 
-__all__ = ["DAGMetadata", "validate_dag_metadata", "get_all_shared_dags"]
+logger = logging.getLogger(__name__)
+
+__all__ = ["load_shared_dag", "get_all_shared_dags", "get_catalog_index", "DAGMetadata"]
+
+SHARED_DAGS_DIR = Path(__file__).parent
+CATALOG_INDEX_PATH = SHARED_DAGS_DIR / "catalog_index.json"
 
 
-class DAGMetadata(BaseModel):
-    """Standard metadata structure for shared DAG definitions."""
-
-    description: str = Field(
-        ..., description="Description of the DAG's purpose and functionality"
-    )
-    complexity: str = Field(
-        ..., description="Complexity level: simple, standard, advanced, comprehensive"
-    )
-    features: List[str] = Field(
-        ...,
-        description="List of features: training, evaluation, calibration, registration, etc.",
-    )
-    framework: str = Field(
-        ..., description="Framework: xgboost, pytorch, generic, dummy"
-    )
-    node_count: int = Field(..., gt=0, description="Number of nodes in the DAG")
-    edge_count: int = Field(..., ge=0, description="Number of edges in the DAG")
-    extra_metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="Additional metadata fields"
-    )
-
-    @field_validator("complexity")
-    @classmethod
-    def validate_complexity(cls, v):
-        """Validate complexity level."""
-        valid_complexities = {"simple", "standard", "advanced", "comprehensive"}
-        if v not in valid_complexities:
-            raise ValueError(
-                f"Invalid complexity: {v}. Must be one of {valid_complexities}"
-            )
-        return v
-
-    @field_validator("framework")
-    @classmethod
-    def validate_framework(cls, v):
-        """Validate framework."""
-        valid_frameworks = {
-            "xgboost",
-            "lightgbm",
-            "lightgbmmt",
-            "pytorch",
-            "generic",
-            "dummy",
-        }
-        if v not in valid_frameworks:
-            raise ValueError(
-                f"Invalid framework: {v}. Must be one of {valid_frameworks}"
-            )
-        return v
-
-    @field_validator("features")
-    @classmethod
-    def validate_features(cls, v):
-        """Validate features list is not empty."""
-        if not v:
-            raise ValueError("Features list cannot be empty")
-        return v
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert metadata to dictionary format."""
-        return {
-            "description": self.description,
-            "complexity": self.complexity,
-            "features": self.features,
-            "framework": self.framework,
-            "node_count": self.node_count,
-            "edge_count": self.edge_count,
-            **self.extra_metadata,
-        }
+def get_catalog_index() -> Dict[str, Any]:
+    """Load the catalog index."""
+    with open(CATALOG_INDEX_PATH) as f:
+        return json.load(f)
 
 
-def validate_dag_metadata(metadata: DAGMetadata) -> bool:
+def load_shared_dag(dag_id: str) -> PipelineDAG:
     """
-    Validate DAG metadata for consistency.
+    Load a shared DAG by ID from the JSON catalog.
 
     Args:
-        metadata: DAGMetadata instance to validate
+        dag_id: DAG identifier (e.g., "bedrock_pytorch_incremental_edx")
 
     Returns:
-        bool: True if metadata is valid
-
-    Note:
-        With Pydantic BaseModel, validation is automatic during instantiation.
-        This function is kept for backward compatibility.
+        PipelineDAG ready for compilation
     """
-    # Pydantic handles validation automatically, but we can add custom logic here
-    try:
-        # Trigger validation by accessing model fields
-        _ = metadata.model_dump()
-        return True
-    except Exception as e:
-        raise ValueError(f"DAG metadata validation failed: {e}")
+    from ...api.dag import import_dag_from_json
+
+    index = get_catalog_index()
+    entry = next((d for d in index["dags"] if d["id"] == dag_id), None)
+    if entry is None:
+        available = [d["id"] for d in index["dags"]]
+        raise ValueError(f"DAG '{dag_id}' not found. Available: {available}")
+
+    dag_path = str(SHARED_DAGS_DIR / entry["path"])
+    return import_dag_from_json(dag_path)
 
 
 def get_all_shared_dags() -> Dict[str, Dict[str, Any]]:
     """
-    Get information about all available shared DAG definitions using auto-discovery.
-
-    This function now uses DAGAutoDiscovery to automatically find all DAG files
-    following the naming convention (create_*_dag + get_dag_metadata).
-
-    BEFORE (Manual): Only 7 DAGs registered manually
-    AFTER (Auto-discovery): All 34+ DAGs discovered automatically
+    Get metadata for all available shared DAGs from the catalog index.
 
     Returns:
-        Dict mapping DAG identifiers to their metadata
+        Dict mapping DAG id to metadata dict
     """
-    from pathlib import Path
-    from ..core.dag_discovery import DAGAutoDiscovery
+    index = get_catalog_index()
+    return {d["id"]: d for d in index["dags"]}
 
-    # Get the shared_dags directory (where this file is located)
-    shared_dags_dir = Path(__file__).parent
 
-    # Get src directory (4 levels up: shared_dags -> pipeline_catalog -> cursus -> src)
-    # DAGAutoDiscovery expects package_root to be the src directory
-    package_root = shared_dags_dir.parent.parent.parent
+def list_dags_by_framework(framework: str) -> List[Dict[str, Any]]:
+    """List all DAGs for a given framework."""
+    index = get_catalog_index()
+    return [d for d in index["dags"] if d["framework"] == framework]
 
-    # Initialize discovery for package DAGs only
-    discovery = DAGAutoDiscovery(package_root=package_root)
 
-    # Discover all DAGs
-    all_dags = discovery.discover_all_dags()
+def search_dags(features: Optional[List[str]] = None, framework: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Search DAGs by features and/or framework.
 
-    # Convert to the format expected by legacy code
-    # Format: {dag_id: metadata_dict}
-    shared_dags = {}
-    for dag_id, dag_info in all_dags.items():
-        # Handle None metadata gracefully
-        metadata = dag_info.metadata or {}
+    Args:
+        features: List of required features (e.g., ["training", "bedrock", "edx_uploading"])
+        framework: Framework filter (e.g., "pytorch")
 
-        # Convert DAGInfo to metadata dict format
-        shared_dags[dag_id] = {
-            "description": metadata.get("description", ""),
-            "complexity": dag_info.complexity,
-            "features": dag_info.features,
-            "framework": dag_info.framework,
-            "node_count": dag_info.node_count,
-            "edge_count": dag_info.edge_count,
-            **metadata.get("extra_metadata", {}),
-        }
+    Returns:
+        List of matching DAG entries, sorted by feature overlap
+    """
+    index = get_catalog_index()
+    results = []
 
-    return shared_dags
+    for dag in index["dags"]:
+        if framework and dag["framework"] != framework:
+            continue
+        if features:
+            overlap = len(set(features) & set(dag.get("features", [])))
+            if overlap == 0:
+                continue
+            dag_copy = dict(dag)
+            dag_copy["_score"] = overlap / len(features)
+            results.append(dag_copy)
+        else:
+            results.append(dag)
+
+    results.sort(key=lambda d: d.get("_score", 0), reverse=True)
+    return results
+
+
+# Backward compat: DAGMetadata kept as import target
+class DAGMetadata:
+    """Legacy metadata class. Use catalog_index.json instead."""
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+        self.extra_metadata = kwargs.get("extra_metadata", {})
+
+
+def validate_dag_metadata(metadata) -> bool:
+    """Legacy validation. Always returns True (JSON schema handles validation)."""
+    return True

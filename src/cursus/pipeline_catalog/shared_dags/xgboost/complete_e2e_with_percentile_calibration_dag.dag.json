@@ -1,0 +1,139 @@
+{
+  "dag": {
+    "description": "Complete XGBoost end-to-end pipeline with training, percentile model calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "XGBoostTraining",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "XGBoostModelInference_calibration",
+      "CradleDataLoading_testing",
+      "TabularPreprocessing_testing",
+      "XGBoostModelInference_testing",
+      "ModelMetricsComputation_testing",
+      "ModelWikiGenerator"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelInference_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XGBoostModelInference_calibration"
+      ],
+      [
+        "XGBoostModelInference_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "CradleDataLoading_testing",
+        "TabularPreprocessing_testing"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelInference_testing"
+      ],
+      [
+        "TabularPreprocessing_testing",
+        "XGBoostModelInference_testing"
+      ],
+      [
+        "XGBoostModelInference_testing",
+        "ModelMetricsComputation_testing"
+      ],
+      [
+        "ModelMetricsComputation_testing",
+        "ModelWikiGenerator"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_complete_e2e_with_percentile_calibration_and_testing",
+    "description": "Complete XGBoost end-to-end pipeline with training, percentile model calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
+    "complexity": "comprehensive",
+    "framework": "xgboost",
+    "features": [
+      "training",
+      "percentile_calibration",
+      "testing",
+      "packaging",
+      "registration",
+      "inference",
+      "metrics",
+      "wiki_generation"
+    ],
+    "node_count": 15,
+    "edge_count": 16,
+    "task_type": "end_to_end",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration",
+      "CradleDataLoading_testing"
+    ],
+    "exit_points": [
+      "Registration",
+      "XGBoostModelInference_calibration",
+      "ModelWikiGenerator"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    }
+  }
+}

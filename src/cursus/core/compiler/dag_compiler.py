@@ -592,6 +592,32 @@ class PipelineDAGCompiler:
             )
 
             self.logger.info(f"Compilation completed with report: {report.summary()}")
+
+            # NVMe fix: patch pipeline.definition() to remove VolumeKmsKeyId from
+            # NVMe ProcessingSteps. The SDK's Processor lacks the instance_supports_kms
+            # gate that EstimatorBase has, so VolumeKmsKeyId leaks into the definition
+            # for NVMe instances. We post-process the JSON output.
+            import json as _json
+            from sagemaker.utils import instance_supports_kms as _supports_kms
+
+            _orig_defn = pipeline.definition
+
+            def _nvme_aware_definition(*_args, **_kwargs):
+                defn_str = _orig_defn(*_args, **_kwargs)
+                defn = _json.loads(defn_str)
+                for _step in defn.get("Steps", []):
+                    _cluster = (
+                        _step.get("Arguments", {})
+                        .get("ProcessingResources", {})
+                        .get("ClusterConfig", {})
+                    )
+                    _inst = _cluster.get("InstanceType")
+                    if _inst and isinstance(_inst, str) and not _supports_kms(_inst):
+                        _cluster.pop("VolumeKmsKeyId", None)
+                return _json.dumps(defn)
+
+            pipeline.definition = _nvme_aware_definition
+
             return pipeline, report
 
         except Exception as e:

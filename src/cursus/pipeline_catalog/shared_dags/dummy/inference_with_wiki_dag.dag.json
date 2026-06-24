@@ -1,0 +1,86 @@
+{
+  "dag": {
+    "description": "Dummy training pipeline with inference, metrics computation, and wiki generation",
+    "nodes": [
+      "DummyDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "DummyTraining",
+      "XGBoostModelInference",
+      "ModelMetricsComputation",
+      "ModelWikiGenerator",
+      "ModelCalibration_calibration"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "DummyTraining",
+        "XGBoostModelInference"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XGBoostModelInference"
+      ],
+      [
+        "XGBoostModelInference",
+        "ModelMetricsComputation"
+      ],
+      [
+        "ModelMetricsComputation",
+        "ModelWikiGenerator"
+      ],
+      [
+        "XGBoostModelInference",
+        "ModelCalibration_calibration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "dummy_inference_with_wiki",
+    "description": "Dummy training pipeline with inference, metrics computation, and wiki generation",
+    "complexity": "standard",
+    "framework": "dummy",
+    "features": [
+      "dummy_training",
+      "dummy_data_loading",
+      "inference",
+      "metrics",
+      "wiki_generation",
+      "calibration"
+    ],
+    "node_count": 7,
+    "edge_count": 6,
+    "task_type": "inference",
+    "entry_points": [
+      "DummyDataLoading_calibration",
+      "DummyTraining"
+    ],
+    "exit_points": [
+      "ModelWikiGenerator",
+      "ModelCalibration_calibration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "any"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.large",
+      "supports_multi_gpu": false
+    },
+    "cost": {
+      "estimated_hours": "0.5-1",
+      "cost_driver": "minimal",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    }
+  }
+}

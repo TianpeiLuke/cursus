@@ -1,0 +1,134 @@
+{
+  "dag": {
+    "description": "Bedrock Real-time-enhanced PyTorch end-to-end pipeline with LLM-based data processing, training, calibration, packaging, registration, and evaluation",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "BedrockPromptTemplateGeneration",
+      "BedrockProcessing_training",
+      "PyTorchTraining",
+      "ModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "DummyDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "BedrockProcessing_calibration",
+      "PyTorchModelEval_calibration"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "BedrockProcessing_training"
+      ],
+      [
+        "BedrockPromptTemplateGeneration",
+        "BedrockProcessing_training"
+      ],
+      [
+        "BedrockProcessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "BedrockProcessing_calibration"
+      ],
+      [
+        "BedrockPromptTemplateGeneration",
+        "BedrockProcessing_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "BedrockProcessing_calibration",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_pytorch_e2e",
+    "description": "Bedrock Real-time-enhanced PyTorch end-to-end pipeline with LLM-based data processing, training, calibration, packaging, registration, and evaluation",
+    "complexity": "comprehensive",
+    "framework": "pytorch",
+    "features": [
+      "dummy_data_loading",
+      "bedrock_prompt_generation",
+      "bedrock_realtime_processing",
+      "training",
+      "calibration",
+      "packaging",
+      "registration",
+      "evaluation"
+    ],
+    "node_count": 13,
+    "edge_count": 15,
+    "task_type": "end_to_end_with_realtime_llm",
+    "entry_points": [
+      "DummyDataLoading_training",
+      "DummyDataLoading_calibration",
+      "BedrockPromptTemplateGeneration"
+    ],
+    "exit_points": [
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": true,
+      "llm_provider": "bedrock"
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true,
+      "requires_bedrock_access": true
+    },
+    "cost": {
+      "estimated_hours": "8-20 (realtime LLM dominates)",
+      "cost_driver": "bedrock_realtime_inference",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    }
+  }
+}

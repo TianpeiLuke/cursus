@@ -1,0 +1,101 @@
+{
+  "dag": {
+    "description": "Two-pipeline pattern: LLM inference uploads to Andes, training consumes from EDX",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "PyTorchModelEval_calibration",
+      "ModelCalibration_calibration",
+      "Payload",
+      "Package",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_pytorch_with_data_upload",
+    "description": "Two-pipeline pattern: LLM inference uploads to Andes, training consumes from EDX",
+    "complexity": "comprehensive",
+    "framework": "pytorch",
+    "features": [
+      "cradle_data_loading",
+      "tabular_preprocessing",
+      "bedrock_batch_processing",
+      "data_uploading",
+      "training",
+      "evaluation",
+      "calibration",
+      "packaging",
+      "registration",
+      "edx_round_trip"
+    ],
+    "node_count": 8,
+    "edge_count": 9,
+    "task_type": "inference_upload_then_train_from_edx",
+    "sink_nodes": [
+      "DataUploading",
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "2-8 (GPU training dominates)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    }
+  }
+}

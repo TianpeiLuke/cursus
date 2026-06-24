@@ -1,0 +1,73 @@
+{
+  "dag": {
+    "description": "Basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration",
+    "nodes": [
+      "DummyTraining",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "DummyTraining",
+        "Package"
+      ],
+      [
+        "DummyTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "dummy_e2e_basic",
+    "description": "Basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration",
+    "complexity": "simple",
+    "framework": "dummy",
+    "features": [
+      "end_to_end",
+      "dummy",
+      "testing",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 4,
+    "edge_count": 4,
+    "task_type": "end_to_end",
+    "entry_points": [
+      "DummyTraining"
+    ],
+    "exit_points": [
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "any"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "any",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.large",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "0.5-1",
+      "cost_driver": "minimal",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    }
+  }
+}

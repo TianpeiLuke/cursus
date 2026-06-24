@@ -1,0 +1,1665 @@
+{
+  "version": "2.1",
+  "generated": "2026-06-24T23:16:21Z",
+  "total_dags": 36,
+  "frameworks": [
+    "bedrock",
+    "dummy",
+    "generic",
+    "lightgbm",
+    "lightgbmmt",
+    "pytorch",
+    "xgboost"
+  ],
+  "dags": [
+    {
+      "id": "bedrock_batch_data_processing",
+      "path": "bedrock/bedrock_batch_data_processing_dag.dag.json",
+      "description": "Shared DAG definition for Bedrock Batch Data Processing Pipeline",
+      "framework": "bedrock",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 3,
+      "edge_count": 2,
+      "features": [],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.large",
+        "supports_multi_gpu": false,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "4-24 (batch LLM dominates)",
+        "cost_driver": "bedrock_batch_inference",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "bedrock_batch_pytorch_e2e",
+      "path": "bedrock/bedrock_batch_pytorch_e2e_dag.dag.json",
+      "description": "Bedrock Batch-enhanced PyTorch end-to-end pipeline with cost-efficient LLM-based data processing, training, calibration, packaging, registration, and evaluation",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end_with_batch_llm",
+      "node_count": 13,
+      "edge_count": 15,
+      "features": [
+        "dummy_data_loading",
+        "bedrock_prompt_generation",
+        "bedrock_batch_processing",
+        "cost_optimization",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "entry_points": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "BedrockPromptTemplateGeneration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "4-24 (batch LLM dominates)",
+        "cost_driver": "bedrock_batch_inference",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "bedrock_batch_pytorch_with_label_ruleset_e2e",
+      "path": "bedrock/bedrock_batch_pytorch_with_label_ruleset_e2e_dag.dag.json",
+      "description": "Bedrock Batch-enhanced PyTorch end-to-end pipeline with label ruleset generation/execution for transparent rule-based label transformation, training, calibration, packaging, and registration",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end_with_batch_llm_and_label_ruleset",
+      "node_count": 16,
+      "edge_count": 19,
+      "features": [
+        "dummy_data_loading",
+        "bedrock_prompt_generation",
+        "bedrock_batch_processing",
+        "label_ruleset_generation",
+        "label_ruleset_execution",
+        "transparent_labeling",
+        "cost_optimization",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "entry_points": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "BedrockPromptTemplateGeneration",
+        "LabelRulesetGeneration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "4-24 (batch LLM dominates)",
+        "cost_driver": "bedrock_batch_inference",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "bedrock_batch_simple_training",
+      "path": "bedrock/bedrock_batch_simple_training_dag.dag.json",
+      "description": "Shared DAG definition for Bedrock Batch-Enhanced Simple Training Pipeline",
+      "framework": "bedrock",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 3,
+      "edge_count": 2,
+      "features": [],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.large",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "0.5-1",
+        "cost_driver": "minimal",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "bedrock_pytorch_e2e",
+      "path": "bedrock/bedrock_pytorch_e2e_dag.dag.json",
+      "description": "Bedrock Real-time-enhanced PyTorch end-to-end pipeline with LLM-based data processing, training, calibration, packaging, registration, and evaluation",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end_with_realtime_llm",
+      "node_count": 13,
+      "edge_count": 15,
+      "features": [
+        "dummy_data_loading",
+        "bedrock_prompt_generation",
+        "bedrock_realtime_processing",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "entry_points": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "BedrockPromptTemplateGeneration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "8-20 (realtime LLM dominates)",
+        "cost_driver": "bedrock_realtime_inference",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "bedrock_pytorch_incremental_edx",
+      "path": "bedrock/bedrock_pytorch_incremental_edx_dag.dag.json",
+      "description": "Incremental PyTorch training with Bedrock scoring, EDX anti-join, and EDX upload",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "incremental_training_with_llm_scoring",
+      "node_count": 16,
+      "edge_count": 17,
+      "features": [
+        "cradle_data_loading",
+        "tabular_preprocessing",
+        "stratified_sampling",
+        "bedrock_realtime_processing",
+        "edx_uploading",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "edx_anti_join",
+        "incremental_scoring"
+      ],
+      "entry_points": [
+        "CradleDataLoading_munged",
+        "CradleDataLoading_normal",
+        "CradleDataLoading_baseline",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "Registration",
+        "EdxUploading_tagging"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_edx_access": true,
+        "requires_mims": true,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "8-20 (realtime LLM dominates)",
+        "cost_driver": "bedrock_realtime_inference",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "bedrock_pytorch_with_data_upload",
+      "path": "bedrock/bedrock_pytorch_with_data_upload_dag.dag.json",
+      "description": "Two-pipeline pattern: LLM inference uploads to Andes, training consumes from EDX",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "inference_upload_then_train_from_edx",
+      "node_count": 8,
+      "edge_count": 9,
+      "features": [
+        "cradle_data_loading",
+        "tabular_preprocessing",
+        "bedrock_batch_processing",
+        "data_uploading",
+        "training",
+        "evaluation",
+        "calibration",
+        "packaging",
+        "registration",
+        "edx_round_trip"
+      ],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "2-8 (GPU training dominates)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "bedrock_pytorch_with_label_ruleset_e2e",
+      "path": "bedrock/bedrock_pytorch_with_label_ruleset_e2e_dag.dag.json",
+      "description": "Bedrock Real-time-enhanced PyTorch end-to-end pipeline with label ruleset generation/execution for transparent rule-based label transformation, training, calibration, packaging, and registration",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end_with_realtime_llm_and_label_ruleset",
+      "node_count": 16,
+      "edge_count": 19,
+      "features": [
+        "dummy_data_loading",
+        "bedrock_prompt_generation",
+        "bedrock_realtime_processing",
+        "label_ruleset_generation",
+        "label_ruleset_execution",
+        "transparent_labeling",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "entry_points": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration",
+        "BedrockPromptTemplateGeneration",
+        "LabelRulesetGeneration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "8-20 (realtime LLM dominates)",
+        "cost_driver": "bedrock_realtime_inference",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "bedrock_simple_training",
+      "path": "bedrock/bedrock_simple_training_dag.dag.json",
+      "description": "Shared DAG definition for Bedrock-Enhanced Simple Training Pipeline",
+      "framework": "bedrock",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 4,
+      "edge_count": 2,
+      "features": [],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.large",
+        "supports_multi_gpu": false,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "8-20 (realtime LLM dominates)",
+        "cost_driver": "bedrock_realtime_inference",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "dummy_e2e_basic",
+      "path": "dummy/e2e_basic_dag.dag.json",
+      "description": "Basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration",
+      "framework": "dummy",
+      "complexity": "simple",
+      "task_type": "end_to_end",
+      "node_count": 4,
+      "edge_count": 4,
+      "features": [
+        "end_to_end",
+        "dummy",
+        "testing",
+        "packaging",
+        "registration"
+      ],
+      "entry_points": [
+        "DummyTraining"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "any"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "any",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.large",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "0.5-1",
+        "cost_driver": "minimal",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "dummy_inference_with_wiki",
+      "path": "dummy/inference_with_wiki_dag.dag.json",
+      "description": "Dummy training pipeline with inference, metrics computation, and wiki generation",
+      "framework": "dummy",
+      "complexity": "standard",
+      "task_type": "inference",
+      "node_count": 7,
+      "edge_count": 6,
+      "features": [
+        "dummy_training",
+        "dummy_data_loading",
+        "inference",
+        "metrics",
+        "wiki_generation",
+        "calibration"
+      ],
+      "entry_points": [
+        "DummyDataLoading_calibration",
+        "DummyTraining"
+      ],
+      "exit_points": [
+        "ModelWikiGenerator",
+        "ModelCalibration_calibration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "any"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.large",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "0.5-1",
+        "cost_driver": "minimal",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "lightgbm_complete_e2e",
+      "path": "lightgbm/complete_e2e_dag.dag.json",
+      "description": "Complete LightGBM end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
+      "framework": "lightgbm",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end",
+      "node_count": 10,
+      "edge_count": 11,
+      "features": [
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "lightgbm_complete_e2e_with_percentile_calibration_and_testing",
+      "path": "lightgbm/complete_e2e_with_percentile_calibration_dag.dag.json",
+      "description": "Complete LightGBM end-to-end pipeline with training, percentile model calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
+      "framework": "lightgbm",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end",
+      "node_count": 15,
+      "edge_count": 16,
+      "features": [
+        "training",
+        "percentile_calibration",
+        "testing",
+        "packaging",
+        "registration",
+        "inference",
+        "metrics",
+        "wiki_generation"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "CradleDataLoading_testing"
+      ],
+      "exit_points": [
+        "Registration",
+        "ModelWikiGenerator"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "lightgbmmt_complete_e2e",
+      "path": "mtl/complete_e2e_dag.dag.json",
+      "description": "Complete LightGBMMT multi-task end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
+      "framework": "lightgbmmt",
+      "complexity": "comprehensive",
+      "task_type": "multi_task_end_to_end",
+      "node_count": 10,
+      "edge_count": 11,
+      "features": [
+        "multi_task_training",
+        "multi_task_evaluation",
+        "calibration",
+        "packaging",
+        "registration"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": true,
+        "output_type": "multi_label",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "lightgbmmt_with_label_ruleset_e2e",
+      "path": "mtl/lightgbmmt_with_label_ruleset_e2e_dag.dag.json",
+      "description": "LightGBMMT multi-task end-to-end pipeline with label ruleset generation/execution for transparent rule-based label transformation, training, calibration, packaging, and registration",
+      "framework": "lightgbmmt",
+      "complexity": "comprehensive",
+      "task_type": "multi_task_end_to_end_with_label_ruleset",
+      "node_count": 13,
+      "edge_count": 15,
+      "features": [
+        "label_ruleset_generation",
+        "label_ruleset_execution",
+        "transparent_labeling",
+        "multi_task_training",
+        "multi_task_evaluation",
+        "calibration",
+        "packaging",
+        "registration"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "LabelRulesetGeneration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": true,
+        "output_type": "multi_label",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "lightgbmmt_ssl_training",
+      "path": "mtl/ssl_training_dag.dag.json",
+      "description": "LightGBMMT multi-task Semi-Supervised Learning pipeline with pretraining, pseudo-labeling, active sampling, merge, and fine-tuning",
+      "framework": "lightgbmmt",
+      "complexity": "advanced",
+      "task_type": "multi_task_semi_supervised_learning",
+      "node_count": 16,
+      "edge_count": 18,
+      "features": [
+        "multi_task_ssl",
+        "multi_task_pretraining",
+        "multi_task_pseudo_labeling",
+        "ssl",
+        "pretraining",
+        "pseudo_labeling",
+        "active_sampling",
+        "data_augmentation",
+        "fine_tuning",
+        "multi_task_evaluation",
+        "calibration"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_testing",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": true,
+        "output_type": "multi_label",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "complete_e2e",
+      "path": "pytorch/complete_e2e_dag.dag.json",
+      "description": "Shared DAG definition for PyTorch Complete End-to-End Pipeline",
+      "framework": "pytorch",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 8,
+      "edge_count": 11,
+      "features": [],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "2-8 (GPU training dominates)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "complete_e2e_dummy",
+      "path": "pytorch/complete_e2e_dummy_dag.dag.json",
+      "description": "Shared DAG definition for PyTorch Complete End-to-End Pipeline with Dummy Data Loading",
+      "framework": "pytorch",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 8,
+      "edge_count": 11,
+      "features": [],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "2-8 (GPU training dominates)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "simple_training",
+      "path": "pytorch/simple_training_dag.dag.json",
+      "description": "Shared DAG definition for Simple Training Pipeline",
+      "framework": "pytorch",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 3,
+      "edge_count": 2,
+      "features": [],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true
+      },
+      "cost": {
+        "estimated_hours": "2-8 (GPU training dominates)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "standard_e2e",
+      "path": "pytorch/standard_e2e_dag.dag.json",
+      "description": "Shared DAG definition for PyTorch Standard End-to-End Pipeline",
+      "framework": "pytorch",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 8,
+      "edge_count": 9,
+      "features": [],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "2-8 (GPU training dominates)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "training",
+      "path": "pytorch/training_dag.dag.json",
+      "description": "Shared DAG definition for PyTorch training pipeline.",
+      "framework": "pytorch",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 6,
+      "edge_count": 5,
+      "features": [],
+      "entry_points": [],
+      "exit_points": [],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true
+      },
+      "cost": {
+        "estimated_hours": "2-8 (GPU training dominates)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "cradle_data_loading_singleton",
+      "path": "singleton/cradle_data_loading_dag.dag.json",
+      "description": "Singleton pipeline for CradleDataLoading training data step",
+      "framework": "generic",
+      "complexity": "simple",
+      "task_type": "data_loading",
+      "node_count": 1,
+      "edge_count": 0,
+      "features": [
+        "data_loading",
+        "training",
+        "singleton"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training"
+      ],
+      "exit_points": [
+        "CradleDataLoading_training"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "any"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.large",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "0.5-1",
+        "cost_driver": "minimal",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_complete_e2e",
+      "path": "xgboost/complete_e2e_dag.dag.json",
+      "description": "Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
+      "framework": "xgboost",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end",
+      "node_count": 10,
+      "edge_count": 11,
+      "features": [
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_complete_e2e_dummy",
+      "path": "xgboost/complete_e2e_dummy_dag.dag.json",
+      "description": "Complete XGBoost end-to-end pipeline with dummy data loading, training, calibration, packaging, registration, and evaluation",
+      "framework": "xgboost",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end",
+      "node_count": 10,
+      "edge_count": 11,
+      "features": [
+        "dummy_data_loading",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "entry_points": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_calibration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_complete_e2e_with_percentile_calibration_and_testing",
+      "path": "xgboost/complete_e2e_with_percentile_calibration_dag.dag.json",
+      "description": "Complete XGBoost end-to-end pipeline with training, percentile model calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
+      "framework": "xgboost",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end",
+      "node_count": 15,
+      "edge_count": 16,
+      "features": [
+        "training",
+        "percentile_calibration",
+        "testing",
+        "packaging",
+        "registration",
+        "inference",
+        "metrics",
+        "wiki_generation"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "CradleDataLoading_testing"
+      ],
+      "exit_points": [
+        "Registration",
+        "XGBoostModelInference_calibration",
+        "ModelWikiGenerator"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_complete_e2e_with_calibration_and_testing",
+      "path": "xgboost/complete_e2e_with_testing_dag.dag.json",
+      "description": "Complete XGBoost end-to-end pipeline with training, calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
+      "framework": "xgboost",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end",
+      "node_count": 15,
+      "edge_count": 16,
+      "features": [
+        "training",
+        "calibration",
+        "testing",
+        "packaging",
+        "registration",
+        "inference",
+        "metrics",
+        "wiki_generation"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration",
+        "CradleDataLoading_testing"
+      ],
+      "exit_points": [
+        "Registration",
+        "ModelWikiGenerator"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_complete_e2e_with_wiki",
+      "path": "xgboost/complete_e2e_with_wiki_dag.dag.json",
+      "description": "Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, inference, metrics computation, and wiki generation",
+      "framework": "xgboost",
+      "complexity": "comprehensive",
+      "task_type": "end_to_end",
+      "node_count": 13,
+      "edge_count": 13,
+      "features": [
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "inference",
+        "metrics",
+        "wiki_generation"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "Registration",
+        "ModelWikiGenerator"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_simple",
+      "path": "xgboost/simple_dag.dag.json",
+      "description": "Simple XGBoost training pipeline with data loading and preprocessing",
+      "framework": "xgboost",
+      "complexity": "simple",
+      "task_type": "training",
+      "node_count": 5,
+      "edge_count": 3,
+      "features": [
+        "training",
+        "data_loading",
+        "preprocessing"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "XGBoostTraining",
+        "TabularPreprocessing_calibration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_ssl_training",
+      "path": "xgboost/ssl_training_dag.dag.json",
+      "description": "XGBoost Semi-Supervised Learning pipeline with pretraining, pseudo-labeling, active sampling, merge, and fine-tuning",
+      "framework": "xgboost",
+      "complexity": "advanced",
+      "task_type": "semi_supervised_learning",
+      "node_count": 16,
+      "edge_count": 18,
+      "features": [
+        "ssl",
+        "pretraining",
+        "pseudo_labeling",
+        "active_sampling",
+        "data_augmentation",
+        "fine_tuning",
+        "evaluation",
+        "calibration"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_testing",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "Registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_training_with_calibration",
+      "path": "xgboost/training_with_calibration_dag.dag.json",
+      "description": "XGBoost training pipeline with model calibration",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "task_type": "training",
+      "node_count": 6,
+      "edge_count": 5,
+      "features": [
+        "training",
+        "calibration",
+        "data_loading",
+        "preprocessing"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "ModelCalibration_training"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_training_with_calibration_fs",
+      "path": "xgboost/training_with_calibration_fs_dag.dag.json",
+      "description": "XGBoost training pipeline with feature selection and model calibration",
+      "framework": "xgboost",
+      "complexity": "advanced",
+      "task_type": "training",
+      "node_count": 8,
+      "edge_count": 8,
+      "features": [
+        "training",
+        "calibration",
+        "data_loading",
+        "preprocessing",
+        "feature_selection"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_calibration"
+      ],
+      "exit_points": [
+        "ModelCalibration_training"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_training_with_evaluation",
+      "path": "xgboost/training_with_evaluation_dag.dag.json",
+      "description": "XGBoost training pipeline with model evaluation",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "task_type": "training",
+      "node_count": 6,
+      "edge_count": 5,
+      "features": [
+        "training",
+        "evaluation",
+        "data_loading",
+        "preprocessing"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_evaluation"
+      ],
+      "exit_points": [
+        "XGBoostModelEval"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_training_with_evaluation_dummy",
+      "path": "xgboost/training_with_evaluation_dummy_dag.dag.json",
+      "description": "XGBoost training pipeline with model evaluation using dummy data loading",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "task_type": "training",
+      "node_count": 6,
+      "edge_count": 5,
+      "features": [
+        "dummy_data_loading",
+        "training",
+        "evaluation",
+        "preprocessing"
+      ],
+      "entry_points": [
+        "DummyDataLoading_training",
+        "DummyDataLoading_evaluation"
+      ],
+      "exit_points": [
+        "XGBoostModelEval"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_or_s3",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_training_with_feature_selection",
+      "path": "xgboost/training_with_feature_selection_dag.dag.json",
+      "description": "XGBoost training pipeline with feature selection and model evaluation",
+      "framework": "xgboost",
+      "complexity": "advanced",
+      "task_type": "training",
+      "node_count": 12,
+      "edge_count": 14,
+      "features": [
+        "training",
+        "evaluation",
+        "data_loading",
+        "preprocessing",
+        "missing_value_imputation",
+        "risk_table_mapping",
+        "feature_selection"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_evaluation"
+      ],
+      "exit_points": [
+        "XGBoostModelEval"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_training_with_preprocessing",
+      "path": "xgboost/training_with_preprocessing_dag.dag.json",
+      "description": "XGBoost training pipeline with advanced preprocessing (missing value imputation and risk table mapping) and model evaluation",
+      "framework": "xgboost",
+      "complexity": "advanced",
+      "task_type": "training",
+      "node_count": 10,
+      "edge_count": 11,
+      "features": [
+        "training",
+        "evaluation",
+        "data_loading",
+        "preprocessing",
+        "missing_value_imputation",
+        "risk_table_mapping"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_evaluation"
+      ],
+      "exit_points": [
+        "XGBoostModelEval"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    },
+    {
+      "id": "xgboost_training_with_evaluation_stratified",
+      "path": "xgboost/training_with_stratified_dag.dag.json",
+      "description": "XGBoost training pipeline with stratified sampling and model evaluation",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "task_type": "training",
+      "node_count": 7,
+      "edge_count": 6,
+      "features": [
+        "training",
+        "evaluation",
+        "data_loading",
+        "preprocessing",
+        "stratified_sampling"
+      ],
+      "entry_points": [
+        "CradleDataLoading_training",
+        "CradleDataLoading_evaluation"
+      ],
+      "exit_points": [
+        "XGBoostModelEval"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      }
+    }
+  ]
+}
