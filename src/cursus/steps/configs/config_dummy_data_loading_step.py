@@ -5,18 +5,15 @@ This module implements the configuration class for the Dummy Data Loading step,
 which processes user-provided data instead of calling internal Cradle services.
 """
 
-from pydantic import Field, model_validator, field_validator, PrivateAttr
-from typing import TYPE_CHECKING, Optional, Dict, Any, Union
+from pydantic import Field, model_validator, field_validator
+from typing import TYPE_CHECKING, Dict, Any, Union
 from pathlib import Path
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import the script contract
-from ..contracts.dummy_data_loading_contract import DUMMY_DATA_LOADING_CONTRACT
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 
 class DummyDataLoadingConfig(ProcessingStepConfigBase):
@@ -211,15 +208,6 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
             )
 
         return self
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The dummy data loading script contract
-        """
-        return DUMMY_DATA_LOADING_CONTRACT
 
     def is_s3_source(self) -> bool:
         """

@@ -7,7 +7,6 @@ and managing step specifications within isolated contexts.
 
 from typing import Dict, List, Optional, Any
 import logging
-from ..base import StepSpecification, DependencySpec, OutputSpec
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +22,11 @@ class SpecificationRegistry:
             context_name: Name of the context this registry belongs to (e.g., pipeline name)
         """
         self.context_name = context_name
-        self._specifications: Dict[str, StepSpecification] = {}
+        self._specifications: Dict[str, Any] = {}
         self._step_type_to_names: Dict[str, List[str]] = {}
         logger.info(f"Created specification registry for context '{context_name}'")
 
-    def register(self, step_name: str, specification: StepSpecification) -> None:
+    def register(self, step_name: str, specification: Any) -> None:
         """Register a step specification."""
         # Check if it's a StepSpecification by checking for required attributes
         # This is more robust than using isinstance which can fail with module reloading
@@ -56,11 +55,11 @@ class SpecificationRegistry:
             f"Registered specification for step '{step_name}' of type '{step_type}' in context '{self.context_name}'"
         )
 
-    def get_specification(self, step_name: str) -> Optional[StepSpecification]:
+    def get_specification(self, step_name: str) -> Optional[Any]:
         """Get specification by step name."""
         return self._specifications.get(step_name)
 
-    def get_specifications_by_type(self, step_type: str) -> List[StepSpecification]:
+    def get_specifications_by_type(self, step_type: str) -> List[Any]:
         """Get all specifications of a given step type."""
         step_names = self._step_type_to_names.get(step_type, [])
         return [self._specifications[name] for name in step_names]
@@ -73,7 +72,7 @@ class SpecificationRegistry:
         """Get list of all registered step types."""
         return list(self._step_type_to_names.keys())
 
-    def find_compatible_outputs(self, dependency_spec: DependencySpec) -> List[tuple]:
+    def find_compatible_outputs(self, dependency_spec: Any) -> List[tuple]:
         """Find outputs compatible with a dependency specification."""
         compatible = []
 
@@ -87,7 +86,7 @@ class SpecificationRegistry:
 
         return sorted(compatible, key=lambda x: x[3], reverse=True)
 
-    def _are_compatible(self, dep_spec: DependencySpec, out_spec: OutputSpec) -> bool:
+    def _are_compatible(self, dep_spec: Any, out_spec: Any) -> bool:
         """Check basic compatibility between dependency and output."""
         # Type compatibility
         if dep_spec.dependency_type != out_spec.output_type:
@@ -100,7 +99,7 @@ class SpecificationRegistry:
         return True
 
     def _calculate_compatibility_score(
-        self, dep_spec: DependencySpec, out_spec: OutputSpec, step_type: str
+        self, dep_spec: Any, out_spec: Any, step_type: str
     ) -> float:
         """Calculate compatibility score between dependency and output."""
         score = 0.5  # Base compatibility score

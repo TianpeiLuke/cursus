@@ -18,18 +18,6 @@ from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 from ..configs.config_data_uploading_step import DataUploadingConfig
 
-try:
-    from ..contracts.data_uploading_contract import DATA_UPLOADING_CONTRACT
-
-    CONTRACT_AVAILABLE = True
-except ImportError:
-    logger = logging.getLogger(__name__)
-    logger.warning(
-        "Data uploading contract not available. Contract-driven validation will not work."
-    )
-    DATA_UPLOADING_CONTRACT = None
-    CONTRACT_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
 
 
@@ -56,9 +44,9 @@ class DataUploadingStepBuilder(StepBuilderBase):
                 "DataUploadingStepBuilder requires a DataUploadingConfig instance."
             )
 
-        from ..specs.data_uploading_spec import DATA_UPLOADING_SPEC
+        from ..interfaces import load_step_interface
 
-        spec = DATA_UPLOADING_SPEC
+        contract, spec = load_step_interface("DataUploading")
 
         super().__init__(
             config=config,
@@ -69,7 +57,7 @@ class DataUploadingStepBuilder(StepBuilderBase):
             dependency_resolver=dependency_resolver,
         )
         self.config: DataUploadingConfig = config
-        self.contract = DATA_UPLOADING_CONTRACT if CONTRACT_AVAILABLE else None
+        self.contract = contract
         self._resolved_input_s3 = None
 
     def validate_configuration(self) -> None:

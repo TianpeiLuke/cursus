@@ -14,14 +14,10 @@ from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 if TYPE_CHECKING:
     from ..configs.config_payload_step import PayloadConfig
 
-# Import the payload specification
-try:
-    from ..specs.payload_spec import PAYLOAD_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
 
-    SPEC_AVAILABLE = True
-except ImportError:
-    PAYLOAD_SPEC = None
-    SPEC_AVAILABLE = False
+_contract, PAYLOAD_SPEC = load_step_interface("Payload")
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +54,8 @@ class PayloadStepBuilder(StepBuilderBase):
         if not isinstance(config, PayloadConfig):
             raise ValueError("PayloadStepBuilder requires a PayloadConfig instance.")
 
-        # Use the payload specification if available
-        spec = PAYLOAD_SPEC if SPEC_AVAILABLE else None
+        # Use the payload specification
+        spec = PAYLOAD_SPEC
 
         super().__init__(
             config=config,

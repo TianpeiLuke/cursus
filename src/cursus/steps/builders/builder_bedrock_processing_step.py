@@ -8,7 +8,6 @@ following the specification-driven approach and standardization rules.
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 import logging
-import importlib
 
 from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput, FrameworkProcessor
@@ -18,15 +17,6 @@ from ..configs.config_bedrock_processing_step import BedrockProcessingConfig
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-
-# Import the bedrock processing specification
-try:
-    from ..specs.bedrock_processing_spec import BEDROCK_PROCESSING_SPEC
-
-    SPEC_AVAILABLE = True
-except ImportError:
-    BEDROCK_PROCESSING_SPEC = None
-    SPEC_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -99,12 +89,9 @@ class BedrockProcessingStepBuilder(StepBuilderBase):
 
         # job_type now has a default value, so no need to validate presence
 
-        # Use the generic bedrock processing specification for all job types
-        # since job type variants don't change inputs/outputs, only processing behavior
-        spec = BEDROCK_PROCESSING_SPEC if SPEC_AVAILABLE else None
+        from ..interfaces import load_step_interface
 
-        if not spec:
-            raise ValueError("Bedrock processing specification not available")
+        _contract, spec = load_step_interface("BedrockProcessing")
 
         self.log_info(
             "Using bedrock processing specification for job type: %s", config.job_type

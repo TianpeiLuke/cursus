@@ -12,8 +12,9 @@ if TYPE_CHECKING:
 from ..configs.config_stratified_sampling_step import StratifiedSamplingConfig
 from ...core.base.builder_base import StepBuilderBase
 
-# Import the unified stratified sampling specification
-from ..specs.stratified_sampling_spec import STRATIFIED_SAMPLING_SPEC
+from ..interfaces import load_step_interface
+
+_contract, STRATIFIED_SAMPLING_SPEC = load_step_interface("StratifiedSampling")
 
 logger = logging.getLogger(__name__)
 

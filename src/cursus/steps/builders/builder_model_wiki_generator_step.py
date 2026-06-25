@@ -17,7 +17,9 @@ from sagemaker.workflow.entities import PipelineVariable
 
 from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_model_wiki_generator_step import ModelWikiGeneratorConfig
-from ..specs.model_wiki_generator_spec import MODEL_WIKI_GENERATOR_SPEC
+from ..interfaces import load_step_interface
+
+_contract, MODEL_WIKI_GENERATOR_SPEC = load_step_interface("ModelWikiGenerator")
 
 logger = logging.getLogger(__name__)
 

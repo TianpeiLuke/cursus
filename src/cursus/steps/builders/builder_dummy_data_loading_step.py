@@ -11,8 +11,9 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the unified dummy data loading specification
-from ..specs.dummy_data_loading_spec import DUMMY_DATA_LOADING_SPEC
+from ..interfaces import load_step_interface
+
+_contract, DUMMY_DATA_LOADING_SPEC = load_step_interface("DummyDataLoading")
 
 logger = logging.getLogger(__name__)
 

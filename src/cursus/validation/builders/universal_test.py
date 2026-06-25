@@ -16,15 +16,12 @@ Key improvements:
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Union, Type
+from typing import Dict, List, Any, Optional, Type
 from pathlib import Path
 import json
 
 # Import base classes for type hints (preserved for backward compatibility)
 from ...core.base.builder_base import StepBuilderBase
-from ...core.base.specification_base import StepSpecification
-from ...core.base.contract_base import ScriptContract
-from ...core.base.config_base import BaseModel as ConfigBase
 
 # Import registry for step type detection
 from ...registry.step_names import STEP_NAMES, get_sagemaker_step_type
@@ -1407,7 +1404,7 @@ class UniversalStepBuilderTest:
             )
 
             print("\n" + "=" * 80)
-            print(f"REFACTORED UNIVERSAL STEP BUILDER TEST RESULTS")
+            print("REFACTORED UNIVERSAL STEP BUILDER TEST RESULTS")
             print("=" * 80)
             print(f"\nStep: {results.get('step_name', 'Unknown')}")
             print(f"Builder: {results.get('builder_class', 'Unknown')}")
@@ -1441,7 +1438,7 @@ class UniversalStepBuilderTest:
             pass_rate = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
 
             print("\n" + "=" * 80)
-            print(f"REFACTORED UNIVERSAL STEP BUILDER TEST RESULTS")
+            print("REFACTORED UNIVERSAL STEP BUILDER TEST RESULTS")
             print("=" * 80)
             print(
                 f"\nOVERALL: {passed_tests}/{total_tests} tests passed ({pass_rate:.1f}%)"
@@ -1475,7 +1472,7 @@ class UniversalStepBuilderTest:
             # Print level scores if available
             level_scores = score_report.get("levels", {})
             if level_scores:
-                print(f"\n📈 Score Breakdown:")
+                print("\n📈 Score Breakdown:")
                 for level_name, level_data in level_scores.items():
                     score = level_data.get("score", 0)
                     print(f"  {level_name}: {score:.1f}/100")
@@ -1588,7 +1585,7 @@ class UniversalStepBuilderTest:
         print(f"Failed: {summary.get('failed_steps', 0)}")
         print(f"Issues: {summary.get('issues_steps', 0)}")
         print(f"Pass Rate: {summary.get('pass_rate', 0):.2f}%")
-        print(f"Refactored: True (60-70% redundancy eliminated)")
+        print("Refactored: True (60-70% redundancy eliminated)")
         print("=" * 60 + "\n")
 
 

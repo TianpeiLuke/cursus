@@ -16,12 +16,9 @@ import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import contract
-from ..contracts.stratified_sampling_contract import STRATIFIED_SAMPLING_CONTRACT
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -201,17 +198,6 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         super().initialize_derived_fields()
 
         return self
-
-    # ===== Script Contract =====
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The stratified sampling script contract
-        """
-        return STRATIFIED_SAMPLING_CONTRACT
 
     # ===== Overrides for Inheritance =====
 

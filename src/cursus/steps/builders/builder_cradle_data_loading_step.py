@@ -3,7 +3,6 @@ from pathlib import Path
 import logging
 import os
 import json
-import importlib
 from datetime import datetime
 
 from sagemaker.workflow.steps import ProcessingStep, Step
@@ -20,18 +19,7 @@ from secure_ai_sandbox_workflow_python_sdk.cradle_data_loading.cradle_data_loadi
 # These are now handled by the standalone execution document generator
 # (CradleDataLoadingHelper in cursus.mods.exe_doc.cradle_helper)
 
-# Import the script contract
-try:
-    from ..contracts.cradle_data_loading_contract import CRADLE_DATA_LOADING_CONTRACT
-
-    CONTRACT_AVAILABLE = True
-except ImportError:
-    logger = logging.getLogger(__name__)
-    logger.warning(
-        "Cradle data loading contract not available. Contract-driven path resolution will not work."
-    )
-    CRADLE_DATA_LOADING_CONTRACT = None
-    CONTRACT_AVAILABLE = False
+# Contract and spec loaded via YAML interface loader in __init__
 
 from ..configs.config_cradle_data_loading_step import CradleDataLoadingConfig
 from ...core.base.builder_base import StepBuilderBase
@@ -82,54 +70,12 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
                 "CradleDataLoadingStepBuilder requires a CradleDataLoadingConfig instance."
             )
 
-        # Select specification based on job type
-        spec = None
-        if hasattr(config, "job_type"):
-            job_type = config.job_type.lower()
-            if job_type == "training":
-                from ..specs.cradle_data_loading_training_spec import (
-                    DATA_LOADING_TRAINING_SPEC,
-                )
+        # Load spec and contract from YAML interface
+        from ..interfaces import load_step_interface
 
-                spec = DATA_LOADING_TRAINING_SPEC
-                self.log_info("Using training-specific DATA_LOADING_TRAINING_SPEC")
-            elif job_type == "validation":
-                from ..specs.cradle_data_loading_validation_spec import (
-                    DATA_LOADING_VALIDATION_SPEC,
-                )
-
-                spec = DATA_LOADING_VALIDATION_SPEC
-                self.log_info("Using validation-specific DATA_LOADING_VALIDATION_SPEC")
-            elif job_type == "testing":
-                from ..specs.cradle_data_loading_testing_spec import (
-                    DATA_LOADING_TESTING_SPEC,
-                )
-
-                spec = DATA_LOADING_TESTING_SPEC
-                self.log_info("Using testing-specific DATA_LOADING_TESTING_SPEC")
-            elif job_type == "calibration":
-                from ..specs.cradle_data_loading_calibration_spec import (
-                    DATA_LOADING_CALIBRATION_SPEC,
-                )
-
-                spec = DATA_LOADING_CALIBRATION_SPEC
-                self.log_info(
-                    "Using calibration-specific DATA_LOADING_CALIBRATION_SPEC"
-                )
-
-            # If no specific type-based spec is found, try to use the generic one
-            if spec is None:
-                try:
-                    from ..specs.cradle_data_loading_spec import DATA_LOADING_SPEC
-
-                    spec = DATA_LOADING_SPEC
-                    self.log_info(
-                        "Using generic DATA_LOADING_SPEC for job type: %s", job_type
-                    )
-                except ImportError:
-                    self.log_warning(
-                        "No specification found for job type: %s", job_type
-                    )
+        _contract, spec = load_step_interface(
+            "CradleDataLoading", job_type=config.job_type
+        )
 
         super().__init__(
             config=config,
@@ -142,12 +88,7 @@ class CradleDataLoadingStepBuilder(StepBuilderBase):
         self.config: CradleDataLoadingConfig = config
 
         # Store contract reference
-        self.contract = CRADLE_DATA_LOADING_CONTRACT if CONTRACT_AVAILABLE else None
-
-        if self.spec and not self.contract:
-            self.log_warning(
-                "Script contract not available - path resolution will use hardcoded values"
-            )
+        self.contract = _contract
 
     def validate_configuration(self) -> None:
         """

@@ -9,7 +9,9 @@
       "Registration",
       "Payload",
       "DummyDataLoading_calibration",
-      "PyTorchModelEval_calibration"
+      "PyTorchModelEval_calibration",
+      "TabularPreprocessing_calibration",
+      "ModelCalibration_calibration"
     ],
     "edges": [
       [
@@ -61,7 +63,7 @@
   "metadata": {
     "name": "complete_e2e_dummy",
     "framework": "pytorch",
-    "node_count": 8,
+    "node_count": 10,
     "edge_count": 11,
     "input_requirements": {
       "data_types": [
@@ -92,7 +94,7 @@
       "differentiators": [
         "Full E2E pipeline but with DummyDataLoading (no Cradle dependency)",
         "Tests packaging and registration flow with synthetic data",
-        "Same structure as complete_e2e — easy to swap to real data",
+        "Same structure as complete_e2e \u2014 easy to swap to real data",
         "For development/testing only"
       ],
       "prerequisites": [
@@ -117,9 +119,9 @@
           "dummy_data_size (1000)"
         ],
         "common_pitfalls": [
-          "Registration will create real model artifacts — clean up after testing",
-          "Dummy data distribution won't match production — don't use for model validation",
-          "Calibration on dummy data is meaningless — only tests the pipeline flow"
+          "Registration will create real model artifacts \u2014 clean up after testing",
+          "Dummy data distribution won't match production \u2014 don't use for model validation",
+          "Calibration on dummy data is meaningless \u2014 only tests the pipeline flow"
         ]
       },
       "decision_tree": {

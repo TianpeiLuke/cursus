@@ -1,7 +1,6 @@
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 import logging
-import importlib
 
 from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
@@ -11,30 +10,6 @@ from ..configs.config_temporal_feature_engineering_step import (
     TemporalFeatureEngineeringConfig,
 )
 from ...core.base.builder_base import StepBuilderBase
-
-# Import specifications based on job type
-try:
-    from ..specs.temporal_feature_engineering_training_spec import (
-        TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC,
-    )
-    from ..specs.temporal_feature_engineering_calibration_spec import (
-        TEMPORAL_FEATURE_ENGINEERING_CALIBRATION_SPEC,
-    )
-    from ..specs.temporal_feature_engineering_validation_spec import (
-        TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC,
-    )
-    from ..specs.temporal_feature_engineering_testing_spec import (
-        TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC,
-    )
-
-    SPECS_AVAILABLE = True
-except ImportError:
-    TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC = (
-        TEMPORAL_FEATURE_ENGINEERING_CALIBRATION_SPEC
-    ) = TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC = (
-        TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC
-    ) = None
-    SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -69,50 +44,16 @@ class TemporalFeatureEngineeringStepBuilder(StepBuilderBase):
             ValueError: If no specification is available for the job type
         """
         # Get the appropriate spec based on job type
-        spec = None
         if not hasattr(config, "job_type"):
             raise ValueError("config.job_type must be specified")
 
-        job_type = config.job_type.lower()
+        from ..interfaces import load_step_interface
 
-        # Get specification based on job type
-        if (
-            job_type == "training"
-            and TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC is not None
-        ):
-            spec = TEMPORAL_FEATURE_ENGINEERING_TRAINING_SPEC
-        elif (
-            job_type == "calibration"
-            and TEMPORAL_FEATURE_ENGINEERING_CALIBRATION_SPEC is not None
-        ):
-            spec = TEMPORAL_FEATURE_ENGINEERING_CALIBRATION_SPEC
-        elif (
-            job_type == "validation"
-            and TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC is not None
-        ):
-            spec = TEMPORAL_FEATURE_ENGINEERING_VALIDATION_SPEC
-        elif (
-            job_type == "testing"
-            and TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC is not None
-        ):
-            spec = TEMPORAL_FEATURE_ENGINEERING_TESTING_SPEC
-        else:
-            # Try dynamic import
-            try:
-                module_path = f"..specs.temporal_feature_engineering_{job_type}_spec"
-                module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"TEMPORAL_FEATURE_ENGINEERING_{job_type.upper()}_SPEC"
-                if hasattr(module, spec_var_name):
-                    spec = getattr(module, spec_var_name)
-            except (ImportError, AttributeError):
-                self.log_warning(
-                    "Could not import specification for job type: %s", job_type
-                )
+        _contract, spec = load_step_interface(
+            "TemporalFeatureEngineering", job_type=config.job_type
+        )
 
-        if not spec:
-            raise ValueError(f"No specification found for job type: {job_type}")
-
-        self.log_info("Using specification for %s", job_type)
+        self.log_info("Using specification for %s", config.job_type)
 
         super().__init__(
             config=config,

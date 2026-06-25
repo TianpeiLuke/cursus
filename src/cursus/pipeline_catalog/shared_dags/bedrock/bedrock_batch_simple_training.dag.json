@@ -4,7 +4,8 @@
     "nodes": [
       "DummyDataLoading_training",
       "TabularPreprocessing_training",
-      "PyTorchTraining"
+      "PyTorchTraining",
+      "BedrockBatchProcessing_training"
     ],
     "edges": [
       [
@@ -20,7 +21,7 @@
   "metadata": {
     "name": "bedrock_batch_simple_training",
     "framework": "bedrock",
-    "node_count": 3,
+    "node_count": 4,
     "edge_count": 2,
     "input_requirements": {
       "data_types": [
@@ -45,7 +46,7 @@
       "scalability": "data_size_linear"
     },
     "agent_context": {
-      "when_to_use": "Quick prototyping of batch Bedrock LLM integration with PyTorch training. Use when you want to test the batch LLM→train flow without calibration/registration overhead.",
+      "when_to_use": "Quick prototyping of batch Bedrock LLM integration with PyTorch training. Use when you want to test the batch LLM\u2192train flow without calibration/registration overhead.",
       "when_not_to_use": "Production deployments (no packaging/registration). If you need calibration or model registration, use bedrock_batch_pytorch_e2e.",
       "differentiators": [
         "Minimal batch Bedrock pipeline (training only, no registration)",
@@ -74,8 +75,8 @@
           "max_tokens"
         ],
         "common_pitfalls": [
-          "Batch jobs can take hours for large datasets — monitor via CloudWatch",
-          "No registration step — must manually promote model artifacts"
+          "Batch jobs can take hours for large datasets \u2014 monitor via CloudWatch",
+          "No registration step \u2014 must manually promote model artifacts"
         ]
       },
       "decision_tree": {

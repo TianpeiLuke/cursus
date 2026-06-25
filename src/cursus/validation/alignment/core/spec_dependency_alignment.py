@@ -9,16 +9,11 @@ import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from .level3_validation_config import Level3ValidationConfig, ValidationMode
+from .level3_validation_config import Level3ValidationConfig
 from ..validators import DependencyValidator
 from ....core.deps.factory import create_pipeline_components
-from ....core.base.specification_base import (
-    StepSpecification,
-    DependencySpec,
-    OutputSpec,
-)
+from ....core.base.step_interface import StepInterface
 from ....registry.step_names import (
-    get_step_name_from_spec_type,
     get_canonical_name_from_file_name,
 )
 
@@ -307,7 +302,7 @@ class SpecificationDependencyAlignmentTester:
 
         if score_breakdown.get("type_compatibility", 0) < 0.2:
             recommendations.append(
-                f"Consider changing dependency type or output type for better compatibility"
+                "Consider changing dependency type or output type for better compatibility"
             )
 
         if score_breakdown.get("semantic_similarity", 0) < 0.15:
@@ -322,7 +317,7 @@ class SpecificationDependencyAlignmentTester:
 
         if score_breakdown.get("data_type_compatibility", 0) < 0.1:
             recommendations.append(
-                f"Align data types between dependency and output specifications"
+                "Align data types between dependency and output specifications"
             )
 
         if not recommendations:
@@ -376,55 +371,41 @@ class SpecificationDependencyAlignmentTester:
             except Exception as e:
                 logger.warning(f"Failed to register {spec_name} with resolver: {e}")
 
-    def _dict_to_step_specification(
-        self, spec_dict: Dict[str, Any]
-    ) -> StepSpecification:
-        """Convert specification dictionary back to StepSpecification object."""
-        # Convert dependencies
+    def _dict_to_step_specification(self, spec_dict: Dict[str, Any]) -> StepInterface:
+        """Convert specification dictionary back to a StepInterface object."""
+        # Convert dependencies (dict keyed by logical_name; 'type' replaces 'dependency_type')
         dependencies = {}
         for dep in spec_dict.get("dependencies", []):
-            # Create DependencySpec using keyword arguments
-            dep_data = {
-                "logical_name": dep["logical_name"],
-                "dependency_type": dep[
+            dependencies[dep["logical_name"]] = {
+                "type": dep[
                     "dependency_type"
-                ],  # Keep as string, validator will convert
+                ],  # str; coerced by DependencyDecl validator
                 "required": dep["required"],
                 "compatible_sources": dep.get("compatible_sources", []),
                 "data_type": dep["data_type"],
                 "description": dep.get("description", ""),
                 "semantic_keywords": dep.get("semantic_keywords", []),
             }
-            dep_spec = DependencySpec(**dep_data)
-            dependencies[dep["logical_name"]] = dep_spec
 
-        # Convert outputs
+        # Convert outputs (dict keyed by logical_name; 'type' replaces 'output_type')
         outputs = {}
         for out in spec_dict.get("outputs", []):
-            # Create OutputSpec using keyword arguments
-            out_data = {
-                "logical_name": out["logical_name"],
-                "output_type": out[
-                    "output_type"
-                ],  # Keep as string, validator will convert
+            outputs[out["logical_name"]] = {
+                "type": out["output_type"],  # str; coerced by OutputDecl validator
                 "property_path": out["property_path"],
                 "data_type": out["data_type"],
                 "description": out.get("description", ""),
                 "aliases": out.get("aliases", []),
             }
-            out_spec = OutputSpec(**out_data)
-            outputs[out["logical_name"]] = out_spec
 
-        # Create StepSpecification using keyword arguments
-        spec_data = {
-            "step_type": spec_dict["step_type"],
-            "node_type": spec_dict[
-                "node_type"
-            ],  # Keep as string, validator will convert
-            "dependencies": dependencies,
-            "outputs": outputs,
-        }
-        return StepSpecification(**spec_data)
+        # StepInterface requires a contract; an empty ContractSection satisfies the
+        # cross-section alignment validator (no contract I/O to align here).
+        return StepInterface(
+            step_type=spec_dict["step_type"],
+            node_type=spec_dict["node_type"],  # str; coerced by StepInterface validator
+            contract={},
+            spec={"dependencies": dependencies, "outputs": outputs},
+        )
 
     def get_dependency_resolution_report(
         self, all_specs: Dict[str, Dict[str, Any]]

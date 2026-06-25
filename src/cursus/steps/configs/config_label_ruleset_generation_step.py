@@ -838,14 +838,6 @@ class LabelRulesetGenerationConfig(ProcessingStepConfigBase):
 
         return self
 
-    def get_script_contract(self):
-        """Return the script contract for this step."""
-        from ..contracts.label_ruleset_generation_contract import (
-            LABEL_RULESET_GENERATION_CONTRACT,
-        )
-
-        return LABEL_RULESET_GENERATION_CONTRACT
-
     def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """
         Get script path for the label ruleset generation step.

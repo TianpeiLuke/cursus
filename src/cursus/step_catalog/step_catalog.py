@@ -600,67 +600,73 @@ class StepCatalog:
 
     def load_contract_class(self, step_name: str) -> Optional[Any]:
         """
-        Load contract class for a step using ContractAutoDiscovery component.
+        Load contract for a step. Tries YAML interface first, falls back to Python discovery.
 
         Args:
-            step_name: Name of the step
+            step_name: Name of the step (PascalCase, e.g., "TabularPreprocessing")
 
         Returns:
             Contract object or None if not found/loadable
         """
+        # Try YAML interface first
         try:
-            # Use the initialized contract discovery component
+            from ..steps.interfaces import load_step_interface
+
+            contract, _spec = load_step_interface(step_name)
+            if contract:
+                self.logger.debug(
+                    f"Loaded contract for {step_name} from YAML interface"
+                )
+                return contract
+        except (FileNotFoundError, Exception):
+            pass
+
+        # Fall back to Python contract discovery
+        try:
             if self.contract_discovery:
                 contract = self.contract_discovery.load_contract_class(step_name)
-
                 if contract:
                     self.logger.debug(f"Successfully loaded contract for {step_name}")
                     return contract
-                else:
-                    self.logger.warning(f"No contract found for step: {step_name}")
-                    return None
-            else:
-                self.logger.warning(
-                    f"ContractAutoDiscovery not available, cannot load contract for {step_name}"
-                )
-                return None
-
         except Exception as e:
             self.logger.error(f"Error loading contract for {step_name}: {e}")
-            return None
+
+        return None
 
     def load_spec_class(self, step_name: str) -> Optional[Any]:
         """
-        Load specification instance for a step using SpecAutoDiscovery component.
+        Load specification for a step. Tries YAML interface first, falls back to Python discovery.
 
         Args:
-            step_name: Name of the step
+            step_name: Name of the step (PascalCase)
 
         Returns:
             Specification instance or None if not found/loadable
         """
+        # Try YAML interface first
         try:
-            # Use the initialized spec discovery component
+            from ..steps.interfaces import load_step_interface
+
+            _contract, spec = load_step_interface(step_name)
+            if spec:
+                self.logger.debug(f"Loaded spec for {step_name} from YAML interface")
+                return spec
+        except (FileNotFoundError, Exception):
+            pass
+
+        # Fall back to Python spec discovery
+        try:
             if self.spec_discovery:
                 spec_instance = self.spec_discovery.load_spec_class(step_name)
-
                 if spec_instance:
                     self.logger.debug(
                         f"Successfully loaded specification for {step_name}"
                     )
                     return spec_instance
-                else:
-                    self.logger.warning(f"No specification found for step: {step_name}")
-                    return None
-            else:
-                self.logger.warning(
-                    f"SpecAutoDiscovery not available, cannot load specification for {step_name}"
-                )
-                return None
-
         except Exception as e:
             self.logger.error(f"Error loading specification for {step_name}: {e}")
-            return None
+
+        return None
 
     def find_specs_by_contract(self, contract_name: str) -> Dict[str, Any]:
         """

@@ -20,17 +20,6 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the label ruleset generation specification
-try:
-    from ..specs.label_ruleset_generation_spec import (
-        LABEL_RULESET_GENERATION_SPEC,
-    )
-
-    SPEC_AVAILABLE = True
-except ImportError:
-    LABEL_RULESET_GENERATION_SPEC = None
-    SPEC_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
 
 
@@ -67,8 +56,9 @@ class LabelRulesetGenerationStepBuilder(StepBuilderBase):
                 "LabelRulesetGenerationStepBuilder requires a LabelRulesetGenerationConfig instance."
             )
 
-        # Use the label ruleset generation specification if available
-        spec = LABEL_RULESET_GENERATION_SPEC if SPEC_AVAILABLE else None
+        from ..interfaces import load_step_interface
+
+        _contract, spec = load_step_interface("LabelRulesetGeneration")
 
         super().__init__(
             config=config,

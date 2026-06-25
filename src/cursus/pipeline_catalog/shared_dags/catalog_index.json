@@ -309,7 +309,7 @@
       "framework": "bedrock",
       "complexity": "standard",
       "task_type": "",
-      "node_count": 3,
+      "node_count": 4,
       "edge_count": 2,
       "features": [],
       "input_requirements": {
@@ -1612,7 +1612,7 @@
       "framework": "pytorch",
       "complexity": "standard",
       "task_type": "",
-      "node_count": 8,
+      "node_count": 10,
       "edge_count": 11,
       "features": [],
       "input_requirements": {
@@ -1697,7 +1697,7 @@
       "framework": "pytorch",
       "complexity": "standard",
       "task_type": "",
-      "node_count": 8,
+      "node_count": 10,
       "edge_count": 11,
       "features": [],
       "input_requirements": {
@@ -1947,7 +1947,7 @@
       "framework": "pytorch",
       "complexity": "standard",
       "task_type": "",
-      "node_count": 8,
+      "node_count": 9,
       "edge_count": 9,
       "features": [],
       "input_requirements": {

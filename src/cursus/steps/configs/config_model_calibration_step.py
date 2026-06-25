@@ -11,8 +11,7 @@ Fields are organized into three tiers:
 
 from typing import Optional, List, Union, Any, Dict
 import json
-from pathlib import Path
-from pydantic import Field, model_validator, PrivateAttr
+from pydantic import Field, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 from ...core.base.hyperparameters_base import ModelHyperparameters
@@ -262,16 +261,6 @@ class ModelCalibrationConfig(ProcessingStepConfigBase):
             )
 
         return self
-
-    def get_script_contract(self):
-        """Return the script contract for this step.
-
-        Returns:
-            ScriptContract: The contract for this step's script.
-        """
-        from ..contracts.model_calibration_contract import MODEL_CALIBRATION_CONTRACT
-
-        return MODEL_CALIBRATION_CONTRACT
 
     @classmethod
     def from_hyperparameters(

@@ -8,9 +8,6 @@ for pipeline step dependencies.
 from ..base import (
     DependencyType,
     NodeType,
-    DependencySpec,
-    OutputSpec,
-    StepSpecification,
 )
 from .property_reference import PropertyReference
 from .specification_registry import SpecificationRegistry
@@ -36,10 +33,7 @@ __all__ = [
     # Core specification classes
     "DependencyType",
     "NodeType",
-    "DependencySpec",
-    "OutputSpec",
     "PropertyReference",
-    "StepSpecification",
     # Registry management
     "SpecificationRegistry",
     "RegistryManager",

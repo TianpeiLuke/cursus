@@ -955,14 +955,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
 
         return self
 
-    def get_script_contract(self):
-        """Return the script contract for this step."""
-        from ..contracts.bedrock_prompt_template_generation_contract import (
-            BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT,
-        )
-
-        return BEDROCK_PROMPT_TEMPLATE_GENERATION_CONTRACT
-
     def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """
         Get script path for the Bedrock prompt template generation step.

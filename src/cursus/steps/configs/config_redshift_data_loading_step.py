@@ -110,11 +110,3 @@ class RedshiftDataLoadingConfig(BasePipelineConfig):
             config["outputSpecification"] = {"dropHeader": True}
 
         return config
-
-    def get_script_contract(self):
-        """Get the script contract for this configuration."""
-        from ..contracts.redshift_data_loading_contract import (
-            REDSHIFT_DATA_LOADING_CONTRACT,
-        )
-
-        return REDSHIFT_DATA_LOADING_CONTRACT

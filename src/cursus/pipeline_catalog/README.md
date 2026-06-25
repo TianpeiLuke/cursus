@@ -1,432 +1,173 @@
 # Cursus Pipeline Catalog
 
-Welcome to the Cursus Pipeline Catalog, a knowledge-driven collection of pipeline templates organized using Zettelkasten principles for maximum discoverability and connection-based navigation.
+A **declarative DAG store + builders** for Cursus pipelines. Pipelines are not
+Python classes — each is a `*.dag.json` file (nodes + edges + metadata), compiled
+on demand into a SageMaker `Pipeline` by the single `PipelineDAGCompiler`. A small
+`core/` package provides the build, recommend, and agent-tool entry points.
 
-## Overview
+> **History.** This module was refactored (2026-06) from a class-based catalog
+> (one `pipelines/<name>.py` class per pipeline, a parallel `mods_api.py` MODS
+> layer, and a Zettelkasten "connection graph / recommendation engine" discovery
+> layer) into the DAG-store design below. The companion change is the
+> [StepInterface migration](https://code.amazon.com/packages/AmazonCursus) that
+> unified each step's contract+spec into one `.step.yaml`. Together they make the
+> whole pipeline-definition layer data-driven.
 
-The Pipeline Catalog provides a flat, connection-based knowledge system that offers:
-
-- **Atomic Independence**: Each pipeline is a self-contained, atomic unit with clear responsibilities
-- **Connection-Based Discovery**: Find related pipelines through semantic connections rather than hierarchical browsing
-- **Tag-Based Search**: Multi-dimensional tagging system for precise pipeline discovery
-- **Intelligent Recommendations**: AI-powered suggestions for next steps and learning paths
-- **MODS API Integration**: Dynamic MODS enhancement using the new API approach
-
-## Quick Start
-
-### Finding Pipelines
-
-Use the CLI commands for intelligent discovery:
-
-```bash
-# Find pipelines by tags
-cursus catalog find --tags training,xgboost
-
-# Search by framework and complexity
-cursus catalog find --framework pytorch --complexity standard
-
-# Search by use case
-cursus catalog find --use-case "Basic XGBoost training workflow"
-
-# Find MODS-compatible pipelines
-cursus catalog find --mods-compatible
-```
-
-### Connection-Based Navigation
-
-Explore relationships between pipelines:
-
-```bash
-# Show all connections for a pipeline
-cursus catalog connections --pipeline xgb_training_simple
-
-# Find alternative pipelines
-cursus catalog alternatives --pipeline xgb_training_simple
-
-# Find connection path between pipelines
-cursus catalog path --from xgb_training_simple --to xgb_e2e_comprehensive
-```
-
-### Get Recommendations
-
-Let the system suggest pipelines for you:
-
-```bash
-# Get recommendations for a use case
-cursus catalog recommend --use-case "XGBoost training"
-
-# Get next step recommendations
-cursus catalog recommend --next-steps xgb_training_simple
-
-# Generate a learning path
-cursus catalog recommend --learning-path --framework xgboost
-```
-
-## Current System Structure
-
-The catalog uses a flat, 3-level maximum structure:
+## Structure
 
 ```
 pipeline_catalog/
-├── pipelines/                    # Standard pipelines (atomic units)
-│   ├── xgb_training_simple.py    # Basic XGBoost training
-│   ├── xgb_training_calibrated.py # XGBoost with calibration
-│   ├── pytorch_training_basic.py  # Basic PyTorch training
-│   ├── xgb_training_evaluation.py # XGBoost with evaluation
-│   ├── xgb_e2e_comprehensive.py  # Complete XGBoost workflow
-│   ├── pytorch_e2e_standard.py   # Standard PyTorch workflow
-│   └── dummy_e2e_basic.py        # Testing/demo pipeline
-├── mods_pipelines/               # MODS API and utilities
-│   ├── __init__.py               # MODS API exports
-│   ├── README.md                 # MODS documentation
-│   └── xgb_mods_e2e_comprehensive_new.py # Example implementation
-├── mods_api.py                   # MODS API for dynamic enhancement
-├── core/                         # Core utilities
-│   ├── base_pipeline.py          # Base pipeline class
-│   ├── catalog_registry.py       # Registry management
-│   ├── connection_traverser.py   # Connection navigation
-│   ├── recommendation_engine.py  # AI recommendations
-│   ├── registry_validator.py     # Registry validation
-│   └── tag_discovery.py          # Tag-based search
-├── shared_dags/                  # Shared DAG definitions
-└── catalog_index.json           # Connection registry
+├── __init__.py                 # public API (re-exports core + shared_dags)
+├── core/
+│   ├── pipeline_factory.py     # create_pipeline(dag_id|dag_path, config) -> (Pipeline, report)
+│   ├── builders.py             # build_and_compile(...)  +  build_mods_pipeline(...)
+│   ├── router.py               # recommend_dag / auto_select_dag / recommend_for_agent
+│   └── agent_tool.py           # pipeline_catalog_tool(...) + TOOL_SCHEMA (LLM tool interface)
+├── shared_dags/
+│   ├── catalog_index.json      # queryable index of all DAGs (the source of truth for discovery)
+│   ├── <framework>/*.dag.json  # the DAG definitions (nodes, edges, metadata)
+│   └── __init__.py             # load_shared_dag / get_all_shared_dags / search_dags / get_catalog_index
+├── pipeline_exe/               # execution-document helpers
+└── mods_pipelines/             # (namespace stub — class-based MODS layer removed; use build_mods_pipeline)
 ```
 
-## Pipeline Discovery Methods
+There are **42 shared DAGs** across `xgboost/` (15), `pytorch/` (9), `bedrock/`
+(10), `mtl/` (3), `lightgbm/` (2), `dummy/` (2), and `singleton/` (1).
 
-### 1. Tag-Based Discovery
+## Quick Start
 
-Pipelines are tagged across multiple dimensions:
-
-- **Framework Tags**: `xgboost`, `pytorch`, `dummy`
-- **Task Tags**: `training`, `evaluation`, `calibration`, `registration`, `end_to_end`
-- **Complexity Tags**: `simple`, `standard`, `comprehensive`
-- **Domain Tags**: `machine_learning`, `supervised_learning`, `deep_learning`
-- **Quality Tags**: `production_ready`, `tested`, `mods_compatible`
-
-### 2. Connection-Based Navigation
-
-Pipelines are connected through semantic relationships:
-
-- **Alternatives**: Different approaches to the same problem
-- **Extensions**: Pipelines that build upon others
-- **Components**: Pipelines that use shared components
-- **Progressions**: Natural learning progressions
-
-### 3. Use Case Matching
-
-Search by natural language descriptions:
-
-```bash
-cursus catalog find --use-case "I need to train an XGBoost model with probability calibration"
-```
-
-## Pipeline Naming Convention
-
-Pipelines follow semantic naming: `{framework}_{use_case}_{complexity}`
-
-- `xgb_training_simple` - Basic XGBoost training
-- `pytorch_training_basic` - Basic PyTorch training  
-- `xgb_e2e_comprehensive` - Complete XGBoost end-to-end workflow
-- `dummy_e2e_basic` - Testing/demo pipeline
-
-## MODS API Integration
-
-The new MODS API approach eliminates code duplication by creating MODS-enhanced pipelines dynamically from regular pipelines.
-
-### MODS API vs Traditional Approach
-
-| Feature | Traditional MODS | New MODS API |
-|---------|:----------------:|:------------:|
-| Code Duplication | ❌ (Separate files) | ✅ (Single source) |
-| Maintenance | ❌ (Double work) | ✅ (Single pipeline) |
-| Consistency | ❌ (Can drift) | ✅ (Always in sync) |
-| Dynamic Creation | ❌ | ✅ |
-| Config Extraction | ❌ | ✅ (Automatic) |
-| Backward Compatibility | ✅ | ✅ |
-
-### Using the MODS API
-
-#### Method 1: Direct API Usage
+### Build & compile a pipeline (SAIS notebook)
 
 ```python
-from cursus.pipeline_catalog.mods_api import create_mods_pipeline_from_config
-from cursus.pipeline_catalog.pipelines.xgb_e2e_comprehensive import XGBoostE2EComprehensivePipeline
+from cursus.pipeline_catalog import build_and_compile
 
-# Create MODS-enhanced pipeline from regular pipeline + config
-MODSPipeline = create_mods_pipeline_from_config(
-    XGBoostE2EComprehensivePipeline,
-    config_path="config.json"  # Extracts author, description, version from 'Base' key
+pipeline, report = build_and_compile(
+    dag_path="pipeline_config/dag_training_NA.json",
+    config_path="pipeline_config/config_training_NA.json",
+    sagemaker_session=pipeline_session,
+    role=role,
 )
+pipeline.upsert()
+```
 
-# Use like any other pipeline
-pipeline_instance = MODSPipeline(
+### Compile a *catalogued* DAG by id
+
+```python
+from cursus.pipeline_catalog import create_pipeline, list_available_pipelines
+
+list_available_pipelines()        # -> ['bedrock_pytorch_incremental_edx', 'xgboost_complete_e2e', ...] (42)
+
+pipeline, report = create_pipeline(
+    dag_id="bedrock_pytorch_incremental_edx",   # or dag_path="/path/to/some.dag.json"
     config_path="config.json",
     sagemaker_session=session,
-    execution_role=role
+    role=role,
 )
-pipeline = pipeline_instance.generate_pipeline()
 ```
 
-#### Method 2: Convenience Functions
+### Generate a MODS pipeline class (for the MODS Lambda)
+
+`build_mods_pipeline` returns a `@MODSTemplate`-decorated class with the standard
+MODS interface (`__init__(sagemaker_session, execution_role, regional_alias)` +
+`generate_pipeline()`). It replaces the old per-pipeline MODS classes and `mods_api`.
 
 ```python
-from cursus.pipeline_catalog.mods_api import create_mods_xgboost_e2e_comprehensive
+from cursus.pipeline_catalog import build_mods_pipeline
 
-# Convenience function for common pipelines
-MODSPipeline = create_mods_xgboost_e2e_comprehensive(
-    config_path="config.json"
+MungedAddressPipelineNA = build_mods_pipeline(
+    author="bjjin",
+    version="0.0.5",
+    description="Munged Address Detection DistilBERT Training Pipeline",
+    dag_path="pipeline_config/dag_NA.json",     # relative to the calling module
+    config_path="pipeline_config/config_NA.json",
 )
+# In the MODS Lambda:
+pipeline = MungedAddressPipelineNA(sagemaker_session=sess, execution_role=role).generate_pipeline()
 ```
 
-#### Method 3: Dynamic Creation by Name
+## Discovery
+
+The catalog index (`shared_dags/catalog_index.json`) carries rich metadata per DAG
+— `framework`, `complexity`, `features`, `input_requirements`, `constraints`,
+`cost`, `agent_context`. Three ways to query it:
+
+### 1. Direct search
 
 ```python
-from cursus.pipeline_catalog.mods_api import create_mods_pipeline_by_name
+from cursus.pipeline_catalog import search_dags, get_all_shared_dags
 
-# Create any MODS pipeline by name
-MODSPipeline = create_mods_pipeline_by_name(
-    'xgb_e2e_comprehensive',
-    config_path='config.json'
-)
+search_dags(framework="pytorch")                          # all pytorch DAGs
+search_dags(features=["training", "calibration"], framework="xgboost")   # ranked by feature overlap
+get_all_shared_dags()                                     # {dag_id: metadata}
 ```
 
-#### Method 4: Via mods_pipelines Module
+### 2. Recommendation / auto-selection
 
 ```python
-from cursus.pipeline_catalog.mods_pipelines import create_mods_pipeline_from_config
-from cursus.pipeline_catalog.pipelines.pytorch_e2e_standard import PyTorchE2EStandardPipeline
+from cursus.pipeline_catalog.core import recommend_dag, auto_select_dag
 
-# Through the mods_pipelines module
-MODSPipeline = create_mods_pipeline_from_config(
-    PyTorchE2EStandardPipeline,
-    config_path="config.json"
-)
+# Ranked recommendations (score 0-1 + reasoning):
+recommend_dag(framework="pytorch", features=["bedrock", "training", "edx_uploading"], task_type="incremental")
+
+# Auto-select the single best match (returns None below min_score):
+result = auto_select_dag(framework="xgboost", features=["training", "calibration"], min_score=0.6)
+if result:
+    dag_id, dag, score = result
 ```
 
-### MODS Metadata Extraction
+### 3. Agent / LLM tool interface
 
-The MODS API automatically extracts metadata from your configuration file:
-
-```json
-{
-  "Base": {
-    "author": "lukexie",
-    "service_name": "AtoZ", 
-    "model_class": "xgboost",
-    "region": "NA",
-    "pipeline_version": "1.2.3"
-  }
-}
-```
-
-The API extracts:
-- **Author**: `base_config.author`
-- **Description**: `base_config.pipeline_description` (derived from service_name, model_class, region)
-- **Version**: `base_config.pipeline_version`
-
-## Registry Management
-
-The catalog maintains a connection registry for all pipelines:
-
-```bash
-# Validate registry integrity
-cursus catalog registry validate
-
-# Show registry statistics
-cursus catalog registry stats
-
-# Export pipeline metadata
-cursus catalog registry export --pipelines xgb_training_simple,pytorch_training_basic
-```
-
-## Example Usage
-
-### Basic Pipeline Usage
+`core/agent_tool.py` exposes the catalog as a single tool (MCP / OpenAI function
+calling / Claude tool_use compatible) via `TOOL_SCHEMA` + `pipeline_catalog_tool`.
 
 ```python
-from cursus.pipeline_catalog.pipelines.xgb_training_simple import create_pipeline
-from sagemaker import Session
-from sagemaker.workflow.pipeline_context import PipelineSession
+from cursus.pipeline_catalog.core import pipeline_catalog_tool, TOOL_SCHEMA
 
-# Initialize session
-sagemaker_session = Session()
-role = sagemaker_session.get_caller_identity_arn()
-pipeline_session = PipelineSession()
-
-# Create the pipeline
-pipeline, report, dag_compiler, pipeline_template = create_pipeline(
-    config_path="path/to/config.json",
-    session=pipeline_session,
-    role=role
-)
-
-# Pipeline automatically syncs to registry
-# Get execution document
-execution_doc = fill_execution_document(
-    pipeline=pipeline,
-    document={"training_dataset": "my-dataset"},
-    dag_compiler=dag_compiler
-)
-
-# Execute pipeline
-pipeline.upsert()
-execution = pipeline.start(execution_input=execution_doc)
+pipeline_catalog_tool(action="recommend", data_type="text", needs_llm=True)
+pipeline_catalog_tool(action="get_dag", dag_id="bedrock_pytorch_incremental_edx")
+pipeline_catalog_tool(action="get_config_guidance", dag_id="bedrock_pytorch_incremental_edx")
+pipeline_catalog_tool(action="list_frameworks")
+pipeline_catalog_tool(action="list_features")
 ```
 
-### MODS Pipeline Usage
+`recommend_for_agent` (which `action="recommend"` wraps) selects on **semantic
+constraints** — `data_type` (text/tabular/mixed), `has_labels`, `needs_llm`,
+`multi_task`, `incremental`, `gpu_available` — and returns each DAG's
+`agent_context` (`when_to_use`, `prerequisites`, `config_guidance`) so an agent can
+reason about the choice.
 
-```python
-from cursus.pipeline_catalog.mods_api import create_mods_pipeline_from_config
-from cursus.pipeline_catalog.pipelines.xgb_e2e_comprehensive import XGBoostE2EComprehensivePipeline
+## Public API (`from cursus.pipeline_catalog import ...`)
 
-# Create MODS-enhanced pipeline
-MODSPipeline = create_mods_pipeline_from_config(
-    XGBoostE2EComprehensivePipeline,
-    config_path="config.json"
-)
+| Symbol | Purpose |
+|---|---|
+| `build_and_compile(dag_path, config_path, session, role)` | Compile a DAG file → `(Pipeline, report)` (SAIS) |
+| `build_mods_pipeline(author, version, description, dag_path, config_path)` | Generate a `@MODSTemplate` pipeline class (MODS Lambda) |
+| `create_pipeline(dag_id \| dag_path, config_path, ...)` | Compile a catalogued or file DAG |
+| `list_available_pipelines()` | All 42 catalogued DAG ids |
+| `load_shared_dag(dag_id)` | Load a catalogued DAG → `PipelineDAG` |
+| `search_dags(features=?, framework=?)` | Filter/rank the index |
+| `get_all_shared_dags()`, `get_catalog_index()` | Raw index access |
+| `recommend_dag`, `auto_select_dag`, `recommend_for_agent` (via `core`) | Recommendation |
+| `pipeline_catalog_tool`, `TOOL_SCHEMA` (via `core`) | LLM tool interface |
 
-# Use exactly like regular pipeline
-pipeline_instance = MODSPipeline(
-    config_path="config.json",
-    sagemaker_session=pipeline_session,
-    execution_role=role
-)
+## Adding a Pipeline
 
-# Generate MODS-enhanced pipeline
-pipeline = pipeline_instance.generate_pipeline()
+1. Add a `<framework>/<name>.dag.json` under `shared_dags/` — `{"dag": {"nodes": [...],
+   "edges": [[src, dst], ...]}, "metadata": {...}}`. **Every edge endpoint must be a
+   declared node** (a dangling endpoint raises `KeyError` at load).
+2. Add an entry to `shared_dags/catalog_index.json` (`id`, `path`, `framework`,
+   `node_count`, `edge_count`, `features`, `input_requirements`, `constraints`,
+   `agent_context`, …). Keep `node_count`/`edge_count` in sync with the DAG.
+3. Run the catalog tests: `pytest tests/pipeline_catalog`. The suite loads every
+   catalogued DAG, verifies node/edge counts match the index, and asserts no
+   dangling edge endpoints — so a malformed DAG fails fast.
 
-# Enhanced features when MODS is available:
-# - Template registration in MODS global registry
-# - Enhanced metadata extraction
-# - Operational integration
-# - Advanced pipeline tracking
-```
+## Tests
 
-## Decision Trees
-
-### Choosing the Right Pipeline
-
-```
-Need XGBoost? ──┐
-                ├─ Yes ──┐
-                │        ├─ Simple training? ──── xgb_training_simple
-                │        ├─ Need calibration? ──── xgb_training_calibrated  
-                │        ├─ Need evaluation? ───── xgb_training_evaluation
-                │        └─ Full workflow? ────── xgb_e2e_comprehensive
-                │
-                └─ No ───┐
-                         ├─ PyTorch? ──┐
-                         │             ├─ Basic training? ── pytorch_training_basic
-                         │             └─ Full workflow? ─── pytorch_e2e_standard
-                         │
-                         └─ Testing/Demo? ── dummy_e2e_basic
-```
-
-### MODS vs Standard
-
-```
-Need MODS Features? ──┐
-                      ├─ Yes ──── Use MODS API (automatic fallback)
-                      │
-                      └─ No ───── Use standard pipeline
-```
-
-## Advanced Features
-
-### Connection Traversal
-
-```python
-from cursus.pipeline_catalog.core.connection_traverser import ConnectionTraverser
-
-traverser = ConnectionTraverser()
-
-# Find alternatives
-alternatives = traverser.find_alternatives("xgb_training_simple")
-
-# Find connection path
-path = traverser.find_path("xgb_training_simple", "xgb_e2e_comprehensive")
-```
-
-### Tag-Based Discovery
-
-```python
-from cursus.pipeline_catalog.core.tag_discovery import TagBasedDiscovery
-
-discovery = TagBasedDiscovery()
-
-# Multi-criteria search
-results = discovery.search_pipelines({
-    'framework': 'xgboost',
-    'tags': ['training', 'calibration'],
-    'complexity': 'standard'
-})
-```
-
-### Recommendations
-
-```python
-from cursus.pipeline_catalog.core.recommendation_engine import PipelineRecommendationEngine
-
-engine = PipelineRecommendationEngine()
-
-# Get recommendations by use case
-recommendations = engine.recommend_by_use_case(
-    "I need to train an XGBoost model for production"
-)
-
-# Generate learning path
-learning_path = engine.generate_learning_path("xgboost")
-```
-
-## Best Practices
-
-### Pipeline Selection
-
-1. **Start with Discovery**: Use `cursus catalog find` to explore options
-2. **Check Connections**: Use `cursus catalog connections` to see related pipelines
-3. **Consider MODS**: Use MODS API for enhanced operational capabilities
-4. **Follow Learning Paths**: Use recommendations for structured learning
-
-### Development Workflow
-
-1. **Discover** → Use CLI tools to find relevant pipelines
-2. **Explore** → Check connections and alternatives
-3. **Select** → Choose based on requirements and complexity
-4. **Enhance** → Use MODS API if operational features needed
-5. **Deploy** → Use MODS features for operational excellence
-
-## Troubleshooting
-
-### Common Issues
-
-**Pipeline not found**: Use `cursus catalog list` to see all available pipelines
-
-**Import errors**: Check the current import paths in this README
-
-**MODS not available**: MODS API gracefully falls back to standard functionality
-
-**Connection issues**: Use `cursus catalog registry validate` to check registry integrity
-
-### Getting Help
-
-1. Use the CLI discovery tools: `cursus catalog find --help`
-2. Check pipeline connections: `cursus catalog connections --pipeline <id>`
-3. Get recommendations: `cursus catalog recommend --use-case "<description>"`
-4. Validate registry: `cursus catalog registry validate`
-
-## Contributing
-
-To add a new pipeline to the catalog:
-
-1. Create the pipeline file in the `pipelines/` directory
-2. Implement the required functions: `create_dag()`, `get_enhanced_dag_metadata()`, `sync_to_registry()`
-3. Add comprehensive metadata with connections and tags
-4. Test the pipeline and registry synchronization
-5. Update documentation and examples
-
-The catalog automatically discovers new pipelines and updates the registry. MODS enhancement is available automatically through the API.
+`tests/pipeline_catalog/` (52 tests) covers the index↔disk consistency, that every
+DAG loads into a valid `PipelineDAG`, the router scoring, the agent-tool actions,
+and `build_mods_pipeline` class generation.
 
 ---
 
-**The Cursus Pipeline Catalog: Where knowledge connects and pipelines discover
+**The Cursus Pipeline Catalog: declarative DAGs, compiled on demand.**

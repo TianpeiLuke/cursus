@@ -18,9 +18,6 @@ from ....registry.step_names import (
 )
 from ....step_catalog import StepCatalog
 from ..utils.utils import normalize_path
-# Note: These imports reference removed modules - functionality needs to be replaced
-# from ..validators import ScriptContractValidator
-# from ..patterns.framework_patterns import detect_training_patterns, detect_xgboost_patterns
 
 
 class ScriptContractAlignmentTester:
@@ -50,11 +47,6 @@ class ScriptContractAlignmentTester:
 
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
 
-        # Note: These validators were removed during consolidation
-        # self.testability_validator = TestabilityPatternValidator()
-        # self.script_validator = ScriptContractValidator()
-
-        # TODO: Replace with consolidated validation logic
         self.testability_validator = None
         self.script_validator = None
 

@@ -32,7 +32,9 @@ from botocore.exceptions import ClientError
 from ..configs.config_dummy_training_step import DummyTrainingConfig
 from ...core.base.builder_base import StepBuilderBase
 from .s3_utils import S3PathHandler
-from ..specs.dummy_training_spec import DUMMY_TRAINING_SPEC
+from ..interfaces import load_step_interface
+
+_contract, DUMMY_TRAINING_SPEC = load_step_interface("DummyTraining")
 
 logger = logging.getLogger(__name__)
 

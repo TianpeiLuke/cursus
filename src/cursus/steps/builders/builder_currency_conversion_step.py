@@ -12,8 +12,9 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the unified currency conversion specification
-from ..specs.currency_conversion_spec import CURRENCY_CONVERSION_SPEC
+from ..interfaces import load_step_interface
+
+_contract, CURRENCY_CONVERSION_SPEC = load_step_interface("CurrencyConversion")
 
 logger = logging.getLogger(__name__)
 

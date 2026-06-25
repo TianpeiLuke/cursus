@@ -15,15 +15,6 @@ from sagemaker.sklearn import SKLearnProcessor
 from ..configs.config_label_ruleset_execution_step import LabelRulesetExecutionConfig
 from ...core.base.builder_base import StepBuilderBase
 
-# Import specification
-try:
-    from ..specs.label_ruleset_execution_spec import LABEL_RULESET_EXECUTION_SPEC
-
-    SPEC_AVAILABLE = True
-except ImportError:
-    LABEL_RULESET_EXECUTION_SPEC = None
-    SPEC_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
 
 
@@ -56,15 +47,13 @@ class LabelRulesetExecutionStepBuilder(StepBuilderBase):
         Raises:
             ValueError: If specification is not available
         """
-        if not SPEC_AVAILABLE or LABEL_RULESET_EXECUTION_SPEC is None:
-            raise ValueError(
-                "Label Ruleset Execution specification not available. "
-                "Ensure label_ruleset_execution_spec.py is properly installed."
-            )
+        from ..interfaces import load_step_interface
+
+        _contract, spec = load_step_interface("LabelRulesetExecution")
 
         super().__init__(
             config=config,
-            spec=LABEL_RULESET_EXECUTION_SPEC,
+            spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,

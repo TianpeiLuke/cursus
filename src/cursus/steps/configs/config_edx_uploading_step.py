@@ -159,9 +159,3 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
             f"arn:amazon:edx:iad::manifest/"
             f"{self.edx_provider}/{self.edx_subject}/{self.edx_dataset}"
         )
-
-    def get_script_contract(self):
-        """Get the script contract for this configuration."""
-        from ..contracts.edx_uploading_contract import EDX_UPLOADING_CONTRACT
-
-        return EDX_UPLOADING_CONTRACT

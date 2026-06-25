@@ -29,11 +29,6 @@ from .shared_dags import (
     get_all_shared_dags,
     get_catalog_index,
 )
-from .mods_pipelines import (
-    discover_mods_pipelines,
-    load_mods_pipeline,
-    get_registered_mods_pipelines,
-)
 
 __all__ = [
     # Builders
@@ -48,8 +43,4 @@ __all__ = [
     "search_dags",
     "get_all_shared_dags",
     "get_catalog_index",
-    # MODS
-    "discover_mods_pipelines",
-    "load_mods_pipeline",
-    "get_registered_mods_pipelines",
 ]

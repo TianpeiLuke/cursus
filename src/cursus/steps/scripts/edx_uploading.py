@@ -110,9 +110,16 @@ def _project_file_to_tsv(file_path: Path, output_columns: List[str], log) -> Pat
 
     tsv_path = file_path.with_suffix(".projected.tsv")
     df.to_csv(
-        tsv_path, sep="\t", header=False, index=False, quoting=_csv.QUOTE_NONE, escapechar="\\"
+        tsv_path,
+        sep="\t",
+        header=False,
+        index=False,
+        quoting=_csv.QUOTE_NONE,
+        escapechar="\\",
     )
-    log(f"[INFO] {file_path.name}: projected to {len(output_columns)} cols -> {tsv_path.name}")
+    log(
+        f"[INFO] {file_path.name}: projected to {len(output_columns)} cols -> {tsv_path.name}"
+    )
     return tsv_path
 
 

@@ -19,7 +19,11 @@ from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_model_metrics_computation_step import (
     ModelMetricsComputationConfig,
 )
-from ..specs.model_metrics_computation_spec import MODEL_METRICS_COMPUTATION_SPEC
+from ..interfaces import load_step_interface
+
+_contract, MODEL_METRICS_COMPUTATION_SPEC = load_step_interface(
+    "ModelMetricsComputation"
+)
 
 logger = logging.getLogger(__name__)
 

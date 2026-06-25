@@ -16,23 +16,13 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the registration specification
-try:
-    from ..specs.registration_spec import REGISTRATION_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
 
-    SPEC_AVAILABLE = True
-except ImportError:
-    REGISTRATION_SPEC = None
-    SPEC_AVAILABLE = False
+_contract, REGISTRATION_SPEC = load_step_interface("Registration")
 
-# Import the script contract
-try:
-    from ..contracts.mims_registration_contract import MIMS_REGISTRATION_CONTRACT
-
-    CONTRACT_AVAILABLE = True
-except ImportError:
-    MIMS_REGISTRATION_CONTRACT = None
-    CONTRACT_AVAILABLE = False
+# Contract loaded via load_step_interface above as _contract
+MIMS_REGISTRATION_CONTRACT = _contract
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +57,8 @@ class RegistrationStepBuilder(StepBuilderBase):
                 "RegistrationStepBuilder requires a RegistrationConfig instance."
             )
 
-        # Use the registration specification if available
-        spec = REGISTRATION_SPEC if SPEC_AVAILABLE else None
+        # Use the registration specification
+        spec = REGISTRATION_SPEC
 
         super().__init__(
             config=config,
@@ -80,8 +70,8 @@ class RegistrationStepBuilder(StepBuilderBase):
         )
         self.config: RegistrationConfig = config
 
-        # Store contract reference
-        self.contract = MIMS_REGISTRATION_CONTRACT if CONTRACT_AVAILABLE else None
+        # Store contract reference (loaded via load_step_interface at module import)
+        self.contract = MIMS_REGISTRATION_CONTRACT
 
         if self.spec and not self.contract:
             self.log_warning(

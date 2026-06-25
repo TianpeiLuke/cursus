@@ -11,14 +11,10 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the model evaluation specification
-try:
-    from ..specs.pytorch_model_eval_spec import PYTORCH_MODEL_EVAL_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
 
-    SPEC_AVAILABLE = True
-except ImportError:
-    PYTORCH_MODEL_EVAL_SPEC = None
-    SPEC_AVAILABLE = False
+_contract, PYTORCH_MODEL_EVAL_SPEC = load_step_interface("PyTorchModelEval")
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +51,8 @@ class PyTorchModelEvalStepBuilder(StepBuilderBase):
                 "PyTorchModelEvalStepBuilder requires a PyTorchModelEvalConfig instance."
             )
 
-        # Use the model evaluation specification if available
-        spec = PYTORCH_MODEL_EVAL_SPEC if SPEC_AVAILABLE else None
+        # Use the model evaluation specification
+        spec = PYTORCH_MODEL_EVAL_SPEC
 
         super().__init__(
             config=config,

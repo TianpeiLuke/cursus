@@ -1,13 +1,14 @@
 """
-Base Script Contract Classes
+Base Script Validation Classes
 
-Defines the core ScriptContract class and validation framework for pipeline scripts.
+Defines ValidationResult/AlignmentResult and the ScriptAnalyzer (AST-based script
+analysis) used by the alignment validation framework. The legacy ScriptContract
+data class was removed — contract data now lives in the unified StepInterface
+(core/base/step_interface.py), sourced from the .step.yaml interfaces.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Dict, List, Optional, Set, Union, Any
-from pathlib import Path
-import os
+from pydantic import BaseModel, Field
+from typing import List, Optional, Set, Union, Any
 import ast
 import logging
 
@@ -89,156 +90,6 @@ class AlignmentResult(ValidationResult):
             missing_inputs=missing_inputs or [],
             extra_outputs=extra_outputs or [],
             extra_inputs=extra_inputs or [],
-        )
-
-
-class ScriptContract(BaseModel):
-    """
-    Script execution contract that defines explicit I/O, environment requirements, and CLI arguments
-    """
-
-    entry_point: str = Field(..., description="Script entry point filename")
-    expected_input_paths: Dict[str, str] = Field(
-        ..., description="Mapping of logical names to expected input paths"
-    )
-    expected_output_paths: Dict[str, str] = Field(
-        ..., description="Mapping of logical names to expected output paths"
-    )
-    required_env_vars: List[str] = Field(
-        ..., description="List of required environment variables"
-    )
-    optional_env_vars: Dict[str, str] = Field(
-        default_factory=dict, description="Optional environment variables with defaults"
-    )
-    expected_arguments: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Mapping of argument names to container paths or values",
-    )
-    framework_requirements: Dict[str, str] = Field(
-        default_factory=dict, description="Framework version requirements"
-    )
-    description: str = Field(
-        default="", description="Human-readable description of the script"
-    )
-
-    @field_validator("entry_point")
-    @classmethod
-    def validate_entry_point(cls, v: str) -> str:
-        """Validate entry point is a Python file"""
-        if not v.endswith(".py"):
-            raise ValueError("Entry point must be a Python file (.py)")
-        return v
-
-    @field_validator("expected_input_paths")
-    @classmethod
-    def validate_input_paths(cls, v: Dict[str, str]) -> Dict[str, str]:
-        """Validate input paths are absolute SageMaker paths"""
-        for logical_name, path in v.items():
-            if logical_name == "GeneratedPayloadSamples":
-                if not path.startswith("/opt/ml/processing/"):
-                    raise ValueError(
-                        f"Input path for {logical_name} must start with /opt/ml/processing/, got: {path}"
-                    )
-            elif not (
-                path.startswith("/opt/ml/processing/input")
-                or path.startswith("/opt/ml/code")
-            ):
-                raise ValueError(
-                    f"Input path for {logical_name} must start with /opt/ml/processing/input or /opt/ml/code, got: {path}"
-                )
-        return v
-
-    @field_validator("expected_output_paths")
-    @classmethod
-    def validate_output_paths(cls, v: Dict[str, str]) -> Dict[str, str]:
-        """Validate output paths are absolute SageMaker paths"""
-        for logical_name, path in v.items():
-            if not path.startswith("/opt/ml/processing/output"):
-                raise ValueError(
-                    f"Output path for {logical_name} must start with /opt/ml/processing/output, got: {path}"
-                )
-        return v
-
-    @field_validator("expected_arguments")
-    @classmethod
-    def validate_arguments(cls, v: Dict[str, str]) -> Dict[str, str]:
-        """Validate argument names follow CLI conventions (kebab-case)"""
-        for arg_name in v.keys():
-            if not all(c.isalnum() or c == "-" for c in arg_name):
-                raise ValueError(
-                    f"Argument name contains invalid characters: {arg_name}"
-                )
-            if not arg_name.lower() == arg_name:
-                raise ValueError(f"Argument name should be lowercase: {arg_name}")
-        return v
-
-    def validate_implementation(self, script_path: str) -> ValidationResult:
-        """
-        Validate that a script implementation matches this contract
-
-        Args:
-            script_path: Path to the script file to validate
-
-        Returns:
-            ValidationResult indicating whether the script complies with the contract
-        """
-        if not os.path.exists(script_path):
-            return ValidationResult.error([f"Script file not found: {script_path}"])
-
-        try:
-            analyzer = ScriptAnalyzer(script_path)
-            return self._validate_against_analysis(analyzer)
-        except Exception as e:
-            return ValidationResult.error([f"Error analyzing script: {str(e)}"])
-
-    def _validate_against_analysis(
-        self, analyzer: "ScriptAnalyzer"
-    ) -> ValidationResult:
-        """Validate contract against script analysis"""
-        errors = []
-        warnings = []
-
-        # Validate input paths
-        script_input_paths = analyzer.get_input_paths()
-        for logical_name, expected_path in self.expected_input_paths.items():
-            if expected_path not in script_input_paths:
-                errors.append(
-                    f"Script doesn't use expected input path: {expected_path} (for {logical_name})"
-                )
-
-        # Check for unexpected input paths
-        expected_paths = set(self.expected_input_paths.values())
-        unexpected_paths = script_input_paths - expected_paths
-        for path in unexpected_paths:
-            if path.startswith("/opt/ml/processing/input"):
-                warnings.append(f"Script uses undeclared input path: {path}")
-
-        # Validate output paths
-        script_output_paths = analyzer.get_output_paths()
-        for logical_name, expected_path in self.expected_output_paths.items():
-            if expected_path not in script_output_paths:
-                errors.append(
-                    f"Script doesn't use expected output path: {expected_path} (for {logical_name})"
-                )
-
-        # Validate environment variables
-        script_env_vars = analyzer.get_env_var_usage()
-        missing_env_vars = set(self.required_env_vars) - script_env_vars
-        if missing_env_vars:
-            errors.append(
-                f"Script missing required environment variables: {list(missing_env_vars)}"
-            )
-
-        # Validate arguments
-        script_args = analyzer.get_argument_usage()
-        for arg_name in self.expected_arguments.keys():
-            if arg_name not in script_args:
-                warnings.append(
-                    f"Script doesn't seem to handle expected argument: --{arg_name}"
-                )
-
-        return ValidationResult(
-            is_valid=len(errors) == 0, errors=errors, warnings=warnings
         )
 
 

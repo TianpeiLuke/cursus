@@ -1,7 +1,6 @@
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 import logging
-import importlib
 
 from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
@@ -9,33 +8,6 @@ from sagemaker.sklearn import SKLearnProcessor
 
 from ..configs.config_missing_value_imputation_step import MissingValueImputationConfig
 from ...core.base.builder_base import StepBuilderBase
-
-# Import specifications based on job type
-try:
-    from ..specs.missing_value_imputation_spec import (
-        MISSING_VALUE_IMPUTATION_SPEC,
-    )
-    from ..specs.missing_value_imputation_training_spec import (
-        MISSING_VALUE_IMPUTATION_TRAINING_SPEC,
-    )
-    from ..specs.missing_value_imputation_validation_spec import (
-        MISSING_VALUE_IMPUTATION_VALIDATION_SPEC,
-    )
-    from ..specs.missing_value_imputation_testing_spec import (
-        MISSING_VALUE_IMPUTATION_TESTING_SPEC,
-    )
-    from ..specs.missing_value_imputation_calibration_spec import (
-        MISSING_VALUE_IMPUTATION_CALIBRATION_SPEC,
-    )
-
-    SPECS_AVAILABLE = True
-except ImportError:
-    MISSING_VALUE_IMPUTATION_SPEC = MISSING_VALUE_IMPUTATION_TRAINING_SPEC = (
-        MISSING_VALUE_IMPUTATION_VALIDATION_SPEC
-    ) = MISSING_VALUE_IMPUTATION_TESTING_SPEC = (
-        MISSING_VALUE_IMPUTATION_CALIBRATION_SPEC
-    ) = None
-    SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -71,56 +43,16 @@ class MissingValueImputationStepBuilder(StepBuilderBase):
             ValueError: If no specification is available for the job type
         """
         # Get the appropriate spec based on job type
-        spec = None
         if not hasattr(config, "job_type"):
             raise ValueError("config.job_type must be specified")
 
-        job_type = config.job_type.lower()
+        from ..interfaces import load_step_interface
 
-        # Get specification based on job type
-        if (
-            job_type == "training"
-            and MISSING_VALUE_IMPUTATION_TRAINING_SPEC is not None
-        ):
-            spec = MISSING_VALUE_IMPUTATION_TRAINING_SPEC
-        elif (
-            job_type == "validation"
-            and MISSING_VALUE_IMPUTATION_VALIDATION_SPEC is not None
-        ):
-            spec = MISSING_VALUE_IMPUTATION_VALIDATION_SPEC
-        elif (
-            job_type == "testing" and MISSING_VALUE_IMPUTATION_TESTING_SPEC is not None
-        ):
-            spec = MISSING_VALUE_IMPUTATION_TESTING_SPEC
-        elif (
-            job_type == "calibration"
-            and MISSING_VALUE_IMPUTATION_CALIBRATION_SPEC is not None
-        ):
-            spec = MISSING_VALUE_IMPUTATION_CALIBRATION_SPEC
-        else:
-            # Fallback to default spec if available
-            if MISSING_VALUE_IMPUTATION_SPEC is not None:
-                spec = MISSING_VALUE_IMPUTATION_SPEC
-                self.log_warning(
-                    "Using default specification for job type: %s", job_type
-                )
-            else:
-                # Try dynamic import
-                try:
-                    module_path = f"..specs.missing_value_imputation_{job_type}_spec"
-                    module = importlib.import_module(module_path, package=__package__)
-                    spec_var_name = f"MISSING_VALUE_IMPUTATION_{job_type.upper()}_SPEC"
-                    if hasattr(module, spec_var_name):
-                        spec = getattr(module, spec_var_name)
-                except (ImportError, AttributeError):
-                    self.log_warning(
-                        "Could not import specification for job type: %s", job_type
-                    )
+        _contract, spec = load_step_interface(
+            "MissingValueImputation", job_type=config.job_type
+        )
 
-        if not spec:
-            raise ValueError(f"No specification found for job type: {job_type}")
-
-        self.log_info("Using specification for %s", job_type)
+        self.log_info("Using specification for %s", config.job_type)
 
         super().__init__(
             config=config,

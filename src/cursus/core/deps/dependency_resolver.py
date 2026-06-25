@@ -5,9 +5,9 @@ This module provides the core dependency resolution logic that automatically
 matches step dependencies with compatible outputs from other steps.
 """
 
-from typing import Dict, List, Set, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 import logging
-from ..base import StepSpecification, DependencySpec, OutputSpec, DependencyType
+from ..base import DependencyType
 from .property_reference import PropertyReference
 from .specification_registry import SpecificationRegistry
 from .semantic_matcher import SemanticMatcher
@@ -38,7 +38,7 @@ class UnifiedDependencyResolver:
         self.semantic_matcher = semantic_matcher
         self._resolution_cache: Dict[str, Dict[str, PropertyReference]] = {}
 
-    def register_specification(self, step_name: str, spec: StepSpecification) -> None:
+    def register_specification(self, step_name: str, spec: Any) -> None:
         """Register a step specification with the resolver."""
         self.registry.register(step_name, spec)
         # Clear cache when new specifications are added
@@ -206,7 +206,7 @@ class UnifiedDependencyResolver:
         }
 
     def _get_all_candidates_with_scores(
-        self, dep_spec: DependencySpec, consumer_step: str, available_steps: List[str]
+        self, dep_spec: Any, consumer_step: str, available_steps: List[str]
     ) -> List[Dict]:
         """
         Get all candidates with their compatibility scores.
@@ -262,9 +262,9 @@ class UnifiedDependencyResolver:
 
     def _get_score_breakdown(
         self,
-        dep_spec: DependencySpec,
-        output_spec: OutputSpec,
-        provider_spec: StepSpecification,
+        dep_spec: Any,
+        output_spec: Any,
+        provider_spec: Any,
     ) -> Dict[str, float]:
         """
         Get detailed breakdown of compatibility score components.
@@ -373,7 +373,7 @@ class UnifiedDependencyResolver:
         }
 
     def _resolve_single_dependency(
-        self, dep_spec: DependencySpec, consumer_step: str, available_steps: List[str]
+        self, dep_spec: Any, consumer_step: str, available_steps: List[str]
     ) -> Optional[PropertyReference]:
         """
         Resolve a single dependency with confidence scoring.
@@ -436,9 +436,9 @@ class UnifiedDependencyResolver:
 
     def _calculate_compatibility(
         self,
-        dep_spec: DependencySpec,
-        output_spec: OutputSpec,
-        provider_spec: StepSpecification,
+        dep_spec: Any,
+        output_spec: Any,
+        provider_spec: Any,
     ) -> float:
         """
         Calculate compatibility score between dependency and output.

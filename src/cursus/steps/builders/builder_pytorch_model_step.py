@@ -9,7 +9,9 @@ from sagemaker import image_uris
 
 from ..configs.config_pytorch_model_step import PyTorchModelStepConfig
 from ...core.base.builder_base import StepBuilderBase
-from ..specs.pytorch_model_spec import PYTORCH_MODEL_SPEC
+from ..interfaces import load_step_interface
+
+_contract, PYTORCH_MODEL_SPEC = load_step_interface("PyTorchModel")
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 

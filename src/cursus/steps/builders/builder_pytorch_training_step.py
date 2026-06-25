@@ -14,14 +14,10 @@ from .s3_utils import S3PathHandler
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import PyTorch training specification
-try:
-    from ..specs.pytorch_training_spec import PYTORCH_TRAINING_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
 
-    SPEC_AVAILABLE = True
-except ImportError:
-    PYTORCH_TRAINING_SPEC = None
-    SPEC_AVAILABLE = False
+_contract, PYTORCH_TRAINING_SPEC = load_step_interface("PyTorchTraining")
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +56,11 @@ class PyTorchTrainingStepBuilder(StepBuilderBase):
             )
 
         # Load PyTorch training specification
-        if not SPEC_AVAILABLE or PYTORCH_TRAINING_SPEC is None:
-            raise ValueError("PyTorch training specification not available")
-
         self.log_info("Using PyTorch training specification")
 
         super().__init__(
             config=config,
-            spec=PYTORCH_TRAINING_SPEC,  # Add specification
+            spec=PYTORCH_TRAINING_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,

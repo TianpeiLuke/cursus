@@ -9,19 +9,15 @@ Fields are organized into three tiers:
 3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
 """
 
-from pydantic import Field, model_validator, PrivateAttr
-from typing import Optional, Dict, List, Any, TYPE_CHECKING
-from pathlib import Path
+from pydantic import Field, model_validator
+from typing import Dict, List, Any, TYPE_CHECKING
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import the script contract
-from ..contracts.lightgbmmt_model_eval_contract import LIGHTGBMMT_MODEL_EVAL_CONTRACT
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -270,15 +266,6 @@ class LightGBMMTModelEvalConfig(ProcessingStepConfigBase):
         )
 
         return env_vars
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The multi-task model evaluation script contract
-        """
-        return LIGHTGBMMT_MODEL_EVAL_CONTRACT
 
     # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
     # which includes hybrid resolution and comprehensive fallbacks

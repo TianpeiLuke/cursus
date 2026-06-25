@@ -1,31 +1,22 @@
 from pydantic import (
-    BaseModel,
     Field,
     model_validator,
     field_validator,
-    PrivateAttr,
     ConfigDict,
     field_serializer,
 )
-from typing import Optional, Dict, List, Any, Union, TYPE_CHECKING, ClassVar
+from typing import Optional, Dict, List, Union, TYPE_CHECKING, ClassVar
 from pathlib import Path
-from datetime import datetime
-from enum import Enum
 
-import json
 import logging
 
 logger = logging.getLogger(__name__)
 
 from .config_processing_step_base import ProcessingStepConfigBase
-from .config_registration_step import VariableType
-
-# Import the script contract
-from ..contracts.payload_contract import PAYLOAD_CONTRACT
 
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 
 class PayloadConfig(ProcessingStepConfigBase):
@@ -205,17 +196,6 @@ class PayloadConfig(ProcessingStepConfigBase):
 
     # Removed payload generation and processing methods - these belong in the script, not config
     # Config should only handle user input and configuration, not actual processing logic
-
-    # Script and contract handling
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The payload script contract
-        """
-        return PAYLOAD_CONTRACT
 
     # Removed get_script_path() method - using inherited implementation from base config
     # The base config's implementation handles script path resolution properly

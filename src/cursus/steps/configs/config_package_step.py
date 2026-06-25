@@ -1,15 +1,11 @@
-from pydantic import Field, model_validator, PrivateAttr
-from typing import TYPE_CHECKING, Optional, Dict, Any
-from pathlib import Path
+from pydantic import Field, model_validator
+from typing import TYPE_CHECKING
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import the script contract
-from ..contracts.package_contract import PACKAGE_CONTRACT
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 
 class PackageConfig(ProcessingStepConfigBase):
@@ -64,15 +60,6 @@ class PackageConfig(ProcessingStepConfigBase):
             )
 
         return self
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The package script contract
-        """
-        return PACKAGE_CONTRACT
 
     # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
     # which includes hybrid resolution and comprehensive fallbacks

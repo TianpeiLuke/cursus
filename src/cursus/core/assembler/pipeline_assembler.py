@@ -5,15 +5,13 @@ This assembler leverages the specification-based dependency resolution system
 to intelligently connect steps and build complete SageMaker pipelines.
 """
 
-from typing import Dict, List, Any, Optional, Type, Set, Tuple, DefaultDict
+from typing import Dict, List, Any, Optional, DefaultDict
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import Step
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline_context import PipelineSession
-from pathlib import Path
 import logging
 import time
-import traceback
 from collections import defaultdict
 
 from ..base import BasePipelineConfig, StepBuilderBase
@@ -24,8 +22,6 @@ from ..deps.dependency_resolver import (
 )
 from ..deps.factory import create_pipeline_components
 from ..deps.property_reference import PropertyReference
-from ..base import OutputSpec
-from ...registry.step_names import CONFIG_STEP_REGISTRY
 from ...step_catalog import StepCatalog
 
 from ...api.dag.base_dag import PipelineDAG
@@ -763,7 +759,7 @@ class PipelineAssembler:
                     dep_name = dep.name if hasattr(dep, "name") else str(dep)
                     print(f"    - {dep_name}")
             else:
-                print(f"  Depends on: None (root step)")
+                print("  Depends on: None (root step)")
 
         # Part 2: Input Assignments
         print("\n" + "=" * 80)

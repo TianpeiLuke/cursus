@@ -1,7 +1,6 @@
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 import logging
-import importlib
 import tempfile
 import json
 import shutil
@@ -18,26 +17,6 @@ from sagemaker.s3 import S3Uploader
 from ..configs.config_risk_table_mapping_step import RiskTableMappingConfig
 from ...core.base.builder_base import StepBuilderBase
 from .s3_utils import S3PathHandler
-
-# Import step specifications
-try:
-    from ..specs.risk_table_mapping_training_spec import (
-        RISK_TABLE_MAPPING_TRAINING_SPEC,
-    )
-    from ..specs.risk_table_mapping_validation_spec import (
-        RISK_TABLE_MAPPING_VALIDATION_SPEC,
-    )
-    from ..specs.risk_table_mapping_testing_spec import RISK_TABLE_MAPPING_TESTING_SPEC
-    from ..specs.risk_table_mapping_calibration_spec import (
-        RISK_TABLE_MAPPING_CALIBRATION_SPEC,
-    )
-
-    SPECS_AVAILABLE = True
-except ImportError:
-    RISK_TABLE_MAPPING_TRAINING_SPEC = RISK_TABLE_MAPPING_VALIDATION_SPEC = (
-        RISK_TABLE_MAPPING_TESTING_SPEC
-    ) = RISK_TABLE_MAPPING_CALIBRATION_SPEC = None
-    SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -73,43 +52,16 @@ class RiskTableMappingStepBuilder(StepBuilderBase):
             ValueError: If no specification is available for the job type
         """
         # Get the appropriate spec based on job type
-        spec = None
         if not hasattr(config, "job_type"):
             raise ValueError("config.job_type must be specified")
 
-        job_type = config.job_type.lower()
+        from ..interfaces import load_step_interface
 
-        # Get specification based on job type
-        if job_type == "training" and RISK_TABLE_MAPPING_TRAINING_SPEC is not None:
-            spec = RISK_TABLE_MAPPING_TRAINING_SPEC
-        elif (
-            job_type == "calibration"
-            and RISK_TABLE_MAPPING_CALIBRATION_SPEC is not None
-        ):
-            spec = RISK_TABLE_MAPPING_CALIBRATION_SPEC
-        elif (
-            job_type == "validation" and RISK_TABLE_MAPPING_VALIDATION_SPEC is not None
-        ):
-            spec = RISK_TABLE_MAPPING_VALIDATION_SPEC
-        elif job_type == "testing" and RISK_TABLE_MAPPING_TESTING_SPEC is not None:
-            spec = RISK_TABLE_MAPPING_TESTING_SPEC
-        else:
-            # Try dynamic import
-            try:
-                module_path = f"..specs.risk_table_mapping_{job_type}_spec"
-                module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"RISK_TABLE_MAPPING_{job_type.upper()}_SPEC"
-                if hasattr(module, spec_var_name):
-                    spec = getattr(module, spec_var_name)
-            except (ImportError, AttributeError):
-                self.log_warning(
-                    "Could not import specification for job type: %s", job_type
-                )
+        _contract, spec = load_step_interface(
+            "RiskTableMapping", job_type=config.job_type
+        )
 
-        if not spec:
-            raise ValueError(f"No specification found for job type: {job_type}")
-
-        self.log_info("Using specification for %s", job_type)
+        self.log_info("Using specification for %s", config.job_type)
 
         super().__init__(
             config=config,

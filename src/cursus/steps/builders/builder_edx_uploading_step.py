@@ -17,16 +17,7 @@ if TYPE_CHECKING:
     from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
 from ..configs.config_edx_uploading_step import EdxUploadingConfig
-from ..specs.edx_uploading_spec import EDX_UPLOADING_SPEC
 from ...core.base.builder_base import StepBuilderBase
-
-try:
-    from ..contracts.edx_uploading_contract import EDX_UPLOADING_CONTRACT
-
-    CONTRACT_AVAILABLE = True
-except ImportError:
-    EDX_UPLOADING_CONTRACT = None
-    CONTRACT_AVAILABLE = False
 
 from mods_workflow_core.utils.constants import (
     KMS_ENCRYPTION_KEY_PARAM,
@@ -57,16 +48,20 @@ class EdxUploadingStepBuilder(StepBuilderBase):
                 "EdxUploadingStepBuilder requires an EdxUploadingConfig instance."
             )
 
+        from ..interfaces import load_step_interface
+
+        contract, spec = load_step_interface("EdxUploading")
+
         super().__init__(
             config=config,
-            spec=EDX_UPLOADING_SPEC,
+            spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,
             dependency_resolver=dependency_resolver,
         )
         self.config: EdxUploadingConfig = config
-        self.contract = EDX_UPLOADING_CONTRACT if CONTRACT_AVAILABLE else None
+        self.contract = contract
 
     def validate_configuration(self) -> None:
         """Validate required configuration fields."""

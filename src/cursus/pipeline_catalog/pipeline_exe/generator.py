@@ -103,14 +103,14 @@ def generate_execution_document_for_pipeline(
 # between pipeline generation and execution document generation modules.
 #
 # The two modules are now completely independent:
-# 1. Pipeline generation: cursus.pipeline_catalog.core.base_pipeline
+# 1. Pipeline generation: cursus.pipeline_catalog.core (DAG-driven builders)
 # 2. Execution document generation: cursus.mods.exe_doc.generator
 #
 # Users should use the modules independently:
 #
 # For pipeline generation:
-# pipeline_instance = XGBoostE2EComprehensivePipeline(config_path="config.json")
-# pipeline = pipeline_instance.generate_pipeline()
+# from cursus.pipeline_catalog import build_and_compile
+# pipeline, report = build_and_compile(dag_path="dag.json", config_path="config.json")
 #
 # For execution document generation:
 # from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator

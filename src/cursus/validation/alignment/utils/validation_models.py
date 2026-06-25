@@ -10,16 +10,12 @@ from enum import Enum
 from dataclasses import dataclass
 import logging
 
+# ValidationLevel is canonically defined in config/validation_ruleset.py
+# (alongside the VALIDATION_RULESETS table). Re-export it here so existing
+# imports from this module continue to work against the single source.
+from ..config.validation_ruleset import ValidationLevel
+
 logger = logging.getLogger(__name__)
-
-
-class ValidationLevel(Enum):
-    """Validation levels in the alignment system."""
-
-    SCRIPT_CONTRACT = 1  # Level 1: Script ↔ Contract
-    CONTRACT_SPEC = 2  # Level 2: Contract ↔ Specification
-    SPEC_DEPENDENCY = 3  # Level 3: Specification ↔ Dependencies (Universal)
-    BUILDER_CONFIG = 4  # Level 4: Builder ↔ Configuration
 
 
 class ValidationStatus(Enum):

@@ -22,23 +22,16 @@ Validation Features:
 """
 
 # Core validators
-# Note: These validators were removed during consolidation
-# from .contract_spec_validator import ContractSpecValidator
-# from .script_contract_validator import ScriptContractValidator
-
 from .dependency_validator import DependencyValidator
 
 from .property_path_validator import SageMakerPropertyPathValidator
 
-from .contract_spec_validator import ConsolidatedContractSpecValidator
-
-# Note: This validator was also removed during consolidation
-# from .testability_validator import TestabilityPatternValidator
+# Note: contract_spec_validator (ConsolidatedContractSpecValidator) was removed —
+# Contract<->Spec logical-name/IO alignment is now enforced at StepInterface
+# construction time (StepInterface._sync_and_align), so the Level-2 validator is
+# redundant. SageMaker property-path validation remains via SageMakerPropertyPathValidator.
 
 __all__ = [
-    # Core validators (remaining after consolidation)
     "DependencyValidator",
     "SageMakerPropertyPathValidator",
-    # Restored validators
-    "ConsolidatedContractSpecValidator",
 ]

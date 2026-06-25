@@ -10,8 +10,10 @@ from sagemaker.sklearn import SKLearnProcessor
 from ..configs.config_tabular_preprocessing_step import TabularPreprocessingConfig
 from ...core.base.builder_base import StepBuilderBase
 
-# Import the unified tabular preprocessing specification
-from ..specs.tabular_preprocessing_spec import TABULAR_PREPROCESSING_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
+
+_contract, TABULAR_PREPROCESSING_SPEC = load_step_interface("TabularPreprocessing")
 
 logger = logging.getLogger(__name__)
 

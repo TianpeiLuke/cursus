@@ -15,14 +15,9 @@ import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import the script contract
-from ..contracts.active_sample_selection_contract import (
-    ACTIVE_SAMPLE_SELECTION_CONTRACT,
-)
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -306,15 +301,6 @@ class ActiveSampleSelectionConfig(ProcessingStepConfigBase):
             )
 
         return env_vars
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The active sample selection script contract
-        """
-        return ACTIVE_SAMPLE_SELECTION_CONTRACT
 
     def get_public_init_fields(self) -> Dict[str, Any]:
         """

@@ -9,7 +9,8 @@
       "Payload",
       "Registration",
       "CradleDataLoading_validation",
-      "PyTorchModelEval"
+      "PyTorchModelEval",
+      "TabularPreprocessing_validation"
     ],
     "edges": [
       [
@@ -53,7 +54,7 @@
   "metadata": {
     "name": "standard_e2e",
     "framework": "pytorch",
-    "node_count": 8,
+    "node_count": 9,
     "edge_count": 9,
     "input_requirements": {
       "data_types": [
@@ -82,7 +83,7 @@
       "when_to_use": "Standard PyTorch E2E when you want training + packaging + registration but WITHOUT calibration. Model scores go directly to registration. Used by names3risk_pytorch pattern.",
       "when_not_to_use": "If you need calibration (use pytorch/complete_e2e). If just prototyping (use pytorch/simple_training).",
       "differentiators": [
-        "No calibration step — faster pipeline, simpler",
+        "No calibration step \u2014 faster pipeline, simpler",
         "Has validation/eval path (separate from training)",
         "Includes packaging and registration (production-ready)",
         "Lighter than complete_e2e (no calibration split needed)"
@@ -117,7 +118,7 @@
           "learning_rate"
         ],
         "common_pitfalls": [
-          "No calibration — raw model scores may not be well-calibrated probabilities",
+          "No calibration \u2014 raw model scores may not be well-calibrated probabilities",
           "If downstream consumers expect calibrated scores, use complete_e2e instead",
           "Validation data should be from a different time period than training"
         ]

@@ -11,14 +11,10 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the packaging specification
-try:
-    from ..specs.package_spec import PACKAGE_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
 
-    SPEC_AVAILABLE = True
-except ImportError:
-    PACKAGE_SPEC = None
-    SPEC_AVAILABLE = False
+_contract, PACKAGE_SPEC = load_step_interface("Package")
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +48,8 @@ class PackageStepBuilder(StepBuilderBase):
         if not isinstance(config, PackageConfig):
             raise ValueError("PackageStepBuilder requires a PackageConfig instance.")
 
-        # Use the packaging specification if available
-        spec = PACKAGE_SPEC if SPEC_AVAILABLE else None
+        # Use the packaging specification
+        spec = PACKAGE_SPEC
 
         super().__init__(
             config=config,

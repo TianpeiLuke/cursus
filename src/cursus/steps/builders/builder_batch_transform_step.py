@@ -1,7 +1,6 @@
 from typing import Optional, List, Union, Dict, Any, Tuple
 from pathlib import Path
 import logging
-import importlib
 
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.steps import TransformStep, Step
@@ -13,22 +12,6 @@ from ..configs.config_batch_transform_step import BatchTransformStepConfig
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-
-# Import specifications based on job type
-try:
-    from ..specs.batch_transform_training_spec import BATCH_TRANSFORM_TRAINING_SPEC
-    from ..specs.batch_transform_calibration_spec import (
-        BATCH_TRANSFORM_CALIBRATION_SPEC,
-    )
-    from ..specs.batch_transform_validation_spec import BATCH_TRANSFORM_VALIDATION_SPEC
-    from ..specs.batch_transform_testing_spec import BATCH_TRANSFORM_TESTING_SPEC
-
-    SPECS_AVAILABLE = True
-except ImportError:
-    BATCH_TRANSFORM_TRAINING_SPEC = BATCH_TRANSFORM_CALIBRATION_SPEC = (
-        BATCH_TRANSFORM_VALIDATION_SPEC
-    ) = BATCH_TRANSFORM_TESTING_SPEC = None
-    SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -68,60 +51,16 @@ class BatchTransformStepBuilder(StepBuilderBase):
             )
 
         # Get the appropriate spec based on job type
-        spec = None
         if not hasattr(config, "job_type"):
             raise ValueError("config.job_type must be specified")
 
-        job_type = config.job_type.lower()
+        from ..interfaces import load_step_interface
 
-        # Get specification based on job type
-        if (
-            job_type == "training"
-            and SPECS_AVAILABLE
-            and BATCH_TRANSFORM_TRAINING_SPEC is not None
-        ):
-            spec = BATCH_TRANSFORM_TRAINING_SPEC
-        elif (
-            job_type == "calibration"
-            and SPECS_AVAILABLE
-            and BATCH_TRANSFORM_CALIBRATION_SPEC is not None
-        ):
-            spec = BATCH_TRANSFORM_CALIBRATION_SPEC
-        elif (
-            job_type == "validation"
-            and SPECS_AVAILABLE
-            and BATCH_TRANSFORM_VALIDATION_SPEC is not None
-        ):
-            spec = BATCH_TRANSFORM_VALIDATION_SPEC
-        elif (
-            job_type == "testing"
-            and SPECS_AVAILABLE
-            and BATCH_TRANSFORM_TESTING_SPEC is not None
-        ):
-            spec = BATCH_TRANSFORM_TESTING_SPEC
-        else:
-            # Try dynamic import
-            try:
-                module_path = f"..specs.batch_transform_{job_type}_spec"
-                module = importlib.import_module(module_path, package=__package__)
-                spec_var_name = f"BATCH_TRANSFORM_{job_type.upper()}_SPEC"
-                if hasattr(module, spec_var_name):
-                    spec = getattr(module, spec_var_name)
-            except (ImportError, AttributeError) as e:
-                self.log_warning(
-                    "Could not import specification for job type: %s, error: %s",
-                    job_type,
-                    e,
-                )
+        _contract, spec = load_step_interface(
+            "BatchTransform", job_type=config.job_type
+        )
 
-        # Even if we don't have a spec, continue without one
-        if spec:
-            self.log_info("Using specification for batch transform %s", job_type)
-        else:
-            self.log_info(
-                "No specification found for batch transform job type: %s, continuing with default behavior",
-                job_type,
-            )
+        self.log_info("Using specification for batch transform %s", config.job_type)
 
         super().__init__(
             config=config,

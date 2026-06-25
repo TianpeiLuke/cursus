@@ -10,20 +10,14 @@ Fields are organized into three tiers:
 """
 
 from pydantic import Field, model_validator, field_validator
-from typing import Optional, Dict, List, Any, TYPE_CHECKING
-from pathlib import Path
+from typing import Dict, List, Any, TYPE_CHECKING
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import the script contract
-from ..contracts.lightgbmmt_model_inference_contract import (
-    LIGHTGBMMT_MODEL_INFERENCE_CONTRACT,
-)
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -214,15 +208,6 @@ class LightGBMMTModelInferenceConfig(ProcessingStepConfigBase):
         )
 
         return env_vars
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The multi-task model inference script contract
-        """
-        return LIGHTGBMMT_MODEL_INFERENCE_CONTRACT
 
     def get_public_init_fields(self) -> Dict[str, Any]:
         """

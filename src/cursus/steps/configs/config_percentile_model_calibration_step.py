@@ -9,13 +9,10 @@ Fields are organized into three tiers:
 3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
 """
 
-from typing import Optional, List, Union, Any, Dict
-import json
-from pathlib import Path
-from pydantic import Field, model_validator, PrivateAttr
+from typing import Optional, List, Any, Dict
+from pydantic import Field, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
-from ...core.base.hyperparameters_base import ModelHyperparameters
 
 
 class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
@@ -167,18 +164,6 @@ class PercentileModelCalibrationConfig(ProcessingStepConfigBase):
                 raise ValueError("All elements in score_fields must be strings")
 
         return self
-
-    def get_script_contract(self):
-        """Return the script contract for this step.
-
-        Returns:
-            ScriptContract: The contract for this step's script.
-        """
-        from ..contracts.percentile_model_calibration_contract import (
-            PERCENTILE_MODEL_CALIBRATION_CONTRACT,
-        )
-
-        return PERCENTILE_MODEL_CALIBRATION_CONTRACT
 
     def get_environment_variables(self) -> Dict[str, str]:
         """Get environment variables for the processing script.

@@ -14,19 +14,18 @@ Key Features:
 """
 
 import logging
-from typing import Dict, Any, Optional
-from pathlib import Path
+from typing import Dict, Any
 
 # Direct reuse of existing cursus infrastructure
 from ...step_catalog import StepCatalog
-from ...core.base.specification_base import StepSpecification
+from ...core.base.step_interface import StepInterface
 
 logger = logging.getLogger(__name__)
 
 
 def resolve_script_inputs_using_step_patterns(
     node_name: str,
-    spec: StepSpecification,
+    spec: StepInterface,
     resolved_dependencies: Dict[str, str],
     step_catalog: StepCatalog,
 ) -> Dict[str, str]:
@@ -47,7 +46,7 @@ def resolve_script_inputs_using_step_patterns(
         Dictionary mapping logical dependency names to actual script input paths
 
     Example:
-        >>> spec = step_catalog.spec_discovery.load_spec_class('DataPreprocessing')
+        >>> spec = step_catalog.load_spec_class('DataPreprocessing')
         >>> resolved_deps = {'training_data': '/data/input/train.csv'}
         >>> script_inputs = resolve_script_inputs_using_step_patterns(
         ...     'DataPreprocessing', spec, resolved_deps, step_catalog
@@ -145,8 +144,8 @@ def adapt_step_input_patterns_for_scripts(
     logger.info(f"Adapting step input patterns for script {node_name}")
 
     try:
-        # Load specification (DIRECT REUSE)
-        spec = step_catalog.spec_discovery.load_spec_class(node_name)
+        # Load specification (YAML-first via StepCatalog.load_spec_class)
+        spec = step_catalog.load_spec_class(node_name)
         if not spec:
             raise ValueError(f"No specification found for {node_name}")
 
@@ -237,8 +236,8 @@ def validate_script_input_resolution(
     try:
         logger.info(f"Validating script input resolution for {node_name}")
 
-        # Load specification for validation
-        spec = step_catalog.spec_discovery.load_spec_class(node_name)
+        # Load specification for validation (YAML-first via StepCatalog.load_spec_class)
+        spec = step_catalog.load_spec_class(node_name)
         if not spec:
             logger.error(f"No specification found for {node_name}")
             return False
@@ -295,8 +294,8 @@ def get_script_input_resolution_summary(
         2
     """
     try:
-        # Load specification for analysis
-        spec = step_catalog.spec_discovery.load_spec_class(node_name)
+        # Load specification for analysis (YAML-first via StepCatalog.load_spec_class)
+        spec = step_catalog.load_spec_class(node_name)
         contract = step_catalog.load_contract_class(node_name)
 
         # Count dependencies

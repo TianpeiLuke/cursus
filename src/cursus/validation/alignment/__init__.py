@@ -26,24 +26,17 @@ from .core.script_contract_alignment import ScriptContractAlignmentTester
 from .core.contract_spec_alignment import ContractSpecificationAlignmentTester
 from .core.spec_dependency_alignment import SpecificationDependencyAlignmentTester
 
-# Consolidated reporting components
-from .reporting import (
-    ValidationReporter,
-    ReportingConfig,
-    generate_quick_report,
-    print_validation_summary,
-    calculate_validation_scores,
-)
-
 # Remaining validators
 from .validators import (
     DependencyValidator,
     SageMakerPropertyPathValidator,
 )
 
+# Canonical ValidationLevel source (alongside the VALIDATION_RULESETS table)
+from .config.validation_ruleset import ValidationLevel
+
 # Consolidated utilities and models
 from .utils import (
-    ValidationLevel,
     ValidationStatus,
     IssueLevel,
     RuleType,
@@ -67,12 +60,6 @@ __all__ = [
     "ScriptContractAlignmentTester",
     "ContractSpecificationAlignmentTester",
     "SpecificationDependencyAlignmentTester",
-    # Consolidated reporting
-    "ValidationReporter",
-    "ReportingConfig",
-    "generate_quick_report",
-    "print_validation_summary",
-    "calculate_validation_scores",
     # Remaining validators
     "DependencyValidator",
     "SageMakerPropertyPathValidator",

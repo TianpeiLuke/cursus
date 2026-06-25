@@ -12,20 +12,21 @@ from ..validators.property_path_validator import SageMakerPropertyPathValidator
 
 # PHASE 2 ENHANCEMENT: Use StepCatalog instead of SmartSpecificationSelector
 # SmartSpecificationSelector functionality has been integrated into SpecAutoDiscovery
-from ....step_catalog.adapters.contract_adapter import (
-    ContractDiscoveryEngineAdapter as ContractDiscoveryEngine,
-)
 
 
 class ContractSpecificationAlignmentTester:
     """
-    Tests alignment between script contracts and step specifications.
+    Level 2 validator — SageMaker property-path correctness for spec outputs.
 
-    Validates:
-    - Logical names match between contract and specification
-    - Data types are consistent
-    - Input/output specifications align
-    - Dependencies are properly declared
+    Contract<->Spec logical-name / I/O / dependency alignment is no longer
+    checked here: it is enforced structurally at StepInterface construction
+    (StepInterface._sync_and_align raises when contract.inputs are not a subset
+    of spec.dependencies, or contract.outputs of spec.outputs). Since every step
+    loads through that unified Pydantic model, those checks are unreachable.
+
+    The one Level-2 check with no construction-time equivalent — that each spec
+    output's ``property_path`` is a valid SageMaker property path for the step
+    type — is retained, via SageMakerPropertyPathValidator.
     """
 
     def __init__(self, workspace_dirs: Optional[List[Path]] = None):
@@ -185,35 +186,15 @@ class ContractSpecificationAlignmentTester:
             script_or_contract_name
         )
 
-        # Perform alignment validation against unified specification
+        # Contract<->Spec logical-name/IO alignment is now enforced structurally at
+        # StepInterface construction time (StepInterface._sync_and_align raises if
+        # contract.inputs are not a subset of spec.dependencies and contract.outputs
+        # of spec.outputs). Since every step loads through that unified model, the
+        # former Level-2 logical-name set-difference checks are unreachable and have
+        # been removed. The one check with no construction-time equivalent —
+        # SageMaker property-path correctness for spec outputs — is retained here.
         all_issues = []
 
-        # Validate logical name alignment using smart multi-variant logic from StepCatalog
-        logical_issues = self.step_catalog.validate_logical_names_smart(
-            contract, script_or_contract_name
-        )
-        all_issues.extend(logical_issues)
-
-        # RESTORED: Use consolidated validation logic with restored ContractSpecValidator
-        from ..validators.contract_spec_validator import (
-            ConsolidatedContractSpecValidator,
-        )
-
-        validator = ConsolidatedContractSpecValidator()
-
-        # Restore logical name validation
-        logical_name_issues = validator.validate_logical_names(
-            contract, unified_spec["primary_spec"], script_or_contract_name
-        )
-        all_issues.extend(logical_name_issues)
-
-        # Restore I/O alignment validation
-        io_alignment_issues = validator.validate_input_output_alignment(
-            contract, unified_spec["primary_spec"], script_or_contract_name
-        )
-        all_issues.extend(io_alignment_issues)
-
-        # NEW: Validate property path references (Level 2 enhancement)
         property_path_issues = self._validate_property_paths(
             unified_spec["primary_spec"], script_or_contract_name
         )

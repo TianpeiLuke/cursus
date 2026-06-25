@@ -17,12 +17,9 @@ import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import contract
-from ..contracts.currency_conversion_contract import CURRENCY_CONVERSION_CONTRACT
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -226,17 +223,6 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
         _ = self.environment_variables
 
         return self
-
-    # ===== Script Contract =====
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The currency conversion script contract
-        """
-        return CURRENCY_CONVERSION_CONTRACT
 
     # ===== Overrides for Inheritance =====
 

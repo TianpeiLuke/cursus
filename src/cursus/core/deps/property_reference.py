@@ -6,12 +6,12 @@ and runtime property references in the SageMaker pipeline context. It handles co
 across various SageMaker step types.
 """
 
-from typing import Dict, List, Optional, Any, Union, Tuple
+from typing import Dict, List, Any, Union, Tuple
 import re
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
-from ..base import OutputSpec
+from ..base.step_interface import OutputDecl
 
 
 class PropertyReference(BaseModel):
@@ -22,7 +22,9 @@ class PropertyReference(BaseModel):
     step_name: str = Field(
         ..., description="Name of the step that produces this output", min_length=1
     )
-    output_spec: OutputSpec = Field(
+    # The unified StepInterface OutputDecl (exposes .property_path and .logical_name,
+    # which is all this class reads).
+    output_spec: OutputDecl = Field(
         ..., description="Output specification for the referenced output"
     )
 

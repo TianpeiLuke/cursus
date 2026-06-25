@@ -19,14 +19,10 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import Lightgbmmt training specification
-try:
-    from ..specs.lightgbmmt_training_spec import LIGHTGBMMT_TRAINING_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
 
-    SPEC_AVAILABLE = True
-except ImportError:
-    LIGHTGBMMT_TRAINING_SPEC = None
-    SPEC_AVAILABLE = False
+_contract, LIGHTGBMMT_TRAINING_SPEC = load_step_interface("LightGBMMTTraining")
 
 logger = logging.getLogger(__name__)
 
@@ -75,14 +71,11 @@ class LightGBMMTTrainingStepBuilder(StepBuilderBase):
             )
 
         # Load LightGBMMT training specification
-        if not SPEC_AVAILABLE or LIGHTGBMMT_TRAINING_SPEC is None:
-            raise ValueError("LightGBMMT training specification not available")
-
         self.log_info("Using LightGBMMT training specification")
 
         super().__init__(
             config=config,
-            spec=LIGHTGBMMT_TRAINING_SPEC,  # Add specification
+            spec=LIGHTGBMMT_TRAINING_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,

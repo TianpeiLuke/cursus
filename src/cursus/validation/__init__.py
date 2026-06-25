@@ -49,18 +49,17 @@ def get_validation_info() -> dict:
         Dictionary with validation framework information
     """
     return {
-        "runtime_testing": "Available - RuntimeTester and related components",
+        "script_testing": "Available - run_dag_scripts and related components",
         "alignment_testing": "Available - unified_alignment_tester module",
         "builder_testing": "Available - universal_test module",
         "available_classes": [
-            "RuntimeTester",
-            "ScriptTestResult",
-            "DataCompatibilityResult",
-            "PipelineTestingSpecBuilder",
-            "WorkspaceAwarePipelineTestingSpecBuilder",
+            "ScriptTestingInputCollector",
+            "ResultFormatter",
+            "ScriptExecutionResult",
         ],
         "available_modules": [
             "unified_alignment_tester",
             "universal_test",
+            "script_testing",
         ],
     }

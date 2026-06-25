@@ -9,7 +9,9 @@ from sagemaker import image_uris
 
 from ..configs.config_xgboost_model_step import XGBoostModelStepConfig
 from ...core.base.builder_base import StepBuilderBase
-from ..specs.xgboost_model_spec import XGBOOST_MODEL_SPEC
+from ..interfaces import load_step_interface
+
+_contract, XGBOOST_MODEL_SPEC = load_step_interface("XGBoostModel")
 
 logger = logging.getLogger(__name__)
 

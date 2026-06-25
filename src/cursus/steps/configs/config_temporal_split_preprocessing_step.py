@@ -9,21 +9,16 @@ is properly categorized according to the three-tier design:
 3. Derived Fields (Tier 3) - Fields calculated from other fields, private with read-only properties
 """
 
-from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr
+from pydantic import Field, field_validator, model_validator, PrivateAttr
 from typing import Dict, Optional, Any, List, TYPE_CHECKING
 from pathlib import Path
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import contract
-from ..contracts.temporal_split_preprocessing_contract import (
-    TEMPORAL_SPLIT_PREPROCESSING_CONTRACT,
-)
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -376,17 +371,6 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
                 )
 
         return self
-
-    # ===== Script Contract =====
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The temporal split preprocessing script contract
-        """
-        return TEMPORAL_SPLIT_PREPROCESSING_CONTRACT
 
     # ===== Overrides for Inheritance =====
 

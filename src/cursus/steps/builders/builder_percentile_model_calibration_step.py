@@ -18,7 +18,11 @@ from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_percentile_model_calibration_step import (
     PercentileModelCalibrationConfig,
 )
-from ..specs.percentile_model_calibration_spec import PERCENTILE_MODEL_CALIBRATION_SPEC
+from ..interfaces import load_step_interface
+
+_contract, PERCENTILE_MODEL_CALIBRATION_SPEC = load_step_interface(
+    "PercentileModelCalibration"
+)
 
 logger = logging.getLogger(__name__)
 

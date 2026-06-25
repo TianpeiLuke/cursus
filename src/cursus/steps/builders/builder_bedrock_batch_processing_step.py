@@ -8,7 +8,6 @@ following the specification-driven approach and standardization rules.
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 import logging
-import importlib
 
 from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput, FrameworkProcessor
@@ -19,15 +18,6 @@ from ..configs.config_bedrock_batch_processing_step import BedrockBatchProcessin
 from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
-
-# Import the bedrock batch processing specification
-try:
-    from ..specs.bedrock_batch_processing_spec import BEDROCK_BATCH_PROCESSING_SPEC
-
-    SPEC_AVAILABLE = True
-except ImportError:
-    BEDROCK_BATCH_PROCESSING_SPEC = None
-    SPEC_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -100,11 +90,9 @@ class BedrockBatchProcessingStepBuilder(StepBuilderBase):
                 "BedrockBatchProcessingStepBuilder requires a BedrockBatchProcessingConfig instance."
             )
 
-        # Use the bedrock batch processing specification
-        spec = BEDROCK_BATCH_PROCESSING_SPEC if SPEC_AVAILABLE else None
+        from ..interfaces import load_step_interface
 
-        if not spec:
-            raise ValueError("Bedrock batch processing specification not available")
+        _contract, spec = load_step_interface("BedrockBatchProcessing")
 
         self.log_info(
             "Using bedrock batch processing specification for job type: %s",

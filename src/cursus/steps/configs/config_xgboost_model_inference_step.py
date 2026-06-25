@@ -10,20 +10,14 @@ Fields are organized into three tiers:
 """
 
 from pydantic import Field, model_validator, field_validator
-from typing import Optional, Dict, List, Any, TYPE_CHECKING
-from pathlib import Path
+from typing import Dict, Any, TYPE_CHECKING
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import the script contract
-from ..contracts.xgboost_model_inference_contract import (
-    XGBOOST_MODEL_INFERENCE_CONTRACT,
-)
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -185,15 +179,6 @@ class XGBoostModelInferenceConfig(ProcessingStepConfigBase):
         )
 
         return env_vars
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The model inference script contract
-        """
-        return XGBOOST_MODEL_INFERENCE_CONTRACT
 
     def get_public_init_fields(self) -> Dict[str, Any]:
         """

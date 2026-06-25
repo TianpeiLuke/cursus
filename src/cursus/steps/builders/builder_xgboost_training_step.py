@@ -19,14 +19,10 @@ from .s3_utils import S3PathHandler
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import XGBoost training specification
-try:
-    from ..specs.xgboost_training_spec import XGBOOST_TRAINING_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
 
-    SPEC_AVAILABLE = True
-except ImportError:
-    XGBOOST_TRAINING_SPEC = None
-    SPEC_AVAILABLE = False
+_contract, XGBOOST_TRAINING_SPEC = load_step_interface("XGBoostTraining")
 
 logger = logging.getLogger(__name__)
 
@@ -65,14 +61,11 @@ class XGBoostTrainingStepBuilder(StepBuilderBase):
             )
 
         # Load XGBoost training specification
-        if not SPEC_AVAILABLE or XGBOOST_TRAINING_SPEC is None:
-            raise ValueError("XGBoost training specification not available")
-
         self.log_info("Using XGBoost training specification")
 
         super().__init__(
             config=config,
-            spec=XGBOOST_TRAINING_SPEC,  # Add specification
+            spec=XGBOOST_TRAINING_SPEC,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,

@@ -11,7 +11,6 @@ import logging
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Type, Any
-import importlib.util
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,7 @@ class BuilderAutoDiscovery:
 
         self.package_root = package_root
         self.workspace_dirs = workspace_dirs or []
-        self.logger.info(f"✅ BuilderAutoDiscovery basic initialization complete")
+        self.logger.info("✅ BuilderAutoDiscovery basic initialization complete")
 
         # Caches for performance
         self._builder_cache: Dict[str, Type] = {}
@@ -490,32 +489,105 @@ class BuilderAutoDiscovery:
         Returns:
             Class type or None if loading fails
         """
-        try:
-            # Convert file path to relative module path
+        import importlib
+
+        module = None
+        attempted: List[str] = []
+
+        # Preferred: absolute import via the actual root package name (deployment-agnostic).
+        # __package__ here is e.g. "cursus.step_catalog" (or "<vendor>.cursus.step_catalog"
+        # in a synced/nested deployment). Deriving the module path from the package the
+        # builders actually live in avoids the fragile fixed-".." relative path, which
+        # breaks when package_root is not exactly the top-level package directory.
+        absolute_module_path = self._file_to_package_module_path(file_path)
+        if absolute_module_path:
+            attempted.append(absolute_module_path)
+            try:
+                module = importlib.import_module(absolute_module_path)
+            except Exception as e:
+                self.logger.debug(
+                    f"Absolute import {absolute_module_path} failed, will try relative: {e}"
+                )
+
+        # Fallback: relative import with package parameter (works when package_root is
+        # exactly the package dir).
+        if module is None:
             relative_module_path = self._file_to_relative_module_path(file_path)
-            if not relative_module_path:
-                self.logger.warning(
-                    f"Could not determine relative module path for {file_path}"
-                )
-                return None
+            if relative_module_path:
+                attempted.append(relative_module_path)
+                try:
+                    module = importlib.import_module(
+                        relative_module_path, package=__package__
+                    )
+                except Exception as e:
+                    self.logger.warning(
+                        f"Error loading class {class_name} from {file_path} "
+                        f"(tried {attempted}): {e}"
+                    )
+                    return None
 
-            # Import the module using relative import with package parameter
-            import importlib
-
-            module = importlib.import_module(relative_module_path, package=__package__)
-
-            # Get the class from the module
-            if hasattr(module, class_name):
-                return getattr(module, class_name)
-            else:
-                self.logger.warning(
-                    f"Class {class_name} not found in module {relative_module_path}"
-                )
-                return None
-
-        except Exception as e:
+        if module is None:
             self.logger.warning(
-                f"Error loading class {class_name} from {file_path} (relative module: {relative_module_path}): {e}"
+                f"Could not determine an import path for {file_path} (tried {attempted})"
+            )
+            return None
+
+        # Get the class from the module
+        if hasattr(module, class_name):
+            return getattr(module, class_name)
+        self.logger.warning(f"Class {class_name} not found in module {module.__name__}")
+        return None
+
+    def _file_to_package_module_path(self, file_path: Path) -> Optional[str]:
+        """
+        Convert a file path to an ABSOLUTE module path rooted at the real package name.
+
+        This is deployment-agnostic: it derives the root package from this module's own
+        ``__package__`` (e.g. ``cursus`` from ``cursus.step_catalog``, or
+        ``vendor.cursus`` from ``vendor.cursus.step_catalog``) and joins it with the
+        portion of ``file_path`` at/after the ``cursus`` directory segment. Unlike a
+        fixed-".."-prefixed relative import, it does not assume ``package_root`` is
+        exactly the top-level package directory, so it keeps working when the package is
+        synced/nested under another package.
+
+        Args:
+            file_path: Path to the Python file (e.g. .../cursus/steps/builders/builder_x.py)
+
+        Returns:
+            Absolute module path (e.g. 'cursus.steps.builders.builder_x') or None.
+        """
+        try:
+            # Root package this discovery module lives in (handles nesting).
+            # __package__ == "cursus.step_catalog" -> root "cursus"
+            #             == "vendor.cursus.step_catalog" -> root prefix "vendor.cursus"
+            pkg_parts = (__package__ or "").split(".")
+            if "step_catalog" in pkg_parts:
+                root_pkg_parts = pkg_parts[: pkg_parts.index("step_catalog")]
+            else:
+                root_pkg_parts = pkg_parts[:-1] if len(pkg_parts) > 1 else pkg_parts
+            if not root_pkg_parts:
+                return None
+
+            # The file's module parts from the 'cursus' segment onward, dropping '.py'.
+            file_parts = list(file_path.with_suffix("").parts)
+            if "cursus" in file_parts:
+                # Everything AFTER the cursus dir (steps, builders, builder_x)
+                sub_parts = file_parts[file_parts.index("cursus") + 1 :]
+            else:
+                # Fall back to path relative to package_root
+                try:
+                    sub_parts = list(
+                        file_path.with_suffix("").relative_to(self.package_root).parts
+                    )
+                except ValueError:
+                    return None
+            if not sub_parts:
+                return None
+
+            return ".".join(root_pkg_parts + sub_parts)
+        except Exception as e:
+            self.logger.debug(
+                f"Error converting {file_path} to package module path: {e}"
             )
             return None
 

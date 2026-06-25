@@ -9,7 +9,9 @@
       "Registration",
       "Payload",
       "CradleDataLoading_calibration",
-      "PyTorchModelEval_calibration"
+      "PyTorchModelEval_calibration",
+      "TabularPreprocessing_calibration",
+      "ModelCalibration_calibration"
     ],
     "edges": [
       [
@@ -61,7 +63,7 @@
   "metadata": {
     "name": "complete_e2e",
     "framework": "pytorch",
-    "node_count": 8,
+    "node_count": 10,
     "edge_count": 11,
     "input_requirements": {
       "data_types": [

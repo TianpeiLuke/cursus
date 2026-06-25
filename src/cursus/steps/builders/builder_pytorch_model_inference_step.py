@@ -11,14 +11,10 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the model inference specification
-try:
-    from ..specs.pytorch_model_inference_spec import PYTORCH_MODEL_INFERENCE_SPEC
+# Load specification from unified YAML interface
+from ..interfaces import load_step_interface
 
-    SPEC_AVAILABLE = True
-except ImportError:
-    PYTORCH_MODEL_INFERENCE_SPEC = None
-    SPEC_AVAILABLE = False
+_contract, PYTORCH_MODEL_INFERENCE_SPEC = load_step_interface("PyTorchModelInference")
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +51,8 @@ class PyTorchModelInferenceStepBuilder(StepBuilderBase):
                 "PyTorchModelInferenceStepBuilder requires a PyTorchModelInferenceConfig instance."
             )
 
-        # Use the model inference specification if available
-        spec = PYTORCH_MODEL_INFERENCE_SPEC if SPEC_AVAILABLE else None
+        # Use the model inference specification
+        spec = PYTORCH_MODEL_INFERENCE_SPEC
 
         super().__init__(
             config=config,
@@ -135,7 +131,7 @@ class PyTorchModelInferenceStepBuilder(StepBuilderBase):
             else self.config.processing_instance_type_small
         )
 
-        return FrameworkProcessor(
+        processor = FrameworkProcessor(
             estimator_cls=PyTorch,
             framework_version=self.config.framework_version,
             py_version=self.config.py_version,
@@ -147,6 +143,8 @@ class PyTorchModelInferenceStepBuilder(StepBuilderBase):
             sagemaker_session=self.session,
             env=self._get_environment_variables(),
         )
+
+        return processor
 
     def _get_environment_variables(self) -> Dict[str, str]:
         """Get environment variables for the processor.
@@ -345,10 +343,6 @@ class PyTorchModelInferenceStepBuilder(StepBuilderBase):
         # Create processor and get inputs/outputs
         processor = self._create_processor()
 
-        # Propagate skip_volume_kms flag for NVMe-aware security patching
-        if hasattr(self.config, "skip_volume_kms"):
-            processor._skip_volume_kms = self.config.skip_volume_kms
-
         proc_inputs = self._get_inputs(inputs)
         proc_outputs = self._get_outputs(outputs)
         job_args = self._get_job_arguments()
@@ -375,42 +369,6 @@ class PyTorchModelInferenceStepBuilder(StepBuilderBase):
         self.log_info("Using entry point: %s", entry_point)
         self.log_info("Using source directory: %s", source_dir)
 
-        # For NVMe instances, remove VolumeKmsKeyId from session config before
-        # processor.run() — SDK config injects it into the pipeline definition at
-        # serialization time (and again at pipeline.definition() via re-execution).
-        #
-        # skip_volume_kms=True (explicit): permanent removal, required for NVMe steps.
-        #   User must set this when the step uses an NVMe instance in a multi-step pipeline.
-        # skip_volume_kms=None (auto-detect): temporary removal + restore after .run().
-        #   Works for single-step pipelines only (definition() re-execution re-injects).
-        _explicit_skip = getattr(processor, "_skip_volume_kms", None)
-        if _explicit_skip is None:
-            from sagemaker.utils import instance_supports_kms
-
-            _instance = getattr(processor, "instance_type", None)
-            _should_skip_kms = isinstance(_instance, str) and not instance_supports_kms(
-                _instance
-            )
-        else:
-            _should_skip_kms = bool(_explicit_skip)
-
-        _removed_kms = None
-        if _should_skip_kms:
-            try:
-                _cfg = processor.sagemaker_session.sagemaker_config
-                _cc = _cfg["SageMaker"]["ProcessingJob"]["ProcessingResources"][
-                    "ClusterConfig"
-                ]
-                _removed_kms = _cc.pop("VolumeKmsKeyId", None)
-                self.log_info(
-                    "NVMe: removed VolumeKmsKeyId from session config (explicit=%s)",
-                    _explicit_skip is not None,
-                )
-            except (KeyError, TypeError, AttributeError):
-                pass
-            if hasattr(processor, "volume_kms_key"):
-                processor.volume_kms_key = None
-
         # Create step arguments using FrameworkProcessor.run() with source_dir
         step_args = processor.run(
             code=entry_point,
@@ -419,17 +377,6 @@ class PyTorchModelInferenceStepBuilder(StepBuilderBase):
             outputs=proc_outputs,
             arguments=job_args,
         )
-
-        # Restore only for auto-detect mode. Explicit skip_volume_kms=True must NOT
-        # restore because pipeline.definition() re-executes processor.run() at upsert
-        # time — restoring would re-inject VolumeKmsKeyId into the definition.
-        if _removed_kms is not None and _explicit_skip is None:
-            try:
-                _cfg["SageMaker"]["ProcessingJob"]["ProcessingResources"][
-                    "ClusterConfig"
-                ]["VolumeKmsKeyId"] = _removed_kms
-            except (KeyError, TypeError, AttributeError):
-                pass
 
         # Create and return the step - use only step_args, not processor
         processing_step = ProcessingStep(

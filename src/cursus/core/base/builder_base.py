@@ -1,10 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any, Union, Callable, Tuple, Set, TYPE_CHECKING
-from pathlib import Path
+from typing import Dict, List, Optional, Any, Union, TYPE_CHECKING
 import logging
-from inspect import signature
-import importlib
-import warnings
 from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.steps import Step
 from sagemaker.workflow.steps import CacheConfig
@@ -44,10 +40,10 @@ else:
 
 # Import for type hints only
 if TYPE_CHECKING:
-    from .specification_base import StepSpecification
+    from .step_interface import StepInterface
 else:
     # Just for runtime use, won't affect type checking
-    StepSpecification = Any
+    StepInterface = Any
 
 # Import BasePipelineConfig for type hints only to break circular dependency
 if TYPE_CHECKING:
@@ -274,7 +270,7 @@ class StepBuilderBase(ABC):
     def __init__(
         self,
         config: BasePipelineConfig,
-        spec: Optional[StepSpecification] = None,  # New parameter
+        spec: Optional[StepInterface] = None,  # New parameter
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         registry_manager: Optional[RegistryManager] = None,
@@ -915,7 +911,12 @@ class StepBuilderBase(ABC):
             dependency_steps: List of dependency steps
             available_steps: List to populate with step names
         """
-        from .specification_base import StepSpecification, OutputSpec
+        from .step_interface import (
+            StepInterface,
+            SpecSection,
+            OutputDecl,
+            ContractSection,
+        )
         from .enums import DependencyType
 
         for i, dep_step in enumerate(dependency_steps):
@@ -943,18 +944,18 @@ class StepBuilderBase(ABC):
                 if hasattr(dep_step, "properties") and hasattr(
                     dep_step.properties, "ModelArtifacts"
                 ):
-                    minimal_spec = StepSpecification(
+                    minimal_spec = StepInterface(
                         step_type=dep_name,
-                        description=f"Auto-generated spec for {dep_name}",
-                        dependencies=[],
-                        outputs=[
-                            OutputSpec(
-                                logical_name="model",
-                                description="Model artifacts",
-                                output_type=DependencyType.MODEL_ARTIFACTS,
-                                property_path="properties.ModelArtifacts.S3ModelArtifacts",
-                            )
-                        ],
+                        contract=ContractSection(),
+                        spec=SpecSection(
+                            outputs={
+                                "model": OutputDecl(
+                                    description="Model artifacts",
+                                    type=DependencyType.MODEL_ARTIFACTS,
+                                    property_path="properties.ModelArtifacts.S3ModelArtifacts",
+                                )
+                            },
+                        ),
                     )
                     resolver.register_specification(dep_name, minimal_spec)
                     logger.info(f"Created minimal model spec for {dep_name}")
@@ -977,10 +978,9 @@ class StepBuilderBase(ABC):
                                 if hasattr(output, "S3Output") and hasattr(
                                     output.S3Output, "S3Uri"
                                 ):
-                                    outputs[key] = OutputSpec(
-                                        logical_name=key,
+                                    outputs[key] = OutputDecl(
                                         description=f"Output {key}",
-                                        output_type=DependencyType.PROCESSING_OUTPUT,
+                                        type=DependencyType.PROCESSING_OUTPUT,
                                         property_path=f"properties.ProcessingOutputConfig.Outputs['{key}'].S3Output.S3Uri",
                                     )
                         except (AttributeError, TypeError):
@@ -994,21 +994,21 @@ class StepBuilderBase(ABC):
                                     output.S3Output, "S3Uri"
                                 ):
                                     key = f"output_{i}"
-                                    outputs[key] = OutputSpec(
-                                        logical_name=key,
+                                    outputs[key] = OutputDecl(
                                         description=f"Output at index {i}",
-                                        output_type=DependencyType.PROCESSING_OUTPUT,
+                                        type=DependencyType.PROCESSING_OUTPUT,
                                         property_path=f"properties.ProcessingOutputConfig.Outputs[{i}].S3Output.S3Uri",
                                     )
                         except (IndexError, TypeError, AttributeError):
                             pass
 
                     if outputs:
-                        minimal_spec = StepSpecification(
+                        minimal_spec = StepInterface(
                             step_type=dep_name,
-                            description=f"Auto-generated spec for {dep_name}",
-                            dependencies=[],
-                            outputs=list(outputs.values()),
+                            contract=ContractSection(),
+                            spec=SpecSection(
+                                outputs=outputs,
+                            ),
                         )
                         resolver.register_specification(dep_name, minimal_spec)
                         logger.info(

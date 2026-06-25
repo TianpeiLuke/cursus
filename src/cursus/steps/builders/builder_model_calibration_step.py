@@ -19,8 +19,9 @@ from sagemaker.workflow.entities import PipelineVariable
 from ...core.base.builder_base import StepBuilderBase
 from ..configs.config_model_calibration_step import ModelCalibrationConfig
 
-# Import the unified model calibration specification
-from ..specs.model_calibration_spec import MODEL_CALIBRATION_SPEC
+from ..interfaces import load_step_interface
+
+_contract, MODEL_CALIBRATION_SPEC = load_step_interface("ModelCalibration")
 
 logger = logging.getLogger(__name__)
 

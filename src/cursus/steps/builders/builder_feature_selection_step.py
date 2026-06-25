@@ -1,7 +1,6 @@
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 import logging
-import importlib
 
 from sagemaker.workflow.steps import ProcessingStep, Step
 from sagemaker.processing import ProcessingInput, ProcessingOutput
@@ -9,31 +8,6 @@ from sagemaker.sklearn import SKLearnProcessor
 
 from ..configs.config_feature_selection_step import FeatureSelectionConfig
 from ...core.base.builder_base import StepBuilderBase
-
-# Import specifications based on job type
-try:
-    from ..specs.feature_selection_spec import (
-        FEATURE_SELECTION_SPEC,
-    )
-    from ..specs.feature_selection_training_spec import (
-        FEATURE_SELECTION_TRAINING_SPEC,
-    )
-    from ..specs.feature_selection_validation_spec import (
-        FEATURE_SELECTION_VALIDATION_SPEC,
-    )
-    from ..specs.feature_selection_testing_spec import (
-        FEATURE_SELECTION_TESTING_SPEC,
-    )
-    from ..specs.feature_selection_calibration_spec import (
-        FEATURE_SELECTION_CALIBRATION_SPEC,
-    )
-
-    SPECS_AVAILABLE = True
-except ImportError:
-    FEATURE_SELECTION_SPEC = FEATURE_SELECTION_TRAINING_SPEC = (
-        FEATURE_SELECTION_VALIDATION_SPEC
-    ) = FEATURE_SELECTION_TESTING_SPEC = FEATURE_SELECTION_CALIBRATION_SPEC = None
-    SPECS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -69,47 +43,16 @@ class FeatureSelectionStepBuilder(StepBuilderBase):
             ValueError: If no specification is available for the job type
         """
         # Get the appropriate spec based on job type
-        spec = None
         if not hasattr(config, "job_type"):
             raise ValueError("config.job_type must be specified")
 
-        job_type = config.job_type.lower()
+        from ..interfaces import load_step_interface
 
-        # Get specification based on job type
-        if job_type == "training" and FEATURE_SELECTION_TRAINING_SPEC is not None:
-            spec = FEATURE_SELECTION_TRAINING_SPEC
-        elif job_type == "validation" and FEATURE_SELECTION_VALIDATION_SPEC is not None:
-            spec = FEATURE_SELECTION_VALIDATION_SPEC
-        elif job_type == "testing" and FEATURE_SELECTION_TESTING_SPEC is not None:
-            spec = FEATURE_SELECTION_TESTING_SPEC
-        elif (
-            job_type == "calibration" and FEATURE_SELECTION_CALIBRATION_SPEC is not None
-        ):
-            spec = FEATURE_SELECTION_CALIBRATION_SPEC
-        else:
-            # Fallback to default spec if available
-            if FEATURE_SELECTION_SPEC is not None:
-                spec = FEATURE_SELECTION_SPEC
-                self.log_warning(
-                    "Using default specification for job type: %s", job_type
-                )
-            else:
-                # Try dynamic import
-                try:
-                    module_path = f"..specs.feature_selection_{job_type}_spec"
-                    module = importlib.import_module(module_path, package=__package__)
-                    spec_var_name = f"FEATURE_SELECTION_{job_type.upper()}_SPEC"
-                    if hasattr(module, spec_var_name):
-                        spec = getattr(module, spec_var_name)
-                except (ImportError, AttributeError):
-                    self.log_warning(
-                        "Could not import specification for job type: %s", job_type
-                    )
+        _contract, spec = load_step_interface(
+            "FeatureSelection", job_type=config.job_type
+        )
 
-        if not spec:
-            raise ValueError(f"No specification found for job type: {job_type}")
-
-        self.log_info("Using specification for %s", job_type)
+        self.log_info("Using specification for %s", config.job_type)
 
         super().__init__(
             config=config,

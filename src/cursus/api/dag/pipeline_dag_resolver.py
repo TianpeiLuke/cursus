@@ -1,8 +1,8 @@
 """Pipeline DAG resolver for execution planning."""
 
-from typing import Dict, List, Optional, Set, Any
+from typing import Dict, List, Optional, Any
 import networkx as nx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pathlib import Path
 import logging
 import importlib
@@ -10,16 +10,13 @@ import importlib
 # Use relative imports for external cursus modules
 from . import PipelineDAG
 from ...core.base.config_base import BasePipelineConfig
-from ...core.base.contract_base import ScriptContract
-from ...core.base.specification_base import StepSpecification
+from ...core.base.step_interface import StepInterface, ContractSection
 from ...step_catalog.adapters.config_resolver import (
     StepConfigResolverAdapter as StepConfigResolver,
 )
 from ...core.compiler.exceptions import ConfigurationError
 from ...registry.step_names import (
     get_canonical_name_from_file_name,
-    get_spec_step_type,
-    get_step_name_from_spec_type,
 )
 
 logger = logging.getLogger(__name__)
@@ -224,7 +221,7 @@ class PipelineDAGResolver:
 
         return data_flow
 
-    def _discover_step_contract(self, step_name: str) -> Optional[ScriptContract]:
+    def _discover_step_contract(self, step_name: str) -> Optional[ContractSection]:
         """
         REFACTORED: Simplified contract discovery using StepCatalog.
 
@@ -261,7 +258,7 @@ class PipelineDAGResolver:
 
     def _discover_step_contract_legacy(
         self, step_name: str
-    ) -> Optional[ScriptContract]:
+    ) -> Optional[ContractSection]:
         """Legacy step contract discovery method (fallback only)."""
         try:
             # Convert step name to canonical name
@@ -294,9 +291,7 @@ class PipelineDAGResolver:
             logger.warning(f"Failed to discover contract for step {step_name}: {e}")
             return None
 
-    def _get_step_specification(
-        self, canonical_name: str
-    ) -> Optional[StepSpecification]:
+    def _get_step_specification(self, canonical_name: str) -> Optional[StepInterface]:
         """
         Get step specification using StepCatalog's unified discovery system.
 
@@ -749,8 +744,8 @@ class PipelineDAGResolver:
             # Try to import from common config locations
             config_locations = [
                 f"...steps.configs.config_{self._class_name_to_module(class_name)}",
-                f"...core.base.config_base",
-                f"...steps.configs",
+                "...core.base.config_base",
+                "...steps.configs",
             ]
 
             for location in config_locations:

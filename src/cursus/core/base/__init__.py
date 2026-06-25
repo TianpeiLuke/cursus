@@ -10,8 +10,13 @@ from typing import TYPE_CHECKING
 # Always import enums first as they have no dependencies
 from .enums import DependencyType, NodeType
 
-# Import contract classes (no circular dependencies)
-from .contract_base import ScriptContract, ValidationResult, ScriptAnalyzer
+# Import contract validation helpers (no circular dependencies).
+# NOTE: the legacy ScriptContract data class was removed — the unified StepInterface
+# (core/base/step_interface.py) is the single source of contract+spec data now.
+from .contract_base import ValidationResult, ScriptAnalyzer
+
+# Import the unified step interface model (replaces ScriptContract + StepSpecification)
+from .step_interface import StepInterface
 
 # Import hyperparameters (no circular dependencies)
 from .hyperparameters_base import ModelHyperparameters
@@ -19,7 +24,6 @@ from .hyperparameters_base import ModelHyperparameters
 # Use lazy imports for classes that might have circular dependencies
 if TYPE_CHECKING:
     from .config_base import BasePipelineConfig
-    from .specification_base import DependencySpec, OutputSpec, StepSpecification
     from .builder_base import StepBuilderBase
 
 
@@ -28,27 +32,6 @@ def get_base_pipeline_config() -> type:
     from .config_base import BasePipelineConfig
 
     return BasePipelineConfig
-
-
-def get_dependency_spec() -> type:
-    """Lazy import for DependencySpec to avoid circular imports."""
-    from .specification_base import DependencySpec
-
-    return DependencySpec
-
-
-def get_output_spec() -> type:
-    """Lazy import for OutputSpec to avoid circular imports."""
-    from .specification_base import OutputSpec
-
-    return OutputSpec
-
-
-def get_step_specification() -> type:
-    """Lazy import for StepSpecification to avoid circular imports."""
-    from .specification_base import StepSpecification
-
-    return StepSpecification
 
 
 def get_step_builder_base() -> type:
@@ -63,12 +46,6 @@ def __getattr__(name: str) -> type:
     """Provide lazy loading for backward compatibility."""
     if name == "BasePipelineConfig":
         return get_base_pipeline_config()
-    elif name == "DependencySpec":
-        return get_dependency_spec()
-    elif name == "OutputSpec":
-        return get_output_spec()
-    elif name == "StepSpecification":
-        return get_step_specification()
     elif name == "StepBuilderBase":
         return get_step_builder_base()
     else:
@@ -79,22 +56,17 @@ __all__ = [
     # Enums (always available)
     "DependencyType",
     "NodeType",
-    # Contract classes (always available)
-    "ScriptContract",
+    # Contract validation helpers (always available)
     "ValidationResult",
     "ScriptAnalyzer",
+    # Unified step interface model
+    "StepInterface",
     # Hyperparameters (always available)
     "ModelHyperparameters",
     # Lazy-loaded classes (available via __getattr__)
     "BasePipelineConfig",
-    "DependencySpec",
-    "OutputSpec",
-    "StepSpecification",
     "StepBuilderBase",
     # Lazy import functions
     "get_base_pipeline_config",
-    "get_dependency_spec",
-    "get_output_spec",
-    "get_step_specification",
     "get_step_builder_base",
 ]

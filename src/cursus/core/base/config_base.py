@@ -23,12 +23,14 @@ import logging
 import inspect
 from abc import ABC, abstractmethod
 
-# Import for type hints only
+# Import for type hints only. The legacy ScriptContract/StepContract data classes
+# were removed; a step's contract is now the ContractSection of the unified
+# StepInterface (returned by step_catalog.load_contract_class via YAML).
 if TYPE_CHECKING:
-    from .contract_base import ScriptContract
+    from .step_interface import ContractSection
 else:
     # Just for type hints, won't be used at runtime if not available
-    ScriptContract = Any
+    ContractSection = Any
 
 logger = logging.getLogger(__name__)
 
@@ -413,7 +415,7 @@ class BasePipelineConfig(BaseModel, ABC):
         logger.debug(f"Derived step name: {class_name} → {step_name}")
         return step_name
 
-    def get_script_contract(self) -> Optional["ScriptContract"]:
+    def get_script_contract(self) -> Optional["ContractSection"]:
         """
         Get script contract for this configuration using optimized step catalog discovery.
 
@@ -427,11 +429,11 @@ class BasePipelineConfig(BaseModel, ABC):
         # Check cache first for performance
         cache_key = "script_contract"
         if cache_key in self._cache:
-            return cast(Optional["ScriptContract"], self._cache[cache_key])
+            return cast(Optional["ContractSection"], self._cache[cache_key])
 
         # Check for hardcoded script_contract first (for backward compatibility)
         if hasattr(self, "_script_contract"):
-            contract = cast(Optional["ScriptContract"], self._script_contract)
+            contract = cast(Optional["ContractSection"], self._script_contract)
             self._cache[cache_key] = contract
             return contract
 
@@ -445,12 +447,29 @@ class BasePipelineConfig(BaseModel, ABC):
 
                 # Use step catalog's optimized contract loading
                 contract = step_catalog.load_contract_class(step_name)
+
+                # Fall back to the base step name when a job_type variant has no
+                # dedicated YAML (e.g. "ModelCalibration_calibration" → "ModelCalibration").
+                if (
+                    not contract
+                    and hasattr(self, "job_type")
+                    and self.job_type
+                    and step_name.endswith(f"_{self.job_type.lower()}")
+                ):
+                    base_step_name = step_name[: -(len(self.job_type) + 1)]
+                    logger.debug(
+                        f"No contract for {step_name}; retrying base name {base_step_name}"
+                    )
+                    contract = step_catalog.load_contract_class(base_step_name)
+                    if contract:
+                        step_name = base_step_name
+
                 if contract:
                     logger.debug(
                         f"Successfully loaded contract via step catalog for {step_name}"
                     )
                     self._cache[cache_key] = contract
-                    return cast(Optional["ScriptContract"], contract)
+                    return cast(Optional["ContractSection"], contract)
                 else:
                     logger.debug(f"No contract found via step catalog for {step_name}")
             else:
@@ -461,59 +480,15 @@ class BasePipelineConfig(BaseModel, ABC):
         except Exception as e:
             logger.debug(f"Error using step catalog for contract discovery: {e}")
 
-        # FALLBACK: Legacy hardcoded import method for backward compatibility
-        try:
-            class_name = self.__class__.__name__.replace("Config", "")
-
-            # Try with job_type if available
-            if hasattr(self, "job_type") and self.job_type:
-                module_name = f"...steps.contracts.{class_name.lower()}_{self.job_type.lower()}_contract"
-                contract_name = f"{class_name.upper()}_{self.job_type.upper()}_CONTRACT"
-
-                try:
-                    contract_module = __import__(module_name, fromlist=[""])
-                    if hasattr(contract_module, contract_name):
-                        contract = cast(
-                            Optional["ScriptContract"],
-                            getattr(contract_module, contract_name),
-                        )
-                        logger.debug(
-                            f"Successfully loaded contract via legacy method with job_type: {contract_name}"
-                        )
-                        self._cache[cache_key] = contract
-                        return contract
-                except (ImportError, AttributeError):
-                    pass
-
-            # Try without job_type
-            module_name = f"...steps.contracts.{class_name.lower()}_contract"
-            contract_name = f"{class_name.upper()}_CONTRACT"
-
-            try:
-                contract_module = __import__(module_name, fromlist=[""])
-                if hasattr(contract_module, contract_name):
-                    contract = cast(
-                        Optional["ScriptContract"],
-                        getattr(contract_module, contract_name),
-                    )
-                    logger.debug(
-                        f"Successfully loaded contract via legacy method: {contract_name}"
-                    )
-                    self._cache[cache_key] = contract
-                    return contract
-            except (ImportError, AttributeError):
-                pass
-
-        except Exception as e:
-            logger.debug(f"Error in legacy contract loading: {e}")
-
-        # Cache the None result to avoid repeated failed lookups
+        # No legacy fallback: the per-step steps/contracts/*_contract.py modules were
+        # removed; the step catalog (YAML interfaces) is the single contract source.
+        # Cache the None result to avoid repeated failed lookups.
         self._cache[cache_key] = None
         logger.debug(f"No contract found for configuration: {self.__class__.__name__}")
         return None
 
     @property
-    def script_contract(self) -> Optional["ScriptContract"]:
+    def script_contract(self) -> Optional["ContractSection"]:
         """
         Property accessor for script contract.
 

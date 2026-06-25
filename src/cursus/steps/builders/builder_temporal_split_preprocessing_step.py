@@ -12,8 +12,11 @@ from ..configs.config_temporal_split_preprocessing_step import (
 )
 from ...core.base.builder_base import StepBuilderBase
 
-# Import the unified temporal split preprocessing specification
-from ..specs.temporal_split_preprocessing_spec import TEMPORAL_SPLIT_PREPROCESSING_SPEC
+from ..interfaces import load_step_interface
+
+_contract, TEMPORAL_SPLIT_PREPROCESSING_SPEC = load_step_interface(
+    "TemporalSplitPreprocessing"
+)
 
 logger = logging.getLogger(__name__)
 

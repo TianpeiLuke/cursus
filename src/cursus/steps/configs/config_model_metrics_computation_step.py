@@ -11,19 +11,13 @@ Fields are organized into three tiers:
 
 from pydantic import Field, model_validator, field_validator
 from typing import Optional, Dict, List, Any, TYPE_CHECKING
-from pathlib import Path
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import the script contract
-from ..contracts.model_metrics_computation_contract import (
-    MODEL_METRICS_COMPUTATION_CONTRACT,
-)
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -421,15 +415,6 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
             )  # Convert list to comma-separated string
 
         return env_vars
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The model metrics computation script contract
-        """
-        return MODEL_METRICS_COMPUTATION_CONTRACT
 
     def get_public_init_fields(self) -> Dict[str, Any]:
         """

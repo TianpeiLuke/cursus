@@ -13,14 +13,11 @@ This module provides the core functionality for Cursus, including:
 from .base import (
     DependencyType,
     NodeType,
-    ScriptContract,
     ValidationResult,
     ScriptAnalyzer,
+    StepInterface,
     ModelHyperparameters,
     BasePipelineConfig,
-    DependencySpec,
-    OutputSpec,
-    StepSpecification,
     StepBuilderBase,
 )
 from .assembler import PipelineAssembler, PipelineTemplateBase
@@ -76,10 +73,7 @@ from .config_fields import (
 from .deps import (
     DependencyType,
     NodeType,
-    DependencySpec,
-    OutputSpec,
     PropertyReference,
-    StepSpecification,
     SpecificationRegistry,
     RegistryManager,
     get_registry,
@@ -96,31 +90,15 @@ from .deps import (
     create_pipeline_components,
 )
 
-# Workspace components now available through new simplified workspace system
-try:
-    from ..workspace import (
-        WorkspaceManager,
-        WorkspaceValidator,
-        WorkspaceIntegrator,
-        WorkspaceAPI,
-    )
-
-    _workspace_available = True
-except ImportError:
-    _workspace_available = False
-
 __all__ = [
     # Base classes
     "DependencyType",
     "NodeType",
-    "ScriptContract",
     "ValidationResult",
     "ScriptAnalyzer",
+    "StepInterface",
     "ModelHyperparameters",
     "BasePipelineConfig",
-    "DependencySpec",
-    "OutputSpec",
-    "StepSpecification",
     "StepBuilderBase",
     # Assembler
     "PipelineAssembler",
@@ -160,10 +138,7 @@ __all__ = [
     # Dependencies
     "DependencyType",
     "NodeType",
-    "DependencySpec",
-    "OutputSpec",
     "PropertyReference",
-    "StepSpecification",
     "SpecificationRegistry",
     "RegistryManager",
     "get_registry",
@@ -178,9 +153,4 @@ __all__ = [
     "create_dependency_resolver",
     "SemanticMatcher",
     "create_pipeline_components",
-    # Workspace components (new simplified system)
-    "WorkspaceManager",
-    "WorkspaceValidator",
-    "WorkspaceIntegrator",
-    "WorkspaceAPI",
 ]

@@ -12,12 +12,9 @@ from pathlib import Path
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Import the script contract
-from ..contracts.dummy_training_contract import DUMMY_TRAINING_CONTRACT
-
 # Import for type hints only
 if TYPE_CHECKING:
-    from ...core.base.contract_base import ScriptContract
+    pass
 
 
 class DummyTrainingConfig(ProcessingStepConfigBase):
@@ -216,12 +213,3 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
             )
 
         return self
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The DummyTraining script contract
-        """
-        return DUMMY_TRAINING_CONTRACT

@@ -18,6 +18,13 @@ from .generic_path_discovery import (
     get_generic_discovery_metrics,
 )
 
+from .project_discovery import (
+    discover_pipeline_projects,
+    summarize_project,
+    ProjectInfo,
+    ConfigSummary,
+)
+
 from .nvme_security import install_nvme_aware_security_patch
 
 __all__ = [
@@ -27,5 +34,9 @@ __all__ = [
     "HybridResolutionConfig",
     "find_project_folder_generic",
     "get_generic_discovery_metrics",
+    "discover_pipeline_projects",
+    "summarize_project",
+    "ProjectInfo",
+    "ConfigSummary",
     "install_nvme_aware_security_patch",
 ]

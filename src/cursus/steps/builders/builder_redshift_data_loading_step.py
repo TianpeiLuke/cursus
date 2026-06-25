@@ -46,11 +46,13 @@ class RedshiftDataLoadingStepBuilder(StepBuilderBase):
                 "RedshiftDataLoadingStepBuilder requires a RedshiftDataLoadingConfig instance."
             )
 
-        from ..specs.redshift_data_loading_spec import REDSHIFT_DATA_LOADING_SPEC
+        from ..interfaces import load_step_interface
+
+        _contract, spec = load_step_interface("RedshiftDataLoading")
 
         super().__init__(
             config=config,
-            spec=REDSHIFT_DATA_LOADING_SPEC,
+            spec=spec,
             sagemaker_session=sagemaker_session,
             role=role,
             registry_manager=registry_manager,

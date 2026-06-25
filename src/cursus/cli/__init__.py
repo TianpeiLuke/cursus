@@ -8,6 +8,7 @@ from .alignment_cli import main as alignment_main
 from .catalog_cli import main as catalog_main
 from .compile_cli import main as compile_main
 from .exec_doc_cli import main as exec_doc_main
+from .project_cli import main as projects_main
 from .registry_cli import main as registry_main
 
 __all__ = ["main"]
@@ -25,6 +26,7 @@ Available commands:
   catalog         - Step catalog management
   compile         - Compile DAG and config to SageMaker pipeline
   exec-doc        - Generate execution documents from DAG and config
+  projects        - Discover and inspect Cursus pipeline projects
   registry        - Registry management tools
 
 Examples:
@@ -61,6 +63,11 @@ Examples:
   python -m cursus.cli alignment validate --step XGBoostTraining --check-all-components
   python -m cursus.cli alignment report --workspace my_workspace --format json
 
+  # Pipeline Projects - Discover and inspect projects under a root
+  python -m cursus.cli projects list --root ./projects
+  python -m cursus.cli projects show rnr_pytorch_bedrock --root ./projects
+  python -m cursus.cli projects list --root ./projects --format json
+
 For help with a specific command:
   python -m cursus.cli <command> --help
 
@@ -78,6 +85,7 @@ For detailed command options:
             "catalog",
             "compile",
             "exec-doc",
+            "projects",
             "registry",
         ],
         help="CLI command to run",
@@ -110,6 +118,8 @@ For detailed command options:
             return compile_main()
         elif args.command == "exec-doc":
             return exec_doc_main()
+        elif args.command == "projects":
+            return projects_main()
         elif args.command == "registry":
             return registry_main()
         else:

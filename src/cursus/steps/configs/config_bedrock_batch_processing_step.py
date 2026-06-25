@@ -7,7 +7,6 @@ using the three-tier design pattern for optimal user experience and maintainabil
 
 from pydantic import Field, PrivateAttr, model_validator, field_validator
 from typing import Dict, Any, Optional, List
-from pathlib import Path
 import json
 import logging
 
@@ -540,14 +539,6 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
                 )
 
         return self
-
-    def get_script_contract(self):
-        """Return the script contract for this step."""
-        from ..contracts.bedrock_batch_processing_contract import (
-            BEDROCK_BATCH_PROCESSING_CONTRACT,
-        )
-
-        return BEDROCK_BATCH_PROCESSING_CONTRACT
 
     def get_script_path(self, default_path: Optional[str] = None) -> Optional[str]:
         """

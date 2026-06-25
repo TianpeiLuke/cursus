@@ -11,15 +11,6 @@ from ...core.base.builder_base import StepBuilderBase
 from ...core.deps.registry_manager import RegistryManager
 from ...core.deps.dependency_resolver import UnifiedDependencyResolver
 
-# Import the active sample selection specification
-try:
-    from ..specs.active_sample_selection_spec import ACTIVE_SAMPLE_SELECTION_SPEC
-
-    SPEC_AVAILABLE = True
-except ImportError:
-    ACTIVE_SAMPLE_SELECTION_SPEC = None
-    SPEC_AVAILABLE = False
-
 logger = logging.getLogger(__name__)
 
 
@@ -65,8 +56,9 @@ class ActiveSampleSelectionStepBuilder(StepBuilderBase):
                 "ActiveSampleSelectionStepBuilder requires an ActiveSampleSelectionConfig instance."
             )
 
-        # Use the active sample selection specification if available
-        spec = ACTIVE_SAMPLE_SELECTION_SPEC if SPEC_AVAILABLE else None
+        from ..interfaces import load_step_interface
+
+        _contract, spec = load_step_interface("ActiveSampleSelection")
 
         super().__init__(
             config=config,

@@ -18,7 +18,7 @@ Key Features:
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 from pathlib import Path
 
 # DIRECT REUSE: Import existing cursus infrastructure
@@ -55,9 +55,9 @@ def prepare_script_testing_inputs(
     node_specs = {}
     for node_name in dag.nodes:
         try:
-            spec = step_catalog.spec_discovery.load_spec_class(
+            spec = step_catalog.load_spec_class(
                 node_name
-            )  # DIRECT REUSE
+            )  # YAML-first via StepCatalog.load_spec_class
             if spec:
                 node_specs[node_name] = spec
                 logger.debug(
