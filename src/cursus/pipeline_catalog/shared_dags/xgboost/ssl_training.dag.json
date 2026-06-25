@@ -1,0 +1,212 @@
+{
+  "dag": {
+    "description": "XGBoost Semi-Supervised Learning pipeline with pretraining, pseudo-labeling, active sampling, merge, and fine-tuning",
+    "nodes": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_testing",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_training",
+      "TabularPreprocessing_testing",
+      "TabularPreprocessing_calibration",
+      "XGBoostTraining_pretrain",
+      "XGBoostModelInference_testing",
+      "ActiveSampleSelection",
+      "PseudoLabelMerge_training",
+      "XGBoostTraining_finetune",
+      "XGBoostModelEval_calibration",
+      "ModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "CradleDataLoading_testing",
+        "TabularPreprocessing_testing"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining_pretrain"
+      ],
+      [
+        "XGBoostTraining_pretrain",
+        "XGBoostModelInference_testing"
+      ],
+      [
+        "TabularPreprocessing_testing",
+        "XGBoostModelInference_testing"
+      ],
+      [
+        "XGBoostModelInference_testing",
+        "ActiveSampleSelection"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PseudoLabelMerge_training"
+      ],
+      [
+        "ActiveSampleSelection",
+        "PseudoLabelMerge_training"
+      ],
+      [
+        "PseudoLabelMerge_training",
+        "XGBoostTraining_finetune"
+      ],
+      [
+        "XGBoostTraining_finetune",
+        "XGBoostModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XGBoostModelEval_calibration"
+      ],
+      [
+        "XGBoostModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "XGBoostTraining_finetune",
+        "Package"
+      ],
+      [
+        "XGBoostTraining_finetune",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_ssl_training",
+    "description": "XGBoost Semi-Supervised Learning pipeline with pretraining, pseudo-labeling, active sampling, merge, and fine-tuning",
+    "complexity": "advanced",
+    "framework": "xgboost",
+    "features": [
+      "ssl",
+      "pretraining",
+      "pseudo_labeling",
+      "active_sampling",
+      "data_augmentation",
+      "fine_tuning",
+      "evaluation",
+      "calibration"
+    ],
+    "node_count": 16,
+    "edge_count": 18,
+    "task_type": "semi_supervised_learning",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_testing",
+      "CradleDataLoading_calibration"
+    ],
+    "exit_points": [
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "When you have limited labeled data but abundant unlabeled data and want to leverage semi-supervised learning. Uses pretrain->pseudo-label->active-sample->merge->finetune pattern. Used by teams exploring SSL for abuse detection where labeled abuse cases are scarce.",
+      "when_not_to_use": "If you have sufficient labeled data (use complete_e2e or training variants). If unlabeled data quality is poor (SSL amplifies noise). If model interpretability is critical (pseudo-labeling adds opacity).",
+      "differentiators": [
+        "Semi-supervised learning with pseudo-labeling",
+        "Two-stage training: pretrain on labeled, finetune on labeled+pseudo",
+        "ActiveSampleSelection for confident pseudo-label filtering",
+        "PseudoLabelMerge combines original labels with pseudo-labels",
+        "Most complex DAG: 16 nodes, 18 edges",
+        "Includes calibration, packaging, and registration"
+      ],
+      "prerequisites": [
+        {
+          "check": "Limited labeled data",
+          "how": "Labeled dataset too small for good supervised performance (<10K labeled samples)"
+        },
+        {
+          "check": "Abundant unlabeled data available",
+          "how": "Unlabeled pool at least 5-10x size of labeled set"
+        },
+        {
+          "check": "Testing data for pseudo-label candidates",
+          "how": "Cradle SQL for unlabeled data pool"
+        },
+        {
+          "check": "MIMS registration access",
+          "how": "Valid service_name for model registration"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training - labeled)",
+          "cradle_sql (testing - unlabeled pool)",
+          "cradle_sql (calibration)",
+          "label_column",
+          "feature_columns",
+          "service_name",
+          "confidence_threshold"
+        ],
+        "safe_defaults": [
+          "confidence_threshold=0.9",
+          "max_pseudo_labels=50000",
+          "instance_type=ml.m5.xlarge"
+        ],
+        "common_pitfalls": [
+          "Low confidence threshold introduces noisy pseudo-labels",
+          "SSL can hurt performance if unlabeled data distribution differs from labeled",
+          "Always compare against supervised baseline before committing to SSL",
+          "Active sampling threshold is critical - too aggressive loses signal"
+        ]
+      },
+      "decision_tree": {
+        "labeled_data_insufficient?": {
+          "yes": "Continue",
+          "no": "Use complete_e2e (supervised is better with enough labels)"
+        },
+        "unlabeled_data_available?": {
+          "yes": "Continue",
+          "no": "Cannot use SSL - use training_with_stratified for imbalanced supervised"
+        },
+        "distribution_match?": {
+          "yes": "USE THIS DAG",
+          "no": "SSL risky - consider training_with_stratified instead"
+        }
+      }
+    }
+  }
+}

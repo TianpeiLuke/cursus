@@ -1,0 +1,252 @@
+step_type: CradleDataLoading
+node_type: source
+contract:
+  entry_point: scripts.py
+  inputs: {}
+  outputs:
+    SIGNATURE:
+      path: /opt/ml/processing/output/signature
+    METADATA:
+      path: /opt/ml/processing/output/metadata
+    DATA:
+      path: /opt/ml/processing/output/place_holder
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      OUTPUT_PATH: ''
+  framework_requirements:
+    python: '>=3.7'
+  description: 'Cradle data loading script that reads config, writes output signature/metadata,
+    creates and executes a Cradle data load job, and waits for completion. Data is
+    loaded directly to S3 by the Cradle service.
+
+    '
+spec:
+  dependencies: {}
+  outputs:
+    DATA:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['DATA'].S3Output.S3Uri
+      semantic_keywords:
+      - data
+      - input
+      - raw
+      - dataset
+      - source
+      aliases:
+      - input_data
+      - training_data
+      - processed_data
+      data_type: S3Uri
+    METADATA:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri
+      semantic_keywords:
+      - metadata
+      - schema
+      - info
+      - description
+      data_type: S3Uri
+    SIGNATURE:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri
+      semantic_keywords:
+      - signature
+      - schema
+      - columns
+      aliases:
+      - schema
+      data_type: S3Uri
+variants:
+  generic:
+    spec:
+      dependencies: {}
+      outputs:
+        DATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['DATA'].S3Output.S3Uri
+          semantic_keywords:
+          - data
+          - input
+          - raw
+          - dataset
+          - source
+          data_type: S3Uri
+        METADATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri
+          semantic_keywords:
+          - metadata
+          - schema
+          - info
+          - description
+          data_type: S3Uri
+        SIGNATURE:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri
+          semantic_keywords:
+          - signature
+          - schema
+          - columns
+          data_type: S3Uri
+  training:
+    spec:
+      dependencies: {}
+      outputs:
+        DATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['DATA'].S3Output.S3Uri
+          semantic_keywords:
+          - training
+          - train
+          - data
+          - input
+          - raw
+          - dataset
+          - model_training
+          - source
+          data_type: S3Uri
+        METADATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri
+          semantic_keywords:
+          - training
+          - train
+          - metadata
+          - schema
+          - info
+          - description
+          - model_training
+          data_type: S3Uri
+        SIGNATURE:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri
+          semantic_keywords:
+          - training
+          - train
+          - signature
+          - validation
+          - checksum
+          - model_training
+          data_type: S3Uri
+  calibration:
+    spec:
+      dependencies: {}
+      outputs:
+        DATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['DATA'].S3Output.S3Uri
+          semantic_keywords:
+          - calibration
+          - eval
+          - data
+          - input
+          - raw
+          - dataset
+          - model_evaluation
+          - source
+          data_type: S3Uri
+        METADATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri
+          semantic_keywords:
+          - calibration
+          - eval
+          - metadata
+          - schema
+          - info
+          - description
+          - model_evaluation
+          data_type: S3Uri
+        SIGNATURE:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri
+          semantic_keywords:
+          - calibration
+          - eval
+          - signature
+          - validation
+          - checksum
+          - model_evaluation
+          data_type: S3Uri
+  validation:
+    spec:
+      dependencies: {}
+      outputs:
+        DATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['DATA'].S3Output.S3Uri
+          semantic_keywords:
+          - validation
+          - val
+          - data
+          - input
+          - raw
+          - dataset
+          - model_validation
+          - source
+          data_type: S3Uri
+        METADATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri
+          semantic_keywords:
+          - validation
+          - val
+          - metadata
+          - schema
+          - info
+          - description
+          - model_validation
+          data_type: S3Uri
+        SIGNATURE:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri
+          semantic_keywords:
+          - validation
+          - val
+          - signature
+          - validation
+          - checksum
+          - model_validation
+          data_type: S3Uri
+  testing:
+    spec:
+      dependencies: {}
+      outputs:
+        DATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['DATA'].S3Output.S3Uri
+          semantic_keywords:
+          - testing
+          - test
+          - data
+          - input
+          - raw
+          - dataset
+          - model_testing
+          - source
+          data_type: S3Uri
+        METADATA:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri
+          semantic_keywords:
+          - testing
+          - test
+          - metadata
+          - schema
+          - info
+          - description
+          - model_testing
+          data_type: S3Uri
+        SIGNATURE:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri
+          semantic_keywords:
+          - testing
+          - test
+          - signature
+          - validation
+          - checksum
+          - model_testing
+          data_type: S3Uri

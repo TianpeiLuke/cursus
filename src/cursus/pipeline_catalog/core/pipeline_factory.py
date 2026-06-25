@@ -63,5 +63,6 @@ def create_pipeline(
 def list_available_pipelines():
     """List all available shared DAG IDs."""
     from ..shared_dags import get_catalog_index
+
     index = get_catalog_index()
     return [d["id"] for d in index["dags"]]

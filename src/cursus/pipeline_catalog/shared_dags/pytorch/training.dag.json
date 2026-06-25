@@ -1,0 +1,117 @@
+{
+  "dag": {
+    "description": "Shared DAG definition for PyTorch training pipeline.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "CradleDataLoading_validation",
+      "TabularPreprocessing_validation",
+      "PyTorchModelEval"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "CradleDataLoading_validation",
+        "TabularPreprocessing_validation"
+      ],
+      [
+        "TabularPreprocessing_validation",
+        "PyTorchModelEval"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "training",
+    "framework": "pytorch",
+    "node_count": 6,
+    "edge_count": 5,
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true
+    },
+    "cost": {
+      "estimated_hours": "2-8 (GPU training dominates)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Training + validation only — when you want to train and evaluate a model but handle packaging/registration separately (e.g., manual promotion, or a separate deployment pipeline).",
+      "when_not_to_use": "If you need automated registration (use pytorch/standard_e2e or pytorch/complete_e2e). If just prototyping without Cradle data (use pytorch/simple_training).",
+      "differentiators": [
+        "Training + evaluation only — no packaging/registration",
+        "Uses real Cradle data (not dummy)",
+        "Separate validation data loading path",
+        "Good for iterative model development before committing to registration"
+      ],
+      "prerequisites": [
+        {
+          "check": "Labeled training data in MDS/Cradle",
+          "how": "Cradle SQL returns rows with label column"
+        },
+        {
+          "check": "Validation data accessible",
+          "how": "Separate Cradle query for validation split"
+        },
+        {
+          "check": "GPU quota",
+          "how": "ml.g5.xlarge available in account"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql_training",
+          "cradle_sql_validation",
+          "label_column",
+          "text_column",
+          "model_architecture"
+        ],
+        "safe_defaults": [
+          "instance_type (ml.g5.xlarge)",
+          "max_epochs",
+          "batch_size",
+          "learning_rate"
+        ],
+        "common_pitfalls": [
+          "No registration — model artifacts stay in S3, must be promoted manually",
+          "Validation split should be temporal (not random) for production models",
+          "If model looks good, graduate to standard_e2e or complete_e2e for production"
+        ]
+      },
+      "decision_tree": {
+        "need_registration?": {
+          "yes": "Use pytorch/standard_e2e or pytorch/complete_e2e",
+          "no": "USE THIS DAG"
+        },
+        "iterating_on_model?": {
+          "yes": "USE THIS DAG (fast iteration, no registration overhead)",
+          "no": "Use pytorch/standard_e2e for production"
+        }
+      }
+    }
+  }
+}

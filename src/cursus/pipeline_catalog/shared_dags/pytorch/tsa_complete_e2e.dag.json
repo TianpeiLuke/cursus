@@ -1,0 +1,64 @@
+{
+  "dag": {
+    "description": "TSA (Time-Series Aggregation) complete end-to-end pipeline with TSA-specific preprocessing, separate testing and calibration paths, and model calibration.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TSATabularPreprocessing_training",
+      "TSAPreprocessing_training",
+      "TSATraining",
+      "TSAModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration",
+      "CradleDataLoading_testing",
+      "TabularPreprocessing_testing",
+      "TSAPreprocessing_testing",
+      "TSAModelEval_testing",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "TSAPreprocessing_calibration",
+      "TSAModelEval_calibration"
+    ],
+    "edges": [
+      ["CradleDataLoading_training", "TSATabularPreprocessing_training"],
+      ["TSATabularPreprocessing_training", "TSAPreprocessing_training"],
+      ["TSAPreprocessing_training", "TSATraining"],
+      ["CradleDataLoading_testing", "TabularPreprocessing_testing"],
+      ["TabularPreprocessing_testing", "TSAPreprocessing_testing"],
+      ["TSATabularPreprocessing_training", "TSAPreprocessing_testing"],
+      ["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
+      ["TabularPreprocessing_calibration", "TSAPreprocessing_calibration"],
+      ["TSATabularPreprocessing_training", "TSAPreprocessing_calibration"],
+      ["TSATraining", "TSAModelEval_testing"],
+      ["TSATraining", "TSAModelEval_calibration"],
+      ["TSAPreprocessing_testing", "TSAModelEval_testing"],
+      ["TSAPreprocessing_calibration", "TSAModelEval_calibration"],
+      ["TSAModelEval_calibration", "TSAModelCalibration_calibration"],
+      ["TSAModelCalibration_calibration", "Package"],
+      ["TSATraining", "Package"],
+      ["TSATraining", "Payload"],
+      ["Package", "Registration"],
+      ["Payload", "Registration"]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_tsa_complete_e2e",
+    "framework": "pytorch",
+    "complexity": "comprehensive",
+    "features": ["tsa_preprocessing", "training", "calibration", "testing", "packaging", "registration"],
+    "node_count": 16,
+    "edge_count": 19,
+    "used_by_projects": ["afn_return_mdr_tsa"],
+    "input_requirements": {"data_types": ["tabular", "time_series"], "text_support": false, "multi_task": false, "output_type": "binary_or_multiclass", "data_source": "cradle_mds", "requires_llm": false},
+    "constraints": {"requires_gpu": true, "min_instance": "ml.g5.xlarge", "supports_multi_gpu": true, "requires_mims": true},
+    "cost": {"estimated_hours": "3-10 (TSA preprocessing + GPU training)", "cost_driver": "gpu_training", "instance_cost_tier": "high", "scalability": "data_size_linear"},
+    "agent_context": {
+      "when_to_use": "TSA-specific pipelines with custom TSAPreprocessing and TSATabularPreprocessing. Three separate data paths (training, testing, calibration) with TSA-specific preprocessing sharing learned transformations from training.",
+      "when_not_to_use": "If standard tabular preprocessing suffices (use standard PyTorch/XGBoost). If no time-series aggregation needed. If simpler pipeline suffices.",
+      "differentiators": ["TSATabularPreprocessing_training shared with testing/calibration TSAPreprocessing", "TSAPreprocessing steps in all three data paths", "Most complex: 16 nodes, 19 edges", "Three separate evaluation paths"],
+      "prerequisites": [{"check": "TSA-formatted data available", "how": "Time-series aggregate features from Cradle"}, {"check": "GPU quota", "how": "ml.g5.xlarge+ available"}],
+      "config_guidance": {"user_must_provide": ["cradle_sql (training)", "cradle_sql (calibration)", "cradle_sql (testing)", "label_column", "tsa_feature_columns", "service_name"], "safe_defaults": ["instance_type=ml.g5.xlarge", "tsa_window_size=default"], "common_pitfalls": ["TSATabularPreprocessing output must feed into BOTH testing and calibration TSAPreprocessing", "Three separate Cradle data loads required"]},
+      "decision_tree": {"tsa_time_series_features?": {"yes": "USE THIS DAG", "no": "Use standard PyTorch/XGBoost"}, "need_separate_test_eval?": {"yes": "USE THIS DAG", "no": "Consider simpler variant"}}
+    }
+  }
+}

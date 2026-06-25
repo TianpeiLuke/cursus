@@ -1,0 +1,101 @@
+step_type: LightGBMMTModelInference
+node_type: internal
+contract:
+  entry_point: lightgbmmt_model_inference.py
+  inputs:
+    model_input:
+      path: /opt/ml/processing/input/model
+      required: true
+    processed_data:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+  outputs:
+    eval_output:
+      path: /opt/ml/processing/output/eval
+  arguments: {}
+  env_vars:
+    required:
+    - ID_FIELD
+    - TASK_LABEL_NAMES
+    optional:
+      OUTPUT_FORMAT: csv
+      JSON_ORIENT: records
+  framework_requirements:
+    pandas: '>=1.2.0,<2.0.0'
+    numpy: '>=1.21.0'
+    scikit-learn: '>=0.23.2,<1.0.0'
+  description: 'LightGBMMT multi-task model inference. Generates per-task predictions
+    without evaluation, metrics, or plots.
+
+    '
+spec:
+  dependencies:
+    model_input:
+      type: model_artifacts
+      required: true
+      compatible_sources:
+      - LightGBMMTTraining
+      - LightGBMTraining
+      - LightGBMMTModel
+      - LightGBMModel
+      - XGBoostTraining
+      - PyTorchTraining
+      - DummyTraining
+      - XGBoostModel
+      - PyTorchModel
+      semantic_keywords:
+      - model
+      - artifacts
+      - trained
+      - output
+      - ModelArtifacts
+      - multi-task
+      - multitask
+      - lightgbm
+      - lightgbmmt
+      - training
+    processed_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - CradleDataLoading
+      - RiskTableMapping
+      - CurrencyConversion
+      - LabelRulesetExecution
+      - BedrockBatchProcessing
+      - BedrockProcessing
+      semantic_keywords:
+      - data
+      - evaluation
+      - calibration
+      - validation
+      - test
+      - processed
+      - inference
+      - input
+      - multi-task
+      - multitask
+      - unlabeled
+      - prediction
+  outputs:
+    eval_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri
+      semantic_keywords:
+      - inference
+      - predictions
+      - multi_task_predictions
+      - multitask_inference
+      aliases:
+      - inference_output
+      - predictions
+      - model_predictions
+      - inference_results
+      - prediction_data
+      - evaluation_data
+      - multi_task_predictions
+      - multitask_predictions
+      - multi_task_inference
+      - multitask_inference
+      data_type: S3Uri

@@ -1,0 +1,155 @@
+{
+  "dag": {
+    "description": "Two-pipeline pattern: LLM inference uploads to Andes, training consumes from EDX",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "PyTorchModelEval_calibration",
+      "ModelCalibration_calibration",
+      "Payload",
+      "Package",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_pytorch_with_data_upload",
+    "description": "Two-pipeline pattern: LLM inference uploads to Andes, training consumes from EDX",
+    "complexity": "comprehensive",
+    "framework": "pytorch",
+    "features": [
+      "cradle_data_loading",
+      "tabular_preprocessing",
+      "bedrock_batch_processing",
+      "data_uploading",
+      "training",
+      "evaluation",
+      "calibration",
+      "packaging",
+      "registration",
+      "edx_round_trip"
+    ],
+    "node_count": 8,
+    "edge_count": 9,
+    "task_type": "inference_upload_then_train_from_edx",
+    "sink_nodes": [
+      "DataUploading",
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "2-8 (GPU training dominates)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Two-pipeline architecture: a separate LLM inference pipeline uploads scored labels to EDX/Andes, and THIS pipeline trains from that uploaded data. Use when inference and training have different schedules or ownership.",
+      "when_not_to_use": "If LLM scoring and training run in the same pipeline (use bedrock_batch_pytorch_e2e). If no EDX round-trip is needed (use pytorch/complete_e2e).",
+      "differentiators": [
+        "Training pipeline only — expects LLM labels already in EDX",
+        "Decoupled from inference pipeline (different cadence/ownership)",
+        "CradleDataLoading reads from EDX (not raw MDS)",
+        "Two-pipeline pattern enables independent scheduling"
+      ],
+      "prerequisites": [
+        {
+          "check": "EDX dataset with LLM-scored labels exists",
+          "how": "Verify EDX ARN accessible via Cradle query"
+        },
+        {
+          "check": "Inference pipeline has run successfully",
+          "how": "Check EDX upload timestamps for freshness"
+        },
+        {
+          "check": "GPU quota for training",
+          "how": "ml.g5.xlarge+ available in account"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "edx_source_arn",
+          "cradle_sql (pointing to EDX)",
+          "label_column",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "instance_types",
+          "max_epochs",
+          "calibration_method",
+          "batch_size"
+        ],
+        "common_pitfalls": [
+          "Cradle SQL must point to EDX-uploaded data, not raw MDS",
+          "If inference pipeline hasn't run, training data will be stale or empty",
+          "Data upload pipeline and training pipeline must agree on column schema"
+        ]
+      },
+      "decision_tree": {
+        "separate_inference_and_training?": {
+          "yes": "USE THIS DAG (training half)",
+          "no": "Use bedrock_batch_pytorch_e2e (single pipeline)"
+        },
+        "edx_labels_exist?": {
+          "yes": "USE THIS DAG",
+          "no": "Run inference+upload pipeline first"
+        }
+      }
+    }
+  }
+}

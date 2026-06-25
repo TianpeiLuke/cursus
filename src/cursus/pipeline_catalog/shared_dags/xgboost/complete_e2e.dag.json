@@ -1,0 +1,165 @@
+{
+  "dag": {
+    "description": "Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "XGBoostTraining",
+      "ModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "XGBoostModelEval_calibration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XGBoostModelEval_calibration"
+      ],
+      [
+        "XGBoostModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_complete_e2e",
+    "description": "Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
+    "complexity": "comprehensive",
+    "framework": "xgboost",
+    "features": [
+      "training",
+      "calibration",
+      "packaging",
+      "registration",
+      "evaluation"
+    ],
+    "node_count": 10,
+    "edge_count": 11,
+    "task_type": "end_to_end",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration"
+    ],
+    "exit_points": [
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Tabular binary/multiclass classification with XGBoost. Standard path for structured data with numeric/categorical features.",
+      "when_not_to_use": "If input is raw text (use PyTorch). If multi-task output needed (use MTL/LightGBMMT).",
+      "differentiators": [
+        "CPU-only (no GPU needed)",
+        "Fastest training",
+        "Most production-proven"
+      ],
+      "prerequisites": [
+        {
+          "check": "Tabular data with engineered features",
+          "how": "Data has numeric/categorical columns, not raw text"
+        },
+        {
+          "check": "Label column exists",
+          "how": "Binary or multiclass integer labels"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql",
+          "label_column",
+          "feature_columns",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "n_estimators",
+          "max_depth",
+          "learning_rate",
+          "instance_types"
+        ],
+        "common_pitfalls": [
+          "Feature columns must match between training and inference",
+          "Calibration data should be from a different time period than training"
+        ]
+      },
+      "decision_tree": {
+        "tabular_data?": {
+          "yes": "USE THIS DAG",
+          "no": "Use PyTorch for text"
+        },
+        "multi_task?": {
+          "yes": "Use MTL/LightGBMMT",
+          "no": "USE THIS DAG"
+        },
+        "need_feature_selection?": {
+          "yes": "Use xgboost/training_with_feature_selection",
+          "no": "USE THIS DAG"
+        }
+      }
+    },
+    "used_by_projects": [
+      "cap_dnr_eu_xgboost",
+      "pda_eu_xgboost",
+      "pda_na_xgboost"
+    ]
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "dag": {
+    "description": "Complete LightGBMMT multi-task end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "LightGBMMTTraining",
+      "ModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "LightGBMMTModelEval_calibration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "LightGBMMTTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "LightGBMMTTraining",
+        "LightGBMMTModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "LightGBMMTModelEval_calibration"
+      ],
+      [
+        "LightGBMMTModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "LightGBMMTTraining",
+        "Package"
+      ],
+      [
+        "LightGBMMTTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "lightgbmmt_complete_e2e",
+    "description": "Complete LightGBMMT multi-task end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
+    "complexity": "comprehensive",
+    "framework": "lightgbmmt",
+    "features": [
+      "multi_task_training",
+      "multi_task_evaluation",
+      "calibration",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 10,
+    "edge_count": 11,
+    "task_type": "multi_task_end_to_end",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration"
+    ],
+    "exit_points": [
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": true,
+      "output_type": "multi_label",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Multi-task learning: predict multiple related labels simultaneously (e.g., fraud type + severity). Shared representation across tasks.",
+      "when_not_to_use": "Single binary classification (use XGBoost or PyTorch). Unrelated tasks (train separately).",
+      "differentiators": [
+        "Multi-task output (multiple labels)",
+        "Shared feature representation",
+        "LightGBMMT framework"
+      ],
+      "prerequisites": [
+        {
+          "check": "Multiple correlated label columns",
+          "how": "Data has 2+ label columns that benefit from joint training"
+        },
+        {
+          "check": "Tabular features",
+          "how": "Structured data, not raw text"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "task_definitions",
+          "label_columns",
+          "feature_columns",
+          "author"
+        ],
+        "safe_defaults": [
+          "n_estimators",
+          "task_weights"
+        ],
+        "common_pitfalls": [
+          "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
+        ]
+      },
+      "decision_tree": {
+        "multiple_outputs?": {
+          "yes": "USE THIS DAG",
+          "no": "Use single-task XGBoost or PyTorch"
+        },
+        "text_input?": {
+          "yes": "No MTL for text yet \u2014 use PyTorch with multi-head",
+          "no": "USE THIS DAG"
+        }
+      }
+    },
+    "used_by_projects": [
+      "pfw_mtgbm_na"
+    ]
+  }
+}

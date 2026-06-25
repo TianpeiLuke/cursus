@@ -1,0 +1,141 @@
+{
+  "dag": {
+    "description": "Shared DAG definition for PyTorch Complete End-to-End Pipeline",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "Package",
+      "Registration",
+      "Payload",
+      "CradleDataLoading_calibration",
+      "PyTorchModelEval_calibration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "complete_e2e",
+    "framework": "pytorch",
+    "node_count": 8,
+    "edge_count": 11,
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "2-8 (GPU training dominates)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Standard PyTorch text classification: have labeled data in Cradle/MDS, want full training + calibration + registration pipeline.",
+      "when_not_to_use": "If data is tabular-only (use XGBoost). If you need LLM labeling (use bedrock_pytorch_e2e).",
+      "differentiators": [
+        "No LLM dependency",
+        "Direct Cradle\u2192Train\u2192Register",
+        "Simplest PyTorch path"
+      ],
+      "prerequisites": [
+        {
+          "check": "Labeled training data in MDS/Cradle",
+          "how": "Cradle SQL returns rows with label column"
+        },
+        {
+          "check": "GPU quota available",
+          "how": "ml.g5.xlarge+ available in account"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql",
+          "label_column",
+          "text_column",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "instance_types",
+          "max_epochs",
+          "lr",
+          "batch_size"
+        ],
+        "common_pitfalls": [
+          "Ensure text column preprocessing matches inference handler"
+        ]
+      },
+      "decision_tree": {
+        "text_data?": {
+          "yes": "USE THIS (or bedrock variant)",
+          "no": "Use XGBoost DAGs"
+        },
+        "need_llm_labeling?": {
+          "yes": "Use bedrock_pytorch_e2e instead",
+          "no": "USE THIS DAG"
+        }
+      }
+    },
+    "used_by_projects": [
+      "abuse_polygraph",
+      "atoz_bsm_pytorch"
+    ]
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "dag": {
+    "description": "XGBoost training pipeline with model evaluation using dummy data loading",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "XGBoostTraining",
+      "DummyDataLoading_evaluation",
+      "TabularPreprocessing_evaluation",
+      "XGBoostModelEval"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "DummyDataLoading_evaluation",
+        "TabularPreprocessing_evaluation"
+      ],
+      [
+        "TabularPreprocessing_evaluation",
+        "XGBoostModelEval"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelEval"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_training_with_evaluation_dummy",
+    "description": "XGBoost training pipeline with model evaluation using dummy data loading",
+    "complexity": "standard",
+    "framework": "xgboost",
+    "features": [
+      "dummy_data_loading",
+      "training",
+      "evaluation",
+      "preprocessing"
+    ],
+    "node_count": 6,
+    "edge_count": 5,
+    "task_type": "training",
+    "entry_points": [
+      "DummyDataLoading_training",
+      "DummyDataLoading_evaluation"
+    ],
+    "exit_points": [
+      "XGBoostModelEval"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Testing and development only. Uses DummyDataLoading instead of Cradle to generate synthetic data for pipeline validation without needing real data access. Used for CI/CD testing, pipeline debugging, and onboarding demos.",
+      "when_not_to_use": "Never use for production model training. If you have real data access (use training_with_evaluation). For demo purposes only.",
+      "differentiators": [
+        "DummyDataLoading generates synthetic tabular data",
+        "No Cradle/MDS dependency - runs without data access",
+        "Same evaluation structure as training_with_evaluation",
+        "Used for pipeline testing and CI/CD validation"
+      ],
+      "prerequisites": [
+        {
+          "check": "Pipeline testing scenario",
+          "how": "You are testing pipeline mechanics, not training a real model"
+        },
+        {
+          "check": "No real data needed",
+          "how": "Synthetic data sufficient for your testing purpose"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "n_samples",
+          "n_features",
+          "label_column"
+        ],
+        "safe_defaults": [
+          "n_samples=1000",
+          "n_features=20",
+          "noise=0.1",
+          "instance_type=ml.m5.large"
+        ],
+        "common_pitfalls": [
+          "Models trained on dummy data have no real-world validity",
+          "Do not register or deploy models from this DAG",
+          "Dummy data may not expose real preprocessing issues"
+        ]
+      },
+      "decision_tree": {
+        "testing_pipeline_mechanics?": {
+          "yes": "USE THIS DAG",
+          "no": "Use training_with_evaluation with real data"
+        },
+        "have_data_access?": {
+          "yes": "Use training_with_evaluation",
+          "no": "USE THIS DAG for validation only"
+        }
+      }
+    }
+  }
+}

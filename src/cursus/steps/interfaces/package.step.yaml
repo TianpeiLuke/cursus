@@ -1,0 +1,80 @@
+step_type: Package
+node_type: internal
+contract:
+  entry_point: package.py
+  inputs:
+    model_input:
+      path: /opt/ml/processing/input/model
+      required: true
+    inference_scripts_input:
+      path: /opt/ml/processing/input/script
+      required: false
+    calibration_model:
+      path: /opt/ml/processing/input/calibration
+      required: false
+  outputs:
+    packaged_model:
+      path: /opt/ml/processing/output
+  arguments: {}
+  env_vars:
+    required: []
+    optional: {}
+  framework_requirements:
+    python: '>=3.7'
+  description: 'MIMS packaging script that extracts model artifacts, includes calibration
+    model if available, copies inference scripts, and creates a packaged model.tar.gz
+    for deployment.
+
+    '
+spec:
+  dependencies:
+    model_input:
+      type: model_artifacts
+      required: true
+      compatible_sources:
+      - XGBoostTraining
+      - TrainingStep
+      - ModelStep
+      - PyTorchTraining
+      semantic_keywords:
+      - model
+      - artifacts
+      - trained
+      - output
+      - ModelArtifacts
+    inference_scripts_input:
+      type: custom_property
+      required: false
+      compatible_sources:
+      - ProcessingStep
+      - ScriptStep
+      semantic_keywords:
+      - inference
+      - scripts
+      - code
+      - InferenceScripts
+    calibration_model:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - ModelCalibration
+      - PercentileModelCalibration
+      semantic_keywords:
+      - calibration
+      - calibration_model
+      - calibrator
+      - probability
+      - calibrated
+  outputs:
+    packaged_model:
+      type: model_artifacts
+      property_path: properties.ProcessingOutputConfig.Outputs['packaged_model'].S3Output.S3Uri
+      semantic_keywords:
+      - packaged
+      - model
+      - deployment
+      - tar
+      aliases:
+      - PackagedModel
+      - model_data
+      data_type: S3Uri

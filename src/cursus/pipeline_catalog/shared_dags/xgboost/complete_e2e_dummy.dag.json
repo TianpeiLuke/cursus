@@ -1,0 +1,157 @@
+{
+  "dag": {
+    "description": "Complete XGBoost end-to-end pipeline with dummy data loading, training, calibration, packaging, registration, and evaluation",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "XGBoostTraining",
+      "ModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "DummyDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "XGBoostModelEval_calibration"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XGBoostModelEval_calibration"
+      ],
+      [
+        "XGBoostModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_complete_e2e_dummy",
+    "description": "Complete XGBoost end-to-end pipeline with dummy data loading, training, calibration, packaging, registration, and evaluation",
+    "complexity": "comprehensive",
+    "framework": "xgboost",
+    "features": [
+      "dummy_data_loading",
+      "training",
+      "calibration",
+      "packaging",
+      "registration",
+      "evaluation"
+    ],
+    "node_count": 10,
+    "edge_count": 11,
+    "task_type": "end_to_end",
+    "entry_points": [
+      "DummyDataLoading_training",
+      "DummyDataLoading_calibration"
+    ],
+    "exit_points": [
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "End-to-end pipeline testing without real data. Validates full pipeline mechanics including packaging and registration steps using synthetic data. Used for CI/CD, integration testing, and demonstrating complete workflow.",
+      "when_not_to_use": "Never for production models. If you have real data (use complete_e2e). For testing purposes only.",
+      "differentiators": [
+        "DummyDataLoading instead of Cradle for both training and calibration",
+        "Full e2e structure: train, calibrate, package, register",
+        "Tests registration mechanics without real model",
+        "CI/CD friendly - no external data dependencies"
+      ],
+      "prerequisites": [
+        {
+          "check": "Integration testing scenario",
+          "how": "Testing full pipeline flow including registration"
+        },
+        {
+          "check": "MIMS test registration available",
+          "how": "Test/dev MIMS endpoint for registration validation"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "n_samples",
+          "n_features",
+          "service_name (test)",
+          "author"
+        ],
+        "safe_defaults": [
+          "n_samples=1000",
+          "n_features=20",
+          "instance_type=ml.m5.large"
+        ],
+        "common_pitfalls": [
+          "Registered models from dummy data must be deregistered after testing",
+          "Do not promote dummy-trained models to production",
+          "Test MIMS endpoint may have different permissions than prod"
+        ]
+      },
+      "decision_tree": {
+        "testing_full_e2e_flow?": {
+          "yes": "USE THIS DAG",
+          "no": "Use complete_e2e with real data"
+        },
+        "need_to_test_registration?": {
+          "yes": "USE THIS DAG",
+          "no": "Use training_with_evaluation_dummy for simpler test"
+        }
+      }
+    }
+  }
+}

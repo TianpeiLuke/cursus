@@ -1,0 +1,58 @@
+{
+  "dag": {
+    "description": "Two-stage hybrid pipeline: PyTorch encoder (Stage-1) produces embeddings, then XGBoost (Stage-2) stacks on [tabular | embedding]. Calibration path threads through both stages.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "PyTorchModelInference_embedding",
+      "XGBoostTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelInference_calibration",
+      "XGBoostModelInference_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      ["CradleDataLoading_training", "TabularPreprocessing_training"],
+      ["TabularPreprocessing_training", "PyTorchTraining"],
+      ["PyTorchTraining", "PyTorchModelInference_embedding"],
+      ["TabularPreprocessing_training", "PyTorchModelInference_embedding"],
+      ["PyTorchModelInference_embedding", "XGBoostTraining"],
+      ["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
+      ["PyTorchTraining", "PyTorchModelInference_calibration"],
+      ["TabularPreprocessing_calibration", "PyTorchModelInference_calibration"],
+      ["XGBoostTraining", "XGBoostModelInference_calibration"],
+      ["PyTorchModelInference_calibration", "XGBoostModelInference_calibration"],
+      ["XGBoostModelInference_calibration", "PercentileModelCalibration_calibration"],
+      ["PercentileModelCalibration_calibration", "Package"],
+      ["XGBoostTraining", "Package"],
+      ["XGBoostTraining", "Payload"],
+      ["Package", "Registration"],
+      ["Payload", "Registration"]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_hybrid_xgboost_e2e",
+    "framework": "pytorch",
+    "complexity": "comprehensive",
+    "features": ["two_stage_training", "embedding_extraction", "xgboost_stacking", "percentile_calibration", "packaging", "registration"],
+    "node_count": 13,
+    "edge_count": 16,
+    "used_by_projects": ["neat_appeal_aam_pytorch"],
+    "input_requirements": {"data_types": ["text", "tabular"], "text_support": true, "multi_task": false, "output_type": "binary_or_multiclass", "data_source": "cradle_mds", "requires_llm": false},
+    "constraints": {"requires_gpu": true, "min_instance": "ml.g5.xlarge", "supports_multi_gpu": true, "requires_mims": true},
+    "cost": {"estimated_hours": "4-12 (GPU encoder + CPU XGBoost)", "cost_driver": "gpu_training", "instance_cost_tier": "high", "scalability": "data_size_linear"},
+    "agent_context": {
+      "when_to_use": "Combine deep learning text/multimodal embeddings with tabular features via XGBoost stacking. Best for complex decision problems needing both text semantics and structured signals.",
+      "when_not_to_use": "If text-only classification suffices (use standard PyTorch DAG). If tabular-only (use XGBoost DAG). If you don't need two-stage complexity.",
+      "differentiators": ["Two-stage: PyTorch encoder -> embedding -> XGBoost stack", "Calibration threads through BOTH stages", "Most complex PyTorch pipeline: 13 nodes, 16 edges"],
+      "prerequisites": [{"check": "Text + tabular features available", "how": "Cradle SQL returns text AND numeric/categorical features"}, {"check": "GPU quota for encoder", "how": "ml.g5.xlarge+ available"}],
+      "config_guidance": {"user_must_provide": ["cradle_sql (training)", "cradle_sql (calibration)", "label_column", "text_column", "tabular_features", "embedding_dim"], "safe_defaults": ["embedding_dim=64", "xgboost_params=default", "percentile_buckets=[10,25,50,75,90]"], "common_pitfalls": ["Embedding dim must match between PyTorchTraining and XGBoostTraining", "Package step takes XGBoostTraining output, not PyTorchTraining"]},
+      "decision_tree": {"text_and_tabular?": {"yes": "Continue", "no": "Use single-framework DAG"}, "need_embedding_stacking?": {"yes": "USE THIS DAG", "no": "Use standard complete_e2e"}}
+    }
+  }
+}

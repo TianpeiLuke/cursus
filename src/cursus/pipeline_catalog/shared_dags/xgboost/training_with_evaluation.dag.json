@@ -1,0 +1,128 @@
+{
+  "dag": {
+    "description": "XGBoost training pipeline with model evaluation",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "XGBoostTraining",
+      "CradleDataLoading_evaluation",
+      "TabularPreprocessing_evaluation",
+      "XGBoostModelEval"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "CradleDataLoading_evaluation",
+        "TabularPreprocessing_evaluation"
+      ],
+      [
+        "TabularPreprocessing_evaluation",
+        "XGBoostModelEval"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelEval"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_training_with_evaluation",
+    "description": "XGBoost training pipeline with model evaluation",
+    "complexity": "standard",
+    "framework": "xgboost",
+    "features": [
+      "training",
+      "evaluation",
+      "data_loading",
+      "preprocessing"
+    ],
+    "node_count": 6,
+    "edge_count": 5,
+    "task_type": "training",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_evaluation"
+    ],
+    "exit_points": [
+      "XGBoostModelEval"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "When you need to evaluate model quality (AUC, precision, recall) on a holdout set but don't need calibration or registration. Good for model comparison experiments and reporting metrics.",
+      "when_not_to_use": "If you need calibrated scores (use training_with_calibration). If you need production deployment (use complete_e2e). If you need stratified sampling for imbalanced data (use training_with_stratified).",
+      "differentiators": [
+        "Adds XGBoostModelEval step with separate evaluation data",
+        "Produces evaluation metrics (AUC, precision, recall)",
+        "No calibration or registration",
+        "Evaluation uses separate holdout dataset"
+      ],
+      "prerequisites": [
+        {
+          "check": "Separate evaluation dataset available",
+          "how": "Cradle SQL for eval data, ideally from different time period"
+        },
+        {
+          "check": "Evaluation metrics defined",
+          "how": "Know which metrics matter (AUC, precision@k, recall@k)"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "cradle_sql (evaluation)",
+          "label_column",
+          "feature_columns"
+        ],
+        "safe_defaults": [
+          "eval_metrics=['auc','precision','recall']",
+          "instance_type=ml.m5.xlarge"
+        ],
+        "common_pitfalls": [
+          "Eval data must not overlap with training data",
+          "Time-based splits preferred over random splits for abuse detection"
+        ]
+      },
+      "decision_tree": {
+        "need_model_quality_metrics?": {
+          "yes": "Continue",
+          "no": "Use simple_dag"
+        },
+        "imbalanced_classes?": {
+          "yes": "Use training_with_stratified",
+          "no": "Continue"
+        },
+        "need_calibration?": {
+          "yes": "Use training_with_calibration",
+          "no": "USE THIS DAG"
+        }
+      }
+    }
+  }
+}

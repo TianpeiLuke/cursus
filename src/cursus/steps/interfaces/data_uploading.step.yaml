@@ -1,0 +1,28 @@
+step_type: DataUploading
+node_type: sink
+
+contract:
+  entry_point: scripts.py
+  inputs:
+    input_data:
+      path: /opt/ml/processing/input/data
+      required: true
+  outputs: {}
+  arguments: {}
+  env_vars:
+    required: []
+    optional: {}
+  framework_requirements:
+    python: ">=3.7"
+  description: >
+    SDK delegation step. Uploads S3 data to BDT (EDX/Andes). SINK node — no outputs.
+    SDK DataUploadProcessor handles arguments internally.
+
+spec:
+  dependencies:
+    input_data:
+      type: processing_output
+      required: true
+      compatible_sources: [TabularPreprocessing, StratifiedSampling, XGBoostTraining, CradleDataLoading, Processing]
+      semantic_keywords: [data, processed]
+  outputs: {}

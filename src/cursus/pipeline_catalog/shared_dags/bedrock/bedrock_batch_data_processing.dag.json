@@ -1,0 +1,97 @@
+{
+  "dag": {
+    "description": "Shared DAG definition for Bedrock Batch Data Processing Pipeline",
+    "nodes": [
+      "DummyDataLoading",
+      "TabularPreprocessing",
+      "BedrockBatchProcessing"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading",
+        "TabularPreprocessing"
+      ],
+      [
+        "TabularPreprocessing",
+        "BedrockBatchProcessing"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_batch_data_processing",
+    "framework": "bedrock",
+    "node_count": 3,
+    "edge_count": 2,
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": true,
+      "llm_provider": "bedrock"
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.large",
+      "supports_multi_gpu": false,
+      "requires_bedrock_access": true
+    },
+    "cost": {
+      "estimated_hours": "4-24 (batch LLM dominates)",
+      "cost_driver": "bedrock_batch_inference",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Data enrichment/labeling only — you want Bedrock batch to process text data (classify, extract, summarize) but do NOT need downstream training in the same pipeline.",
+      "when_not_to_use": "If you need training after processing (use bedrock_batch_pytorch_e2e). If data volume is <100K rows (use realtime bedrock_pytorch_e2e).",
+      "differentiators": [
+        "Data processing only — no training node",
+        "Cost-efficient batch API (50% cheaper than realtime for >100K rows)",
+        "Output goes to S3 for downstream consumption by any pipeline"
+      ],
+      "prerequisites": [
+        {
+          "check": "Bedrock batch model access",
+          "how": "IAM role has bedrock:CreateModelInvocationJob"
+        },
+        {
+          "check": "S3 batch I/O paths configured",
+          "how": "Input JSONL formatted per Bedrock batch spec"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "bedrock_model_id",
+          "prompt_template",
+          "s3_input_path",
+          "s3_output_path"
+        ],
+        "safe_defaults": [
+          "max_tokens",
+          "temperature",
+          "instance_type (ml.m5.large)"
+        ],
+        "common_pitfalls": [
+          "Batch input must be JSONL with specific schema — validate before submitting",
+          "Batch jobs are async — pipeline must poll for completion",
+          "Output needs post-processing to extract structured fields from LLM responses"
+        ]
+      },
+      "decision_tree": {
+        "need_training_after?": {
+          "yes": "Use bedrock_batch_pytorch_e2e instead",
+          "no": "USE THIS DAG"
+        },
+        "data_volume > 100K rows?": {
+          "yes": "USE THIS DAG (batch is cost-efficient)",
+          "no": "Consider realtime bedrock variant"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,85 @@
+step_type: ActiveSampleSelection
+node_type: internal
+contract:
+  entry_point: active_sample_selection.py
+  inputs:
+    evaluation_data:
+      path: /opt/ml/processing/input/evaluation_data
+      required: true
+  outputs:
+    selected_samples:
+      path: /opt/ml/processing/output/selected_samples
+    selection_metadata:
+      path: /opt/ml/processing/output/selection_metadata
+  arguments: {}
+  env_vars:
+    required:
+    - SELECTION_STRATEGY
+    - USE_CASE
+    optional:
+      CONFIDENCE_THRESHOLD: '0.9'
+      UNCERTAINTY_THRESHOLD: '0.4'
+      MAX_SAMPLES: '10000'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+  description: 'Active sample selection script. Intelligently selects high-value samples
+    from model predictions for SSL or Active Learning workflows.
+
+    '
+spec:
+  dependencies:
+    evaluation_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - XGBoostModelInference
+      - LightGBMModelInference
+      - PyTorchModelInference
+      - XGBoostModelEval
+      - LightGBMModelEval
+      - PyTorchModelEval
+      - BedrockBatchProcessing
+      - BedrockProcessing
+      - LabelRulesetExecution
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - inference
+      - model_predictions
+      - inference_results
+      - eval_output
+      - prediction_data
+      - probabilities
+  outputs:
+    selected_samples:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['selected_samples'].S3Output.S3Uri
+      semantic_keywords:
+      - selected_samples
+      - active_samples
+      - high_confidence_samples
+      aliases:
+      - active_samples
+      - high_confidence_samples
+      - pseudo_labeled_samples
+      - uncertain_samples
+      - selection_output
+      - input_path
+      - input_data
+      - processed_data
+      - eval_output
+      - augmentation_data
+      data_type: S3Uri
+    selection_metadata:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['selection_metadata'].S3Output.S3Uri
+      semantic_keywords:
+      - metadata
+      - selection_info
+      - sampling_metadata
+      aliases:
+      - metadata
+      - selection_info
+      - sampling_metadata
+      data_type: S3Uri

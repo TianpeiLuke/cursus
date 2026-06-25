@@ -1,0 +1,42 @@
+step_type: RedshiftDataLoading
+node_type: source
+contract:
+  entry_point: redshift_data_loading.py
+  inputs: {}
+  outputs:
+    output:
+      path: /opt/ml/processing/output/data
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_STS_REGIONAL_ENDPOINTS: regional
+  framework_requirements:
+    boto3: '>=1.26.0'
+    pandas: '>=1.2.0'
+  description: 'Redshift data loading script. Source node that executes SQL against
+    Redshift and writes results as CSV to S3. Optionally uploads to EDX as side effect.
+
+    '
+spec:
+  dependencies: {}
+  outputs:
+    output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['output'].S3Output.S3Uri
+      semantic_keywords:
+      - data
+      - output
+      - redshift
+      - sql
+      - query_results
+      aliases:
+      - DATA
+      - input_data
+      - input_path
+      - processed_data
+      - redshift_output
+      - sql_output
+      - training_data
+      data_type: S3Uri

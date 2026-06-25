@@ -1,0 +1,32 @@
+step_type: EdxUploading
+node_type: sink
+
+contract:
+  entry_point: edx_uploading.py
+  inputs:
+    input_data:
+      path: /opt/ml/processing/input/data
+      required: true
+  outputs: {}
+  arguments: {}
+  env_vars:
+    required: [EDX_DATASET_ARN, EDX_MANIFEST_KEY]
+    optional:
+      EDX_MANIFEST_KEY_PARTS: "{}"
+      EDX_OUTPUT_COLUMNS: ""
+      AWS_STS_REGIONAL_ENDPOINTS: regional
+      AWS_DEFAULT_REGION: us-east-1
+  framework_requirements:
+    python: ">=3.7"
+  description: >
+    EDX upload script. Uploads S3 data to EDX via EdxDataLoader.
+    SINK node — data exits pipeline to EDX. No SageMaker outputs.
+
+spec:
+  dependencies:
+    input_data:
+      type: processing_output
+      required: true
+      compatible_sources: [CradleDataLoading, RedshiftDataLoading, TabularPreprocessing, StratifiedSampling, BedrockProcessing, ProcessingStep]
+      semantic_keywords: [data, processed, output, input]
+  outputs: {}

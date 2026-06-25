@@ -1,0 +1,113 @@
+step_type: ModelCalibration
+node_type: internal
+contract:
+  entry_point: model_calibration.py
+  inputs:
+    evaluation_data:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+  outputs:
+    calibration_output:
+      path: /opt/ml/processing/output/calibration
+    metrics_output:
+      path: /opt/ml/processing/output/metrics
+    calibrated_data:
+      path: /opt/ml/processing/output/calibrated_data
+  arguments: {}
+  env_vars:
+    required:
+    - CALIBRATION_METHOD
+    - IS_BINARY
+    - LABEL_FIELD
+    optional:
+      SCORE_FIELD: prob_class_1
+      SCORE_FIELDS: ''
+      TASK_LABEL_NAMES: ''
+      MONOTONIC_CONSTRAINT: 'True'
+      GAM_SPLINES: '10'
+      ERROR_THRESHOLD: '0.05'
+      NUM_CLASSES: '2'
+      SCORE_FIELD_PREFIX: prob_class_
+      MULTICLASS_CATEGORIES: '[0, 1]'
+      CALIBRATION_SAMPLE_POINTS: '1000'
+      USE_SECURE_PYPI: 'false'
+  framework_requirements:
+    scikit-learn: '>=0.23.2,<1.0.0'
+    pandas: '>=1.2.0,<2.0.0'
+    numpy: '>=1.20.0'
+    pygam: '>=0.8.0'
+    matplotlib: '>=3.3.0'
+  description: 'Model calibration step that calibrates raw prediction scores to true
+    probabilities. Supports GAM, isotonic, and Platt methods. Handles binary, multi-class,
+    and multi-task scenarios with per-task calibrators and aggregate metrics.
+
+    '
+spec:
+  dependencies:
+    evaluation_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - XGBoostTraining
+      - XGBoostModelEval
+      - XGBoostModelInference
+      - LightGBMTraining
+      - LightGBMModelEval
+      - LightGBMModelInference
+      - LightGBMMTTraining
+      - LightGBMMTModelEval
+      - PyTorchTraining
+      - PyTorchModelEval
+      - PyTorchModelInference
+      - ModelEvaluation
+      - TrainingEvaluation
+      - CrossValidation
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - scores
+      - results
+      - model_output
+      - performance
+      - inference
+      - output_data
+      - prediction_results
+  outputs:
+    calibration_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri
+      semantic_keywords:
+      - calibration
+      - calibration_model
+      - calibrator
+      - probability
+      aliases:
+      - calibration_model
+      - calibration_artifacts
+      - probability_calibration
+      - calibrator
+      data_type: S3Uri
+    metrics_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+      semantic_keywords:
+      - calibration_metrics
+      - reliability_metrics
+      - probability_metrics
+      aliases:
+      - calibration_metrics
+      - reliability_metrics
+      - calibration_performance
+      data_type: S3Uri
+    calibrated_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri
+      semantic_keywords:
+      - calibrated_predictions
+      - calibrated_probabilities
+      - adjusted_predictions
+      aliases:
+      - calibrated_predictions
+      - calibrated_probabilities
+      - probability_scores
+      data_type: S3Uri

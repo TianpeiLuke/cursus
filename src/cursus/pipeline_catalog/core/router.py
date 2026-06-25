@@ -100,8 +100,11 @@ def recommend_dag(
             if dag_complexity == complexity:
                 score += 0.1
                 reasons.append(f"complexity={complexity}")
-            elif (dag_complexity in complexity_order and complexity in complexity_order):
-                dist = abs(complexity_order.index(dag_complexity) - complexity_order.index(complexity))
+            elif dag_complexity in complexity_order and complexity in complexity_order:
+                dist = abs(
+                    complexity_order.index(dag_complexity)
+                    - complexity_order.index(complexity)
+                )
                 score += 0.1 * max(0, 1 - dist * 0.33)
         else:
             score += 0.1
@@ -134,11 +137,101 @@ def auto_select_dag(
     Returns:
         Tuple of (dag_id, PipelineDAG, score) or None
     """
-    results = recommend_dag(framework=framework, features=features, task_type=task_type, max_results=1)
+    results = recommend_dag(
+        framework=framework, features=features, task_type=task_type, max_results=1
+    )
     if not results or results[0]["score"] < min_score:
         return None
 
     best = results[0]
     dag = load_shared_dag(best["id"])
-    logger.info(f"Auto-selected DAG '{best['id']}' (score={best['score']:.2f}): {best['reasoning']}")
+    logger.info(
+        f"Auto-selected DAG '{best['id']}' (score={best['score']:.2f}): {best['reasoning']}"
+    )
     return best["id"], dag, best["score"]
+
+
+def recommend_for_agent(
+    data_type: Optional[str] = None,  # "text", "tabular", "mixed"
+    has_labels: bool = True,
+    needs_llm: bool = False,
+    multi_task: bool = False,
+    incremental: bool = False,
+    data_volume: Optional[
+        str
+    ] = None,  # "small" (<100K), "medium" (100K-10M), "large" (>10M)
+    gpu_available: bool = True,
+) -> List[Dict[str, Any]]:
+    """
+    Agent-friendly recommendation using semantic constraints.
+
+    Returns ranked DAGs with agent_context (when_to_use, prerequisites, config_guidance).
+    Designed for LLM agents to make pipeline selection decisions.
+    """
+    index = get_catalog_index()
+    scored = []
+
+    for dag in index["dags"]:
+        score = 1.0
+        reasons = []
+        req = dag.get("input_requirements", {})
+        constraints = dag.get("constraints", {})
+
+        # Data type filter
+        if data_type == "text" and not req.get("text_support", True):
+            continue  # XGBoost can't handle text
+        if (
+            data_type == "tabular"
+            and dag.get("framework") == "pytorch"
+            and not needs_llm
+        ):
+            score *= 0.5  # PyTorch overkill for pure tabular
+
+        # Multi-task filter
+        if multi_task and not req.get("multi_task", False):
+            score *= 0.3
+        if not multi_task and req.get("multi_task", False):
+            score *= 0.5
+
+        # LLM requirement
+        if needs_llm and not req.get("requires_llm", False):
+            score *= 0.3
+        if not needs_llm and req.get("requires_llm", False):
+            score *= 0.6
+            reasons.append("has LLM (not required but available)")
+
+        # GPU constraint
+        if not gpu_available and constraints.get("requires_gpu", False):
+            continue  # Can't run without GPU
+
+        # Incremental
+        if incremental:
+            if "incremental" in dag.get("task_type", "") or "edx_uploading" in dag.get(
+                "features", []
+            ):
+                score *= 1.5
+                reasons.append("supports incremental")
+            else:
+                score *= 0.4
+
+        # Labels
+        if not has_labels and not req.get("requires_llm", False):
+            score *= 0.3  # No labels and no LLM = can't train
+
+        # Data volume + batch preference
+        if data_volume == "large" and "bedrock_realtime" in " ".join(
+            dag.get("features", [])
+        ):
+            score *= 0.6
+            reasons.append("realtime LLM slow for large data")
+
+        # Normalize
+        score = min(score, 1.0)
+        if score > 0.2:
+            result = dict(dag)
+            result["score"] = round(score, 3)
+            result["reasoning"] = "; ".join(reasons) if reasons else "good fit"
+            scored.append(result)
+
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    return scored[:5]

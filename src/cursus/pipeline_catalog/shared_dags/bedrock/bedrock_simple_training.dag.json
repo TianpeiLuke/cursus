@@ -1,0 +1,96 @@
+{
+  "dag": {
+    "description": "Shared DAG definition for Bedrock-Enhanced Simple Training Pipeline",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "BedrockProcessing_training",
+      "PyTorchTraining"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "BedrockProcessing_training",
+        "PyTorchTraining"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_simple_training",
+    "framework": "bedrock",
+    "node_count": 4,
+    "edge_count": 2,
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": true,
+      "llm_provider": "bedrock"
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.large",
+      "supports_multi_gpu": false,
+      "requires_bedrock_access": true
+    },
+    "cost": {
+      "estimated_hours": "8-20 (realtime LLM dominates)",
+      "cost_driver": "bedrock_realtime_inference",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Quick prototyping of realtime Bedrock LLM integration with PyTorch training. Minimal pipeline to test LLM→train flow without calibration/registration.",
+      "when_not_to_use": "Production deployments (no packaging/registration). If you need full E2E pipeline, use bedrock_pytorch_e2e. If data >100K rows, use batch variant.",
+      "differentiators": [
+        "Minimal realtime Bedrock pipeline (training only, no registration)",
+        "Uses DummyDataLoading (no Cradle dependency)",
+        "Fastest way to test Bedrock→PyTorch integration"
+      ],
+      "prerequisites": [
+        {
+          "check": "Bedrock realtime model access",
+          "how": "IAM role has bedrock:InvokeModel"
+        },
+        {
+          "check": "Test data available",
+          "how": "DummyDataLoading generates synthetic data or S3 path configured"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "bedrock_model_id",
+          "prompt_template"
+        ],
+        "safe_defaults": [
+          "instance_type (ml.m5.large)",
+          "max_tokens",
+          "training_epochs"
+        ],
+        "common_pitfalls": [
+          "Realtime API can be slow for large datasets — only use for prototyping",
+          "No registration step — must manually promote model artifacts",
+          "No calibration — scores may not be well-calibrated"
+        ]
+      },
+      "decision_tree": {
+        "just_prototyping?": {
+          "yes": "USE THIS DAG",
+          "no": "Use bedrock_pytorch_e2e for production"
+        },
+        "need_batch_efficiency?": {
+          "yes": "Use bedrock_batch_simple_training",
+          "no": "USE THIS DAG (realtime, faster feedback)"
+        }
+      }
+    }
+  }
+}

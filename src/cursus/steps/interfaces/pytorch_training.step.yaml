@@ -1,0 +1,131 @@
+step_type: PyTorchTraining
+node_type: internal
+contract:
+  entry_point: pytorch_training.py
+  inputs:
+    input_path:
+      path: /opt/ml/input/data
+      required: true
+    hyperparameters_s3_uri:
+      path: /opt/ml/code/hyperparams/hyperparameters.json
+      required: false
+    model_artifacts_input:
+      path: /opt/ml/input/data/model_artifacts_input
+      required: false
+  outputs:
+    model_output:
+      path: /opt/ml/model
+    evaluation_output:
+      path: /opt/ml/output/data
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      SM_CHECKPOINT_DIR: /opt/ml/checkpoints
+      USE_SECURE_PYPI: 'true'
+      USE_PRECOMPUTED_IMPUTATION: 'false'
+      USE_PRECOMPUTED_RISK_TABLES: 'false'
+      USE_PRECOMPUTED_FEATURES: 'false'
+      ENABLE_TRUE_STREAMING: 'false'
+      NUM_WORKERS_PER_RANK: '0'
+      PREFETCH_FACTOR: None
+      USE_PERSISTENT_WORKERS: 'false'
+      REGION: NA
+  framework_requirements:
+    torch: ==2.1.2
+    transformers: ==4.37.2
+    lightning: ==2.1.3
+    torchmetrics: ==1.7.1
+    scikit-learn: ==1.3.2
+    pandas: ==2.1.4
+    pyarrow: ==14.0.2
+    pydantic: ==2.11.2
+    onnx: ==1.15.0
+    onnxruntime: ==1.17.0
+  description: 'PyTorch Lightning training for multimodal (text+tabular) models. Supports
+    BERT, CNN, LSTM, multimodal variants. Handles binary/multiclass classification
+    with early stopping, checkpointing, ONNX export, and streaming mode for memory-efficient
+    loading.
+
+    '
+spec:
+  dependencies:
+    input_path:
+      type: training_data
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - BedrockProcessing
+      - StratifiedSampling
+      - RiskTableMapping
+      - MissingValueImputation
+      - LabelRulesetExecution
+      - ProcessingStep
+      - DataLoad
+      semantic_keywords:
+      - data
+      - input
+      - training
+      - dataset
+      - processed
+      - train
+      - pytorch
+    hyperparameters_s3_uri:
+      type: hyperparameters
+      required: false
+      compatible_sources:
+      - HyperparameterPrep
+      - ProcessingStep
+      semantic_keywords:
+      - config
+      - params
+      - hyperparameters
+      - settings
+      - hyperparams
+    model_artifacts_input:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - PyTorchTraining
+      - TokenizerTraining
+      - MissingValueImputation
+      - RiskTableMapping
+      - FeatureSelection
+      semantic_keywords:
+      - artifacts
+      - model_artifacts
+      - preprocessing
+      - pretrained
+      - tokenizer
+  outputs:
+    model_output:
+      type: model_artifacts
+      property_path: properties.ModelArtifacts.S3ModelArtifacts
+      semantic_keywords:
+      - model
+      - trained
+      - pytorch
+      - artifacts
+      aliases:
+      - ModelArtifacts
+      - model_data
+      - output_path
+      - model_input
+      - model_artifacts_input
+      data_type: S3Uri
+    evaluation_output:
+      type: processing_output
+      property_path: properties.OutputDataConfig.S3OutputPath
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - results
+      - metrics
+      aliases:
+      - evaluation_data
+      - eval_data
+      - validation_output
+      - test_output
+      - prediction_results
+      - data_output
+      data_type: S3Uri

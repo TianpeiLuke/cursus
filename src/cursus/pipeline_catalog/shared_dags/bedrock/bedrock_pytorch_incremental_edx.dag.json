@@ -1,0 +1,214 @@
+{
+  "dag": {
+    "description": "Incremental PyTorch training with Bedrock scoring, EDX anti-join, and EDX upload",
+    "nodes": [
+      "CradleDataLoading_munged",
+      "CradleDataLoading_normal",
+      "TabularPreprocessing_sampling",
+      "StratifiedSampling_sampling",
+      "BedrockProcessing_sampling",
+      "EdxUploading_tagging",
+      "CradleDataLoading_baseline",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelInference_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_munged",
+        "TabularPreprocessing_sampling"
+      ],
+      [
+        "CradleDataLoading_normal",
+        "TabularPreprocessing_sampling"
+      ],
+      [
+        "TabularPreprocessing_sampling",
+        "StratifiedSampling_sampling"
+      ],
+      [
+        "StratifiedSampling_sampling",
+        "BedrockProcessing_sampling"
+      ],
+      [
+        "BedrockProcessing_sampling",
+        "EdxUploading_tagging"
+      ],
+      [
+        "BedrockProcessing_sampling",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "CradleDataLoading_baseline",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelInference_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "PyTorchModelInference_calibration"
+      ],
+      [
+        "PyTorchModelInference_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_pytorch_incremental_edx",
+    "description": "Incremental PyTorch training with Bedrock scoring, EDX anti-join, and EDX upload",
+    "complexity": "comprehensive",
+    "framework": "pytorch",
+    "features": [
+      "cradle_data_loading",
+      "tabular_preprocessing",
+      "stratified_sampling",
+      "bedrock_realtime_processing",
+      "edx_uploading",
+      "training",
+      "calibration",
+      "packaging",
+      "registration",
+      "edx_anti_join",
+      "incremental_scoring"
+    ],
+    "node_count": 16,
+    "edge_count": 17,
+    "task_type": "incremental_training_with_llm_scoring",
+    "entry_points": [
+      "CradleDataLoading_munged",
+      "CradleDataLoading_normal",
+      "CradleDataLoading_baseline",
+      "CradleDataLoading_calibration"
+    ],
+    "exit_points": [
+      "Registration",
+      "EdxUploading_tagging"
+    ],
+    "sink_nodes": [
+      "Registration",
+      "EdxUploading_tagging"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": true,
+      "llm_provider": "bedrock"
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_edx_access": true,
+      "requires_mims": true,
+      "requires_bedrock_access": true
+    },
+    "cost": {
+      "estimated_hours": "8-20 (realtime LLM dominates)",
+      "cost_driver": "bedrock_realtime_inference",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Incremental retraining: you have a prior EDX scored dataset and need to score only NEW addresses via Bedrock LLM, then retrain on the full growing dataset.",
+      "when_not_to_use": "First-time training (no EDX baseline exists) \u2014 use pytorch/complete_e2e or bedrock_pytorch_e2e instead.",
+      "differentiators": [
+        "Only DAG with EDX anti-join (skip already-scored data)",
+        "Grows labeled pool incrementally",
+        "Requires prior EDX upload to exist"
+      ],
+      "prerequisites": [
+        {
+          "check": "EDX scored manifest exists from prior run",
+          "how": "Verify EDX ARN accessible via Cradle"
+        },
+        {
+          "check": "Bedrock model access",
+          "how": "IAM role has bedrock:InvokeModel for target model"
+        },
+        {
+          "check": "MDS data for new period",
+          "how": "Cradle date range covers period NOT in existing EDX"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "edx_scored_arn",
+          "edx_tags_arn",
+          "mds_date_range",
+          "bedrock_model_id",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "batch_size",
+          "instance_types",
+          "class_weights",
+          "train_ratio",
+          "max_epochs"
+        ],
+        "common_pitfalls": [
+          "EDX read ARN must point to PREVIOUS batch output, not the one being written (use separate _CRADLE_EDX_END vs _UPLOAD_EDX_END)",
+          "MDS date range must NOT overlap scored EDX period \u2014 causes empty anti-join result",
+          "pandas str.split(\"|||\") uses regex \u2014 must pass regex=False or use re.escape()",
+          "ml.g5.12xlarge ModelInference is NVMe \u2014 VolumeKmsKeyId handled by compiler"
+        ]
+      },
+      "decision_tree": {
+        "has_prior_scored_edx?": {
+          "yes": "USE THIS DAG",
+          "no": "Use full baseline DAG first"
+        },
+        "need_new_labels?": {
+          "yes": "USE THIS DAG (scores new data)",
+          "no": "Use training-only DAG (dag_training_NA.json)"
+        }
+      }
+    },
+    "used_by_projects": [
+      "munged_address_pytorch"
+    ]
+  }
+}

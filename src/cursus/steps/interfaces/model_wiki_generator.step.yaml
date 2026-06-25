@@ -1,0 +1,82 @@
+step_type: ModelWikiGenerator
+node_type: internal
+contract:
+  entry_point: model_wiki_generator.py
+  inputs:
+    metrics_output:
+      path: /opt/ml/processing/input/metrics
+      required: true
+    plots_output:
+      path: /opt/ml/processing/input/plots
+      required: false
+  outputs:
+    wiki_output:
+      path: /opt/ml/processing/output/wiki
+  arguments: {}
+  env_vars:
+    required:
+    - MODEL_NAME
+    optional:
+      MODEL_USE_CASE: Machine Learning Model
+      MODEL_VERSION: '1.0'
+      PIPELINE_NAME: ML Pipeline
+      AUTHOR: ML Team
+  framework_requirements:
+    jinja2: '>=3.0.0'
+    pandas: '>=1.3.0'
+  description: 'Model wiki generator script. Loads metrics and visualizations, generates
+    comprehensive multi-format model documentation (Wiki, HTML, Markdown).
+
+    '
+spec:
+  dependencies:
+    metrics_output:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - ModelMetricsComputation
+      - XGBoostModelEval
+      - XGBoostModelInference
+      - PyTorchModelInference
+      semantic_keywords:
+      - metrics
+      - performance
+      - evaluation
+      - results
+      - metrics_output
+      - performance_metrics
+      - evaluation_metrics
+    plots_output:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - ModelMetricsComputation
+      - XGBoostModelEval
+      - XGBoostModelInference
+      - PyTorchModelInference
+      semantic_keywords:
+      - plots
+      - visualizations
+      - charts
+      - graphs
+      - plots_output
+      - performance_plots
+      - roc_curves
+  outputs:
+    wiki_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['wiki_output'].S3Output.S3Uri
+      semantic_keywords:
+      - documentation
+      - wiki
+      - model_documentation
+      aliases:
+      - documentation
+      - wiki
+      - model_documentation
+      - wiki_documentation
+      - documentation_output
+      - model_wiki
+      - generated_docs
+      - wiki_pages
+      data_type: S3Uri

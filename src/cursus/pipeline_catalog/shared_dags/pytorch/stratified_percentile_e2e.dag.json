@@ -1,0 +1,52 @@
+{
+  "dag": {
+    "description": "PyTorch end-to-end pipeline with StratifiedSampling for class-balanced training and PercentileCalibration for rank-ordered scoring",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "StratifiedSampling_training",
+      "PyTorchTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelInference_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      ["CradleDataLoading_training", "TabularPreprocessing_training"],
+      ["TabularPreprocessing_training", "StratifiedSampling_training"],
+      ["StratifiedSampling_training", "PyTorchTraining"],
+      ["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
+      ["PyTorchTraining", "PyTorchModelInference_calibration"],
+      ["TabularPreprocessing_calibration", "PyTorchModelInference_calibration"],
+      ["PyTorchModelInference_calibration", "PercentileModelCalibration_calibration"],
+      ["PercentileModelCalibration_calibration", "Package"],
+      ["PyTorchTraining", "Package"],
+      ["PyTorchTraining", "Payload"],
+      ["Package", "Registration"],
+      ["Payload", "Registration"]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_stratified_percentile_e2e",
+    "framework": "pytorch",
+    "complexity": "comprehensive",
+    "features": ["stratified_sampling", "training", "percentile_calibration", "packaging", "registration", "inference"],
+    "node_count": 11,
+    "edge_count": 12,
+    "used_by_projects": ["neat_spam_pytorch"],
+    "input_requirements": {"data_types": ["text", "tabular"], "text_support": true, "multi_task": false, "output_type": "binary_or_multiclass", "data_source": "cradle_mds", "requires_llm": false},
+    "constraints": {"requires_gpu": true, "min_instance": "ml.g5.xlarge", "supports_multi_gpu": true, "requires_mims": true},
+    "cost": {"estimated_hours": "2-8 (GPU training dominates)", "cost_driver": "gpu_training", "instance_cost_tier": "high", "scalability": "data_size_linear"},
+    "agent_context": {
+      "when_to_use": "PyTorch text classification with imbalanced labels (need stratified sampling) and percentile-based calibration for rank-ordered output scores.",
+      "when_not_to_use": "If labels are balanced (use standard complete_e2e). If standard isotonic calibration suffices. If no text features (use XGBoost).",
+      "differentiators": ["StratifiedSampling before training for class balance", "PercentileModelCalibration for rank-ordered scores", "PyTorchModelInference for calibration scoring"],
+      "prerequisites": [{"check": "Imbalanced labeled data in Cradle", "how": "Check class distribution in training SQL"}, {"check": "GPU quota", "how": "ml.g5.xlarge+ available"}],
+      "config_guidance": {"user_must_provide": ["cradle_sql (training)", "cradle_sql (calibration)", "label_column", "text_column", "service_name", "sampling_ratios"], "safe_defaults": ["percentile_buckets=[10,25,50,75,90]", "sampling_strategy=undersample_majority"], "common_pitfalls": ["Calibration data should NOT be stratified - use natural distribution"]},
+      "decision_tree": {"imbalanced_labels?": {"yes": "Continue", "no": "Use standard complete_e2e"}, "need_percentile_scores?": {"yes": "USE THIS DAG", "no": "Use complete_e2e"}}
+    }
+  }
+}

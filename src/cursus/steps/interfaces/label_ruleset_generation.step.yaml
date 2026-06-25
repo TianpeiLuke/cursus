@@ -1,0 +1,76 @@
+step_type: LabelRulesetGeneration
+node_type: internal
+contract:
+  entry_point: label_ruleset_generation.py
+  inputs:
+    ruleset_configs:
+      path: /opt/ml/processing/input/ruleset_configs
+      required: false
+  outputs:
+    validated_ruleset:
+      path: /opt/ml/processing/output/validated_ruleset
+    validation_report:
+      path: /opt/ml/processing/output/validation_report
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      ENABLE_FIELD_VALIDATION: 'true'
+      ENABLE_LABEL_VALIDATION: 'true'
+      ENABLE_LOGIC_VALIDATION: 'true'
+      ENABLE_RULE_OPTIMIZATION: 'true'
+  framework_requirements:
+    pydantic: '>=2.0.0'
+    pandas: '>=1.3.0'
+  description: 'Label ruleset generation script. Validates and optimizes user-defined
+    classification rules for transparent, maintainable rule-based classification.
+
+    '
+spec:
+  dependencies:
+    ruleset_configs:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - RulesetConfiguration
+      - ProcessingStep
+      semantic_keywords:
+      - ruleset_configs
+      - ruleset_configuration
+      - rule_configs
+      - classification_rules
+      - label_rules
+      - label_config
+  outputs:
+    validated_ruleset:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['validated_ruleset'].S3Output.S3Uri
+      semantic_keywords:
+      - ruleset
+      - validated_rules
+      - classification_ruleset
+      aliases:
+      - ruleset
+      - optimized_ruleset
+      - validated_rules
+      - classification_ruleset
+      - label_ruleset
+      - generated_ruleset
+      - rules
+      - label_mapping_rules
+      data_type: S3Uri
+    validation_report:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['validation_report'].S3Output.S3Uri
+      semantic_keywords:
+      - report
+      - validation_results
+      - diagnostics
+      aliases:
+      - report
+      - validation_results
+      - ruleset_metadata
+      - validation_metadata
+      - quality_report
+      - diagnostics
+      data_type: S3Uri

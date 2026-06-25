@@ -1,0 +1,123 @@
+step_type: PercentileModelCalibration
+node_type: internal
+contract:
+  entry_point: percentile_model_calibration.py
+  inputs:
+    evaluation_data:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+    calibration_config:
+      path: /opt/ml/code/calibration
+      required: false
+  outputs:
+    calibration_output:
+      path: /opt/ml/processing/output/calibration
+    metrics_output:
+      path: /opt/ml/processing/output/metrics
+    calibrated_data:
+      path: /opt/ml/processing/output/calibrated_data
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      SCORE_FIELD: prob_class_1
+      SCORE_FIELDS: ''
+      N_BINS: '1000'
+      ACCURACY: 1e-5
+  framework_requirements:
+    scikit-learn: '>=0.23.2,<1.0.0'
+    pandas: '>=1.2.0,<2.0.0'
+    numpy: '>=1.20.0'
+  description: 'Percentile model calibration that converts raw model scores to calibrated
+    percentile values using ROC curve analysis. Supports single-task and multi-task
+    calibration with configurable calibration dictionary.
+
+    '
+spec:
+  dependencies:
+    evaluation_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - XGBoostTraining
+      - XGBoostModelEval
+      - XGBoostModelInference
+      - LightGBMTraining
+      - LightGBMModelEval
+      - LightGBMModelInference
+      - LightGBMMTTraining
+      - LightGBMMTModelEval
+      - PyTorchTraining
+      - PyTorchModelEval
+      - PyTorchModelInference
+      - ModelEvaluation
+      - TrainingEvaluation
+      - CrossValidation
+      - ModelCalibration
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - scores
+      - validation
+      - test
+      - results
+      - calibrated_data
+      - model_output
+      - performance
+      - inference
+      - output_data
+      - prediction_results
+    calibration_config:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - ConfigurationStep
+      - DataPreprocessing
+      - FeatureEngineering
+      - ModelConfiguration
+      semantic_keywords:
+      - configuration
+      - config
+      - calibration
+      - parameters
+      - thresholds
+      - percentiles
+  outputs:
+    calibration_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri
+      semantic_keywords:
+      - percentile_mapping
+      - score_percentiles
+      - percentile_calibration
+      aliases:
+      - percentile_mapping
+      - score_percentiles
+      - percentile_calibration
+      - calibration_mapping
+      data_type: S3Uri
+    metrics_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+      semantic_keywords:
+      - percentile_metrics
+      - calibration_metrics
+      - score_distribution_metrics
+      aliases:
+      - percentile_metrics
+      - calibration_metrics
+      - percentile_performance
+      data_type: S3Uri
+    calibrated_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri
+      semantic_keywords:
+      - percentile_data
+      - scored_percentiles
+      - percentile_predictions
+      aliases:
+      - percentile_data
+      - scored_percentiles
+      - percentile_predictions
+      - ranked_data
+      data_type: S3Uri

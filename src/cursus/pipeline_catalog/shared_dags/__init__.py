@@ -73,7 +73,9 @@ def list_dags_by_framework(framework: str) -> List[Dict[str, Any]]:
     return [d for d in index["dags"] if d["framework"] == framework]
 
 
-def search_dags(features: Optional[List[str]] = None, framework: Optional[str] = None) -> List[Dict[str, Any]]:
+def search_dags(
+    features: Optional[List[str]] = None, framework: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Search DAGs by features and/or framework.
 
@@ -107,6 +109,7 @@ def search_dags(features: Optional[List[str]] = None, framework: Optional[str] =
 # Backward compat: DAGMetadata kept as import target
 class DAGMetadata:
     """Legacy metadata class. Use catalog_index.json instead."""
+
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.extra_metadata = kwargs.get("extra_metadata", {})

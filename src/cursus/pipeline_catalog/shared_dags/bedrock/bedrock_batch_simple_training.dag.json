@@ -1,0 +1,93 @@
+{
+  "dag": {
+    "description": "Shared DAG definition for Bedrock Batch-Enhanced Simple Training Pipeline",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "BedrockBatchProcessing_training",
+        "PyTorchTraining"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_batch_simple_training",
+    "framework": "bedrock",
+    "node_count": 3,
+    "edge_count": 2,
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.large",
+      "supports_multi_gpu": false
+    },
+    "cost": {
+      "estimated_hours": "0.5-1",
+      "cost_driver": "minimal",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Quick prototyping of batch Bedrock LLM integration with PyTorch training. Use when you want to test the batch LLM→train flow without calibration/registration overhead.",
+      "when_not_to_use": "Production deployments (no packaging/registration). If you need calibration or model registration, use bedrock_batch_pytorch_e2e.",
+      "differentiators": [
+        "Minimal batch Bedrock pipeline (training only, no registration)",
+        "Uses DummyDataLoading (no Cradle dependency)",
+        "No GPU required for preprocessing"
+      ],
+      "prerequisites": [
+        {
+          "check": "Bedrock batch inference access",
+          "how": "IAM role has bedrock:CreateModelInvocationJob permission"
+        },
+        {
+          "check": "S3 bucket for batch input/output",
+          "how": "Bucket exists and role has read/write access"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "bedrock_model_id",
+          "prompt_template",
+          "s3_batch_input_path"
+        ],
+        "safe_defaults": [
+          "instance_type (ml.m5.large)",
+          "batch_size",
+          "max_tokens"
+        ],
+        "common_pitfalls": [
+          "Batch jobs can take hours for large datasets — monitor via CloudWatch",
+          "No registration step — must manually promote model artifacts"
+        ]
+      },
+      "decision_tree": {
+        "just_prototyping?": {
+          "yes": "USE THIS DAG",
+          "no": "Use bedrock_batch_pytorch_e2e for production"
+        },
+        "need_registration?": {
+          "yes": "Use bedrock_batch_pytorch_e2e",
+          "no": "USE THIS DAG"
+        }
+      }
+    }
+  }
+}

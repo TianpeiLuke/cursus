@@ -1,0 +1,38 @@
+step_type: Registration
+node_type: sink
+
+contract:
+  entry_point: script.py
+  inputs:
+    PackagedModel:
+      path: /opt/ml/processing/input/model
+      required: true
+    GeneratedPayloadSamples:
+      path: /opt/ml/processing/mims_payload
+      required: true
+  outputs: {}
+  arguments: {}
+  env_vars:
+    required: [MODS_WORKFLOW_EXECUTION_ID]
+    optional:
+      PERFORMANCE_METADATA_PATH: ""
+  framework_requirements:
+    python: ">=3.7"
+  description: >
+    MIMS model registration script that uploads model artifacts and payload samples,
+    registers the model with MIMS service, tracks workflow execution ID, and cleans up
+    temporary resources. No output files produced - registration is a side effect.
+
+spec:
+  dependencies:
+    PackagedModel:
+      type: model_artifacts
+      required: true
+      compatible_sources: [PackagingStep, Package, ProcessingStep]
+      semantic_keywords: [model, package, packaged, artifacts, tar]
+    GeneratedPayloadSamples:
+      type: payload_samples
+      required: true
+      compatible_sources: [PayloadTestStep, PayloadStep, ProcessingStep]
+      semantic_keywords: [payload, samples, test, generated, inference]
+  outputs: {}

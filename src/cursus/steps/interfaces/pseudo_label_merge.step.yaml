@@ -1,0 +1,98 @@
+step_type: PseudoLabelMerge
+node_type: internal
+contract:
+  entry_point: pseudo_label_merge.py
+  inputs:
+    base_data:
+      path: /opt/ml/processing/input/base_data
+      required: true
+    augmentation_data:
+      path: /opt/ml/processing/input/augmentation_data
+      required: true
+  outputs:
+    merged_data:
+      path: /opt/ml/processing/output/merged_data
+  arguments: {}
+  env_vars:
+    required:
+    - LABEL_FIELD
+    optional:
+      ADD_PROVENANCE: 'true'
+      OUTPUT_FORMAT: csv
+      USE_AUTO_SPLIT_RATIOS: 'true'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+  description: 'Pseudo label merge script. Intelligently merges labeled base data
+    with pseudo-labeled or augmented samples for SSL and Active Learning workflows.
+
+    '
+spec:
+  dependencies:
+    base_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - RiskTableMapping
+      - MissingValueImputation
+      - FeatureSelection
+      - StratifiedSampling
+      - TemporalSequenceNormalization
+      - TemporalFeatureEngineering
+      - LabelRulesetExecution
+      semantic_keywords:
+      - base_data
+      - labeled_data
+      - training_data
+      - processed_data
+      - preprocessed_data
+      - data
+      - input_path
+      - features
+    augmentation_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - ActiveSampleSelection
+      - XGBoostModelInference
+      - LightGBMModelInference
+      - PyTorchModelInference
+      - XGBoostModelEval
+      - LightGBMModelEval
+      - PyTorchModelEval
+      - BedrockBatchProcessing
+      - BedrockProcessing
+      - LabelRulesetExecution
+      semantic_keywords:
+      - augmentation_data
+      - pseudo_labeled_data
+      - selected_samples
+      - active_samples
+      - predictions
+      - inference
+      - eval_output
+      - high_confidence_samples
+  outputs:
+    merged_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['merged_data'].S3Output.S3Uri
+      semantic_keywords:
+      - merged
+      - combined
+      - augmented
+      - ssl_training
+      aliases:
+      - training_data
+      - input_path
+      - input_data
+      - processed_data
+      - data
+      - combined_data
+      - augmented_training_data
+      - merged_training_data
+      - ssl_training_data
+      - enriched_data
+      - output
+      - processed_output
+      data_type: S3Uri

@@ -1,0 +1,137 @@
+{
+  "dag": {
+    "description": "XGBoost training pipeline with stratified sampling and model evaluation",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "StratifiedSampling_training",
+      "XGBoostTraining",
+      "CradleDataLoading_evaluation",
+      "TabularPreprocessing_evaluation",
+      "XGBoostModelEval"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "StratifiedSampling_training"
+      ],
+      [
+        "StratifiedSampling_training",
+        "XGBoostTraining"
+      ],
+      [
+        "CradleDataLoading_evaluation",
+        "TabularPreprocessing_evaluation"
+      ],
+      [
+        "TabularPreprocessing_evaluation",
+        "XGBoostModelEval"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelEval"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_training_with_evaluation_stratified",
+    "description": "XGBoost training pipeline with stratified sampling and model evaluation",
+    "complexity": "standard",
+    "framework": "xgboost",
+    "features": [
+      "training",
+      "evaluation",
+      "data_loading",
+      "preprocessing",
+      "stratified_sampling"
+    ],
+    "node_count": 7,
+    "edge_count": 6,
+    "task_type": "training",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_evaluation"
+    ],
+    "exit_points": [
+      "XGBoostModelEval"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "When training data has severe class imbalance (e.g., <5% positive rate) and stratified sampling is needed to balance classes for better model learning. Common in abuse detection where abusers are a small fraction of all buyers.",
+      "when_not_to_use": "If class balance is acceptable (>10% minority class), use training_with_evaluation. If you need full e2e pipeline (use complete_e2e with stratified sampling configured). If using scale_pos_weight in XGBoost instead of data-level sampling.",
+      "differentiators": [
+        "StratifiedSampling step between preprocessing and training",
+        "Handles class imbalance at data level rather than algorithm level",
+        "Evaluation uses original (non-stratified) data for realistic metrics",
+        "Used when scale_pos_weight alone is insufficient"
+      ],
+      "prerequisites": [
+        {
+          "check": "Severe class imbalance",
+          "how": "Positive rate < 5% in training data"
+        },
+        {
+          "check": "Enough positive samples after stratification",
+          "how": "At least 1000 positive samples in training set"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "cradle_sql (evaluation)",
+          "label_column",
+          "feature_columns",
+          "sampling_ratio_or_strategy"
+        ],
+        "safe_defaults": [
+          "stratified_ratio=1:3 (pos:neg)",
+          "sampling_seed=42",
+          "instance_type=ml.m5.xlarge"
+        ],
+        "common_pitfalls": [
+          "Do NOT stratify evaluation data - it must reflect real distribution",
+          "Over-sampling can cause overfitting to minority class",
+          "Consider scale_pos_weight as alternative before using this DAG"
+        ]
+      },
+      "decision_tree": {
+        "positive_rate_below_5%?": {
+          "yes": "Continue",
+          "no": "Use training_with_evaluation"
+        },
+        "tried_scale_pos_weight?": {
+          "yes": "USE THIS DAG if still underperforming",
+          "no": "Try scale_pos_weight first in training_with_evaluation"
+        },
+        "need_registration?": {
+          "yes": "Use complete_e2e with stratified sampling configured",
+          "no": "USE THIS DAG"
+        }
+      }
+    }
+  }
+}

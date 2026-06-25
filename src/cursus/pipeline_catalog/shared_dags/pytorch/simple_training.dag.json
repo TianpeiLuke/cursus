@@ -1,0 +1,90 @@
+{
+  "dag": {
+    "description": "Shared DAG definition for Simple Training Pipeline",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "simple_training",
+    "framework": "pytorch",
+    "node_count": 3,
+    "edge_count": 2,
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true
+    },
+    "cost": {
+      "estimated_hours": "2-8 (GPU training dominates)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Quick prototyping of PyTorch model training with dummy/synthetic data. Minimal pipeline to validate model architecture and training loop.",
+      "when_not_to_use": "Production deployments (no calibration/packaging/registration). If you need full E2E, use pytorch/complete_e2e or pytorch/standard_e2e.",
+      "differentiators": [
+        "Simplest possible PyTorch pipeline (3 nodes only)",
+        "Uses DummyDataLoading (no Cradle/MDS dependency)",
+        "No calibration, packaging, or registration",
+        "Ideal for model architecture experimentation"
+      ],
+      "prerequisites": [
+        {
+          "check": "GPU quota",
+          "how": "ml.g5.xlarge available in account"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "model_architecture",
+          "training_hyperparams"
+        ],
+        "safe_defaults": [
+          "instance_type (ml.g5.xlarge)",
+          "max_epochs (10)",
+          "batch_size (32)",
+          "learning_rate (1e-4)"
+        ],
+        "common_pitfalls": [
+          "No registration — must manually promote artifacts for downstream use",
+          "Dummy data may not represent production distribution"
+        ]
+      },
+      "decision_tree": {
+        "just_prototyping?": {
+          "yes": "USE THIS DAG",
+          "no": "Use pytorch/standard_e2e or pytorch/complete_e2e"
+        },
+        "have_real_data?": {
+          "yes": "Use pytorch/training_dag or pytorch/standard_e2e",
+          "no": "USE THIS DAG (uses DummyDataLoading)"
+        }
+      }
+    }
+  }
+}

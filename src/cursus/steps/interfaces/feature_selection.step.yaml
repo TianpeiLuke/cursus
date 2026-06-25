@@ -1,0 +1,276 @@
+step_type: FeatureSelection
+node_type: internal
+contract:
+  entry_point: feature_selection.py
+  inputs:
+    input_data:
+      path: /opt/ml/processing/input
+      required: true
+    model_artifacts_input:
+      path: /opt/ml/processing/input/model_artifacts
+      required: false
+  outputs:
+    processed_data:
+      path: /opt/ml/processing/output/data
+    model_artifacts_output:
+      path: /opt/ml/processing/output/model_artifacts
+  arguments: {}
+  env_vars:
+    required:
+    - LABEL_FIELD
+    optional:
+      SELECTION_METHODS: '["variance_threshold", "mutual_info", "chi2"]'
+      TOP_K_FEATURES: '50'
+      VARIANCE_THRESHOLD: '0.01'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+    scikit-learn: '>=1.0.0'
+  description: 'Feature selection script. Applies statistical and ML-based feature
+    selection methods for dimensionality reduction. Training mode fits selectors;
+    inference applies pre-computed.
+
+    '
+spec:
+  dependencies:
+    input_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - StratifiedSampling
+      - RiskTableMapping
+      - MissingValueImputation
+      - ProcessingStep
+      semantic_keywords:
+      - processed_data
+      - preprocessed
+      - cleaned
+      - tabular
+      - data
+      - input
+      - dataset
+    model_artifacts_input:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - FeatureSelection_Training
+      - FeatureSelection
+      - ProcessingStep
+      semantic_keywords:
+      - selected_features
+      - feature_selection
+      - feature_metadata
+      - feature_artifacts
+      - training_artifacts
+      - model_artifacts
+  outputs:
+    processed_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+      semantic_keywords:
+      - selected_data
+      - feature_selected
+      - processed
+      aliases:
+      - selected_data
+      - feature_selected_data
+      - training_data
+      - validation_data
+      - testing_data
+      - calibration_data
+      - model_input_data
+      - input_path
+      - input_data
+      data_type: S3Uri
+    model_artifacts_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+      semantic_keywords:
+      - selected_features
+      - feature_metadata
+      - selection_results
+      aliases:
+      - selected_features
+      - feature_selection
+      - feature_metadata
+      - feature_artifacts
+      - selection_results
+      - training_artifacts
+      - model_artifacts
+      - model_artifacts_input
+      data_type: S3Uri
+variants:
+  training:
+    step_type: FeatureSelection_Training
+    spec:
+      dependencies:
+        input_data:
+          semantic_keywords:
+          - training
+          - train
+          - processed_data
+          - preprocessed
+          - tabular
+          - data
+          - input
+        model_artifacts_input:
+          required: false
+      outputs:
+        processed_data:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+          aliases:
+          - selected_data
+          - feature_selected_data
+          - training_data
+          - model_input_data
+          - input_path
+          - output_data
+          - input_data
+          data_type: S3Uri
+        model_artifacts_output:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+          aliases:
+          - selected_features
+          - feature_selection
+          - feature_metadata
+          - feature_artifacts
+          - selection_results
+          - training_artifacts
+          - selected_features_input
+          - model_artifacts_input
+          data_type: S3Uri
+  validation:
+    step_type: FeatureSelection_Validation
+    spec:
+      dependencies:
+        input_data:
+          semantic_keywords:
+          - validation
+          - val
+          - processed_data
+          - preprocessed
+          - tabular
+          - data
+          - input
+        model_artifacts_input:
+          required: true
+          compatible_sources:
+          - FeatureSelection_Training
+      outputs:
+        processed_data:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+          aliases:
+          - selected_data
+          - feature_selected_data
+          - validation_data
+          - model_validation_data
+          - output_data
+          - filtered_data
+          - input_data
+          - input_path
+          data_type: S3Uri
+        model_artifacts_output:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+          aliases:
+          - selected_features
+          - feature_selection
+          - feature_metadata
+          - feature_artifacts
+          - selection_results
+          - feature_list
+          - selected_features_input
+          - model_artifacts_input
+          data_type: S3Uri
+  testing:
+    step_type: FeatureSelection_Testing
+    spec:
+      dependencies:
+        input_data:
+          semantic_keywords:
+          - testing
+          - test
+          - processed_data
+          - preprocessed
+          - tabular
+          - data
+          - input
+        model_artifacts_input:
+          required: true
+          compatible_sources:
+          - FeatureSelection_Training
+      outputs:
+        processed_data:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+          aliases:
+          - selected_data
+          - feature_selected_data
+          - testing_data
+          - model_testing_data
+          - output_data
+          - filtered_data
+          - input_data
+          - input_path
+          data_type: S3Uri
+        model_artifacts_output:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+          aliases:
+          - selected_features
+          - feature_selection
+          - feature_metadata
+          - feature_artifacts
+          - selection_results
+          - feature_list
+          - selected_features_input
+          - model_artifacts_input
+          data_type: S3Uri
+  calibration:
+    step_type: FeatureSelection_Calibration
+    spec:
+      dependencies:
+        input_data:
+          semantic_keywords:
+          - calibration
+          - calib
+          - processed_data
+          - preprocessed
+          - tabular
+          - data
+          - input
+        model_artifacts_input:
+          required: true
+          compatible_sources:
+          - FeatureSelection_Training
+      outputs:
+        processed_data:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+          aliases:
+          - selected_data
+          - feature_selected_data
+          - calibration_data
+          - model_calibration_data
+          - output_data
+          - filtered_data
+          - input_data
+          - input_path
+          data_type: S3Uri
+        model_artifacts_output:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+          aliases:
+          - selected_features
+          - feature_selection
+          - feature_metadata
+          - feature_artifacts
+          - selection_results
+          - feature_list
+          - selected_features_input
+          - model_artifacts_input
+          data_type: S3Uri

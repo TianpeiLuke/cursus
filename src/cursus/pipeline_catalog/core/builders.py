@@ -38,15 +38,18 @@ logger = logging.getLogger(__name__)
 
 try:
     from mods.mods_template import MODSTemplate
+
     MODS_AVAILABLE = True
 except ImportError:
     MODS_AVAILABLE = False
+
     def MODSTemplate(author, description, version):
         def decorator(cls):
             cls._mods_author = author
             cls._mods_description = description
             cls._mods_version = version
             return cls
+
         return decorator
 
 
@@ -107,6 +110,7 @@ def build_mods_pipeline(
     """
     # Resolve paths relative to caller
     import inspect
+
     caller_frame = inspect.stack()[1]
     caller_dir = Path(caller_frame.filename).parent
 
@@ -122,7 +126,9 @@ def build_mods_pipeline(
             regional_alias: str = "NA",
         ):
             self.sagemaker_session = sagemaker_session or Session()
-            self.execution_role = execution_role or self.sagemaker_session.get_caller_identity_arn()
+            self.execution_role = (
+                execution_role or self.sagemaker_session.get_caller_identity_arn()
+            )
             self.dag = import_dag_from_json(abs_dag_path)
             self.dag_compiler = PipelineDAGCompiler(
                 config_path=abs_config_path,
@@ -132,7 +138,9 @@ def build_mods_pipeline(
 
         def generate_pipeline(self) -> Pipeline:
             pipeline, report = self.dag_compiler.compile_with_report(dag=self.dag)
-            logger.info(f"Pipeline '{pipeline.name}' created: {len(pipeline.steps)} steps")
+            logger.info(
+                f"Pipeline '{pipeline.name}' created: {len(pipeline.steps)} steps"
+            )
             return pipeline
 
     # Set class name

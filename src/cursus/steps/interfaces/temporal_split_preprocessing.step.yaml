@@ -1,0 +1,99 @@
+step_type: TemporalSplitPreprocessing
+node_type: internal
+contract:
+  entry_point: temporal_split_preprocessing.py
+  inputs:
+    DATA:
+      path: /opt/ml/processing/input/data
+      required: true
+    SIGNATURE:
+      path: /opt/ml/processing/input/signature
+      required: false
+  outputs:
+    training_data:
+      path: /opt/ml/processing/output/training_data
+    oot_data:
+      path: /opt/ml/processing/output/oot_data
+  arguments: {}
+  env_vars:
+    required:
+    - DATE_COLUMN
+    - GROUP_ID_COLUMN
+    - SPLIT_DATE
+    optional:
+      TRAIN_RATIO: '0.9'
+      RANDOM_SEED: '42'
+      OUTPUT_FORMAT: CSV
+      LABEL_FIELD: ''
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+  description: 'Temporal split preprocessing script. Handles data loading, temporal
+    splitting, customer-level splitting, and main task label generation.
+
+    '
+spec:
+  dependencies:
+    DATA:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - CradleDataLoading
+      - DummyDataLoading
+      - DataLoad
+      - ProcessingStep
+      semantic_keywords:
+      - data
+      - input
+      - raw
+      - dataset
+      - source
+      - tabular
+      - temporal
+      - time_series
+      - group
+    SIGNATURE:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - CradleDataLoading
+      - DummyDataLoading
+      semantic_keywords:
+      - signature
+      - schema
+      - columns
+      - column_names
+      - metadata
+      - header
+  outputs:
+    training_data:
+      type: training_data
+      property_path: properties.ProcessingOutputConfig.Outputs['training_data'].S3Output.S3Uri
+      semantic_keywords:
+      - training
+      - train_val
+      - temporal_training
+      aliases:
+      - input_path
+      - training_input
+      - model_input_data
+      - train_val_data
+      - processed_training_data
+      - temporal_training_data
+      data_type: S3Uri
+    oot_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['oot_data'].S3Output.S3Uri
+      semantic_keywords:
+      - oot
+      - out_of_time
+      - evaluation
+      - temporal_eval
+      aliases:
+      - processed_data
+      - evaluation_data
+      - out_of_time_data
+      - oot_evaluation_data
+      - temporal_oot_data
+      - model_eval_data
+      data_type: S3Uri

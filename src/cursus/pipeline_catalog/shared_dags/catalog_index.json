@@ -1,7 +1,7 @@
 {
-  "version": "2.1",
-  "generated": "2026-06-24T23:16:21Z",
-  "total_dags": 36,
+  "version": "3.1",
+  "generated": "2026-06-24T23:57:14Z",
+  "total_dags": 42,
   "frameworks": [
     "bedrock",
     "dummy",
@@ -14,7 +14,7 @@
   "dags": [
     {
       "id": "bedrock_batch_data_processing",
-      "path": "bedrock/bedrock_batch_data_processing_dag.dag.json",
+      "path": "bedrock/bedrock_batch_data_processing.dag.json",
       "description": "Shared DAG definition for Bedrock Batch Data Processing Pipeline",
       "framework": "bedrock",
       "complexity": "standard",
@@ -22,8 +22,6 @@
       "node_count": 3,
       "edge_count": 2,
       "features": [],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -47,11 +45,59 @@
         "cost_driver": "bedrock_batch_inference",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Data enrichment/labeling only \u2014 you want Bedrock batch to process text data (classify, extract, summarize) but do NOT need downstream training in the same pipeline.",
+        "when_not_to_use": "If you need training after processing (use bedrock_batch_pytorch_e2e). If data volume is <100K rows (use realtime bedrock_pytorch_e2e).",
+        "differentiators": [
+          "Data processing only \u2014 no training node",
+          "Cost-efficient batch API (50% cheaper than realtime for >100K rows)",
+          "Output goes to S3 for downstream consumption by any pipeline"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock batch model access",
+            "how": "IAM role has bedrock:CreateModelInvocationJob"
+          },
+          {
+            "check": "S3 batch I/O paths configured",
+            "how": "Input JSONL formatted per Bedrock batch spec"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "bedrock_model_id",
+            "prompt_template",
+            "s3_input_path",
+            "s3_output_path"
+          ],
+          "safe_defaults": [
+            "max_tokens",
+            "temperature",
+            "instance_type (ml.m5.large)"
+          ],
+          "common_pitfalls": [
+            "Batch input must be JSONL with specific schema \u2014 validate before submitting",
+            "Batch jobs are async \u2014 pipeline must poll for completion",
+            "Output needs post-processing to extract structured fields from LLM responses"
+          ]
+        },
+        "decision_tree": {
+          "need_training_after?": {
+            "yes": "Use bedrock_batch_pytorch_e2e instead",
+            "no": "USE THIS DAG"
+          },
+          "data_volume > 100K rows?": {
+            "yes": "USE THIS DAG (batch is cost-efficient)",
+            "no": "Consider realtime bedrock variant"
+          }
+        }
       }
     },
     {
       "id": "bedrock_batch_pytorch_e2e",
-      "path": "bedrock/bedrock_batch_pytorch_e2e_dag.dag.json",
+      "path": "bedrock/bedrock_batch_pytorch_e2e.dag.json",
       "description": "Bedrock Batch-enhanced PyTorch end-to-end pipeline with cost-efficient LLM-based data processing, training, calibration, packaging, registration, and evaluation",
       "framework": "pytorch",
       "complexity": "comprehensive",
@@ -68,14 +114,6 @@
         "packaging",
         "registration",
         "evaluation"
-      ],
-      "entry_points": [
-        "DummyDataLoading_training",
-        "DummyDataLoading_calibration",
-        "BedrockPromptTemplateGeneration"
-      ],
-      "exit_points": [
-        "Registration"
       ],
       "input_requirements": {
         "data_types": [
@@ -101,11 +139,66 @@
         "cost_driver": "bedrock_batch_inference",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Need LLM to enrich/label data before PyTorch training AND data volume is >100K rows. Batch API is ~50% cheaper than realtime for large volumes. Used by afn_return_mdr_sopa pattern.",
+        "when_not_to_use": "If data <100K rows (use realtime bedrock_pytorch_e2e \u2014 faster turnaround). If you need label ruleset overrides (use bedrock_batch_pytorch_with_label_ruleset_e2e).",
+        "differentiators": [
+          "Batch Bedrock API (async, cost-efficient for large data)",
+          "No label ruleset \u2014 direct LLM output to training",
+          "Full E2E: LLM\u2192train\u2192calibrate\u2192register",
+          "Single pipeline (no EDX round-trip)"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock batch model access",
+            "how": "IAM role has bedrock:CreateModelInvocationJob"
+          },
+          {
+            "check": "Prompt template designed",
+            "how": "Template produces parseable structured output for training labels"
+          },
+          {
+            "check": "GPU quota for training",
+            "how": "ml.g5.xlarge+ available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "bedrock_model_id",
+            "prompt_template",
+            "data_source",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "batch_concurrency",
+            "max_tokens",
+            "training_epochs",
+            "calibration_method"
+          ],
+          "common_pitfalls": [
+            "Batch jobs are async \u2014 pipeline wall-clock time is 4-24h",
+            "Batch output format differs from realtime \u2014 ensure parsing handles JSONL response format",
+            "If batch job fails mid-way, partial results may exist in S3 \u2014 handle idempotently"
+          ]
+        },
+        "decision_tree": {
+          "data_volume > 100K?": {
+            "yes": "USE THIS DAG",
+            "no": "Use bedrock_pytorch_e2e (realtime, faster)"
+          },
+          "need_label_overrides?": {
+            "yes": "Use bedrock_batch_pytorch_with_label_ruleset_e2e",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "bedrock_batch_pytorch_with_label_ruleset_e2e",
-      "path": "bedrock/bedrock_batch_pytorch_with_label_ruleset_e2e_dag.dag.json",
+      "path": "bedrock/bedrock_batch_pytorch_with_label_ruleset_e2e.dag.json",
       "description": "Bedrock Batch-enhanced PyTorch end-to-end pipeline with label ruleset generation/execution for transparent rule-based label transformation, training, calibration, packaging, and registration",
       "framework": "pytorch",
       "complexity": "comprehensive",
@@ -126,15 +219,6 @@
         "registration",
         "evaluation"
       ],
-      "entry_points": [
-        "DummyDataLoading_training",
-        "DummyDataLoading_calibration",
-        "BedrockPromptTemplateGeneration",
-        "LabelRulesetGeneration"
-      ],
-      "exit_points": [
-        "Registration"
-      ],
       "input_requirements": {
         "data_types": [
           "text",
@@ -159,11 +243,68 @@
         "cost_driver": "bedrock_batch_inference",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "rnr_pytorch_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "LLM labels need rule-based override before training AND data volume is >100K rows. Use when domain experts have deterministic rules (e.g., 'if seller is FBA, always label as low-risk') that should override LLM judgment.",
+        "when_not_to_use": "If no label override rules needed (use bedrock_batch_pytorch_e2e). If data is <100K rows (use realtime variant bedrock_pytorch_with_label_ruleset_e2e).",
+        "differentiators": [
+          "Batch Bedrock (cost-efficient for >100K rows)",
+          "Label ruleset generation + execution (transparent rule-based overrides)",
+          "Full E2E: LLM\u2192rules\u2192train\u2192calibrate\u2192register",
+          "Used by rnr_pytorch_bedrock pattern"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock batch model access",
+            "how": "IAM role has bedrock:CreateModelInvocationJob"
+          },
+          {
+            "check": "Label ruleset defined",
+            "how": "JSON/YAML file with override rules (condition\u2192label mappings)"
+          },
+          {
+            "check": "GPU quota for training",
+            "how": "ml.g5.xlarge+ available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "bedrock_model_id",
+            "prompt_template",
+            "label_ruleset_config",
+            "data_source",
+            "author"
+          ],
+          "safe_defaults": [
+            "batch_size",
+            "max_tokens",
+            "training_epochs",
+            "calibration_method"
+          ],
+          "common_pitfalls": [
+            "Label ruleset must be deterministic \u2014 non-deterministic rules cause training instability",
+            "Ruleset execution order matters \u2014 first matching rule wins",
+            "Batch jobs are async \u2014 total pipeline time is 4-24h depending on data volume"
+          ]
+        },
+        "decision_tree": {
+          "need_label_overrides?": {
+            "yes": "USE THIS (or realtime variant for small data)",
+            "no": "Use bedrock_batch_pytorch_e2e"
+          },
+          "data_volume > 100K?": {
+            "yes": "USE THIS DAG (batch)",
+            "no": "Use bedrock_pytorch_with_label_ruleset_e2e (realtime)"
+          }
+        }
       }
     },
     {
       "id": "bedrock_batch_simple_training",
-      "path": "bedrock/bedrock_batch_simple_training_dag.dag.json",
+      "path": "bedrock/bedrock_batch_simple_training.dag.json",
       "description": "Shared DAG definition for Bedrock Batch-Enhanced Simple Training Pipeline",
       "framework": "bedrock",
       "complexity": "standard",
@@ -171,8 +312,6 @@
       "node_count": 3,
       "edge_count": 2,
       "features": [],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -194,11 +333,145 @@
         "cost_driver": "minimal",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Quick prototyping of batch Bedrock LLM integration with PyTorch training. Use when you want to test the batch LLM\u2192train flow without calibration/registration overhead.",
+        "when_not_to_use": "Production deployments (no packaging/registration). If you need calibration or model registration, use bedrock_batch_pytorch_e2e.",
+        "differentiators": [
+          "Minimal batch Bedrock pipeline (training only, no registration)",
+          "Uses DummyDataLoading (no Cradle dependency)",
+          "No GPU required for preprocessing"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock batch inference access",
+            "how": "IAM role has bedrock:CreateModelInvocationJob permission"
+          },
+          {
+            "check": "S3 bucket for batch input/output",
+            "how": "Bucket exists and role has read/write access"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "bedrock_model_id",
+            "prompt_template",
+            "s3_batch_input_path"
+          ],
+          "safe_defaults": [
+            "instance_type (ml.m5.large)",
+            "batch_size",
+            "max_tokens"
+          ],
+          "common_pitfalls": [
+            "Batch jobs can take hours for large datasets \u2014 monitor via CloudWatch",
+            "No registration step \u2014 must manually promote model artifacts"
+          ]
+        },
+        "decision_tree": {
+          "just_prototyping?": {
+            "yes": "USE THIS DAG",
+            "no": "Use bedrock_batch_pytorch_e2e for production"
+          },
+          "need_registration?": {
+            "yes": "Use bedrock_batch_pytorch_e2e",
+            "no": "USE THIS DAG"
+          }
+        }
+      }
+    },
+    {
+      "id": "bedrock_batch_sopa",
+      "path": "bedrock/bedrock_batch_sopa.dag.json",
+      "description": "SOPA (Standard Operating Procedure Automation) instruction tuning singleton pipeline. Single-node DAG for fine-tuning a Bedrock LLM on domain-specific SOP instructions.",
+      "framework": "bedrock",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 1,
+      "edge_count": 0,
+      "features": [
+        "instruction_tuning",
+        "llm_fine_tuning",
+        "sopa"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "text_generation",
+        "data_source": "instruction_dataset",
+        "requires_llm": true
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.12xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": false
+      },
+      "cost": {
+        "estimated_hours": "4-24 (LLM fine-tuning)",
+        "cost_driver": "gpu_fine_tuning",
+        "instance_cost_tier": "very_high",
+        "scalability": "dataset_size_sublinear"
+      },
+      "used_by_projects": [
+        "afn_return_mdr_sopa"
+      ],
+      "agent_context": {
+        "when_to_use": "Fine-tune a Bedrock LLM on domain-specific standard operating procedures for automated decision-making. Single-step pipeline without traditional ML calibration or registration.",
+        "when_not_to_use": "If you need classification output (use PyTorch/XGBoost). If zero-shot prompting suffices. If you need calibration/registration (use bedrock_pytorch_e2e variants).",
+        "differentiators": [
+          "Singleton pipeline - 1 node, 0 edges",
+          "SOPAInstructionTuning specialized Bedrock fine-tuning",
+          "No calibration/packaging/registration",
+          "Simplest possible pipeline"
+        ],
+        "prerequisites": [
+          {
+            "check": "Instruction dataset prepared",
+            "how": "JSON/JSONL with instruction-response pairs"
+          },
+          {
+            "check": "Bedrock model access",
+            "how": "Account has foundation model access for customization"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "instruction_dataset_s3_path",
+            "base_model_id",
+            "output_model_name",
+            "num_epochs"
+          ],
+          "safe_defaults": [
+            "num_epochs=3",
+            "learning_rate=1e-5",
+            "batch_size=4"
+          ],
+          "common_pitfalls": [
+            "Dataset format must match Bedrock fine-tuning API requirements",
+            "No registration step - model accessed via custom endpoint",
+            "Very high cost - validate dataset quality first"
+          ]
+        },
+        "decision_tree": {
+          "need_llm_fine_tuning?": {
+            "yes": "Continue",
+            "no": "Use classification DAGs"
+          },
+          "need_sop_automation?": {
+            "yes": "USE THIS DAG",
+            "no": "Use bedrock_simple_training"
+          }
+        }
       }
     },
     {
       "id": "bedrock_pytorch_e2e",
-      "path": "bedrock/bedrock_pytorch_e2e_dag.dag.json",
+      "path": "bedrock/bedrock_pytorch_e2e.dag.json",
       "description": "Bedrock Real-time-enhanced PyTorch end-to-end pipeline with LLM-based data processing, training, calibration, packaging, registration, and evaluation",
       "framework": "pytorch",
       "complexity": "comprehensive",
@@ -214,14 +487,6 @@
         "packaging",
         "registration",
         "evaluation"
-      ],
-      "entry_points": [
-        "DummyDataLoading_training",
-        "DummyDataLoading_calibration",
-        "BedrockPromptTemplateGeneration"
-      ],
-      "exit_points": [
-        "Registration"
       ],
       "input_requirements": {
         "data_types": [
@@ -247,11 +512,58 @@
         "cost_driver": "bedrock_realtime_inference",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Need LLM to enrich/label data before PyTorch training. Bedrock scores data in real-time, then trains on enriched features.",
+        "when_not_to_use": "If you already have labels (use pytorch/complete_e2e). If data volume is huge (use bedrock_batch variant).",
+        "differentiators": [
+          "Real-time Bedrock (not batch)",
+          "Single pipeline (no EDX round-trip)",
+          "Prompt template generation included"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock model access",
+            "how": "IAM role has bedrock:InvokeModel"
+          },
+          {
+            "check": "Prompt template designed",
+            "how": "Know what to ask the LLM about each data point"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "bedrock_model_id",
+            "prompt_template",
+            "data_source",
+            "author"
+          ],
+          "safe_defaults": [
+            "bedrock_concurrency",
+            "batch_size",
+            "max_tokens"
+          ],
+          "common_pitfalls": [
+            "Real-time Bedrock can be slow for >100K rows \u2014 consider batch variant",
+            "Prompt template must produce parseable structured output"
+          ]
+        },
+        "decision_tree": {
+          "need_llm_labels?": {
+            "yes": "USE THIS (or batch variant for large data)",
+            "no": "Use pytorch/complete_e2e"
+          },
+          "data_volume > 100K?": {
+            "yes": "Consider bedrock_batch_pytorch_e2e",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "bedrock_pytorch_incremental_edx",
-      "path": "bedrock/bedrock_pytorch_incremental_edx_dag.dag.json",
+      "path": "bedrock/bedrock_pytorch_incremental_edx.dag.json",
       "description": "Incremental PyTorch training with Bedrock scoring, EDX anti-join, and EDX upload",
       "framework": "pytorch",
       "complexity": "comprehensive",
@@ -270,16 +582,6 @@
         "registration",
         "edx_anti_join",
         "incremental_scoring"
-      ],
-      "entry_points": [
-        "CradleDataLoading_munged",
-        "CradleDataLoading_normal",
-        "CradleDataLoading_baseline",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "Registration",
-        "EdxUploading_tagging"
       ],
       "input_requirements": {
         "data_types": [
@@ -306,11 +608,70 @@
         "cost_driver": "bedrock_realtime_inference",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "munged_address_pytorch"
+      ],
+      "agent_context": {
+        "when_to_use": "Incremental retraining: you have a prior EDX scored dataset and need to score only NEW addresses via Bedrock LLM, then retrain on the full growing dataset.",
+        "when_not_to_use": "First-time training (no EDX baseline exists) \u2014 use pytorch/complete_e2e or bedrock_pytorch_e2e instead.",
+        "differentiators": [
+          "Only DAG with EDX anti-join (skip already-scored data)",
+          "Grows labeled pool incrementally",
+          "Requires prior EDX upload to exist"
+        ],
+        "prerequisites": [
+          {
+            "check": "EDX scored manifest exists from prior run",
+            "how": "Verify EDX ARN accessible via Cradle"
+          },
+          {
+            "check": "Bedrock model access",
+            "how": "IAM role has bedrock:InvokeModel for target model"
+          },
+          {
+            "check": "MDS data for new period",
+            "how": "Cradle date range covers period NOT in existing EDX"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "edx_scored_arn",
+            "edx_tags_arn",
+            "mds_date_range",
+            "bedrock_model_id",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "batch_size",
+            "instance_types",
+            "class_weights",
+            "train_ratio",
+            "max_epochs"
+          ],
+          "common_pitfalls": [
+            "EDX read ARN must point to PREVIOUS batch output, not the one being written (use separate _CRADLE_EDX_END vs _UPLOAD_EDX_END)",
+            "MDS date range must NOT overlap scored EDX period \u2014 causes empty anti-join result",
+            "pandas str.split(\"|||\") uses regex \u2014 must pass regex=False or use re.escape()",
+            "ml.g5.12xlarge ModelInference is NVMe \u2014 VolumeKmsKeyId handled by compiler"
+          ]
+        },
+        "decision_tree": {
+          "has_prior_scored_edx?": {
+            "yes": "USE THIS DAG",
+            "no": "Use full baseline DAG first"
+          },
+          "need_new_labels?": {
+            "yes": "USE THIS DAG (scores new data)",
+            "no": "Use training-only DAG (dag_training_NA.json)"
+          }
+        }
       }
     },
     {
       "id": "bedrock_pytorch_with_data_upload",
-      "path": "bedrock/bedrock_pytorch_with_data_upload_dag.dag.json",
+      "path": "bedrock/bedrock_pytorch_with_data_upload.dag.json",
       "description": "Two-pipeline pattern: LLM inference uploads to Andes, training consumes from EDX",
       "framework": "pytorch",
       "complexity": "comprehensive",
@@ -329,8 +690,6 @@
         "registration",
         "edx_round_trip"
       ],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -353,11 +712,66 @@
         "cost_driver": "gpu_training",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Two-pipeline architecture: a separate LLM inference pipeline uploads scored labels to EDX/Andes, and THIS pipeline trains from that uploaded data. Use when inference and training have different schedules or ownership.",
+        "when_not_to_use": "If LLM scoring and training run in the same pipeline (use bedrock_batch_pytorch_e2e). If no EDX round-trip is needed (use pytorch/complete_e2e).",
+        "differentiators": [
+          "Training pipeline only \u2014 expects LLM labels already in EDX",
+          "Decoupled from inference pipeline (different cadence/ownership)",
+          "CradleDataLoading reads from EDX (not raw MDS)",
+          "Two-pipeline pattern enables independent scheduling"
+        ],
+        "prerequisites": [
+          {
+            "check": "EDX dataset with LLM-scored labels exists",
+            "how": "Verify EDX ARN accessible via Cradle query"
+          },
+          {
+            "check": "Inference pipeline has run successfully",
+            "how": "Check EDX upload timestamps for freshness"
+          },
+          {
+            "check": "GPU quota for training",
+            "how": "ml.g5.xlarge+ available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "edx_source_arn",
+            "cradle_sql (pointing to EDX)",
+            "label_column",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "instance_types",
+            "max_epochs",
+            "calibration_method",
+            "batch_size"
+          ],
+          "common_pitfalls": [
+            "Cradle SQL must point to EDX-uploaded data, not raw MDS",
+            "If inference pipeline hasn't run, training data will be stale or empty",
+            "Data upload pipeline and training pipeline must agree on column schema"
+          ]
+        },
+        "decision_tree": {
+          "separate_inference_and_training?": {
+            "yes": "USE THIS DAG (training half)",
+            "no": "Use bedrock_batch_pytorch_e2e (single pipeline)"
+          },
+          "edx_labels_exist?": {
+            "yes": "USE THIS DAG",
+            "no": "Run inference+upload pipeline first"
+          }
+        }
       }
     },
     {
       "id": "bedrock_pytorch_with_label_ruleset_e2e",
-      "path": "bedrock/bedrock_pytorch_with_label_ruleset_e2e_dag.dag.json",
+      "path": "bedrock/bedrock_pytorch_with_label_ruleset_e2e.dag.json",
       "description": "Bedrock Real-time-enhanced PyTorch end-to-end pipeline with label ruleset generation/execution for transparent rule-based label transformation, training, calibration, packaging, and registration",
       "framework": "pytorch",
       "complexity": "comprehensive",
@@ -376,15 +790,6 @@
         "packaging",
         "registration",
         "evaluation"
-      ],
-      "entry_points": [
-        "DummyDataLoading_training",
-        "DummyDataLoading_calibration",
-        "BedrockPromptTemplateGeneration",
-        "LabelRulesetGeneration"
-      ],
-      "exit_points": [
-        "Registration"
       ],
       "input_requirements": {
         "data_types": [
@@ -410,11 +815,66 @@
         "cost_driver": "bedrock_realtime_inference",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "LLM labels need rule-based override before training AND data volume is <100K rows. Realtime API gives faster turnaround. Used by rnr_pytorch_bedrock pattern for smaller datasets.",
+        "when_not_to_use": "If data volume >100K rows (use batch variant \u2014 bedrock_batch_pytorch_with_label_ruleset_e2e). If no label override rules needed (use bedrock_pytorch_e2e).",
+        "differentiators": [
+          "Real-time Bedrock (synchronous, faster for small data)",
+          "Label ruleset generation + execution (transparent rule-based overrides)",
+          "Full E2E: LLM\u2192rules\u2192train\u2192calibrate\u2192register",
+          "Faster iteration cycle than batch variant"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock realtime model access",
+            "how": "IAM role has bedrock:InvokeModel"
+          },
+          {
+            "check": "Label ruleset defined",
+            "how": "JSON/YAML file with override rules (condition\u2192label mappings)"
+          },
+          {
+            "check": "GPU quota for training",
+            "how": "ml.g5.xlarge+ available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "bedrock_model_id",
+            "prompt_template",
+            "label_ruleset_config",
+            "data_source",
+            "author"
+          ],
+          "safe_defaults": [
+            "concurrency",
+            "max_tokens",
+            "training_epochs",
+            "calibration_method"
+          ],
+          "common_pitfalls": [
+            "Real-time API has throttling limits \u2014 may hit TPS caps on large data",
+            "Label ruleset must be deterministic \u2014 non-deterministic rules cause training instability",
+            "Slower and more expensive than batch for >100K rows"
+          ]
+        },
+        "decision_tree": {
+          "need_label_overrides?": {
+            "yes": "USE THIS (or batch variant for large data)",
+            "no": "Use bedrock_pytorch_e2e"
+          },
+          "data_volume > 100K?": {
+            "yes": "Use bedrock_batch_pytorch_with_label_ruleset_e2e",
+            "no": "USE THIS DAG (realtime)"
+          }
+        }
       }
     },
     {
       "id": "bedrock_simple_training",
-      "path": "bedrock/bedrock_simple_training_dag.dag.json",
+      "path": "bedrock/bedrock_simple_training.dag.json",
       "description": "Shared DAG definition for Bedrock-Enhanced Simple Training Pipeline",
       "framework": "bedrock",
       "complexity": "standard",
@@ -422,8 +882,6 @@
       "node_count": 4,
       "edge_count": 2,
       "features": [],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -447,11 +905,57 @@
         "cost_driver": "bedrock_realtime_inference",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Quick prototyping of realtime Bedrock LLM integration with PyTorch training. Minimal pipeline to test LLM\u2192train flow without calibration/registration.",
+        "when_not_to_use": "Production deployments (no packaging/registration). If you need full E2E pipeline, use bedrock_pytorch_e2e. If data >100K rows, use batch variant.",
+        "differentiators": [
+          "Minimal realtime Bedrock pipeline (training only, no registration)",
+          "Uses DummyDataLoading (no Cradle dependency)",
+          "Fastest way to test Bedrock\u2192PyTorch integration"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock realtime model access",
+            "how": "IAM role has bedrock:InvokeModel"
+          },
+          {
+            "check": "Test data available",
+            "how": "DummyDataLoading generates synthetic data or S3 path configured"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "bedrock_model_id",
+            "prompt_template"
+          ],
+          "safe_defaults": [
+            "instance_type (ml.m5.large)",
+            "max_tokens",
+            "training_epochs"
+          ],
+          "common_pitfalls": [
+            "Realtime API can be slow for large datasets \u2014 only use for prototyping",
+            "No registration step \u2014 must manually promote model artifacts",
+            "No calibration \u2014 scores may not be well-calibrated"
+          ]
+        },
+        "decision_tree": {
+          "just_prototyping?": {
+            "yes": "USE THIS DAG",
+            "no": "Use bedrock_pytorch_e2e for production"
+          },
+          "need_batch_efficiency?": {
+            "yes": "Use bedrock_batch_simple_training",
+            "no": "USE THIS DAG (realtime, faster feedback)"
+          }
+        }
       }
     },
     {
       "id": "dummy_e2e_basic",
-      "path": "dummy/e2e_basic_dag.dag.json",
+      "path": "dummy/e2e_basic.dag.json",
       "description": "Basic end-to-end pipeline with dummy training, packaging, payload preparation, and registration",
       "framework": "dummy",
       "complexity": "simple",
@@ -464,12 +968,6 @@
         "testing",
         "packaging",
         "registration"
-      ],
-      "entry_points": [
-        "DummyTraining"
-      ],
-      "exit_points": [
-        "Registration"
       ],
       "input_requirements": {
         "data_types": [
@@ -492,11 +990,52 @@
         "cost_driver": "minimal",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Testing/development only: validate the packaging\u2192registration pipeline flow without real training. Simplest way to test MIMS registration works.",
+        "when_not_to_use": "ANY production use. Never use dummy DAGs for real model deployment.",
+        "differentiators": [
+          "For testing/development ONLY",
+          "Simplest possible E2E (4 nodes)",
+          "Tests Package\u2192Registration flow",
+          "No data loading required \u2014 DummyTraining generates mock model"
+        ],
+        "prerequisites": [
+          {
+            "check": "MIMS registration access",
+            "how": "Role has MIMS permissions"
+          },
+          {
+            "check": "Development environment",
+            "how": "Confirm this is for testing, not production"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "All defaults are fine for testing"
+          ],
+          "common_pitfalls": [
+            "NEVER deploy a model from a dummy DAG to production",
+            "Registration will create real MIMS entries \u2014 clean up after testing",
+            "Use a test service_name to avoid polluting production registries"
+          ]
+        },
+        "decision_tree": {
+          "testing_registration_flow?": {
+            "yes": "USE THIS DAG",
+            "no": "Use real training DAG"
+          }
+        }
       }
     },
     {
       "id": "dummy_inference_with_wiki",
-      "path": "dummy/inference_with_wiki_dag.dag.json",
+      "path": "dummy/inference_with_wiki.dag.json",
       "description": "Dummy training pipeline with inference, metrics computation, and wiki generation",
       "framework": "dummy",
       "complexity": "standard",
@@ -510,14 +1049,6 @@
         "metrics",
         "wiki_generation",
         "calibration"
-      ],
-      "entry_points": [
-        "DummyDataLoading_calibration",
-        "DummyTraining"
-      ],
-      "exit_points": [
-        "ModelWikiGenerator",
-        "ModelCalibration_calibration"
       ],
       "input_requirements": {
         "data_types": [
@@ -539,11 +1070,45 @@
         "cost_driver": "minimal",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Testing/development only: validate the inference\u2192metrics\u2192wiki pipeline flow without real training. Tests ModelMetricsComputation and ModelWikiGenerator integration.",
+        "when_not_to_use": "ANY production use. Never use dummy DAGs for real model training or deployment.",
+        "differentiators": [
+          "For testing/development ONLY",
+          "Tests inference + metrics + wiki generation flow",
+          "DummyTraining produces a mock model (no real learning)",
+          "No real data required \u2014 uses DummyDataLoading"
+        ],
+        "prerequisites": [
+          {
+            "check": "Development environment",
+            "how": "Confirm this is for testing, not production"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [],
+          "safe_defaults": [
+            "All defaults are fine for testing"
+          ],
+          "common_pitfalls": [
+            "NEVER deploy a model from a dummy DAG",
+            "Metrics will be meaningless \u2014 only validates pipeline plumbing",
+            "Wiki content will be generated but based on synthetic metrics"
+          ]
+        },
+        "decision_tree": {
+          "testing_pipeline?": {
+            "yes": "USE THIS DAG",
+            "no": "Use real training DAG (xgboost/lightgbm/pytorch)"
+          }
+        }
       }
     },
     {
       "id": "lightgbm_complete_e2e",
-      "path": "lightgbm/complete_e2e_dag.dag.json",
+      "path": "lightgbm/complete_e2e.dag.json",
       "description": "Complete LightGBM end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
       "framework": "lightgbm",
       "complexity": "comprehensive",
@@ -556,13 +1121,6 @@
         "packaging",
         "registration",
         "evaluation"
-      ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "Registration"
       ],
       "input_requirements": {
         "data_types": [
@@ -585,11 +1143,67 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Tabular classification/regression with structured features. LightGBM is faster than XGBoost, handles categorical features natively, and requires no GPU. Used by abuse_polygraph pattern.",
+        "when_not_to_use": "If data is primarily text (use PyTorch). If you need feature selection or stratified sampling (use XGBoost variants with those features). If multi-task learning needed (use mtl/ DAGs).",
+        "differentiators": [
+          "CPU-only \u2014 no GPU quota needed",
+          "LightGBM handles categoricals natively (no one-hot encoding required)",
+          "Faster training than XGBoost (histogram-based, leaf-wise growth)",
+          "Standard isotonic/Platt calibration included",
+          "Simpler than XGBoost complete_e2e (fewer preprocessing options)"
+        ],
+        "prerequisites": [
+          {
+            "check": "Labeled tabular data in MDS/Cradle",
+            "how": "Cradle SQL returns rows with label column and numeric/categorical features"
+          },
+          {
+            "check": "CPU instance quota",
+            "how": "ml.m5.xlarge available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql",
+            "label_column",
+            "feature_columns",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "num_leaves (31)",
+            "learning_rate (0.1)",
+            "n_estimators (100)",
+            "instance_type (ml.m5.xlarge)"
+          ],
+          "common_pitfalls": [
+            "Categorical features must be declared in config \u2014 LightGBM won't auto-detect",
+            "num_leaves too high causes overfitting (keep \u2264 2^max_depth)",
+            "Class imbalance \u2014 set scale_pos_weight or use is_unbalance=true"
+          ]
+        },
+        "decision_tree": {
+          "tabular_data?": {
+            "yes": "USE THIS (or XGBoost if team prefers)",
+            "no": "Use PyTorch DAGs"
+          },
+          "need_percentile_calibration?": {
+            "yes": "Use lightgbm_complete_e2e_with_percentile_calibration",
+            "no": "USE THIS DAG (isotonic calibration)"
+          },
+          "multi_task?": {
+            "yes": "Use mtl/ DAGs",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "lightgbm_complete_e2e_with_percentile_calibration_and_testing",
-      "path": "lightgbm/complete_e2e_with_percentile_calibration_dag.dag.json",
+      "path": "lightgbm/complete_e2e_with_percentile_calibration.dag.json",
       "description": "Complete LightGBM end-to-end pipeline with training, percentile model calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
       "framework": "lightgbm",
       "complexity": "comprehensive",
@@ -606,15 +1220,6 @@
         "metrics",
         "wiki_generation"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration",
-        "CradleDataLoading_testing"
-      ],
-      "exit_points": [
-        "Registration",
-        "ModelWikiGenerator"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -636,11 +1241,74 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Tabular classification where you need percentile-based calibration (map raw scores to percentile ranks) AND automated model wiki documentation. Used by almond_pfw, pfw_mtgbm_na patterns.",
+        "when_not_to_use": "If isotonic/Platt calibration is sufficient (use lightgbm/complete_e2e). If you don't need wiki documentation or separate testing path.",
+        "differentiators": [
+          "Percentile calibration (instead of isotonic/Platt)",
+          "Separate testing path with ModelMetricsComputation",
+          "Automated ModelWikiGenerator for documentation",
+          "Three data splits: training, calibration, testing",
+          "Testing path uses raw model (no calibration) for true performance metrics"
+        ],
+        "prerequisites": [
+          {
+            "check": "Three separate data splits accessible",
+            "how": "Cradle SQL can provide training, calibration, and testing data (different date ranges or splits)"
+          },
+          {
+            "check": "CPU instance quota",
+            "how": "ml.m5.xlarge available in account"
+          },
+          {
+            "check": "Wiki template configured",
+            "how": "ModelWikiGenerator config specifies wiki space and template"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql_training",
+            "cradle_sql_calibration",
+            "cradle_sql_testing",
+            "label_column",
+            "feature_columns",
+            "percentile_bins",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "num_leaves (31)",
+            "learning_rate (0.1)",
+            "n_estimators (100)",
+            "percentile_bins (100)"
+          ],
+          "common_pitfalls": [
+            "Testing data must NOT overlap with training or calibration data",
+            "Percentile calibration requires sufficient calibration data volume (>10K rows recommended)",
+            "Wiki generation may fail silently if wiki space doesn't exist"
+          ]
+        },
+        "decision_tree": {
+          "need_percentile_calibration?": {
+            "yes": "USE THIS DAG",
+            "no": "Use lightgbm/complete_e2e (isotonic calibration)"
+          },
+          "need_wiki_documentation?": {
+            "yes": "USE THIS DAG",
+            "no": "Use lightgbm/complete_e2e"
+          },
+          "need_separate_test_metrics?": {
+            "yes": "USE THIS DAG",
+            "no": "Use lightgbm/complete_e2e"
+          }
+        }
       }
     },
     {
       "id": "lightgbmmt_complete_e2e",
-      "path": "mtl/complete_e2e_dag.dag.json",
+      "path": "mtl/complete_e2e.dag.json",
       "description": "Complete LightGBMMT multi-task end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
       "framework": "lightgbmmt",
       "complexity": "comprehensive",
@@ -653,13 +1321,6 @@
         "calibration",
         "packaging",
         "registration"
-      ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "Registration"
       ],
       "input_requirements": {
         "data_types": [
@@ -682,11 +1343,58 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "pfw_mtgbm_na"
+      ],
+      "agent_context": {
+        "when_to_use": "Multi-task learning: predict multiple related labels simultaneously (e.g., fraud type + severity). Shared representation across tasks.",
+        "when_not_to_use": "Single binary classification (use XGBoost or PyTorch). Unrelated tasks (train separately).",
+        "differentiators": [
+          "Multi-task output (multiple labels)",
+          "Shared feature representation",
+          "LightGBMMT framework"
+        ],
+        "prerequisites": [
+          {
+            "check": "Multiple correlated label columns",
+            "how": "Data has 2+ label columns that benefit from joint training"
+          },
+          {
+            "check": "Tabular features",
+            "how": "Structured data, not raw text"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "task_definitions",
+            "label_columns",
+            "feature_columns",
+            "author"
+          ],
+          "safe_defaults": [
+            "n_estimators",
+            "task_weights"
+          ],
+          "common_pitfalls": [
+            "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
+          ]
+        },
+        "decision_tree": {
+          "multiple_outputs?": {
+            "yes": "USE THIS DAG",
+            "no": "Use single-task XGBoost or PyTorch"
+          },
+          "text_input?": {
+            "yes": "No MTL for text yet \u2014 use PyTorch with multi-head",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "lightgbmmt_with_label_ruleset_e2e",
-      "path": "mtl/lightgbmmt_with_label_ruleset_e2e_dag.dag.json",
+      "path": "mtl/lightgbmmt_with_label_ruleset_e2e.dag.json",
       "description": "LightGBMMT multi-task end-to-end pipeline with label ruleset generation/execution for transparent rule-based label transformation, training, calibration, packaging, and registration",
       "framework": "lightgbmmt",
       "complexity": "comprehensive",
@@ -703,14 +1411,6 @@
         "packaging",
         "registration"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration",
-        "LabelRulesetGeneration"
-      ],
-      "exit_points": [
-        "Registration"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -732,11 +1432,70 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Multi-task tabular classification with deterministic label override rules. Use when you have multiple related binary labels on the same data AND domain experts have rules to override some labels (e.g., 'if condition X, always set task_Y=1'). Used by almond_pfw pattern.",
+        "when_not_to_use": "If no label override rules needed (use mtl/complete_e2e). If single-task (use lightgbm/complete_e2e). If you need semi-supervised learning (use mtl/ssl_training).",
+        "differentiators": [
+          "Multi-task LightGBM (multiple labels predicted simultaneously)",
+          "Label ruleset generation + execution (transparent rule-based overrides)",
+          "CPU-only \u2014 no GPU required",
+          "Handles correlated tasks better than independent models"
+        ],
+        "prerequisites": [
+          {
+            "check": "Multi-label data in Cradle",
+            "how": "Cradle SQL returns rows with multiple label columns"
+          },
+          {
+            "check": "Label ruleset defined",
+            "how": "JSON/YAML with override rules per task"
+          },
+          {
+            "check": "CPU instance quota",
+            "how": "ml.m5.xlarge available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql",
+            "task_label_columns (list)",
+            "feature_columns",
+            "label_ruleset_config",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "num_leaves (31)",
+            "learning_rate (0.1)",
+            "n_estimators (100)"
+          ],
+          "common_pitfalls": [
+            "Label ruleset must cover ALL tasks \u2014 partial rules may leave some tasks un-overridden",
+            "Multi-task calibration produces separate calibration per task \u2014 ensure enough calibration data per task",
+            "Rule conflicts between tasks must be resolved in ruleset config"
+          ]
+        },
+        "decision_tree": {
+          "multi_task?": {
+            "yes": "Consider this or mtl/complete_e2e",
+            "no": "Use lightgbm/complete_e2e (single-task)"
+          },
+          "need_label_overrides?": {
+            "yes": "USE THIS DAG",
+            "no": "Use mtl/complete_e2e"
+          },
+          "need_semi_supervised?": {
+            "yes": "Use mtl/ssl_training",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "lightgbmmt_ssl_training",
-      "path": "mtl/ssl_training_dag.dag.json",
+      "path": "mtl/ssl_training.dag.json",
       "description": "LightGBMMT multi-task Semi-Supervised Learning pipeline with pretraining, pseudo-labeling, active sampling, merge, and fine-tuning",
       "framework": "lightgbmmt",
       "complexity": "advanced",
@@ -756,14 +1515,6 @@
         "multi_task_evaluation",
         "calibration"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_testing",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "Registration"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -785,11 +1536,78 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Multi-task tabular learning when you have limited labeled data but abundant unlabeled data. Two-stage: pretrain on labeled, pseudo-label unlabeled via active sample selection, fine-tune on merged dataset. Used by pfw_mtgbm_na pattern.",
+        "when_not_to_use": "If you have sufficient labeled data for all tasks (use mtl/complete_e2e). If single-task (use xgboost/ssl_training). If you need label override rules (use mtl/lightgbmmt_with_label_ruleset_e2e).",
+        "differentiators": [
+          "Semi-supervised: leverages unlabeled data via pseudo-labeling",
+          "Two-stage training: pretrain \u2192 active sampling \u2192 pseudo-label merge \u2192 fine-tune",
+          "Multi-task: handles multiple labels simultaneously",
+          "ActiveSampleSelection picks high-confidence pseudo-labels only",
+          "Most complex MTL DAG (16 nodes)"
+        ],
+        "prerequisites": [
+          {
+            "check": "Labeled training data in Cradle",
+            "how": "Cradle SQL returns labeled rows (can be small)"
+          },
+          {
+            "check": "Unlabeled 'testing' data in Cradle",
+            "how": "Cradle SQL returns unlabeled rows for pseudo-labeling"
+          },
+          {
+            "check": "Calibration data (labeled, held-out)",
+            "how": "Separate Cradle query for calibration split"
+          },
+          {
+            "check": "CPU instance quota",
+            "how": "ml.m5.xlarge available (trains twice: pretrain + finetune)"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql_training (labeled)",
+            "cradle_sql_testing (unlabeled)",
+            "cradle_sql_calibration",
+            "task_label_columns (list)",
+            "feature_columns",
+            "confidence_threshold",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "num_leaves (31)",
+            "confidence_threshold (0.9)",
+            "max_pseudo_label_ratio (3x labeled data)"
+          ],
+          "common_pitfalls": [
+            "Confidence threshold too low \u2192 noisy pseudo-labels degrade model",
+            "Confidence threshold too high \u2192 too few pseudo-labels to benefit",
+            "Unlabeled data must be from same distribution as labeled data",
+            "Pipeline trains TWICE (pretrain + finetune) \u2014 double the compute time"
+          ]
+        },
+        "decision_tree": {
+          "limited_labeled_data?": {
+            "yes": "USE THIS DAG (leverage unlabeled data)",
+            "no": "Use mtl/complete_e2e (sufficient labels)"
+          },
+          "multi_task?": {
+            "yes": "USE THIS DAG",
+            "no": "Use xgboost/ssl_training (single-task SSL)"
+          },
+          "have_unlabeled_data?": {
+            "yes": "USE THIS DAG",
+            "no": "Use mtl/complete_e2e (supervised only)"
+          }
+        }
       }
     },
     {
       "id": "complete_e2e",
-      "path": "pytorch/complete_e2e_dag.dag.json",
+      "path": "pytorch/complete_e2e.dag.json",
       "description": "Shared DAG definition for PyTorch Complete End-to-End Pipeline",
       "framework": "pytorch",
       "complexity": "standard",
@@ -797,8 +1615,6 @@
       "node_count": 8,
       "edge_count": 11,
       "features": [],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -821,11 +1637,62 @@
         "cost_driver": "gpu_training",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "abuse_polygraph",
+        "atoz_bsm_pytorch"
+      ],
+      "agent_context": {
+        "when_to_use": "Standard PyTorch text classification: have labeled data in Cradle/MDS, want full training + calibration + registration pipeline.",
+        "when_not_to_use": "If data is tabular-only (use XGBoost). If you need LLM labeling (use bedrock_pytorch_e2e).",
+        "differentiators": [
+          "No LLM dependency",
+          "Direct Cradle\u2192Train\u2192Register",
+          "Simplest PyTorch path"
+        ],
+        "prerequisites": [
+          {
+            "check": "Labeled training data in MDS/Cradle",
+            "how": "Cradle SQL returns rows with label column"
+          },
+          {
+            "check": "GPU quota available",
+            "how": "ml.g5.xlarge+ available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql",
+            "label_column",
+            "text_column",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "instance_types",
+            "max_epochs",
+            "lr",
+            "batch_size"
+          ],
+          "common_pitfalls": [
+            "Ensure text column preprocessing matches inference handler"
+          ]
+        },
+        "decision_tree": {
+          "text_data?": {
+            "yes": "USE THIS (or bedrock variant)",
+            "no": "Use XGBoost DAGs"
+          },
+          "need_llm_labeling?": {
+            "yes": "Use bedrock_pytorch_e2e instead",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "complete_e2e_dummy",
-      "path": "pytorch/complete_e2e_dummy_dag.dag.json",
+      "path": "pytorch/complete_e2e_dummy.dag.json",
       "description": "Shared DAG definition for PyTorch Complete End-to-End Pipeline with Dummy Data Loading",
       "framework": "pytorch",
       "complexity": "standard",
@@ -833,8 +1700,6 @@
       "node_count": 8,
       "edge_count": 11,
       "features": [],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -857,11 +1722,151 @@
         "cost_driver": "gpu_training",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Integration testing of the full PyTorch E2E pipeline (train+calibrate+package+register) WITHOUT needing real Cradle/MDS data. Uses DummyDataLoading to generate synthetic data.",
+        "when_not_to_use": "Production training (use pytorch/complete_e2e with real data). If you don't need calibration/registration (use pytorch/simple_training).",
+        "differentiators": [
+          "Full E2E pipeline but with DummyDataLoading (no Cradle dependency)",
+          "Tests packaging and registration flow with synthetic data",
+          "Same structure as complete_e2e \u2014 easy to swap to real data",
+          "For development/testing only"
+        ],
+        "prerequisites": [
+          {
+            "check": "GPU quota",
+            "how": "ml.g5.xlarge available in account"
+          },
+          {
+            "check": "MIMS registration access",
+            "how": "Role has MIMS permissions (for registration step)"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "instance_type (ml.g5.xlarge)",
+            "max_epochs (3 for testing)",
+            "batch_size (32)",
+            "dummy_data_size (1000)"
+          ],
+          "common_pitfalls": [
+            "Registration will create real model artifacts \u2014 clean up after testing",
+            "Dummy data distribution won't match production \u2014 don't use for model validation",
+            "Calibration on dummy data is meaningless \u2014 only tests the pipeline flow"
+          ]
+        },
+        "decision_tree": {
+          "testing_pipeline_flow?": {
+            "yes": "USE THIS DAG",
+            "no": "Use pytorch/complete_e2e with real data"
+          },
+          "have_cradle_access?": {
+            "yes": "Use pytorch/complete_e2e (real data)",
+            "no": "USE THIS DAG (dummy data)"
+          }
+        }
+      }
+    },
+    {
+      "id": "pytorch_hybrid_xgboost_e2e",
+      "path": "pytorch/hybrid_xgboost_e2e.dag.json",
+      "description": "Two-stage hybrid pipeline: PyTorch encoder (Stage-1) produces embeddings, then XGBoost (Stage-2) stacks on [tabular | embedding]. Calibration path threads through both stages.",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "",
+      "node_count": 13,
+      "edge_count": 16,
+      "features": [
+        "two_stage_training",
+        "embedding_extraction",
+        "xgboost_stacking",
+        "percentile_calibration",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "4-12 (GPU encoder + CPU XGBoost)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "neat_appeal_aam_pytorch"
+      ],
+      "agent_context": {
+        "when_to_use": "Combine deep learning text/multimodal embeddings with tabular features via XGBoost stacking. Best for complex decision problems needing both text semantics and structured signals.",
+        "when_not_to_use": "If text-only classification suffices (use standard PyTorch DAG). If tabular-only (use XGBoost DAG). If you don't need two-stage complexity.",
+        "differentiators": [
+          "Two-stage: PyTorch encoder -> embedding -> XGBoost stack",
+          "Calibration threads through BOTH stages",
+          "Most complex PyTorch pipeline: 13 nodes, 16 edges"
+        ],
+        "prerequisites": [
+          {
+            "check": "Text + tabular features available",
+            "how": "Cradle SQL returns text AND numeric/categorical features"
+          },
+          {
+            "check": "GPU quota for encoder",
+            "how": "ml.g5.xlarge+ available"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "text_column",
+            "tabular_features",
+            "embedding_dim"
+          ],
+          "safe_defaults": [
+            "embedding_dim=64",
+            "xgboost_params=default",
+            "percentile_buckets=[10,25,50,75,90]"
+          ],
+          "common_pitfalls": [
+            "Embedding dim must match between PyTorchTraining and XGBoostTraining",
+            "Package step takes XGBoostTraining output, not PyTorchTraining"
+          ]
+        },
+        "decision_tree": {
+          "text_and_tabular?": {
+            "yes": "Continue",
+            "no": "Use single-framework DAG"
+          },
+          "need_embedding_stacking?": {
+            "yes": "USE THIS DAG",
+            "no": "Use standard complete_e2e"
+          }
+        }
       }
     },
     {
       "id": "simple_training",
-      "path": "pytorch/simple_training_dag.dag.json",
+      "path": "pytorch/simple_training.dag.json",
       "description": "Shared DAG definition for Simple Training Pipeline",
       "framework": "pytorch",
       "complexity": "standard",
@@ -869,8 +1874,6 @@
       "node_count": 3,
       "edge_count": 2,
       "features": [],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -892,11 +1895,54 @@
         "cost_driver": "gpu_training",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Quick prototyping of PyTorch model training with dummy/synthetic data. Minimal pipeline to validate model architecture and training loop.",
+        "when_not_to_use": "Production deployments (no calibration/packaging/registration). If you need full E2E, use pytorch/complete_e2e or pytorch/standard_e2e.",
+        "differentiators": [
+          "Simplest possible PyTorch pipeline (3 nodes only)",
+          "Uses DummyDataLoading (no Cradle/MDS dependency)",
+          "No calibration, packaging, or registration",
+          "Ideal for model architecture experimentation"
+        ],
+        "prerequisites": [
+          {
+            "check": "GPU quota",
+            "how": "ml.g5.xlarge available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "model_architecture",
+            "training_hyperparams"
+          ],
+          "safe_defaults": [
+            "instance_type (ml.g5.xlarge)",
+            "max_epochs (10)",
+            "batch_size (32)",
+            "learning_rate (1e-4)"
+          ],
+          "common_pitfalls": [
+            "No registration \u2014 must manually promote artifacts for downstream use",
+            "Dummy data may not represent production distribution"
+          ]
+        },
+        "decision_tree": {
+          "just_prototyping?": {
+            "yes": "USE THIS DAG",
+            "no": "Use pytorch/standard_e2e or pytorch/complete_e2e"
+          },
+          "have_real_data?": {
+            "yes": "Use pytorch/training_dag or pytorch/standard_e2e",
+            "no": "USE THIS DAG (uses DummyDataLoading)"
+          }
+        }
       }
     },
     {
       "id": "standard_e2e",
-      "path": "pytorch/standard_e2e_dag.dag.json",
+      "path": "pytorch/standard_e2e.dag.json",
       "description": "Shared DAG definition for PyTorch Standard End-to-End Pipeline",
       "framework": "pytorch",
       "complexity": "standard",
@@ -904,8 +1950,6 @@
       "node_count": 8,
       "edge_count": 9,
       "features": [],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -928,11 +1972,248 @@
         "cost_driver": "gpu_training",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Standard PyTorch E2E when you want training + packaging + registration but WITHOUT calibration. Model scores go directly to registration. Used by names3risk_pytorch pattern.",
+        "when_not_to_use": "If you need calibration (use pytorch/complete_e2e). If just prototyping (use pytorch/simple_training).",
+        "differentiators": [
+          "No calibration step \u2014 faster pipeline, simpler",
+          "Has validation/eval path (separate from training)",
+          "Includes packaging and registration (production-ready)",
+          "Lighter than complete_e2e (no calibration split needed)"
+        ],
+        "prerequisites": [
+          {
+            "check": "Labeled training data in MDS/Cradle",
+            "how": "Cradle SQL returns rows with label column"
+          },
+          {
+            "check": "Validation data accessible",
+            "how": "Separate Cradle query for validation split"
+          },
+          {
+            "check": "GPU quota",
+            "how": "ml.g5.xlarge+ available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql_training",
+            "cradle_sql_validation",
+            "label_column",
+            "text_column",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "instance_type (ml.g5.xlarge)",
+            "max_epochs",
+            "batch_size",
+            "learning_rate"
+          ],
+          "common_pitfalls": [
+            "No calibration \u2014 raw model scores may not be well-calibrated probabilities",
+            "If downstream consumers expect calibrated scores, use complete_e2e instead",
+            "Validation data should be from a different time period than training"
+          ]
+        },
+        "decision_tree": {
+          "need_calibration?": {
+            "yes": "Use pytorch/complete_e2e",
+            "no": "USE THIS DAG"
+          },
+          "just_prototyping?": {
+            "yes": "Use pytorch/simple_training",
+            "no": "USE THIS DAG (production-ready)"
+          }
+        }
+      }
+    },
+    {
+      "id": "pytorch_stratified_percentile_e2e",
+      "path": "pytorch/stratified_percentile_e2e.dag.json",
+      "description": "PyTorch end-to-end pipeline with StratifiedSampling for class-balanced training and PercentileCalibration for rank-ordered scoring",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "",
+      "node_count": 11,
+      "edge_count": 12,
+      "features": [
+        "stratified_sampling",
+        "training",
+        "percentile_calibration",
+        "packaging",
+        "registration",
+        "inference"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "2-8 (GPU training dominates)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "neat_spam_pytorch"
+      ],
+      "agent_context": {
+        "when_to_use": "PyTorch text classification with imbalanced labels (need stratified sampling) and percentile-based calibration for rank-ordered output scores.",
+        "when_not_to_use": "If labels are balanced (use standard complete_e2e). If standard isotonic calibration suffices. If no text features (use XGBoost).",
+        "differentiators": [
+          "StratifiedSampling before training for class balance",
+          "PercentileModelCalibration for rank-ordered scores",
+          "PyTorchModelInference for calibration scoring"
+        ],
+        "prerequisites": [
+          {
+            "check": "Imbalanced labeled data in Cradle",
+            "how": "Check class distribution in training SQL"
+          },
+          {
+            "check": "GPU quota",
+            "how": "ml.g5.xlarge+ available"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "text_column",
+            "service_name",
+            "sampling_ratios"
+          ],
+          "safe_defaults": [
+            "percentile_buckets=[10,25,50,75,90]",
+            "sampling_strategy=undersample_majority"
+          ],
+          "common_pitfalls": [
+            "Calibration data should NOT be stratified - use natural distribution"
+          ]
+        },
+        "decision_tree": {
+          "imbalanced_labels?": {
+            "yes": "Continue",
+            "no": "Use standard complete_e2e"
+          },
+          "need_percentile_scores?": {
+            "yes": "USE THIS DAG",
+            "no": "Use complete_e2e"
+          }
+        }
+      }
+    },
+    {
+      "id": "pytorch_tokenizer_percentile_e2e",
+      "path": "pytorch/tokenizer_percentile_e2e.dag.json",
+      "description": "PyTorch end-to-end pipeline with custom TokenizerTraining step and PercentileCalibration. Trains a domain-specific tokenizer before model training.",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "",
+      "node_count": 11,
+      "edge_count": 13,
+      "features": [
+        "custom_tokenizer_training",
+        "training",
+        "percentile_calibration",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "3-10 (tokenizer + GPU training)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "names3risk_pytorch"
+      ],
+      "agent_context": {
+        "when_to_use": "When you need a domain-specific tokenizer trained on your corpus before model training. Ideal for specialized vocabularies (names, addresses, codes) where pretrained tokenizers perform poorly.",
+        "when_not_to_use": "If pretrained tokenizer (BERT, LaBSE) works well (use standard complete_e2e). If no text features (use XGBoost).",
+        "differentiators": [
+          "TokenizerTraining builds custom vocabulary from training data",
+          "PyTorchTraining receives BOTH tokenizer and preprocessed tabular data",
+          "Best for domain-specific text (names, codes, short-strings)"
+        ],
+        "prerequisites": [
+          {
+            "check": "Domain-specific text needing custom tokenization",
+            "how": "Standard BERT tokenizer produces excessive UNK tokens"
+          },
+          {
+            "check": "GPU quota",
+            "how": "ml.g5.xlarge+ available"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "text_column",
+            "service_name",
+            "vocab_size"
+          ],
+          "safe_defaults": [
+            "vocab_size=30000",
+            "tokenizer_type=BPE",
+            "percentile_buckets=[10,25,50,75,90]"
+          ],
+          "common_pitfalls": [
+            "Tokenizer must be packaged with model for inference",
+            "Calibration data uses the TRAINED tokenizer"
+          ]
+        },
+        "decision_tree": {
+          "domain_specific_vocabulary?": {
+            "yes": "Continue",
+            "no": "Use standard complete_e2e"
+          },
+          "need_percentile_scores?": {
+            "yes": "USE THIS DAG",
+            "no": "Custom variant without percentile"
+          }
+        }
       }
     },
     {
       "id": "training",
-      "path": "pytorch/training_dag.dag.json",
+      "path": "pytorch/training.dag.json",
       "description": "Shared DAG definition for PyTorch training pipeline.",
       "framework": "pytorch",
       "complexity": "standard",
@@ -940,8 +2221,6 @@
       "node_count": 6,
       "edge_count": 5,
       "features": [],
-      "entry_points": [],
-      "exit_points": [],
       "input_requirements": {
         "data_types": [
           "text",
@@ -963,11 +2242,158 @@
         "cost_driver": "gpu_training",
         "instance_cost_tier": "high",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Training + validation only \u2014 when you want to train and evaluate a model but handle packaging/registration separately (e.g., manual promotion, or a separate deployment pipeline).",
+        "when_not_to_use": "If you need automated registration (use pytorch/standard_e2e or pytorch/complete_e2e). If just prototyping without Cradle data (use pytorch/simple_training).",
+        "differentiators": [
+          "Training + evaluation only \u2014 no packaging/registration",
+          "Uses real Cradle data (not dummy)",
+          "Separate validation data loading path",
+          "Good for iterative model development before committing to registration"
+        ],
+        "prerequisites": [
+          {
+            "check": "Labeled training data in MDS/Cradle",
+            "how": "Cradle SQL returns rows with label column"
+          },
+          {
+            "check": "Validation data accessible",
+            "how": "Separate Cradle query for validation split"
+          },
+          {
+            "check": "GPU quota",
+            "how": "ml.g5.xlarge available in account"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql_training",
+            "cradle_sql_validation",
+            "label_column",
+            "text_column",
+            "model_architecture"
+          ],
+          "safe_defaults": [
+            "instance_type (ml.g5.xlarge)",
+            "max_epochs",
+            "batch_size",
+            "learning_rate"
+          ],
+          "common_pitfalls": [
+            "No registration \u2014 model artifacts stay in S3, must be promoted manually",
+            "Validation split should be temporal (not random) for production models",
+            "If model looks good, graduate to standard_e2e or complete_e2e for production"
+          ]
+        },
+        "decision_tree": {
+          "need_registration?": {
+            "yes": "Use pytorch/standard_e2e or pytorch/complete_e2e",
+            "no": "USE THIS DAG"
+          },
+          "iterating_on_model?": {
+            "yes": "USE THIS DAG (fast iteration, no registration overhead)",
+            "no": "Use pytorch/standard_e2e for production"
+          }
+        }
+      }
+    },
+    {
+      "id": "pytorch_tsa_complete_e2e",
+      "path": "pytorch/tsa_complete_e2e.dag.json",
+      "description": "TSA (Time-Series Aggregation) complete end-to-end pipeline with TSA-specific preprocessing, separate testing and calibration paths, and model calibration.",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "",
+      "node_count": 16,
+      "edge_count": 19,
+      "features": [
+        "tsa_preprocessing",
+        "training",
+        "calibration",
+        "testing",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular",
+          "time_series"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "3-10 (TSA preprocessing + GPU training)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "afn_return_mdr_tsa"
+      ],
+      "agent_context": {
+        "when_to_use": "TSA-specific pipelines with custom TSAPreprocessing and TSATabularPreprocessing. Three separate data paths (training, testing, calibration) with TSA-specific preprocessing sharing learned transformations from training.",
+        "when_not_to_use": "If standard tabular preprocessing suffices (use standard PyTorch/XGBoost). If no time-series aggregation needed. If simpler pipeline suffices.",
+        "differentiators": [
+          "TSATabularPreprocessing_training shared with testing/calibration TSAPreprocessing",
+          "TSAPreprocessing steps in all three data paths",
+          "Most complex: 16 nodes, 19 edges",
+          "Three separate evaluation paths"
+        ],
+        "prerequisites": [
+          {
+            "check": "TSA-formatted data available",
+            "how": "Time-series aggregate features from Cradle"
+          },
+          {
+            "check": "GPU quota",
+            "how": "ml.g5.xlarge+ available"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "cradle_sql (testing)",
+            "label_column",
+            "tsa_feature_columns",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "instance_type=ml.g5.xlarge",
+            "tsa_window_size=default"
+          ],
+          "common_pitfalls": [
+            "TSATabularPreprocessing output must feed into BOTH testing and calibration TSAPreprocessing",
+            "Three separate Cradle data loads required"
+          ]
+        },
+        "decision_tree": {
+          "tsa_time_series_features?": {
+            "yes": "USE THIS DAG",
+            "no": "Use standard PyTorch/XGBoost"
+          },
+          "need_separate_test_eval?": {
+            "yes": "USE THIS DAG",
+            "no": "Consider simpler variant"
+          }
+        }
       }
     },
     {
       "id": "cradle_data_loading_singleton",
-      "path": "singleton/cradle_data_loading_dag.dag.json",
+      "path": "singleton/cradle_data_loading.dag.json",
       "description": "Singleton pipeline for CradleDataLoading training data step",
       "framework": "generic",
       "complexity": "simple",
@@ -978,12 +2404,6 @@
         "data_loading",
         "training",
         "singleton"
-      ],
-      "entry_points": [
-        "CradleDataLoading_training"
-      ],
-      "exit_points": [
-        "CradleDataLoading_training"
       ],
       "input_requirements": {
         "data_types": [
@@ -1005,11 +2425,57 @@
         "cost_driver": "minimal",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "ab_lightgbm_eu",
+        "cda_na_xgboost",
+        "lantern_na"
+      ],
+      "agent_context": {
+        "when_to_use": "Standalone data loading step: validate Cradle SQL query, test MDS connectivity, or extract data for offline analysis. Single-node pipeline for data exploration.",
+        "when_not_to_use": "If you need training or any downstream processing (use a full pipeline DAG). This is purely for data extraction/validation.",
+        "differentiators": [
+          "Single node \u2014 smallest possible Cursus pipeline",
+          "Tests Cradle/MDS connectivity in isolation",
+          "Output can be inspected before committing to a full pipeline",
+          "Useful for debugging data issues"
+        ],
+        "prerequisites": [
+          {
+            "check": "Cradle/MDS access",
+            "how": "Role has Cradle read permissions and MDS dataset exists"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql",
+            "mds_dataset_arn"
+          ],
+          "safe_defaults": [
+            "instance_type (ml.m5.large)",
+            "volume_size_gb (50)"
+          ],
+          "common_pitfalls": [
+            "Output goes to S3 but no downstream consumer \u2014 must check artifacts manually",
+            "Large queries may timeout \u2014 add date range filters to Cradle SQL",
+            "Not meant for production pipelines \u2014 use as debugging/exploration tool"
+          ]
+        },
+        "decision_tree": {
+          "just_testing_data_access?": {
+            "yes": "USE THIS DAG",
+            "no": "Use a full pipeline DAG"
+          },
+          "debugging_cradle_sql?": {
+            "yes": "USE THIS DAG",
+            "no": "Use a full pipeline DAG"
+          }
+        }
       }
     },
     {
       "id": "xgboost_complete_e2e",
-      "path": "xgboost/complete_e2e_dag.dag.json",
+      "path": "xgboost/complete_e2e.dag.json",
       "description": "Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, and evaluation",
       "framework": "xgboost",
       "complexity": "comprehensive",
@@ -1022,13 +2488,6 @@
         "packaging",
         "registration",
         "evaluation"
-      ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "Registration"
       ],
       "input_requirements": {
         "data_types": [
@@ -1051,11 +2510,68 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "cap_dnr_eu_xgboost",
+        "pda_eu_xgboost",
+        "pda_na_xgboost"
+      ],
+      "agent_context": {
+        "when_to_use": "Tabular binary/multiclass classification with XGBoost. Standard path for structured data with numeric/categorical features.",
+        "when_not_to_use": "If input is raw text (use PyTorch). If multi-task output needed (use MTL/LightGBMMT).",
+        "differentiators": [
+          "CPU-only (no GPU needed)",
+          "Fastest training",
+          "Most production-proven"
+        ],
+        "prerequisites": [
+          {
+            "check": "Tabular data with engineered features",
+            "how": "Data has numeric/categorical columns, not raw text"
+          },
+          {
+            "check": "Label column exists",
+            "how": "Binary or multiclass integer labels"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql",
+            "label_column",
+            "feature_columns",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "n_estimators",
+            "max_depth",
+            "learning_rate",
+            "instance_types"
+          ],
+          "common_pitfalls": [
+            "Feature columns must match between training and inference",
+            "Calibration data should be from a different time period than training"
+          ]
+        },
+        "decision_tree": {
+          "tabular_data?": {
+            "yes": "USE THIS DAG",
+            "no": "Use PyTorch for text"
+          },
+          "multi_task?": {
+            "yes": "Use MTL/LightGBMMT",
+            "no": "USE THIS DAG"
+          },
+          "need_feature_selection?": {
+            "yes": "Use xgboost/training_with_feature_selection",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "xgboost_complete_e2e_dummy",
-      "path": "xgboost/complete_e2e_dummy_dag.dag.json",
+      "path": "xgboost/complete_e2e_dummy.dag.json",
       "description": "Complete XGBoost end-to-end pipeline with dummy data loading, training, calibration, packaging, registration, and evaluation",
       "framework": "xgboost",
       "complexity": "comprehensive",
@@ -1069,13 +2585,6 @@
         "packaging",
         "registration",
         "evaluation"
-      ],
-      "entry_points": [
-        "DummyDataLoading_training",
-        "DummyDataLoading_calibration"
-      ],
-      "exit_points": [
-        "Registration"
       ],
       "input_requirements": {
         "data_types": [
@@ -1098,11 +2607,60 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "End-to-end pipeline testing without real data. Validates full pipeline mechanics including packaging and registration steps using synthetic data. Used for CI/CD, integration testing, and demonstrating complete workflow.",
+        "when_not_to_use": "Never for production models. If you have real data (use complete_e2e). For testing purposes only.",
+        "differentiators": [
+          "DummyDataLoading instead of Cradle for both training and calibration",
+          "Full e2e structure: train, calibrate, package, register",
+          "Tests registration mechanics without real model",
+          "CI/CD friendly - no external data dependencies"
+        ],
+        "prerequisites": [
+          {
+            "check": "Integration testing scenario",
+            "how": "Testing full pipeline flow including registration"
+          },
+          {
+            "check": "MIMS test registration available",
+            "how": "Test/dev MIMS endpoint for registration validation"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "n_samples",
+            "n_features",
+            "service_name (test)",
+            "author"
+          ],
+          "safe_defaults": [
+            "n_samples=1000",
+            "n_features=20",
+            "instance_type=ml.m5.large"
+          ],
+          "common_pitfalls": [
+            "Registered models from dummy data must be deregistered after testing",
+            "Do not promote dummy-trained models to production",
+            "Test MIMS endpoint may have different permissions than prod"
+          ]
+        },
+        "decision_tree": {
+          "testing_full_e2e_flow?": {
+            "yes": "USE THIS DAG",
+            "no": "Use complete_e2e with real data"
+          },
+          "need_to_test_registration?": {
+            "yes": "USE THIS DAG",
+            "no": "Use training_with_evaluation_dummy for simpler test"
+          }
+        }
       }
     },
     {
       "id": "xgboost_complete_e2e_with_percentile_calibration_and_testing",
-      "path": "xgboost/complete_e2e_with_percentile_calibration_dag.dag.json",
+      "path": "xgboost/complete_e2e_with_percentile_calibration.dag.json",
       "description": "Complete XGBoost end-to-end pipeline with training, percentile model calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
       "framework": "xgboost",
       "complexity": "comprehensive",
@@ -1119,16 +2677,6 @@
         "metrics",
         "wiki_generation"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration",
-        "CradleDataLoading_testing"
-      ],
-      "exit_points": [
-        "Registration",
-        "XGBoostModelInference_calibration",
-        "ModelWikiGenerator"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -1150,11 +2698,73 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Full production pipeline when you need percentile-based calibration (rank-ordering scores into percentile buckets) plus a separate testing path for unbiased evaluation, wiki generation, and model registration. Used by PDA EU/NA, CAP DNR EU projects that need percentile-based risk scores.",
+        "when_not_to_use": "If standard isotonic/Platt calibration suffices (use complete_e2e). If you don't need separate testing path (use complete_e2e_with_wiki). If you don't need registration (use training_with_calibration).",
+        "differentiators": [
+          "PercentileModelCalibration instead of standard ModelCalibration",
+          "Three separate data paths: training, calibration, testing",
+          "Testing path produces unbiased metrics (no calibration applied)",
+          "ModelMetricsComputation + ModelWikiGenerator from testing path",
+          "Most comprehensive: 15 nodes, 16 edges"
+        ],
+        "prerequisites": [
+          {
+            "check": "Percentile calibration requirements defined",
+            "how": "Score bucket boundaries (e.g., P10, P25, P50, P75, P90) agreed with stakeholders"
+          },
+          {
+            "check": "Three separate datasets",
+            "how": "Training SQL, calibration SQL, testing SQL from different time periods"
+          },
+          {
+            "check": "MIMS registration access",
+            "how": "Service registered in MIMS with valid service_name"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "cradle_sql (testing)",
+            "label_column",
+            "feature_columns",
+            "service_name",
+            "author",
+            "percentile_buckets"
+          ],
+          "safe_defaults": [
+            "percentile_buckets=[10,25,50,75,90]",
+            "instance_type=ml.m5.xlarge",
+            "wiki_auto_publish=false"
+          ],
+          "common_pitfalls": [
+            "Testing data must NOT be used in calibration - it provides unbiased evaluation",
+            "Percentile calibration is monotonic but not probability-calibrated",
+            "Wiki generation may fail if metrics format doesn't match template"
+          ]
+        },
+        "decision_tree": {
+          "need_percentile_scores?": {
+            "yes": "Continue",
+            "no": "Use complete_e2e or complete_e2e_with_testing"
+          },
+          "need_separate_test_evaluation?": {
+            "yes": "USE THIS DAG",
+            "no": "Use complete_e2e with standard calibration"
+          },
+          "need_wiki?": {
+            "yes": "USE THIS DAG",
+            "no": "Use complete_e2e with percentile calibration step only"
+          }
+        }
       }
     },
     {
       "id": "xgboost_complete_e2e_with_calibration_and_testing",
-      "path": "xgboost/complete_e2e_with_testing_dag.dag.json",
+      "path": "xgboost/complete_e2e_with_testing.dag.json",
       "description": "Complete XGBoost end-to-end pipeline with training, calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
       "framework": "xgboost",
       "complexity": "comprehensive",
@@ -1171,15 +2781,6 @@
         "metrics",
         "wiki_generation"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration",
-        "CradleDataLoading_testing"
-      ],
-      "exit_points": [
-        "Registration",
-        "ModelWikiGenerator"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -1201,11 +2802,71 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Full production pipeline with separate testing path for unbiased model evaluation, plus percentile calibration, wiki generation, and registration. Used when you need both deployment AND rigorous out-of-sample testing metrics. Similar to complete_e2e_with_percentile_calibration but the canonical 'testing' variant.",
+        "when_not_to_use": "If you don't need separate testing (use complete_e2e_with_wiki or complete_e2e). If standard calibration is fine (use complete_e2e). If you don't need registration (use training_with_evaluation).",
+        "differentiators": [
+          "Three data paths: training, calibration, testing",
+          "Testing path is independent - no calibration applied for honest metrics",
+          "Produces ModelWikiGenerator output for documentation",
+          "Same structure as complete_e2e_with_percentile_calibration (this is the standard name for that pattern)"
+        ],
+        "prerequisites": [
+          {
+            "check": "Three separate time-period datasets",
+            "how": "Training, calibration, and testing SQLs from non-overlapping periods"
+          },
+          {
+            "check": "MIMS service registration",
+            "how": "Valid service_name in MIMS for model registration"
+          },
+          {
+            "check": "Wiki template compatibility",
+            "how": "Metrics output format matches wiki generator expectations"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "cradle_sql (testing)",
+            "label_column",
+            "feature_columns",
+            "service_name",
+            "author"
+          ],
+          "safe_defaults": [
+            "instance_type=ml.m5.xlarge",
+            "wiki_auto_publish=false",
+            "calibration_method=percentile"
+          ],
+          "common_pitfalls": [
+            "Testing data temporal leakage will give optimistic metrics",
+            "Wiki generation requires specific metrics format",
+            "Three datasets means 3x data loading time - budget accordingly"
+          ]
+        },
+        "decision_tree": {
+          "need_unbiased_test_metrics?": {
+            "yes": "Continue",
+            "no": "Use complete_e2e_with_wiki or complete_e2e"
+          },
+          "need_wiki_documentation?": {
+            "yes": "USE THIS DAG",
+            "no": "Use complete_e2e and add manual evaluation"
+          },
+          "need_registration?": {
+            "yes": "USE THIS DAG",
+            "no": "Use training_with_evaluation"
+          }
+        }
       }
     },
     {
       "id": "xgboost_complete_e2e_with_wiki",
-      "path": "xgboost/complete_e2e_with_wiki_dag.dag.json",
+      "path": "xgboost/complete_e2e_with_wiki.dag.json",
       "description": "Complete XGBoost end-to-end pipeline with training, calibration, packaging, registration, inference, metrics computation, and wiki generation",
       "framework": "xgboost",
       "complexity": "comprehensive",
@@ -1221,13 +2882,105 @@
         "metrics",
         "wiki_generation"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "Registration",
-        "ModelWikiGenerator"
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Full production pipeline with model wiki documentation generation. Used when team needs automated model documentation for model review boards or compliance. Includes calibration, metrics computation, wiki generation, and registration.",
+        "when_not_to_use": "If you don't need wiki/documentation (use complete_e2e). If you need separate testing path for unbiased metrics (use complete_e2e_with_testing). If you don't need registration (use training_with_calibration).",
+        "differentiators": [
+          "ModelWikiGenerator produces automated model documentation",
+          "ModelMetricsComputation feeds into wiki",
+          "Standard (non-percentile) calibration",
+          "No separate testing path - metrics from calibration data",
+          "13 nodes - lighter than complete_e2e_with_testing (15 nodes)"
+        ],
+        "prerequisites": [
+          {
+            "check": "Wiki template defined",
+            "how": "Model wiki format agreed with review board"
+          },
+          {
+            "check": "MIMS service registration",
+            "how": "Valid service_name for model registration"
+          },
+          {
+            "check": "Calibration dataset available",
+            "how": "Separate time period data for calibration and metrics"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "feature_columns",
+            "service_name",
+            "author",
+            "wiki_metadata"
+          ],
+          "safe_defaults": [
+            "wiki_auto_publish=false",
+            "calibration_method=isotonic",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "Wiki metrics come from calibration data, not independent test set",
+            "For unbiased metrics reporting, use complete_e2e_with_testing instead",
+            "Wiki generation failure does not block registration"
+          ]
+        },
+        "decision_tree": {
+          "need_automated_model_docs?": {
+            "yes": "Continue",
+            "no": "Use complete_e2e"
+          },
+          "need_unbiased_test_metrics?": {
+            "yes": "Use complete_e2e_with_testing (separate test path)",
+            "no": "USE THIS DAG"
+          },
+          "need_registration?": {
+            "yes": "USE THIS DAG",
+            "no": "Use training_with_evaluation + manual docs"
+          }
+        }
+      }
+    },
+    {
+      "id": "xgboost_percentile_e2e",
+      "path": "xgboost/percentile_e2e.dag.json",
+      "description": "XGBoost end-to-end pipeline with PercentileModelCalibration (rank-ordered scoring). Minimal calibration path without separate testing or wiki generation.",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "task_type": "",
+      "node_count": 10,
+      "edge_count": 11,
+      "features": [
+        "training",
+        "percentile_calibration",
+        "packaging",
+        "registration",
+        "inference"
       ],
       "input_requirements": {
         "data_types": [
@@ -1250,11 +3003,65 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "mods_pipeline_adapter"
+      ],
+      "agent_context": {
+        "when_to_use": "Standard XGBoost pipeline with percentile-based calibration for rank-ordered scores. Simplest percentile calibration path without separate testing or wiki.",
+        "when_not_to_use": "If you need separate testing evaluation (use complete_e2e_with_percentile_calibration). If standard isotonic calibration suffices (use complete_e2e). If you need wiki (use with_percentile_calibration variant).",
+        "differentiators": [
+          "PercentileModelCalibration (not standard ModelCalibration)",
+          "Minimal: 10 nodes, 11 edges",
+          "No separate testing or wiki generation",
+          "Lean production pipeline"
+        ],
+        "prerequisites": [
+          {
+            "check": "Tabular training data in Cradle",
+            "how": "Cradle SQL returns rows with label and feature columns"
+          },
+          {
+            "check": "MIMS registration access",
+            "how": "Service registered in MIMS"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "feature_columns",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "instance_type=ml.m5.xlarge",
+            "percentile_buckets=[10,25,50,75,90]"
+          ],
+          "common_pitfalls": [
+            "Uses XGBoostModelEval (not XGBoostModelInference) for calibration",
+            "No separate test set - calibration data serves dual purpose"
+          ]
+        },
+        "decision_tree": {
+          "tabular_only?": {
+            "yes": "Continue",
+            "no": "Use PyTorch DAGs"
+          },
+          "need_percentile?": {
+            "yes": "Continue",
+            "no": "Use complete_e2e"
+          },
+          "need_testing_and_wiki?": {
+            "yes": "Use complete_e2e_with_percentile_calibration",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "xgboost_simple",
-      "path": "xgboost/simple_dag.dag.json",
+      "path": "xgboost/simple.dag.json",
       "description": "Simple XGBoost training pipeline with data loading and preprocessing",
       "framework": "xgboost",
       "complexity": "simple",
@@ -1265,14 +3072,6 @@
         "training",
         "data_loading",
         "preprocessing"
-      ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "XGBoostTraining",
-        "TabularPreprocessing_calibration"
       ],
       "input_requirements": {
         "data_types": [
@@ -1294,11 +3093,64 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Quick prototyping or experimentation where you only need to train an XGBoost model without registration or deployment. Good for initial model development and hyperparameter exploration.",
+        "when_not_to_use": "If you need model registration (use complete_e2e). If you need calibrated scores (use training_with_calibration). If you need evaluation metrics (use training_with_evaluation).",
+        "differentiators": [
+          "No model registration or packaging",
+          "No evaluation step",
+          "No calibration",
+          "Fastest iteration cycle",
+          "Minimal pipeline - just load, preprocess, train"
+        ],
+        "prerequisites": [
+          {
+            "check": "Cradle/MDS data source configured",
+            "how": "Verify cradle_sql query returns tabular data with label column"
+          },
+          {
+            "check": "Feature columns identified",
+            "how": "List of numeric/categorical feature names available"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql",
+            "label_column",
+            "feature_columns"
+          ],
+          "safe_defaults": [
+            "n_estimators=100",
+            "max_depth=6",
+            "learning_rate=0.3",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "No evaluation means you cannot assess model quality in-pipeline",
+            "Model artifact is not registered - manual steps needed for deployment"
+          ]
+        },
+        "decision_tree": {
+          "need_production_deployment?": {
+            "yes": "Use complete_e2e instead",
+            "no": "Continue"
+          },
+          "need_evaluation_metrics?": {
+            "yes": "Use training_with_evaluation instead",
+            "no": "Continue"
+          },
+          "just_experimenting?": {
+            "yes": "USE THIS DAG",
+            "no": "Consider a more complete variant"
+          }
+        }
       }
     },
     {
       "id": "xgboost_ssl_training",
-      "path": "xgboost/ssl_training_dag.dag.json",
+      "path": "xgboost/ssl_training.dag.json",
       "description": "XGBoost Semi-Supervised Learning pipeline with pretraining, pseudo-labeling, active sampling, merge, and fine-tuning",
       "framework": "xgboost",
       "complexity": "advanced",
@@ -1315,14 +3167,6 @@
         "evaluation",
         "calibration"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_testing",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "Registration"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -1344,11 +3188,78 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "When you have limited labeled data but abundant unlabeled data and want to leverage semi-supervised learning. Uses pretrain->pseudo-label->active-sample->merge->finetune pattern. Used by teams exploring SSL for abuse detection where labeled abuse cases are scarce.",
+        "when_not_to_use": "If you have sufficient labeled data (use complete_e2e or training variants). If unlabeled data quality is poor (SSL amplifies noise). If model interpretability is critical (pseudo-labeling adds opacity).",
+        "differentiators": [
+          "Semi-supervised learning with pseudo-labeling",
+          "Two-stage training: pretrain on labeled, finetune on labeled+pseudo",
+          "ActiveSampleSelection for confident pseudo-label filtering",
+          "PseudoLabelMerge combines original labels with pseudo-labels",
+          "Most complex DAG: 16 nodes, 18 edges",
+          "Includes calibration, packaging, and registration"
+        ],
+        "prerequisites": [
+          {
+            "check": "Limited labeled data",
+            "how": "Labeled dataset too small for good supervised performance (<10K labeled samples)"
+          },
+          {
+            "check": "Abundant unlabeled data available",
+            "how": "Unlabeled pool at least 5-10x size of labeled set"
+          },
+          {
+            "check": "Testing data for pseudo-label candidates",
+            "how": "Cradle SQL for unlabeled data pool"
+          },
+          {
+            "check": "MIMS registration access",
+            "how": "Valid service_name for model registration"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training - labeled)",
+            "cradle_sql (testing - unlabeled pool)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "feature_columns",
+            "service_name",
+            "confidence_threshold"
+          ],
+          "safe_defaults": [
+            "confidence_threshold=0.9",
+            "max_pseudo_labels=50000",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "Low confidence threshold introduces noisy pseudo-labels",
+            "SSL can hurt performance if unlabeled data distribution differs from labeled",
+            "Always compare against supervised baseline before committing to SSL",
+            "Active sampling threshold is critical - too aggressive loses signal"
+          ]
+        },
+        "decision_tree": {
+          "labeled_data_insufficient?": {
+            "yes": "Continue",
+            "no": "Use complete_e2e (supervised is better with enough labels)"
+          },
+          "unlabeled_data_available?": {
+            "yes": "Continue",
+            "no": "Cannot use SSL - use training_with_stratified for imbalanced supervised"
+          },
+          "distribution_match?": {
+            "yes": "USE THIS DAG",
+            "no": "SSL risky - consider training_with_stratified instead"
+          }
+        }
       }
     },
     {
       "id": "xgboost_training_with_calibration",
-      "path": "xgboost/training_with_calibration_dag.dag.json",
+      "path": "xgboost/training_with_calibration.dag.json",
       "description": "XGBoost training pipeline with model calibration",
       "framework": "xgboost",
       "complexity": "standard",
@@ -1360,13 +3271,6 @@
         "calibration",
         "data_loading",
         "preprocessing"
-      ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "ModelCalibration_training"
       ],
       "input_requirements": {
         "data_types": [
@@ -1388,11 +3292,64 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "When you need calibrated probability scores (e.g., for threshold-based decisioning) but don't need model registration. Used by teams like PDA, CAP who need calibrated outputs for risk scoring.",
+        "when_not_to_use": "If you need model registration (use complete_e2e). If you need percentile-based calibration (use complete_e2e_with_percentile_calibration). If calibration is not needed (use simple_dag or training_with_evaluation).",
+        "differentiators": [
+          "Adds ModelCalibration step after training",
+          "Calibration uses separate holdout data split",
+          "Produces calibrated probability scores",
+          "No packaging or registration"
+        ],
+        "prerequisites": [
+          {
+            "check": "Separate calibration dataset available",
+            "how": "Cradle SQL for calibration data from different time period than training"
+          },
+          {
+            "check": "Calibration dictionary defined",
+            "how": "Check common_configs/standard_calibration_dictionary.json for score bucket mappings"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "feature_columns",
+            "calibration_config"
+          ],
+          "safe_defaults": [
+            "calibration_method=isotonic",
+            "n_estimators=100",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "Calibration data MUST be from a different time period than training data",
+            "Using same data for train and calibrate leads to overfitting calibration"
+          ]
+        },
+        "decision_tree": {
+          "need_calibrated_scores?": {
+            "yes": "Continue",
+            "no": "Use simple_dag or training_with_evaluation"
+          },
+          "need_percentile_calibration?": {
+            "yes": "Use complete_e2e_with_percentile_calibration",
+            "no": "Continue"
+          },
+          "need_registration?": {
+            "yes": "Use complete_e2e",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "xgboost_training_with_calibration_fs",
-      "path": "xgboost/training_with_calibration_fs_dag.dag.json",
+      "path": "xgboost/training_with_calibration_fs.dag.json",
       "description": "XGBoost training pipeline with feature selection and model calibration",
       "framework": "xgboost",
       "complexity": "advanced",
@@ -1406,13 +3363,6 @@
         "preprocessing",
         "feature_selection"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_calibration"
-      ],
-      "exit_points": [
-        "ModelCalibration_training"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -1433,11 +3383,64 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "When you need both feature selection (to reduce dimensionality/remove noisy features) AND calibrated scores, but don't need full e2e registration. Useful for models with many candidate features where automatic pruning improves generalization.",
+        "when_not_to_use": "If you don't need feature selection (use training_with_calibration). If you need full e2e with registration (use complete_e2e). If you need preprocessing like missing value imputation (use training_with_feature_selection which includes MVI+risk tables).",
+        "differentiators": [
+          "Combines FeatureSelection + Calibration in one DAG",
+          "Feature selection applied to both training and calibration branches",
+          "No missing value imputation or risk table mapping (unlike training_with_feature_selection)",
+          "No registration or packaging"
+        ],
+        "prerequisites": [
+          {
+            "check": "Large feature set that needs pruning",
+            "how": "More than 50 candidate features where many may be irrelevant"
+          },
+          {
+            "check": "Separate calibration dataset",
+            "how": "Cradle SQL for calibration data from different time period"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "feature_columns",
+            "feature_selection_threshold"
+          ],
+          "safe_defaults": [
+            "feature_importance_threshold=0.01",
+            "calibration_method=isotonic",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "Feature selection threshold too aggressive can remove useful features",
+            "Feature selection model uses same training data - ensure calibration data uses selected features"
+          ]
+        },
+        "decision_tree": {
+          "many_candidate_features?": {
+            "yes": "Continue",
+            "no": "Use training_with_calibration"
+          },
+          "need_MVI_and_risk_tables?": {
+            "yes": "Use training_with_feature_selection",
+            "no": "Continue"
+          },
+          "need_registration?": {
+            "yes": "Use complete_e2e",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "xgboost_training_with_evaluation",
-      "path": "xgboost/training_with_evaluation_dag.dag.json",
+      "path": "xgboost/training_with_evaluation.dag.json",
       "description": "XGBoost training pipeline with model evaluation",
       "framework": "xgboost",
       "complexity": "standard",
@@ -1450,13 +3453,6 @@
         "data_loading",
         "preprocessing"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_evaluation"
-      ],
-      "exit_points": [
-        "XGBoostModelEval"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -1477,11 +3473,62 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "When you need to evaluate model quality (AUC, precision, recall) on a holdout set but don't need calibration or registration. Good for model comparison experiments and reporting metrics.",
+        "when_not_to_use": "If you need calibrated scores (use training_with_calibration). If you need production deployment (use complete_e2e). If you need stratified sampling for imbalanced data (use training_with_stratified).",
+        "differentiators": [
+          "Adds XGBoostModelEval step with separate evaluation data",
+          "Produces evaluation metrics (AUC, precision, recall)",
+          "No calibration or registration",
+          "Evaluation uses separate holdout dataset"
+        ],
+        "prerequisites": [
+          {
+            "check": "Separate evaluation dataset available",
+            "how": "Cradle SQL for eval data, ideally from different time period"
+          },
+          {
+            "check": "Evaluation metrics defined",
+            "how": "Know which metrics matter (AUC, precision@k, recall@k)"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (evaluation)",
+            "label_column",
+            "feature_columns"
+          ],
+          "safe_defaults": [
+            "eval_metrics=['auc','precision','recall']",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "Eval data must not overlap with training data",
+            "Time-based splits preferred over random splits for abuse detection"
+          ]
+        },
+        "decision_tree": {
+          "need_model_quality_metrics?": {
+            "yes": "Continue",
+            "no": "Use simple_dag"
+          },
+          "imbalanced_classes?": {
+            "yes": "Use training_with_stratified",
+            "no": "Continue"
+          },
+          "need_calibration?": {
+            "yes": "Use training_with_calibration",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "xgboost_training_with_evaluation_dummy",
-      "path": "xgboost/training_with_evaluation_dummy_dag.dag.json",
+      "path": "xgboost/training_with_evaluation_dummy.dag.json",
       "description": "XGBoost training pipeline with model evaluation using dummy data loading",
       "framework": "xgboost",
       "complexity": "standard",
@@ -1493,13 +3540,6 @@
         "training",
         "evaluation",
         "preprocessing"
-      ],
-      "entry_points": [
-        "DummyDataLoading_training",
-        "DummyDataLoading_evaluation"
-      ],
-      "exit_points": [
-        "XGBoostModelEval"
       ],
       "input_requirements": {
         "data_types": [
@@ -1521,11 +3561,60 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "Testing and development only. Uses DummyDataLoading instead of Cradle to generate synthetic data for pipeline validation without needing real data access. Used for CI/CD testing, pipeline debugging, and onboarding demos.",
+        "when_not_to_use": "Never use for production model training. If you have real data access (use training_with_evaluation). For demo purposes only.",
+        "differentiators": [
+          "DummyDataLoading generates synthetic tabular data",
+          "No Cradle/MDS dependency - runs without data access",
+          "Same evaluation structure as training_with_evaluation",
+          "Used for pipeline testing and CI/CD validation"
+        ],
+        "prerequisites": [
+          {
+            "check": "Pipeline testing scenario",
+            "how": "You are testing pipeline mechanics, not training a real model"
+          },
+          {
+            "check": "No real data needed",
+            "how": "Synthetic data sufficient for your testing purpose"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "n_samples",
+            "n_features",
+            "label_column"
+          ],
+          "safe_defaults": [
+            "n_samples=1000",
+            "n_features=20",
+            "noise=0.1",
+            "instance_type=ml.m5.large"
+          ],
+          "common_pitfalls": [
+            "Models trained on dummy data have no real-world validity",
+            "Do not register or deploy models from this DAG",
+            "Dummy data may not expose real preprocessing issues"
+          ]
+        },
+        "decision_tree": {
+          "testing_pipeline_mechanics?": {
+            "yes": "USE THIS DAG",
+            "no": "Use training_with_evaluation with real data"
+          },
+          "have_data_access?": {
+            "yes": "Use training_with_evaluation",
+            "no": "USE THIS DAG for validation only"
+          }
+        }
       }
     },
     {
       "id": "xgboost_training_with_feature_selection",
-      "path": "xgboost/training_with_feature_selection_dag.dag.json",
+      "path": "xgboost/training_with_feature_selection.dag.json",
       "description": "XGBoost training pipeline with feature selection and model evaluation",
       "framework": "xgboost",
       "complexity": "advanced",
@@ -1541,13 +3630,6 @@
         "risk_table_mapping",
         "feature_selection"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_evaluation"
-      ],
-      "exit_points": [
-        "XGBoostModelEval"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -1568,11 +3650,71 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "When you have many features and need automated feature importance filtering, plus missing value imputation and risk table mapping. Used by teams like active_queueing_pfoc, active_queueing_mfnri that have 100+ features from variable catalogs and need data preprocessing.",
+        "when_not_to_use": "If you don't have missing values or categorical risk features (use training_with_evaluation). If you need registration (use complete_e2e). If you only need feature selection without MVI/risk tables (use training_with_calibration_fs).",
+        "differentiators": [
+          "Full preprocessing: MissingValueImputation + RiskTableMapping + FeatureSelection",
+          "Artifacts from training preprocessing are reused for evaluation branch",
+          "Most preprocessing-heavy training DAG",
+          "Used by active_queueing and regional_xgboost projects with large variable catalogs"
+        ],
+        "prerequisites": [
+          {
+            "check": "Features with missing values",
+            "how": "Data has NULL/NaN values requiring imputation strategy"
+          },
+          {
+            "check": "Categorical features needing risk encoding",
+            "how": "High-cardinality categoricals that benefit from risk table mapping"
+          },
+          {
+            "check": "Large feature set for selection",
+            "how": "50+ candidate features where pruning adds value"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (evaluation)",
+            "label_column",
+            "feature_columns",
+            "imputation_strategy",
+            "risk_table_config",
+            "feature_selection_threshold"
+          ],
+          "safe_defaults": [
+            "imputation_strategy=median",
+            "feature_importance_threshold=0.01",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "Imputation artifacts must be saved and reused at inference time",
+            "Risk table mappings must be versioned with the model",
+            "Feature selection reduces feature count - ensure downstream compatibility"
+          ]
+        },
+        "decision_tree": {
+          "data_has_missing_values?": {
+            "yes": "Continue",
+            "no": "Use training_with_evaluation or training_with_calibration_fs"
+          },
+          "need_risk_table_encoding?": {
+            "yes": "Continue",
+            "no": "Use training_with_calibration_fs for just feature selection"
+          },
+          "need_registration?": {
+            "yes": "Use complete_e2e (add preprocessing steps)",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     },
     {
       "id": "xgboost_training_with_preprocessing",
-      "path": "xgboost/training_with_preprocessing_dag.dag.json",
+      "path": "xgboost/training_with_preprocessing.dag.json",
       "description": "XGBoost training pipeline with advanced preprocessing (missing value imputation and risk table mapping) and model evaluation",
       "framework": "xgboost",
       "complexity": "advanced",
@@ -1587,13 +3729,6 @@
         "missing_value_imputation",
         "risk_table_mapping"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_evaluation"
-      ],
-      "exit_points": [
-        "XGBoostModelEval"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -1614,11 +3749,70 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "When you need missing value imputation and risk table mapping but NOT feature selection. Used when feature set is already curated but data quality requires preprocessing. Similar to training_with_feature_selection but without the feature pruning step.",
+        "when_not_to_use": "If you also need feature selection (use training_with_feature_selection). If data is already clean (use training_with_evaluation). If you need registration (use complete_e2e).",
+        "differentiators": [
+          "MissingValueImputation + RiskTableMapping without FeatureSelection",
+          "Simpler than training_with_feature_selection (10 nodes vs 12)",
+          "Preprocessing artifacts shared between training and evaluation branches",
+          "Good when feature set is known-good but data has quality issues"
+        ],
+        "prerequisites": [
+          {
+            "check": "Features with missing values requiring imputation",
+            "how": "Check data for NULL rates per feature"
+          },
+          {
+            "check": "Categorical features needing risk encoding",
+            "how": "Identify high-cardinality categoricals for risk table mapping"
+          },
+          {
+            "check": "Feature set already finalized",
+            "how": "No need for automated feature pruning"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (evaluation)",
+            "label_column",
+            "feature_columns",
+            "imputation_strategy",
+            "risk_table_config"
+          ],
+          "safe_defaults": [
+            "imputation_strategy=median",
+            "risk_encoding=target_mean",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "Imputation and risk table artifacts must travel with model to inference",
+            "Risk table mapping on calibration data must use training-derived tables",
+            "Missing value patterns in prod must match training"
+          ]
+        },
+        "decision_tree": {
+          "data_has_missing_values_or_categoricals?": {
+            "yes": "Continue",
+            "no": "Use training_with_evaluation"
+          },
+          "need_feature_selection_too?": {
+            "yes": "Use training_with_feature_selection",
+            "no": "Continue"
+          },
+          "feature_set_already_curated?": {
+            "yes": "USE THIS DAG",
+            "no": "Use training_with_feature_selection"
+          }
+        }
       }
     },
     {
       "id": "xgboost_training_with_evaluation_stratified",
-      "path": "xgboost/training_with_stratified_dag.dag.json",
+      "path": "xgboost/training_with_stratified.dag.json",
       "description": "XGBoost training pipeline with stratified sampling and model evaluation",
       "framework": "xgboost",
       "complexity": "standard",
@@ -1632,13 +3826,6 @@
         "preprocessing",
         "stratified_sampling"
       ],
-      "entry_points": [
-        "CradleDataLoading_training",
-        "CradleDataLoading_evaluation"
-      ],
-      "exit_points": [
-        "XGBoostModelEval"
-      ],
       "input_requirements": {
         "data_types": [
           "tabular"
@@ -1659,6 +3846,60 @@
         "cost_driver": "cpu_training",
         "instance_cost_tier": "medium",
         "scalability": "data_size_linear"
+      },
+      "used_by_projects": [],
+      "agent_context": {
+        "when_to_use": "When training data has severe class imbalance (e.g., <5% positive rate) and stratified sampling is needed to balance classes for better model learning. Common in abuse detection where abusers are a small fraction of all buyers.",
+        "when_not_to_use": "If class balance is acceptable (>10% minority class), use training_with_evaluation. If you need full e2e pipeline (use complete_e2e with stratified sampling configured). If using scale_pos_weight in XGBoost instead of data-level sampling.",
+        "differentiators": [
+          "StratifiedSampling step between preprocessing and training",
+          "Handles class imbalance at data level rather than algorithm level",
+          "Evaluation uses original (non-stratified) data for realistic metrics",
+          "Used when scale_pos_weight alone is insufficient"
+        ],
+        "prerequisites": [
+          {
+            "check": "Severe class imbalance",
+            "how": "Positive rate < 5% in training data"
+          },
+          {
+            "check": "Enough positive samples after stratification",
+            "how": "At least 1000 positive samples in training set"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (evaluation)",
+            "label_column",
+            "feature_columns",
+            "sampling_ratio_or_strategy"
+          ],
+          "safe_defaults": [
+            "stratified_ratio=1:3 (pos:neg)",
+            "sampling_seed=42",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "Do NOT stratify evaluation data - it must reflect real distribution",
+            "Over-sampling can cause overfitting to minority class",
+            "Consider scale_pos_weight as alternative before using this DAG"
+          ]
+        },
+        "decision_tree": {
+          "positive_rate_below_5%?": {
+            "yes": "Continue",
+            "no": "Use training_with_evaluation"
+          },
+          "tried_scale_pos_weight?": {
+            "yes": "USE THIS DAG if still underperforming",
+            "no": "Try scale_pos_weight first in training_with_evaluation"
+          },
+          "need_registration?": {
+            "yes": "Use complete_e2e with stratified sampling configured",
+            "no": "USE THIS DAG"
+          }
+        }
       }
     }
   ]

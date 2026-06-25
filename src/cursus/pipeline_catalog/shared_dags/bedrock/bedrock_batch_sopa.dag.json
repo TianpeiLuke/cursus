@@ -1,0 +1,29 @@
+{
+  "dag": {
+    "description": "SOPA (Standard Operating Procedure Automation) instruction tuning singleton pipeline. Single-node DAG for fine-tuning a Bedrock LLM on domain-specific SOP instructions.",
+    "nodes": [
+      "SOPAInstructionTuning"
+    ],
+    "edges": []
+  },
+  "metadata": {
+    "name": "bedrock_batch_sopa",
+    "framework": "bedrock",
+    "complexity": "standard",
+    "features": ["instruction_tuning", "llm_fine_tuning", "sopa"],
+    "node_count": 1,
+    "edge_count": 0,
+    "used_by_projects": ["afn_return_mdr_sopa"],
+    "input_requirements": {"data_types": ["text"], "text_support": true, "multi_task": false, "output_type": "text_generation", "data_source": "instruction_dataset", "requires_llm": true},
+    "constraints": {"requires_gpu": true, "min_instance": "ml.g5.12xlarge", "supports_multi_gpu": true, "requires_mims": false},
+    "cost": {"estimated_hours": "4-24 (LLM fine-tuning)", "cost_driver": "gpu_fine_tuning", "instance_cost_tier": "very_high", "scalability": "dataset_size_sublinear"},
+    "agent_context": {
+      "when_to_use": "Fine-tune a Bedrock LLM on domain-specific standard operating procedures for automated decision-making. Single-step pipeline without traditional ML calibration or registration.",
+      "when_not_to_use": "If you need classification output (use PyTorch/XGBoost). If zero-shot prompting suffices. If you need calibration/registration (use bedrock_pytorch_e2e variants).",
+      "differentiators": ["Singleton pipeline - 1 node, 0 edges", "SOPAInstructionTuning specialized Bedrock fine-tuning", "No calibration/packaging/registration", "Simplest possible pipeline"],
+      "prerequisites": [{"check": "Instruction dataset prepared", "how": "JSON/JSONL with instruction-response pairs"}, {"check": "Bedrock model access", "how": "Account has foundation model access for customization"}],
+      "config_guidance": {"user_must_provide": ["instruction_dataset_s3_path", "base_model_id", "output_model_name", "num_epochs"], "safe_defaults": ["num_epochs=3", "learning_rate=1e-5", "batch_size=4"], "common_pitfalls": ["Dataset format must match Bedrock fine-tuning API requirements", "No registration step - model accessed via custom endpoint", "Very high cost - validate dataset quality first"]},
+      "decision_tree": {"need_llm_fine_tuning?": {"yes": "Continue", "no": "Use classification DAGs"}, "need_sop_automation?": {"yes": "USE THIS DAG", "no": "Use bedrock_simple_training"}}
+    }
+  }
+}

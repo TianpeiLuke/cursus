@@ -1,0 +1,87 @@
+step_type: ModelMetricsComputation
+node_type: internal
+contract:
+  entry_point: model_metrics_computation.py
+  inputs:
+    eval_output:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+  outputs:
+    metrics_output:
+      path: /opt/ml/processing/output/metrics
+    plots_output:
+      path: /opt/ml/processing/output/plots
+  arguments: {}
+  env_vars:
+    required:
+    - ID_FIELD
+    - LABEL_FIELD
+    optional:
+      AMOUNT_FIELD: order_amount
+      GENERATE_PLOTS: 'true'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+    scikit-learn: '>=1.0.0'
+    matplotlib: '>=3.5.0'
+  description: 'Model metrics computation script. Loads prediction data, computes
+    comprehensive performance metrics, generates visualizations and detailed reports.
+
+    '
+spec:
+  dependencies:
+    eval_output:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - XGBoostModelInference
+      - XGBoostModelEval
+      - LightGBMMTModelInference
+      - LightGBMModelInference
+      - PyTorchModelInference
+      - TabularPreprocessing
+      - CradleDataLoading
+      - RiskTableMapping
+      - CurrencyConversion
+      semantic_keywords:
+      - predictions
+      - inference
+      - evaluation
+      - results
+      - data
+      - processed
+      - eval_output
+      - prediction_data
+      - metrics_input
+  outputs:
+    metrics_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+      semantic_keywords:
+      - metrics
+      - performance_metrics
+      - evaluation_metrics
+      aliases:
+      - metrics
+      - performance_metrics
+      - evaluation_metrics
+      - model_metrics
+      - metrics_results
+      data_type: S3Uri
+    plots_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['plots_output'].S3Output.S3Uri
+      semantic_keywords:
+      - plots
+      - visualizations
+      - charts
+      - roc_curves
+      aliases:
+      - plots
+      - visualizations
+      - charts
+      - performance_plots
+      - metrics_plots
+      - roc_curves
+      - pr_curves
+      data_type: S3Uri

@@ -1,0 +1,189 @@
+{
+  "dag": {
+    "description": "Bedrock Batch-enhanced PyTorch end-to-end pipeline with cost-efficient LLM-based data processing, training, calibration, packaging, registration, and evaluation",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "BedrockPromptTemplateGeneration",
+      "BedrockBatchProcessing_training",
+      "PyTorchTraining",
+      "ModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "DummyDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "BedrockBatchProcessing_calibration",
+      "PyTorchModelEval_calibration"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "BedrockBatchProcessing_training"
+      ],
+      [
+        "BedrockPromptTemplateGeneration",
+        "BedrockBatchProcessing_training"
+      ],
+      [
+        "BedrockBatchProcessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "BedrockBatchProcessing_calibration"
+      ],
+      [
+        "BedrockPromptTemplateGeneration",
+        "BedrockBatchProcessing_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "BedrockBatchProcessing_calibration",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_batch_pytorch_e2e",
+    "description": "Bedrock Batch-enhanced PyTorch end-to-end pipeline with cost-efficient LLM-based data processing, training, calibration, packaging, registration, and evaluation",
+    "complexity": "comprehensive",
+    "framework": "pytorch",
+    "features": [
+      "dummy_data_loading",
+      "bedrock_prompt_generation",
+      "bedrock_batch_processing",
+      "cost_optimization",
+      "training",
+      "calibration",
+      "packaging",
+      "registration",
+      "evaluation"
+    ],
+    "node_count": 13,
+    "edge_count": 15,
+    "task_type": "end_to_end_with_batch_llm",
+    "entry_points": [
+      "DummyDataLoading_training",
+      "DummyDataLoading_calibration",
+      "BedrockPromptTemplateGeneration"
+    ],
+    "exit_points": [
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": true,
+      "llm_provider": "bedrock"
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true,
+      "requires_bedrock_access": true
+    },
+    "cost": {
+      "estimated_hours": "4-24 (batch LLM dominates)",
+      "cost_driver": "bedrock_batch_inference",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Need LLM to enrich/label data before PyTorch training AND data volume is >100K rows. Batch API is ~50% cheaper than realtime for large volumes. Used by afn_return_mdr_sopa pattern.",
+      "when_not_to_use": "If data <100K rows (use realtime bedrock_pytorch_e2e — faster turnaround). If you need label ruleset overrides (use bedrock_batch_pytorch_with_label_ruleset_e2e).",
+      "differentiators": [
+        "Batch Bedrock API (async, cost-efficient for large data)",
+        "No label ruleset — direct LLM output to training",
+        "Full E2E: LLM→train→calibrate→register",
+        "Single pipeline (no EDX round-trip)"
+      ],
+      "prerequisites": [
+        {
+          "check": "Bedrock batch model access",
+          "how": "IAM role has bedrock:CreateModelInvocationJob"
+        },
+        {
+          "check": "Prompt template designed",
+          "how": "Template produces parseable structured output for training labels"
+        },
+        {
+          "check": "GPU quota for training",
+          "how": "ml.g5.xlarge+ available in account"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "bedrock_model_id",
+          "prompt_template",
+          "data_source",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "batch_concurrency",
+          "max_tokens",
+          "training_epochs",
+          "calibration_method"
+        ],
+        "common_pitfalls": [
+          "Batch jobs are async — pipeline wall-clock time is 4-24h",
+          "Batch output format differs from realtime — ensure parsing handles JSONL response format",
+          "If batch job fails mid-way, partial results may exist in S3 — handle idempotently"
+        ]
+      },
+      "decision_tree": {
+        "data_volume > 100K?": {
+          "yes": "USE THIS DAG",
+          "no": "Use bedrock_pytorch_e2e (realtime, faster)"
+        },
+        "need_label_overrides?": {
+          "yes": "Use bedrock_batch_pytorch_with_label_ruleset_e2e",
+          "no": "USE THIS DAG"
+        }
+      }
+    }
+  }
+}

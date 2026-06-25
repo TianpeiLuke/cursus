@@ -1,0 +1,92 @@
+step_type: LightGBMModelEval
+node_type: internal
+contract:
+  entry_point: lightgbm_model_eval.py
+  inputs:
+    model_input:
+      path: /opt/ml/processing/input/model
+      required: true
+    processed_data:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+  outputs:
+    eval_output:
+      path: /opt/ml/processing/output/eval
+    metrics_output:
+      path: /opt/ml/processing/output/metrics
+  arguments: {}
+  env_vars:
+    required:
+    - ID_FIELD
+    - LABEL_FIELD
+    optional:
+      COMPARISON_MODE: 'false'
+      PREVIOUS_SCORE_FIELD: ''
+      STATISTICAL_TESTS: 'true'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+    lightgbm: '>=3.3.0'
+    matplotlib: '>=3.5.0'
+  description: 'LightGBM model evaluation script. Loads trained model, processes evaluation
+    data, generates performance metrics and visualizations.
+
+    '
+spec:
+  dependencies:
+    model_input:
+      type: model_artifacts
+      required: true
+      compatible_sources:
+      - LightGBMTraining
+      - XGBoostTraining
+      - PyTorchTraining
+      - DummyTraining
+      - LightGBMModel
+      - XGBoostModel
+      - PyTorchModel
+      semantic_keywords:
+      - model
+      - artifacts
+      - trained
+      - output
+      - ModelArtifacts
+    processed_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - CradleDataLoading
+      - RiskTableMapping
+      - CurrencyConversion
+      semantic_keywords:
+      - data
+      - evaluation
+      - calibration
+      - validation
+      - test
+      - processed
+  outputs:
+    eval_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - model_predictions
+      aliases:
+      - inference_output
+      - predictions
+      - model_predictions
+      - inference_results
+      - prediction_data
+      - evaluation_data
+      data_type: S3Uri
+    metrics_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+      semantic_keywords:
+      - metrics
+      - performance
+      - evaluation_metrics
+      data_type: S3Uri

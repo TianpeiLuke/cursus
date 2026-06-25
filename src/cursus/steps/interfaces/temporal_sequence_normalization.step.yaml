@@ -1,0 +1,181 @@
+step_type: TemporalSequenceNormalization
+node_type: internal
+contract:
+  entry_point: temporal_sequence_normalization.py
+  inputs:
+    DATA:
+      path: /opt/ml/processing/input/data
+      required: true
+    SIGNATURE:
+      path: /opt/ml/processing/input/signature
+      required: false
+  outputs:
+    normalized_sequences:
+      path: /opt/ml/processing/output
+  arguments: {}
+  env_vars:
+    required:
+    - SEQUENCE_GROUPING_FIELD
+    - TIMESTAMP_FIELD
+    optional:
+      MAX_SEQUENCE_LENGTH: '100'
+      NORMALIZATION_METHOD: z-score
+      PADDING_STRATEGY: zero
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+  description: 'Temporal sequence normalization script. Handles temporal sequence
+    data loading, validation, normalization, and padding/truncation for ML models.
+
+    '
+spec:
+  dependencies:
+    DATA:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - CradleDataLoading
+      - DummyDataLoading
+      - DataLoad
+      - ProcessingStep
+      - TabularPreprocessing
+      semantic_keywords:
+      - data
+      - input
+      - raw
+      - dataset
+      - source
+      - temporal
+      - sequence
+      - time_series
+      - sequential
+    SIGNATURE:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - CradleDataLoading
+      - DummyDataLoading
+      semantic_keywords:
+      - signature
+      - schema
+      - columns
+      - column_names
+      - metadata
+      - header
+  outputs:
+    normalized_sequences:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['normalized_sequences'].S3Output.S3Uri
+      semantic_keywords:
+      - normalized_sequences
+      - sequences
+      - temporal_data
+      - normalized_data
+      aliases:
+      - sequences
+      - temporal_data
+      - sequence_data
+      - normalized_data
+      - processed_sequences
+      data_type: S3Uri
+variants:
+  training:
+    step_type: TemporalSequenceNormalization_Training
+    spec:
+      dependencies:
+        DATA:
+          semantic_keywords:
+          - training
+          - train
+          - data
+          - input
+          - temporal
+          - sequence
+          - time_series
+      outputs:
+        normalized_sequences:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['normalized_sequences'].S3Output.S3Uri
+          aliases:
+          - sequences
+          - temporal_data
+          - sequence_data
+          - normalized_data
+          - processed_sequences
+          - training_sequences
+          data_type: S3Uri
+  validation:
+    step_type: TemporalSequenceNormalization_Validation
+    spec:
+      dependencies:
+        DATA:
+          semantic_keywords:
+          - validation
+          - val
+          - data
+          - input
+          - temporal
+          - sequence
+          - time_series
+      outputs:
+        normalized_sequences:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['normalized_sequences'].S3Output.S3Uri
+          aliases:
+          - sequences
+          - temporal_data
+          - sequence_data
+          - normalized_data
+          - processed_sequences
+          - validation_sequences
+          data_type: S3Uri
+  testing:
+    step_type: TemporalSequenceNormalization_Testing
+    spec:
+      dependencies:
+        DATA:
+          semantic_keywords:
+          - testing
+          - test
+          - data
+          - input
+          - temporal
+          - sequence
+          - time_series
+      outputs:
+        normalized_sequences:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['normalized_sequences'].S3Output.S3Uri
+          aliases:
+          - sequences
+          - temporal_data
+          - sequence_data
+          - normalized_data
+          - processed_sequences
+          - testing_sequences
+          data_type: S3Uri
+  calibration:
+    step_type: TemporalSequenceNormalization_Calibration
+    spec:
+      dependencies:
+        DATA:
+          semantic_keywords:
+          - calibration
+          - calib
+          - data
+          - input
+          - temporal
+          - sequence
+          - time_series
+      outputs:
+        normalized_sequences:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['normalized_sequences'].S3Output.S3Uri
+          aliases:
+          - sequences
+          - temporal_data
+          - sequence_data
+          - normalized_data
+          - processed_sequences
+          - calibration_sequences
+          data_type: S3Uri

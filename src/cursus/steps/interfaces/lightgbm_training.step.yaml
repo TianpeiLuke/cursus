@@ -1,0 +1,123 @@
+step_type: LightGBMTraining
+node_type: internal
+contract:
+  entry_point: lightgbm_training.py
+  inputs:
+    input_path:
+      path: /opt/ml/input/data
+      required: true
+    hyperparameters_s3_uri:
+      path: /opt/ml/code/hyperparams/hyperparameters.json
+      required: false
+    model_artifacts_input:
+      path: /opt/ml/input/data/model_artifacts_input
+      required: false
+  outputs:
+    model_output:
+      path: /opt/ml/model
+    evaluation_output:
+      path: /opt/ml/output/data
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      USE_SECURE_PYPI: 'true'
+      USE_PRECOMPUTED_IMPUTATION: 'false'
+      USE_PRECOMPUTED_RISK_TABLES: 'false'
+      USE_PRECOMPUTED_FEATURES: 'false'
+      USE_NATIVE_CATEGORICAL: 'true'
+      REGION: NA
+  framework_requirements:
+    lightgbm: '>=3.0.0'
+    scikit-learn: '>=0.23.2,<1.0.0'
+    pandas: '>=1.2.0,<2.0.0'
+    pyarrow: '>=4.0.0,<6.0.0'
+    boto3: '>=1.26.0'
+    pydantic: '>=2.0.0,<3.0.0'
+    matplotlib: '>=3.0.0'
+    numpy: '>=1.19.0'
+  description: 'LightGBM training for tabular classification with risk table mapping
+    and numerical imputation. Supports native categorical features, binary/multiclass,
+    class weights, pre-computed artifacts, and comprehensive evaluation metrics.
+
+    '
+spec:
+  dependencies:
+    input_path:
+      type: training_data
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - BedrockProcessing
+      - StratifiedSampling
+      - RiskTableMapping
+      - MissingValueImputation
+      - ProcessingStep
+      - DataLoad
+      semantic_keywords:
+      - data
+      - input
+      - training
+      - dataset
+      - processed
+      - train
+      - tabular
+    hyperparameters_s3_uri:
+      type: hyperparameters
+      required: false
+      compatible_sources:
+      - HyperparameterPrep
+      - ProcessingStep
+      semantic_keywords:
+      - config
+      - params
+      - hyperparameters
+      - settings
+    model_artifacts_input:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - LightGBMTraining
+      - MissingValueImputation
+      - RiskTableMapping
+      - FeatureSelection
+      semantic_keywords:
+      - artifacts
+      - model_artifacts
+      - preprocessing
+      - imputation
+      - risk_tables
+      - pretrained
+  outputs:
+    model_output:
+      type: model_artifacts
+      property_path: properties.ModelArtifacts.S3ModelArtifacts
+      semantic_keywords:
+      - model
+      - trained
+      - lightgbm
+      - artifacts
+      aliases:
+      - ModelOutputPath
+      - ModelArtifacts
+      - model_data
+      - output_path
+      - model_input
+      - model_artifacts_input
+      - lightgbm_model
+      data_type: S3Uri
+    evaluation_output:
+      type: processing_output
+      property_path: properties.OutputDataConfig.S3OutputPath
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - results
+      - metrics
+      aliases:
+      - evaluation_data
+      - eval_data
+      - validation_output
+      - test_output
+      - prediction_results
+      data_type: S3Uri

@@ -1,0 +1,87 @@
+step_type: PyTorchModelInference
+node_type: internal
+contract:
+  entry_point: pytorch_inference.py
+  inputs:
+    model_input:
+      path: /opt/ml/processing/input/model
+      required: true
+    processed_data:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+  outputs:
+    eval_output:
+      path: /opt/ml/processing/output/eval
+  arguments: {}
+  env_vars:
+    required:
+    - ID_FIELD
+    - LABEL_FIELD
+    optional:
+      OUTPUT_FORMAT: csv
+      JSON_ORIENT: records
+  framework_requirements:
+    torch: ==2.1.2
+    transformers: ==4.37.2
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+    pydantic: ==2.11.2
+  description: 'PyTorch model inference script. Loads trained model, preprocesses
+    evaluation data, generates predictions without metrics computation.
+
+    '
+spec:
+  dependencies:
+    model_input:
+      type: model_artifacts
+      required: true
+      compatible_sources:
+      - PyTorchTraining
+      - XGBoostTraining
+      - DummyTraining
+      - PyTorchModel
+      - XGBoostModel
+      semantic_keywords:
+      - model
+      - artifacts
+      - trained
+      - output
+      - ModelArtifacts
+      - pytorch
+      - training
+    processed_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - CradleDataLoading
+      - RiskTableMapping
+      - CurrencyConversion
+      - BedrockProcessing
+      semantic_keywords:
+      - data
+      - evaluation
+      - calibration
+      - validation
+      - test
+      - processed
+      - inference
+      - input
+  outputs:
+    eval_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri
+      semantic_keywords:
+      - inference
+      - predictions
+      - model_predictions
+      - pytorch_predictions
+      aliases:
+      - inference_output
+      - predictions
+      - model_predictions
+      - inference_results
+      - prediction_data
+      - pytorch_predictions
+      - evaluation_data
+      data_type: S3Uri

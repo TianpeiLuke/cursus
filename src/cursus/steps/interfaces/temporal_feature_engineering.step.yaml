@@ -1,0 +1,163 @@
+step_type: TemporalFeatureEngineering
+node_type: internal
+contract:
+  entry_point: temporal_feature_engineering.py
+  inputs:
+    normalized_sequences:
+      path: /opt/ml/processing/input/normalized_sequences
+      required: true
+  outputs:
+    temporal_feature_tensors:
+      path: /opt/ml/processing/output
+  arguments: {}
+  env_vars:
+    required:
+    - SEQUENCE_GROUPING_FIELD
+    - TIMESTAMP_FIELD
+    - VALUE_FIELDS
+    optional:
+      FEATURE_TYPES: '["statistical", "temporal", "behavioral"]'
+      CATEGORICAL_FIELDS: '["merchantCategory", "paymentMethod"]'
+      WINDOW_SIZES: '[7, 14, 30, 90]'
+      AGGREGATION_FUNCTIONS: '["mean", "sum", "std", "min", "max", "count"]'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+  description: 'Temporal feature engineering script. Extracts comprehensive temporal
+    features from normalized sequence data combining generic temporal features with
+    time window aggregations.
+
+    '
+spec:
+  dependencies:
+    normalized_sequences:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TemporalSequenceNormalization
+      - ProcessingStep
+      semantic_keywords:
+      - normalized_sequences
+      - sequences
+      - temporal_data
+      - sequence_data
+      - normalized_data
+      - processed_sequences
+  outputs:
+    temporal_feature_tensors:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['temporal_feature_tensors'].S3Output.S3Uri
+      semantic_keywords:
+      - features
+      - temporal_features
+      - feature_tensors
+      - engineered_features
+      aliases:
+      - features
+      - temporal_features
+      - feature_tensors
+      - engineered_features
+      - feature_matrix
+      - ml_features
+      data_type: S3Uri
+variants:
+  training:
+    step_type: TemporalFeatureEngineering_Training
+    spec:
+      dependencies:
+        normalized_sequences:
+          semantic_keywords:
+          - normalized_sequences
+          - sequences
+          - temporal_data
+          - training_sequences
+          - training
+          - train
+      outputs:
+        temporal_feature_tensors:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['temporal_feature_tensors'].S3Output.S3Uri
+          aliases:
+          - features
+          - temporal_features
+          - feature_tensors
+          - engineered_features
+          - feature_matrix
+          - ml_features
+          - training_features
+          data_type: S3Uri
+  validation:
+    step_type: TemporalFeatureEngineering_Validation
+    spec:
+      dependencies:
+        normalized_sequences:
+          semantic_keywords:
+          - normalized_sequences
+          - sequences
+          - temporal_data
+          - validation_sequences
+          - validation
+          - val
+      outputs:
+        temporal_feature_tensors:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['temporal_feature_tensors'].S3Output.S3Uri
+          aliases:
+          - features
+          - temporal_features
+          - feature_tensors
+          - engineered_features
+          - feature_matrix
+          - ml_features
+          - validation_features
+          data_type: S3Uri
+  testing:
+    step_type: TemporalFeatureEngineering_Testing
+    spec:
+      dependencies:
+        normalized_sequences:
+          semantic_keywords:
+          - normalized_sequences
+          - sequences
+          - temporal_data
+          - testing_sequences
+          - testing
+          - test
+      outputs:
+        temporal_feature_tensors:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['temporal_feature_tensors'].S3Output.S3Uri
+          aliases:
+          - features
+          - temporal_features
+          - feature_tensors
+          - engineered_features
+          - feature_matrix
+          - ml_features
+          - testing_features
+          data_type: S3Uri
+  calibration:
+    step_type: TemporalFeatureEngineering_Calibration
+    spec:
+      dependencies:
+        normalized_sequences:
+          semantic_keywords:
+          - normalized_sequences
+          - sequences
+          - temporal_data
+          - calibration_sequences
+          - calibration
+          - calib
+      outputs:
+        temporal_feature_tensors:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['temporal_feature_tensors'].S3Output.S3Uri
+          aliases:
+          - features
+          - temporal_features
+          - feature_tensors
+          - engineered_features
+          - feature_matrix
+          - ml_features
+          - calibration_features
+          data_type: S3Uri

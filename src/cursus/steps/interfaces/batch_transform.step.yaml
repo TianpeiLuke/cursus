@@ -1,0 +1,112 @@
+step_type: BatchTransform
+node_type: internal
+contract:
+  entry_point: null
+  inputs:
+    model_name:
+      path: null
+      required: true
+    processed_data:
+      path: null
+      required: true
+  outputs:
+    transform_output:
+      path: null
+  arguments: {}
+  env_vars:
+    required: []
+    optional: {}
+  framework_requirements: {}
+  description: "SageMaker Batch Transform step. Uses a registered model to run batch\
+    \ inference on preprocessed data. No script \u2014 managed by SageMaker TransformStep.\n"
+spec:
+  dependencies:
+    model_name:
+      type: custom_property
+      required: true
+      compatible_sources:
+      - PytorchModel
+      - XgboostModel
+      semantic_keywords:
+      - model
+      - name
+      - model_name
+      - ModelName
+    processed_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      semantic_keywords:
+      - data
+      - features
+      - preprocessed
+      - tabular
+      - input_data
+      - model_input_data
+  outputs:
+    transform_output:
+      type: custom_property
+      property_path: properties.TransformOutput.S3OutputPath
+      semantic_keywords:
+      - transform
+      - batch_output
+      - predictions
+      data_type: S3Uri
+variants:
+  training:
+    step_type: BatchTransform_Training
+    spec:
+      dependencies:
+        processed_data:
+          compatible_sources:
+          - TabularPreprocessing-Training
+          semantic_keywords:
+          - training
+          - data
+          - features
+          - preprocessed
+          - tabular
+          - input_data
+  validation:
+    step_type: BatchTransform_Validation
+    spec:
+      dependencies:
+        processed_data:
+          compatible_sources:
+          - TabularPreprocessing-Validation
+          semantic_keywords:
+          - validation
+          - data
+          - features
+          - preprocessed
+          - tabular
+          - input_data
+  testing:
+    step_type: BatchTransform_Testing
+    spec:
+      dependencies:
+        processed_data:
+          compatible_sources:
+          - TabularPreprocessing-Testing
+          semantic_keywords:
+          - testing
+          - data
+          - features
+          - preprocessed
+          - tabular
+          - input_data
+  calibration:
+    step_type: BatchTransform_Calibration
+    spec:
+      dependencies:
+        processed_data:
+          compatible_sources:
+          - TabularPreprocessing-Calibration
+          semantic_keywords:
+          - calibration
+          - data
+          - features
+          - preprocessed
+          - tabular
+          - input_data

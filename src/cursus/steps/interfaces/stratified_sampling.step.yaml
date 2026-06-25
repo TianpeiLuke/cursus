@@ -1,0 +1,71 @@
+step_type: StratifiedSampling
+node_type: internal
+contract:
+  entry_point: stratified_sampling.py
+  inputs:
+    input_data:
+      path: /opt/ml/processing/input/data
+      required: true
+  outputs:
+    processed_data:
+      path: /opt/ml/processing/output
+  arguments: {}
+  env_vars:
+    required:
+    - STRATA_COLUMN
+    optional:
+      SAMPLING_STRATEGY: balanced
+      TARGET_SAMPLE_SIZE: '1000'
+      MIN_SAMPLES_PER_STRATUM: '10'
+      VARIANCE_COLUMN: ''
+      RANDOM_STATE: '42'
+      SAMPLING_MULTIPLIER: '1.0'
+      ALLOW_REPLACEMENT: 'false'
+      REFERENCE_COUNTS_JSON: ''
+      SAMPLING_FILTER_COLUMN: ''
+      SAMPLING_FILTER_VALUE: ''
+  framework_requirements:
+    pandas: '>=1.3.0'
+  description: 'Stratified sampling with four allocation strategies (balanced, proportional_min,
+    optimal, external_proportional). Handles class imbalance correction, causal analysis,
+    and variance optimization with per-split diagnostics.
+
+    '
+spec:
+  dependencies:
+    input_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - ProcessingStep
+      semantic_keywords:
+      - input_data
+      - processed_data
+      - preprocessed
+      - tabular
+      - data
+      - training
+      - validation
+      - testing
+      - calibration
+  outputs:
+    processed_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+      semantic_keywords:
+      - sampled_data
+      - stratified_data
+      - training_data
+      - model_input_data
+      aliases:
+      - sampled_data
+      - stratified_data
+      - training_data
+      - validation_data
+      - testing_data
+      - calibration_data
+      - model_input_data
+      - input_path
+      - input_data
+      data_type: S3Uri

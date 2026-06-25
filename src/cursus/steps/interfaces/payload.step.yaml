@@ -1,0 +1,73 @@
+step_type: Payload
+node_type: internal
+contract:
+  entry_point: payload.py
+  inputs:
+    model_input:
+      path: /opt/ml/processing/input/model
+      required: true
+    custom_payload_input:
+      path: /opt/ml/processing/input/custom_payload
+      required: false
+  outputs:
+    payload_sample:
+      path: /opt/ml/processing/output
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      CONTENT_TYPES: application/json
+      DEFAULT_NUMERIC_VALUE: '0.0'
+      DEFAULT_TEXT_VALUE: DEFAULT_TEXT
+      FIELD_DEFAULTS: '{}'
+  framework_requirements:
+    python: '>=3.7'
+  description: 'MIMS payload generation script that extracts hyperparameters from
+    model artifacts, detects model type (tabular/bimodal/trimodal), generates sample
+    payloads with text field support, and archives payload files for deployment.
+
+    '
+spec:
+  dependencies:
+    model_input:
+      type: model_artifacts
+      required: true
+      compatible_sources:
+      - XGBoostTraining
+      - LightGBMTraining
+      - LightGBMMTTraining
+      - PyTorchTraining
+      - DummyTraining
+      - TrainingStep
+      - ModelStep
+      semantic_keywords:
+      - model
+      - artifacts
+      - trained
+      - output
+      - ModelArtifacts
+    custom_payload_input:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - ProcessingStep
+      - S3Source
+      - UserProvided
+      semantic_keywords:
+      - payload
+      - sample
+      - custom
+      - user_provided
+      - inference_sample
+  outputs:
+    payload_sample:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['payload_sample'].S3Output.S3Uri
+      semantic_keywords:
+      - payload
+      - samples
+      - inference
+      - generated
+      aliases:
+      - GeneratedPayloadSamples
+      data_type: S3Uri

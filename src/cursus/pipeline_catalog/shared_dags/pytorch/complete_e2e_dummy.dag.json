@@ -1,0 +1,137 @@
+{
+  "dag": {
+    "description": "Shared DAG definition for PyTorch Complete End-to-End Pipeline with Dummy Data Loading",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "Package",
+      "Registration",
+      "Payload",
+      "DummyDataLoading_calibration",
+      "PyTorchModelEval_calibration"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "PyTorchModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "complete_e2e_dummy",
+    "framework": "pytorch",
+    "node_count": 8,
+    "edge_count": 11,
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_or_s3",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "2-8 (GPU training dominates)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Integration testing of the full PyTorch E2E pipeline (train+calibrate+package+register) WITHOUT needing real Cradle/MDS data. Uses DummyDataLoading to generate synthetic data.",
+      "when_not_to_use": "Production training (use pytorch/complete_e2e with real data). If you don't need calibration/registration (use pytorch/simple_training).",
+      "differentiators": [
+        "Full E2E pipeline but with DummyDataLoading (no Cradle dependency)",
+        "Tests packaging and registration flow with synthetic data",
+        "Same structure as complete_e2e — easy to swap to real data",
+        "For development/testing only"
+      ],
+      "prerequisites": [
+        {
+          "check": "GPU quota",
+          "how": "ml.g5.xlarge available in account"
+        },
+        {
+          "check": "MIMS registration access",
+          "how": "Role has MIMS permissions (for registration step)"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "instance_type (ml.g5.xlarge)",
+          "max_epochs (3 for testing)",
+          "batch_size (32)",
+          "dummy_data_size (1000)"
+        ],
+        "common_pitfalls": [
+          "Registration will create real model artifacts — clean up after testing",
+          "Dummy data distribution won't match production — don't use for model validation",
+          "Calibration on dummy data is meaningless — only tests the pipeline flow"
+        ]
+      },
+      "decision_tree": {
+        "testing_pipeline_flow?": {
+          "yes": "USE THIS DAG",
+          "no": "Use pytorch/complete_e2e with real data"
+        },
+        "have_cradle_access?": {
+          "yes": "Use pytorch/complete_e2e (real data)",
+          "no": "USE THIS DAG (dummy data)"
+        }
+      }
+    }
+  }
+}

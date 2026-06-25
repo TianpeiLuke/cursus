@@ -1,0 +1,93 @@
+step_type: BedrockPromptTemplateGeneration
+node_type: internal
+contract:
+  entry_point: bedrock_prompt_template_generation.py
+  inputs:
+    prompt_configs:
+      path: /opt/ml/processing/input/prompt_configs
+      required: false
+  outputs:
+    prompt_templates:
+      path: /opt/ml/processing/output/templates
+    template_metadata:
+      path: /opt/ml/processing/output/metadata
+    validation_schema:
+      path: /opt/ml/processing/output/schema
+  arguments:
+    include-examples: boolean flag to include examples in template
+    generate-validation-schema: boolean flag to generate validation schema
+    template-version: template version identifier
+  env_vars:
+    required: []
+    optional:
+      TEMPLATE_TASK_TYPE: classification
+      TEMPLATE_STYLE: structured
+      VALIDATION_LEVEL: standard
+      INPUT_PLACEHOLDERS: '["input_data"]'
+  framework_requirements:
+    pydantic: '>=2.0.0'
+    boto3: '>=1.26.0'
+  description: 'Bedrock prompt template generation script. Creates structured prompt
+    templates for classification tasks using the 5-component architecture pattern.
+
+    '
+spec:
+  dependencies:
+    prompt_configs:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - PromptConfiguration
+      - ProcessingStep
+      semantic_keywords:
+      - prompt_configs
+      - prompt_configuration
+      - bedrock_configs
+      - template_configs
+      - classification_config
+  outputs:
+    prompt_templates:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['prompt_templates'].S3Output.S3Uri
+      semantic_keywords:
+      - templates
+      - prompts
+      - bedrock_templates
+      aliases:
+      - templates
+      - bedrock_templates
+      - prompt_template
+      - generated_templates
+      - classification_templates
+      - llm_templates
+      data_type: S3Uri
+    template_metadata:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['template_metadata'].S3Output.S3Uri
+      semantic_keywords:
+      - metadata
+      - generation_metadata
+      - template_info
+      aliases:
+      - metadata
+      - generation_metadata
+      - template_info
+      - validation_results
+      - quality_metrics
+      - generation_results
+      data_type: S3Uri
+    validation_schema:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['validation_schema'].S3Output.S3Uri
+      semantic_keywords:
+      - schema
+      - validation
+      - response_schema
+      aliases:
+      - schema
+      - output_validation_schema
+      - bedrock_validation_schema
+      - response_schema
+      - classification_schema
+      - downstream_schema
+      data_type: S3Uri

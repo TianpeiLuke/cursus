@@ -1,0 +1,278 @@
+step_type: MissingValueImputation
+node_type: internal
+contract:
+  entry_point: missing_value_imputation.py
+  inputs:
+    input_data:
+      path: /opt/ml/processing/input/data
+      required: true
+    model_artifacts_input:
+      path: /opt/ml/processing/input/model_artifacts
+      required: false
+  outputs:
+    processed_data:
+      path: /opt/ml/processing/output/data
+    model_artifacts_output:
+      path: /opt/ml/processing/output/model_artifacts
+  arguments: {}
+  env_vars:
+    required:
+    - LABEL_FIELD
+    optional:
+      IMPUTATION_STRATEGY: mean
+      CATEGORICAL_STRATEGY: mode
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+    scikit-learn: '>=1.0.0'
+  description: 'Missing value imputation script. Handles missing values using statistical
+    methods (mean, median, mode, constant). Training mode fits imputers; inference
+    applies pre-fitted.
+
+    '
+spec:
+  dependencies:
+    input_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - StratifiedSampling
+      - RiskTableMapping
+      - ProcessingStep
+      semantic_keywords:
+      - processed_data
+      - preprocessed
+      - cleaned
+      - tabular
+      - data
+      - input
+      - dataset
+      - missing_values
+      - imputation
+    model_artifacts_input:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - MissingValueImputation_Training
+      - ProcessingStep
+      semantic_keywords:
+      - model_artifacts
+      - imputation_parameters
+      - fitted_imputers
+      - imputation_artifacts
+      - imputation_model
+      - training_artifacts
+  outputs:
+    processed_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+      semantic_keywords:
+      - imputed_data
+      - cleaned_data
+      - filled_data
+      - model_input_data
+      aliases:
+      - data_input
+      - input_data
+      - imputed_data
+      - cleaned_data
+      - filled_data
+      - training_data
+      - model_input_data
+      - input_path
+      data_type: S3Uri
+    model_artifacts_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+      semantic_keywords:
+      - imputation_params
+      - fitted_imputers
+      - imputation_model
+      aliases:
+      - imputation_params
+      - imputation_parameters
+      - fitted_imputers
+      - imputation_artifacts
+      - imputation_model
+      - model_artifacts
+      - model_artifacts_input
+      data_type: S3Uri
+variants:
+  training:
+    step_type: MissingValueImputation_Training
+    spec:
+      dependencies:
+        input_data:
+          semantic_keywords:
+          - training
+          - train
+          - processed_data
+          - preprocessed
+          - tabular
+          - data
+          - input
+          - missing_values
+        model_artifacts_input:
+          required: false
+      outputs:
+        processed_data:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+          aliases:
+          - imputed_data
+          - cleaned_data
+          - filled_data
+          - training_data
+          - model_input_data
+          - input_path
+          - input_data
+          - data_input
+          - data_output
+          data_type: S3Uri
+        model_artifacts_output:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+          aliases:
+          - model_artifacts
+          - imputation_params
+          - imputation_parameters
+          - fitted_imputers
+          - imputation_artifacts
+          - imputation_model
+          - training_artifacts
+          - imputation_params_input
+          - imputation_params_output
+          - model_artifacts_input
+          data_type: S3Uri
+  validation:
+    step_type: MissingValueImputation_Validation
+    spec:
+      dependencies:
+        input_data:
+          semantic_keywords:
+          - validation
+          - val
+          - processed_data
+          - preprocessed
+          - tabular
+          - data
+          - input
+          - missing_values
+        model_artifacts_input:
+          required: true
+      outputs:
+        processed_data:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+          aliases:
+          - imputed_data
+          - input_data
+          - cleaned_data
+          - filled_data
+          - validation_data
+          - model_input_data
+          - input_path
+          - data_input
+          data_type: S3Uri
+        model_artifacts_output:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+          aliases:
+          - imputation_params
+          - imputation_parameters
+          - fitted_imputers
+          - imputation_artifacts
+          - imputation_model
+          - training_artifacts
+          - imputation_params_input
+          - model_artifacts_input
+          data_type: S3Uri
+  testing:
+    step_type: MissingValueImputation_Testing
+    spec:
+      dependencies:
+        input_data:
+          semantic_keywords:
+          - testing
+          - test
+          - processed_data
+          - preprocessed
+          - tabular
+          - data
+          - input
+          - missing_values
+        model_artifacts_input:
+          required: true
+      outputs:
+        processed_data:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+          aliases:
+          - imputed_data
+          - input_data
+          - cleaned_data
+          - filled_data
+          - testing_data
+          - test_data
+          - model_input_data
+          - input_path
+          - data_input
+          data_type: S3Uri
+        model_artifacts_output:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+          aliases:
+          - imputation_params
+          - imputation_parameters
+          - fitted_imputers
+          - imputation_artifacts
+          - imputation_model
+          - training_artifacts
+          - imputation_params_input
+          - model_artifacts_input
+          data_type: S3Uri
+  calibration:
+    step_type: MissingValueImputation_Calibration
+    spec:
+      dependencies:
+        input_data:
+          semantic_keywords:
+          - calibration
+          - calib
+          - processed_data
+          - preprocessed
+          - tabular
+          - data
+          - input
+          - missing_values
+        model_artifacts_input:
+          required: true
+      outputs:
+        processed_data:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+          aliases:
+          - imputed_data
+          - input_data
+          - cleaned_data
+          - filled_data
+          - calibration_data
+          - calib_data
+          - model_input_data
+          - input_path
+          - data_input
+          data_type: S3Uri
+        model_artifacts_output:
+          type: processing_output
+          property_path: properties.ProcessingOutputConfig.Outputs['model_artifacts_output'].S3Output.S3Uri
+          aliases:
+          - imputation_params
+          - imputation_parameters
+          - fitted_imputers
+          - imputation_artifacts
+          - imputation_model
+          - training_artifacts
+          - imputation_params_input
+          - model_artifacts_input
+          data_type: S3Uri

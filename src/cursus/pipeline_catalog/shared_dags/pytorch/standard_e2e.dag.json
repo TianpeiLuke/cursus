@@ -1,0 +1,137 @@
+{
+  "dag": {
+    "description": "Shared DAG definition for PyTorch Standard End-to-End Pipeline",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "Package",
+      "Payload",
+      "Registration",
+      "CradleDataLoading_validation",
+      "PyTorchModelEval"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ],
+      [
+        "CradleDataLoading_validation",
+        "TabularPreprocessing_validation"
+      ],
+      [
+        "TabularPreprocessing_validation",
+        "PyTorchModelEval"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "standard_e2e",
+    "framework": "pytorch",
+    "node_count": 8,
+    "edge_count": 9,
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "2-8 (GPU training dominates)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Standard PyTorch E2E when you want training + packaging + registration but WITHOUT calibration. Model scores go directly to registration. Used by names3risk_pytorch pattern.",
+      "when_not_to_use": "If you need calibration (use pytorch/complete_e2e). If just prototyping (use pytorch/simple_training).",
+      "differentiators": [
+        "No calibration step — faster pipeline, simpler",
+        "Has validation/eval path (separate from training)",
+        "Includes packaging and registration (production-ready)",
+        "Lighter than complete_e2e (no calibration split needed)"
+      ],
+      "prerequisites": [
+        {
+          "check": "Labeled training data in MDS/Cradle",
+          "how": "Cradle SQL returns rows with label column"
+        },
+        {
+          "check": "Validation data accessible",
+          "how": "Separate Cradle query for validation split"
+        },
+        {
+          "check": "GPU quota",
+          "how": "ml.g5.xlarge+ available in account"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql_training",
+          "cradle_sql_validation",
+          "label_column",
+          "text_column",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "instance_type (ml.g5.xlarge)",
+          "max_epochs",
+          "batch_size",
+          "learning_rate"
+        ],
+        "common_pitfalls": [
+          "No calibration — raw model scores may not be well-calibrated probabilities",
+          "If downstream consumers expect calibrated scores, use complete_e2e instead",
+          "Validation data should be from a different time period than training"
+        ]
+      },
+      "decision_tree": {
+        "need_calibration?": {
+          "yes": "Use pytorch/complete_e2e",
+          "no": "USE THIS DAG"
+        },
+        "just_prototyping?": {
+          "yes": "Use pytorch/simple_training",
+          "no": "USE THIS DAG (production-ready)"
+        }
+      }
+    }
+  }
+}

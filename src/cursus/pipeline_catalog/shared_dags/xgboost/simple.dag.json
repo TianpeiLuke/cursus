@@ -1,0 +1,121 @@
+{
+  "dag": {
+    "description": "Simple XGBoost training pipeline with data loading and preprocessing",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "XGBoostTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_simple",
+    "description": "Simple XGBoost training pipeline with data loading and preprocessing",
+    "complexity": "simple",
+    "framework": "xgboost",
+    "features": [
+      "training",
+      "data_loading",
+      "preprocessing"
+    ],
+    "node_count": 5,
+    "edge_count": 3,
+    "task_type": "training",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration"
+    ],
+    "exit_points": [
+      "XGBoostTraining",
+      "TabularPreprocessing_calibration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Quick prototyping or experimentation where you only need to train an XGBoost model without registration or deployment. Good for initial model development and hyperparameter exploration.",
+      "when_not_to_use": "If you need model registration (use complete_e2e). If you need calibrated scores (use training_with_calibration). If you need evaluation metrics (use training_with_evaluation).",
+      "differentiators": [
+        "No model registration or packaging",
+        "No evaluation step",
+        "No calibration",
+        "Fastest iteration cycle",
+        "Minimal pipeline - just load, preprocess, train"
+      ],
+      "prerequisites": [
+        {
+          "check": "Cradle/MDS data source configured",
+          "how": "Verify cradle_sql query returns tabular data with label column"
+        },
+        {
+          "check": "Feature columns identified",
+          "how": "List of numeric/categorical feature names available"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql",
+          "label_column",
+          "feature_columns"
+        ],
+        "safe_defaults": [
+          "n_estimators=100",
+          "max_depth=6",
+          "learning_rate=0.3",
+          "instance_type=ml.m5.xlarge"
+        ],
+        "common_pitfalls": [
+          "No evaluation means you cannot assess model quality in-pipeline",
+          "Model artifact is not registered - manual steps needed for deployment"
+        ]
+      },
+      "decision_tree": {
+        "need_production_deployment?": {
+          "yes": "Use complete_e2e instead",
+          "no": "Continue"
+        },
+        "need_evaluation_metrics?": {
+          "yes": "Use training_with_evaluation instead",
+          "no": "Continue"
+        },
+        "just_experimenting?": {
+          "yes": "USE THIS DAG",
+          "no": "Consider a more complete variant"
+        }
+      }
+    }
+  }
+}

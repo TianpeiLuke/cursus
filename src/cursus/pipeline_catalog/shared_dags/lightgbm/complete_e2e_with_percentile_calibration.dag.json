@@ -1,0 +1,200 @@
+{
+  "dag": {
+    "description": "Complete LightGBM end-to-end pipeline with training, percentile model calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "LightGBMTraining",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "LightGBMModelEval_calibration",
+      "CradleDataLoading_testing",
+      "TabularPreprocessing_testing",
+      "LightGBMModelInference_testing",
+      "ModelMetricsComputation_testing",
+      "ModelWikiGenerator"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "LightGBMTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "LightGBMTraining",
+        "LightGBMModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "LightGBMModelEval_calibration"
+      ],
+      [
+        "LightGBMModelEval_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "CradleDataLoading_testing",
+        "TabularPreprocessing_testing"
+      ],
+      [
+        "LightGBMTraining",
+        "LightGBMModelInference_testing"
+      ],
+      [
+        "TabularPreprocessing_testing",
+        "LightGBMModelInference_testing"
+      ],
+      [
+        "LightGBMModelInference_testing",
+        "ModelMetricsComputation_testing"
+      ],
+      [
+        "ModelMetricsComputation_testing",
+        "ModelWikiGenerator"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "LightGBMTraining",
+        "Package"
+      ],
+      [
+        "LightGBMTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "lightgbm_complete_e2e_with_percentile_calibration_and_testing",
+    "description": "Complete LightGBM end-to-end pipeline with training, percentile model calibration path, testing path (no calibration), packaging, registration, inference, metrics computation, and wiki generation",
+    "complexity": "comprehensive",
+    "framework": "lightgbm",
+    "features": [
+      "training",
+      "percentile_calibration",
+      "testing",
+      "packaging",
+      "registration",
+      "inference",
+      "metrics",
+      "wiki_generation"
+    ],
+    "node_count": 15,
+    "edge_count": 16,
+    "task_type": "end_to_end",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration",
+      "CradleDataLoading_testing"
+    ],
+    "exit_points": [
+      "Registration",
+      "ModelWikiGenerator"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Tabular classification where you need percentile-based calibration (map raw scores to percentile ranks) AND automated model wiki documentation. Used by almond_pfw, pfw_mtgbm_na patterns.",
+      "when_not_to_use": "If isotonic/Platt calibration is sufficient (use lightgbm/complete_e2e). If you don't need wiki documentation or separate testing path.",
+      "differentiators": [
+        "Percentile calibration (instead of isotonic/Platt)",
+        "Separate testing path with ModelMetricsComputation",
+        "Automated ModelWikiGenerator for documentation",
+        "Three data splits: training, calibration, testing",
+        "Testing path uses raw model (no calibration) for true performance metrics"
+      ],
+      "prerequisites": [
+        {
+          "check": "Three separate data splits accessible",
+          "how": "Cradle SQL can provide training, calibration, and testing data (different date ranges or splits)"
+        },
+        {
+          "check": "CPU instance quota",
+          "how": "ml.m5.xlarge available in account"
+        },
+        {
+          "check": "Wiki template configured",
+          "how": "ModelWikiGenerator config specifies wiki space and template"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql_training",
+          "cradle_sql_calibration",
+          "cradle_sql_testing",
+          "label_column",
+          "feature_columns",
+          "percentile_bins",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "num_leaves (31)",
+          "learning_rate (0.1)",
+          "n_estimators (100)",
+          "percentile_bins (100)"
+        ],
+        "common_pitfalls": [
+          "Testing data must NOT overlap with training or calibration data",
+          "Percentile calibration requires sufficient calibration data volume (>10K rows recommended)",
+          "Wiki generation may fail silently if wiki space doesn't exist"
+        ]
+      },
+      "decision_tree": {
+        "need_percentile_calibration?": {
+          "yes": "USE THIS DAG",
+          "no": "Use lightgbm/complete_e2e (isotonic calibration)"
+        },
+        "need_wiki_documentation?": {
+          "yes": "USE THIS DAG",
+          "no": "Use lightgbm/complete_e2e"
+        },
+        "need_separate_test_metrics?": {
+          "yes": "USE THIS DAG",
+          "no": "Use lightgbm/complete_e2e"
+        }
+      }
+    }
+  }
+}

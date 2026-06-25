@@ -1,0 +1,115 @@
+step_type: TabularPreprocessing
+node_type: internal
+contract:
+  entry_point: tabular_preprocessing.py
+  inputs:
+    DATA:
+      path: /opt/ml/processing/input/data
+      required: true
+    DATA_SECONDARY:
+      path: /opt/ml/processing/input/data_secondary
+      required: false
+    SIGNATURE:
+      path: /opt/ml/processing/input/signature
+      required: false
+  outputs:
+    processed_data:
+      path: /opt/ml/processing/output
+  arguments: {}
+  env_vars:
+    required:
+    - TRAIN_RATIO
+    - TEST_VAL_RATIO
+    optional:
+      LABEL_FIELD: ''
+      OUTPUT_FORMAT: CSV
+      MAX_WORKERS: '0'
+      BATCH_SIZE: '5'
+      OPTIMIZE_MEMORY: 'true'
+      STREAMING_BATCH_SIZE: '0'
+      ENABLE_TRUE_STREAMING: 'false'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+    scikit-learn: '>=1.0.0'
+  description: 'Tabular preprocessing script that combines data shards, loads column
+    signature, cleans/processes label field, splits data into train/test/val, and
+    outputs in configurable format (CSV/TSV/Parquet). Supports streaming mode for
+    large datasets.
+
+    '
+spec:
+  dependencies:
+    DATA:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - CradleDataLoading
+      - DummyDataLoading
+      - RedshiftDataLoading
+      - DataLoad
+      - ProcessingStep
+      - BedrockProcessing
+      - StratifiedSampling
+      semantic_keywords:
+      - data
+      - input
+      - raw
+      - dataset
+      - source
+      - tabular
+      - training
+      - validation
+      - testing
+      - calibration
+    DATA_SECONDARY:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - CradleDataLoading
+      - DummyDataLoading
+      - RedshiftDataLoading
+      - DataLoad
+      - ProcessingStep
+      - BedrockProcessing
+      - StratifiedSampling
+      semantic_keywords:
+      - data
+      - secondary
+      - additional
+      - supplementary
+    SIGNATURE:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - CradleDataLoading
+      - DummyDataLoading
+      semantic_keywords:
+      - signature
+      - schema
+      - columns
+      - column_names
+      - metadata
+      - header
+  outputs:
+    processed_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+      semantic_keywords:
+      - processed
+      - features
+      - training_data
+      - model_input_data
+      aliases:
+      - input_path
+      - training_data
+      - model_input_data
+      - input_data
+      - validation_data
+      - testing_data
+      - calibration_data
+      - processed_training_data
+      - processed_validation_data
+      - processed_testing_data
+      - processed_calibration_data
+      data_type: S3Uri

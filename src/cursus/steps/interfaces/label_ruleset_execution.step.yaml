@@ -1,0 +1,87 @@
+step_type: LabelRulesetExecution
+node_type: internal
+contract:
+  entry_point: label_ruleset_execution.py
+  inputs:
+    validated_ruleset:
+      path: /opt/ml/processing/input/validated_ruleset
+      required: true
+    input_data:
+      path: /opt/ml/processing/input/data
+      required: true
+  outputs:
+    processed_data:
+      path: /opt/ml/processing/output/processed_data
+    execution_report:
+      path: /opt/ml/processing/output/execution_report
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      FAIL_ON_MISSING_FIELDS: 'true'
+      ENABLE_RULE_MATCH_TRACKING: 'true'
+      ENABLE_PROGRESS_LOGGING: 'true'
+      PREFERRED_INPUT_FORMAT: ''
+  framework_requirements:
+    pandas: '>=1.3.0'
+    pydantic: '>=2.0.0'
+  description: 'Label ruleset execution script. Applies validated rulesets to processed
+    data to generate classification labels using priority-based rule evaluation.
+
+    '
+spec:
+  dependencies:
+    validated_ruleset:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - LabelRulesetGeneration
+      semantic_keywords:
+      - ruleset
+      - validated_ruleset
+      - rules
+      - label_rules
+    input_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - BedrockProcessing
+      - BedrockBatchProcessing
+      - TemporalSequenceNormalization
+      - TemporalFeatureEngineering
+      - StratifiedSampling
+      - MissingValueImputation
+      - FeatureSelection
+      - CurrencyConversion
+      - RiskTableMapping
+      semantic_keywords:
+      - data
+      - dataset
+      - input
+      - input_data
+      - processed_data
+      - features
+  outputs:
+    processed_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+      semantic_keywords:
+      - labeled_data
+      - processed
+      - classification
+      aliases:
+      - input_data
+      - input_path
+      - training_data
+      - model_input_data
+      - labeled_data
+      data_type: S3Uri
+    execution_report:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['execution_report'].S3Output.S3Uri
+      semantic_keywords:
+      - report
+      - execution_stats
+      - rule_match_counts
+      data_type: S3Uri

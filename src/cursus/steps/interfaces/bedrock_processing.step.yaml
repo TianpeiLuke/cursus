@@ -1,0 +1,107 @@
+step_type: BedrockProcessing
+node_type: internal
+contract:
+  entry_point: bedrock_processing.py
+  inputs:
+    input_data:
+      path: /opt/ml/processing/input/data
+      required: true
+    prompt_templates:
+      path: /opt/ml/processing/input/templates
+      required: false
+    validation_schema:
+      path: /opt/ml/processing/input/schema
+      required: false
+  outputs:
+    processed_data:
+      path: /opt/ml/processing/output/data
+    analysis_summary:
+      path: /opt/ml/processing/output/summary
+  arguments:
+    batch-size: 'batch size for processing (default: 10)'
+    max-retries: 'maximum retries for Bedrock calls (default: 3)'
+  env_vars:
+    required:
+    - BEDROCK_PRIMARY_MODEL_ID
+    optional:
+      BEDROCK_FALLBACK_MODEL_ID: ''
+      BEDROCK_INFERENCE_PROFILE_ARN: ''
+      BEDROCK_MAX_TOKENS: '8192'
+      BEDROCK_TEMPERATURE: '1.0'
+      BEDROCK_BATCH_SIZE: '10'
+      BEDROCK_CONCURRENCY_MODE: sequential
+      BEDROCK_USE_STRUCTURED_OUTPUT: 'false'
+      BEDROCK_USE_CONVERSE_API: 'false'
+  framework_requirements:
+    pandas: '>=1.2.0'
+    boto3: '>=1.26.0'
+    pydantic: '>=2.0.0'
+    tenacity: '>=8.0.0'
+  description: 'Bedrock processing script with invoke_model, structured output, and
+    Converse API modes. Supports self-contained mode via env var templates. Circuit
+    breaker and adaptive rate limiting.
+
+    '
+spec:
+  dependencies:
+    input_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - DummyDataLoading
+      - CradleDataLoading
+      - TabularPreprocessing
+      - TemporalSequenceNormalization
+      - TemporalFeatureEngineering
+      - StratifiedSampling
+      - MissingValueImputation
+      - FeatureSelection
+      - CurrencyConversion
+      semantic_keywords:
+      - data
+      - dataset
+      - input
+      - processed_data
+      - features
+    prompt_templates:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - BedrockPromptTemplateGeneration
+      semantic_keywords:
+      - templates
+      - prompts
+      - prompt_templates
+      - bedrock_templates
+    validation_schema:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - BedrockPromptTemplateGeneration
+      semantic_keywords:
+      - schema
+      - validation
+      - validation_schema
+      - response_schema
+  outputs:
+    processed_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri
+      semantic_keywords:
+      - processed
+      - bedrock_output
+      - model_input_data
+      aliases:
+      - input_path
+      - training_data
+      - model_input_data
+      - input_data
+      data_type: S3Uri
+    analysis_summary:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['analysis_summary'].S3Output.S3Uri
+      semantic_keywords:
+      - summary
+      - statistics
+      - analysis
+      data_type: S3Uri

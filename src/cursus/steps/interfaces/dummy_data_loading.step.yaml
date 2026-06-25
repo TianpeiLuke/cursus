@@ -1,0 +1,89 @@
+step_type: DummyDataLoading
+node_type: internal
+contract:
+  entry_point: dummy_data_loading.py
+  inputs:
+    INPUT_DATA:
+      path: /opt/ml/processing/input/data
+      required: true
+  outputs:
+    SIGNATURE:
+      path: /opt/ml/processing/output/signature
+    METADATA:
+      path: /opt/ml/processing/output/metadata
+    DATA:
+      path: /opt/ml/processing/output/data
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      WRITE_DATA_SHARDS: 'false'
+      SHARD_SIZE: '10000'
+      OUTPUT_FORMAT: CSV
+  framework_requirements:
+    pandas: '>=1.3.0'
+    pyarrow: '>=4.0.0'
+  description: 'Dummy data loading script. Drop-in replacement for CradleDataLoading
+    that processes user-provided data instead of calling Cradle services.
+
+    '
+spec:
+  dependencies:
+    INPUT_DATA:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - DataUploadStep
+      - S3DataStep
+      - LocalDataStep
+      semantic_keywords:
+      - data
+      - dataset
+      - input
+      - raw_data
+      - training
+      - train
+      - validation
+      - val
+      - testing
+      - test
+      - calibration
+      - calib
+  outputs:
+    DATA:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['DATA'].S3Output.S3Uri
+      semantic_keywords:
+      - data
+      - input
+      - raw
+      - dataset
+      aliases:
+      - input_data
+      - raw_data
+      - dataset
+      data_type: S3Uri
+    METADATA:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['METADATA'].S3Output.S3Uri
+      semantic_keywords:
+      - metadata
+      - schema
+      - info
+      aliases:
+      - meta
+      - schema
+      - data_metadata
+      data_type: S3Uri
+    SIGNATURE:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['SIGNATURE'].S3Output.S3Uri
+      semantic_keywords:
+      - signature
+      - schema
+      - columns
+      aliases:
+      - sig
+      - column_signature
+      - data_signature
+      data_type: S3Uri

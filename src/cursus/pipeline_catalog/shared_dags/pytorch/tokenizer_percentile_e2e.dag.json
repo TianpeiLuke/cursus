@@ -1,0 +1,53 @@
+{
+  "dag": {
+    "description": "PyTorch end-to-end pipeline with custom TokenizerTraining step and PercentileCalibration. Trains a domain-specific tokenizer before model training.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "TokenizerTraining_training",
+      "PyTorchTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelEval_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload"
+    ],
+    "edges": [
+      ["CradleDataLoading_training", "TabularPreprocessing_training"],
+      ["TabularPreprocessing_training", "TokenizerTraining_training"],
+      ["TokenizerTraining_training", "PyTorchTraining"],
+      ["TabularPreprocessing_training", "PyTorchTraining"],
+      ["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
+      ["PyTorchTraining", "PyTorchModelEval_calibration"],
+      ["TabularPreprocessing_calibration", "PyTorchModelEval_calibration"],
+      ["PyTorchModelEval_calibration", "PercentileModelCalibration_calibration"],
+      ["PercentileModelCalibration_calibration", "Package"],
+      ["PyTorchTraining", "Package"],
+      ["PyTorchTraining", "Payload"],
+      ["Package", "Registration"],
+      ["Payload", "Registration"]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_tokenizer_percentile_e2e",
+    "framework": "pytorch",
+    "complexity": "comprehensive",
+    "features": ["custom_tokenizer_training", "training", "percentile_calibration", "packaging", "registration"],
+    "node_count": 11,
+    "edge_count": 13,
+    "used_by_projects": ["names3risk_pytorch"],
+    "input_requirements": {"data_types": ["text", "tabular"], "text_support": true, "multi_task": false, "output_type": "binary_or_multiclass", "data_source": "cradle_mds", "requires_llm": false},
+    "constraints": {"requires_gpu": true, "min_instance": "ml.g5.xlarge", "supports_multi_gpu": true, "requires_mims": true},
+    "cost": {"estimated_hours": "3-10 (tokenizer + GPU training)", "cost_driver": "gpu_training", "instance_cost_tier": "high", "scalability": "data_size_linear"},
+    "agent_context": {
+      "when_to_use": "When you need a domain-specific tokenizer trained on your corpus before model training. Ideal for specialized vocabularies (names, addresses, codes) where pretrained tokenizers perform poorly.",
+      "when_not_to_use": "If pretrained tokenizer (BERT, LaBSE) works well (use standard complete_e2e). If no text features (use XGBoost).",
+      "differentiators": ["TokenizerTraining builds custom vocabulary from training data", "PyTorchTraining receives BOTH tokenizer and preprocessed tabular data", "Best for domain-specific text (names, codes, short-strings)"],
+      "prerequisites": [{"check": "Domain-specific text needing custom tokenization", "how": "Standard BERT tokenizer produces excessive UNK tokens"}, {"check": "GPU quota", "how": "ml.g5.xlarge+ available"}],
+      "config_guidance": {"user_must_provide": ["cradle_sql (training)", "cradle_sql (calibration)", "label_column", "text_column", "service_name", "vocab_size"], "safe_defaults": ["vocab_size=30000", "tokenizer_type=BPE", "percentile_buckets=[10,25,50,75,90]"], "common_pitfalls": ["Tokenizer must be packaged with model for inference", "Calibration data uses the TRAINED tokenizer"]},
+      "decision_tree": {"domain_specific_vocabulary?": {"yes": "Continue", "no": "Use standard complete_e2e"}, "need_percentile_scores?": {"yes": "USE THIS DAG", "no": "Custom variant without percentile"}}
+    }
+  }
+}

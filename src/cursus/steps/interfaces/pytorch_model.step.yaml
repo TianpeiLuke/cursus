@@ -1,0 +1,47 @@
+step_type: PyTorchModel
+node_type: internal
+contract:
+  entry_point: null
+  inputs:
+    model_data:
+      path: null
+      required: true
+  outputs:
+    model_name:
+      path: null
+  arguments: {}
+  env_vars:
+    required: []
+    optional: {}
+  framework_requirements: {}
+  description: "SageMaker Model creation step for PyTorch. No script \u2014 managed\
+    \ by SageMaker ModelStep. Creates a deployable model from training artifacts.\n"
+spec:
+  dependencies:
+    model_data:
+      type: model_artifacts
+      required: true
+      compatible_sources:
+      - PyTorchTraining
+      - ProcessingStep
+      - ModelArtifactsStep
+      - Package
+      semantic_keywords:
+      - model
+      - artifacts
+      - pytorch
+      - training
+      - output
+      - model_data
+  outputs:
+    model_name:
+      type: custom_property
+      property_path: properties.ModelName
+      semantic_keywords:
+      - model_name
+      - model
+      - ModelName
+      aliases:
+      - model
+      - ModelName
+      data_type: S3Uri
