@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Post-1.8.0 step-catalog hardening and a new MCP tool, synced from AmazonCursus. No public-API or dependency changes; `step_catalog`/`registry`/`mcp`/`steps` test suites: 899 passed.
+
+### Added
+
+- **`catalog.step_spec` MCP tool.** Exposes a step's resolved dependencies and outputs (`{step_type, node_type, dependencies[], outputs[]}`) over the agent tool surface; abstract steps with no spec return a `not_found` result + remedy. Brings the MCP registry to **42 tools** (the `catalog` namespace goes from 6 → 7).
+- **`step_catalog/naming.py` (new) — single source of truth for step-name conversion.** Centralizes PascalCase ↔ snake_case conversion (`canonical_to_snake`, `parts_to_pascal`, `canonical_key`); script, builder, and contract discovery now delegate to it.
+
+### Fixed
+
+- **Compound-acronym name resolution.** A latent `contract_discovery` bug resolved `PyTorchTraining` → `py_torch_training`, silently breaking contract imports for compound-acronym step types (PyTorch, XGBoost, LightGBM). Fixed via the centralized `naming.py`.
+- **Hardened `step_name → .step.yaml` resolution** with a normalized fallback scan (`steps/interfaces/__init__.py`) so interface lookup tolerates naming variants.
+- **Surfaced previously-silent discovery failures.** Bare `except` blocks in the discovery layer now log; `SyntaxError` is separated out in `config_discovery`; `StepCatalog.get_metrics_report()` gains `index_build_error` + `pipeline_interface_available` health signals; pipeline-interface methods degrade gracefully instead of raising `AttributeError` on `None`.
+
+### Removed
+
+- **Dead code in `step_catalog`** — two unused `StepCatalog` caches and a discarded redundant full-scan in `script_discovery`.
+
+### Docs
+
+- **README aligned with the refactored 1.8.0 repo** — corrected CLI commands (flag-based `compile`/`validate`, new `projects`/`pipeline-catalog`/`mcp` groups), replaced the removed class-based catalog examples with the data-driven `recommend_dag`/`load_shared_dag`/`build_and_compile` API, rewrote the Architecture section, added the Agent-Ready (MCP) feature, and fixed moved doc links.
+
 ## [1.8.0] - 2026-06-26
 
 This release completes the **specification-unification** and **agent-enablement** arc. Per-step Python spec/contract pairs are merged into a single declarative `.step.yaml` per step; the pipeline catalog becomes data-driven; a new framework-neutral `cursus.mcp` tool surface is added for LLM agents; the dead `cursus.workspace` module is removed; and the CLI is reorganized into focused command groups. Repo-wide: 610 files changed (+115,624 / −38,213) across 12 commits since 1.7.1 (the bulk of the additions is a 139-file test-suite sync).
