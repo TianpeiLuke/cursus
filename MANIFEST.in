@@ -7,6 +7,10 @@ include pyproject.toml
 # Include all Python files
 recursive-include src/cursus *.py
 
+# Include runtime data files (load-bearing): unified step interfaces (*.step.yaml),
+# the YAML step registry, and the declarative pipeline catalog (*.dag.json + index)
+recursive-include src/cursus *.yaml *.yml *.json py.typed
+
 # Exclude development and build files
 exclude .gitignore
 exclude requirements.txt

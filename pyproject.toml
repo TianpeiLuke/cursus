@@ -146,7 +146,13 @@ where = ["src"]
 include = ["cursus*"]
 
 [tool.setuptools.package-data]
-cursus = ["py.typed", "*.yaml", "*.yml", "*.json"]
+# Apply to every sub-package so non-.py data ships in the wheel. The unified
+# step interfaces (steps/interfaces/*.step.yaml), the YAML step registry
+# (registry/step_names.yaml), and the declarative pipeline catalog
+# (pipeline_catalog/shared_dags/**/*.dag.json + catalog_index.json) are all
+# load-bearing at runtime and live in nested sub-packages, so a top-level-only
+# "cursus" glob would silently drop them.
+"*" = ["py.typed", "*.yaml", "*.yml", "*.json"]
 
 # Black configuration
 [tool.black]

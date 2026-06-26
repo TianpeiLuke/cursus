@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-06-26
+
+This release completes the **specification-unification** and **agent-enablement** arc. Per-step Python spec/contract pairs are merged into a single declarative `.step.yaml` per step; the pipeline catalog becomes data-driven; a new framework-neutral `cursus.mcp` tool surface is added for LLM agents; the dead `cursus.workspace` module is removed; and the CLI is reorganized into focused command groups. Repo-wide: 610 files changed (+115,624 / −38,213) across 12 commits since 1.7.1 (the bulk of the additions is a 139-file test-suite sync).
+
+### Added
+
+- **`cursus.mcp` module (new) — framework-neutral agentic tool surface.** A new top-level module parallel to `core`/`steps`, exposing **41 JSON-in / JSON-out tools across 8 namespaces** (`catalog`, `dag`, `config`, `compile`, `validate`, `execdoc`, `pipeline_catalog`, `info`) over the pipeline engine, leaving the human-facing `cursus.cli` untouched.
+  - `mcp/envelope.py` — the `ToolResult` / `ToolError` response contract.
+  - `mcp/registry.py` — single-source-of-truth `ToolDef` registry + `call_tool` invoker; a namespace that fails to import (e.g. a missing optional engine dependency) is skipped with a warning, not fatal.
+  - `mcp/tools/*.py` — per-namespace tool implementations (`catalog`, `compile`, `config`, `dag`, `execdoc`, `info`, `pipeline_catalog`, `validate`, plus a `shared` helper).
+  - `mcp/server.py` — thin optional MCP server (`python -m cursus.mcp.server`; lazy SDK import), with OpenAI/Claude + MCP tool-spec exporters.
+  - Wired into the CLI as `cursus mcp`.
+- **Declarative `.step.yaml` step interfaces (`steps/interfaces/`).** 45 `<step>.step.yaml` files + `steps/interfaces/__init__.py` (`load_step_interface()`), each carrying one unified `StepInterface` (contract I/O + spec demand/supply). New foundation classes `core/base/step_interface.py` and `core/base/step_contract.py`. Packaged via `*.yaml`/`*.yml` package-data so the YAML ships in the wheel.
+- **Data-driven pipeline catalog (`pipeline_catalog/shared_dags/`).** 42 shared DAGs as `*.dag.json` (XGBoost, PyTorch, LightGBM, MTGBM, Bedrock, Dummy, …) indexed by `catalog_index.json`, replacing the previous class-based catalog. New `pipeline_catalog/core/`:
+  - `builders.py` — `build_and_compile` (SAIS) and `build_mods_pipeline` (generates a `@MODSTemplate` class on demand),
+  - `router.py` — deterministic scoring (`recommend_dag` / `auto_select_dag` / `recommend_for_agent`) over the index,
+  - `agent_tool.py` — exposes the router as an LLM agent tool.
+- **Reorganized CLI into focused command groups.** New `cursus` subcommands `config`, `dag`, `mcp`, `pipeline-catalog`, `projects`, `validate` (modules `config_cli.py`, `dag_cli.py`, `mcp_cli.py`, `pipeline_catalog_cli.py`, `project_cli.py`, `validate_cli.py`, plus a shared `_shared.py`).
+- **YAML-backed step registry.** `registry/step_names.yaml` + `registry/step_names_base.py` load the canonical step-name table from data instead of a Python literal.
+- **Pipeline-project discovery.** `core/utils/project_discovery.py` + `cursus projects list|show` — a read-only helper that became the standard way to enumerate pipeline projects (a `pipeline_config[s]/` + `dockers/` + pipeline `.py` layout, with `metadata.config_types` mapping nodes to config classes). Replaces the removed workspace module's only goal-relevant use.
+- **Full test-suite sync from AmazonCursus** — 139 test files across `tests/` (alignment validators, step_catalog, core/deps, core/compiler, registry, mcp, cli, integration, …).
+
+### Changed
+
+- **Merged step spec + script contract into one `.step.yaml` per step.** The legacy `ScriptContract` (I/O) and `StepSpecification` (demand/supply) data classes are unified into a single Pydantic `StepInterface` sourced from YAML; contract↔spec alignment is now a **construction-time invariant** (a `@model_validator` raises if contract paths aren't a subset of the spec's deps/outputs) rather than a separate runtime validation tier. Step builders now call `load_step_interface("StepType")`.
+- **Validation framework collapsed.** The redundant Contract↔Spec (Level-2) tier was removed (now an invariant) and the unified alignment tester refactored; dead modules deleted (see Removed).
+- **DAG / API optimization and agent ergonomics.** `api/dag/{base_dag,pipeline_dag_resolver,pipeline_dag_serializer}.py` refactored; `step_catalog` discovery / config-resolver / builder-discovery updated; CLI and tool surfaces tidied for agent consumption.
+- **Registry loads from YAML.** The canonical step table moved from the Python literal `step_names_original.py` to `step_names.yaml`, read through `step_names_base.py` (the workspace-aware facade in `step_names.py` is preserved).
+- **NVMe/KMS compiler patch.** The compiler strips `VolumeKmsKeyId` from NVMe-backed `ProcessingStep`s in the generated pipeline definition.
+- **Renamed `steps/scripts/edx_upload.py` → `steps/scripts/edx_uploading.py`** for naming consistency with the step type.
+
+### Removed
+
+- **`cursus.workspace` module (~1,949 LOC).** Removed `workspace/{__init__,api,integrator,manager,validator}.py` — a dead island (only a `try/except` re-export in `core/__init__.py`, zero instantiations anywhere). Its one goal-relevant use is replaced by `core/utils/project_discovery.py`. **Potentially breaking** for any *external* code importing `cursus.workspace`, though no in-tree caller existed. (The separate load-bearing `workspace_dirs` parameter and `step_catalog/adapters` were explicitly preserved.)
+- **113 per-step Python spec/contract files.** 71 `*_spec.py` + 42 `*_contract.py` under `steps/specs/` and `steps/contracts/`, superseded by the 45 `.step.yaml` interfaces. Both packages are now emptied to `__init__.py`, except one shared `steps/contracts/training_script_contract.py` retained as the path-tolerant base for training-step contracts.
+- **`core/base/specification_base.py`** — replaced by `step_interface.py` + `step_contract.py`.
+- **`registry/step_names_original.py`** — replaced by `step_names.yaml` + `step_names_base.py`.
+- **Dead validation modules** — `validation/alignment/reporting/validation_reporter.py`, `validation/alignment/validators/contract_spec_validator.py`, `validation/alignment/validators/method_interface_validator.py`, `validation/shared/chart_utils.py`, `validation/utils/import_resolver.py`.
+
+### Fixed
+
+- **Packaged the runtime data files.** `tool.setuptools.package-data` used a non-recursive `cursus = ["*.yaml", "*.json", …]` glob that only matched the top-level package directory, so the new `steps/interfaces/*.step.yaml` (45), `pipeline_catalog/shared_dags/**/*.dag.json` (42) + `catalog_index.json`, and `registry/step_names.yaml` were **silently omitted from the wheel** — a clean `pip install cursus==1.8.0` would have failed at runtime the moment a builder called `load_step_interface()`. Switched to a per-sub-package `"*"` key and added a matching `recursive-include src/cursus *.yaml *.yml *.json` to `MANIFEST.in` so the data ships in both the wheel and the sdist. (New gap: these data files did not exist in 1.7.1.)
+- **`cursus.__version__` no longer resolves to `None` on the installed package.** `_resolve_metadata()` looked up `importlib.metadata.metadata("amzn-cursus")`, but the distribution published to PyPI is named **`cursus`**; that lookup failed and, with no `VERSION` file present in `site-packages`, `__version__` fell through to `None`. Now looks up `cursus`.
+
+### Notes
+
+- No dependency changes since 1.7.1 (`sagemaker>=2.248.0,<3`, `pydantic<3`, and `PyYAML>=6.0.0` — now load-bearing at runtime — were already declared). The 1.x line continues to target **SageMaker SDK 2.x**; the forthcoming 2.x line will target SDK 3.x.
+
 ## [1.7.1] - 2026-05-28
 
 ### Fixed

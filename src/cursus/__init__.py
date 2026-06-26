@@ -46,7 +46,8 @@ def _resolve_metadata():
     try:
         from importlib.metadata import metadata as _meta_lookup
 
-        _m = _meta_lookup("amzn-cursus")
+        # The distribution published to PyPI is named "cursus".
+        _m = _meta_lookup("cursus")
         title = _m.get("Name")
         version = _m.get("Version")
         description = _m.get("Summary")
