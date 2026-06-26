@@ -176,9 +176,11 @@ class NumericalCategoricalProcessor(Processor):
                 # Apply custom labels if provided
                 if self.labels:
                     result[col] = result[col].map(
-                        lambda x: self.labels[min(int(x), len(self.labels) - 1)]
-                        if pd.notna(x)
-                        else x
+                        lambda x: (
+                            self.labels[min(int(x), len(self.labels) - 1)]
+                            if pd.notna(x)
+                            else x
+                        )
                     )
 
         return result

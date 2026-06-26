@@ -114,8 +114,6 @@ class StepCatalog:
 
         # Simple caches for expanded functionality (avoid over-engineering)
         self._framework_cache: Dict[str, str] = {}
-        self._validation_metadata_cache: Dict[str, Any] = {}
-        self._builder_class_cache: Dict[str, Type] = {}
 
         # Simple metrics collection
         self.metrics: Dict[str, Any] = {
@@ -124,6 +122,9 @@ class StepCatalog:
             "avg_response_time": 0.0,
             "index_build_time": 0.0,
             "last_index_build": None,
+            # Set to the stringified exception when the last index build failed and
+            # the catalog fell back to an empty index; None when the build succeeded.
+            "index_build_error": None,
         }
 
         # PHASE 1 ENHANCEMENT: Initialize mapping components
@@ -1185,6 +1186,7 @@ class StepCatalog:
             build_time = time.time() - start_time
             self.metrics["index_build_time"] = build_time
             self.metrics["last_index_build"] = datetime.now()
+            self.metrics["index_build_error"] = None
 
             self.logger.info(
                 f"Index built successfully in {build_time:.3f}s with {len(self._step_index)} steps"
@@ -1193,6 +1195,9 @@ class StepCatalog:
         except Exception as e:
             build_time = time.time() - start_time
             self.logger.error(f"Index build failed after {build_time:.3f}s: {e}")
+            # Record the failure so get_metrics_report() can surface that the catalog is
+            # running on an empty, degraded index rather than silently reporting 0 steps.
+            self.metrics["index_build_error"] = str(e)
             # Graceful degradation
             self._step_index = {}
             self._component_index = {}
@@ -1643,6 +1648,17 @@ class StepCatalog:
         Returns:
             Dictionary with validation results
         """
+        if self.pipeline_interface is None:
+            self.logger.error(
+                "validate_dag_compatibility unavailable: pipeline_interface failed to "
+                "initialize (see earlier error)."
+            )
+            return {
+                "valid": False,
+                "error": "pipeline_interface_unavailable",
+                "compatible_steps": [],
+                "missing_builders": list(step_types),
+            }
         return self.pipeline_interface.validate_dag_compatibility(step_types)
 
     def get_step_builder_suggestions(self, config_class_name: str) -> List[str]:
@@ -1655,6 +1671,12 @@ class StepCatalog:
         Returns:
             List of suggested step type names
         """
+        if self.pipeline_interface is None:
+            self.logger.error(
+                "get_step_builder_suggestions unavailable: pipeline_interface failed to "
+                "initialize (see earlier error)."
+            )
+            return []
         return self.pipeline_interface.get_step_builder_suggestions(config_class_name)
 
     def get_metrics_report(self) -> Dict[str, Any]:
@@ -1675,6 +1697,10 @@ class StepCatalog:
             else None,
             "total_steps_indexed": len(self._step_index),
             "total_workspaces": len(self._workspace_steps),
+            # Health signals: distinguish a genuinely-empty catalog from one that
+            # degraded due to a build error or a failed-to-initialize subsystem.
+            "index_build_error": self.metrics["index_build_error"],
+            "pipeline_interface_available": self.pipeline_interface is not None,
         }
 
     # PHASE 1 ENHANCEMENT: Dynamic Builder Discovery Methods

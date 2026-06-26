@@ -452,7 +452,8 @@ class BuilderAutoDiscovery:
 
     def _convert_parts_to_pascal_case_with_special_cases(self, parts: List[str]) -> str:
         """
-        Convert file name parts to PascalCase with special case handling.
+        Convert file name parts to PascalCase, delegating compound-acronym handling to the
+        shared naming module (cursus.step_catalog.naming) — one source of truth.
 
         Args:
             parts: List of file name parts (e.g., ['xgboost', 'training'])
@@ -460,20 +461,9 @@ class BuilderAutoDiscovery:
         Returns:
             PascalCase step name with proper special case handling
         """
-        result_parts = []
+        from .naming import parts_to_pascal
 
-        for part in parts:
-            # Handle special cases
-            if part.lower() == "xgboost":
-                result_parts.append("XGBoost")
-            elif part.lower() == "pytorch":
-                result_parts.append("PyTorch")
-            elif part.lower() == "lightgbm":
-                result_parts.append("LightGBM")
-            else:
-                result_parts.append(part.capitalize())
-
-        return "".join(result_parts)
+        return parts_to_pascal(parts)
 
     def _load_class_from_file(self, file_path: Path, class_name: str) -> Optional[Type]:
         """

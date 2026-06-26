@@ -57,6 +57,53 @@ def _step_name_to_filename(step_name: str) -> str:
     return s
 
 
+def _canonical_key(name: str) -> str:
+    """Collapse a step name / filename stem to a separator- and case-insensitive key.
+
+    'XGBoostTraining', 'xgboost_training', 'XGBoost_Training' all map to 'xgboosttraining'.
+    Used as a robust fallback so new acronym steps resolve without editing the hardcoded
+    abbreviation table in ``_step_name_to_filename``.
+    """
+    return "".join(ch for ch in name.lower() if ch.isalnum())
+
+
+def _resolve_interface_path(step_name: str) -> Path:
+    """Resolve a step name to its ``.step.yaml`` path.
+
+    Tries the naming-convention filename first (fast, exact). If that file does not exist
+    — e.g. a new step whose acronym the convention table doesn't know — falls back to a
+    normalized scan of the interfaces directory matching on :func:`_canonical_key`. Raises
+    ``FileNotFoundError`` only if neither resolves.
+    """
+    # 1) Convention-derived filename (the common, fast path).
+    primary = INTERFACES_DIR / (_step_name_to_filename(step_name) + ".step.yaml")
+    if primary.exists():
+        return primary
+
+    # 2) Normalized fallback: match the step name against every interface stem ignoring
+    #    case and separators, so acronym/casing mismatches still resolve.
+    want = _canonical_key(step_name)
+    matches = [
+        p
+        for p in INTERFACES_DIR.glob("*.step.yaml")
+        if _canonical_key(p.name[: -len(".step.yaml")]) == want
+    ]
+    if len(matches) == 1:
+        logger.debug(
+            "Resolved interface for '%s' via normalized fallback: %s",
+            step_name,
+            matches[0].name,
+        )
+        return matches[0]
+    if len(matches) > 1:
+        raise FileNotFoundError(
+            f"Ambiguous interface for '{step_name}': matched "
+            f"{[m.name for m in matches]}"
+        )
+
+    raise FileNotFoundError(f"No interface file for '{step_name}': {primary}")
+
+
 def load_interface(
     step_name: str,
     job_type: Optional[str] = None,
@@ -75,11 +122,8 @@ def load_interface(
     if cache_key in _cache:
         return _cache[cache_key]
 
-    filename = _step_name_to_filename(step_name) + ".step.yaml"
-    filepath = INTERFACES_DIR / filename
-
-    if not filepath.exists():
-        raise FileNotFoundError(f"No interface file for '{step_name}': {filepath}")
+    # Convention-first, with a normalized-scan fallback for acronym/casing mismatches.
+    filepath = _resolve_interface_path(step_name)
 
     with open(filepath) as f:
         data = yaml.safe_load(f)

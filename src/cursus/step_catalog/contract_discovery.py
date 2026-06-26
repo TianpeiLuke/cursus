@@ -139,19 +139,16 @@ class ContractAutoDiscovery:
 
     def _pascal_to_snake_case(self, name: str) -> str:
         """
-        Convert PascalCase to snake_case.
+        Convert PascalCase to snake_case via the shared naming module.
 
-        Args:
-            name: PascalCase string
-
-        Returns:
-            snake_case string
+        Previously this used a bare regex with no compound-acronym handling, so
+        ``PyTorchTraining`` became ``py_torch_training`` and the contract import path built
+        from it silently failed for every compound-acronym framework. Delegating to
+        cursus.step_catalog.naming fixes that and keeps all discovery modules consistent.
         """
-        import re
+        from .naming import canonical_to_snake
 
-        # Insert underscore before uppercase letters that follow lowercase letters or digits
-        snake_case = re.sub("([a-z0-9])([A-Z])", r"\1_\2", name)
-        return snake_case.lower()
+        return canonical_to_snake(name)
 
     def _scan_contract_directory(self, contract_dir: Path) -> Dict[str, Type]:
         """

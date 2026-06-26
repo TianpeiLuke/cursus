@@ -10,7 +10,7 @@ import ast
 import importlib
 import logging
 from pathlib import Path
-from typing import Dict, Type, Optional, Any, List, Union
+from typing import Dict, Type, Optional, List
 
 logger = logging.getLogger(__name__)
 
@@ -244,6 +244,12 @@ class ConfigAutoDiscovery:
                                 )
                                 continue
 
+                except SyntaxError as e:
+                    self.logger.warning(
+                        f"Skipping config file {py_file}: it does not parse "
+                        f"(SyntaxError at line {e.lineno}): {e.msg}"
+                    )
+                    continue
                 except Exception as e:
                     self.logger.warning(f"Error processing config file {py_file}: {e}")
                     continue
@@ -439,6 +445,12 @@ class ConfigAutoDiscovery:
                                 )
                                 continue
 
+                except SyntaxError as e:
+                    self.logger.warning(
+                        f"Skipping hyperparameter file {py_file}: it does not parse "
+                        f"(SyntaxError at line {e.lineno}): {e.msg}"
+                    )
+                    continue
                 except Exception as e:
                     self.logger.warning(
                         f"Error processing hyperparameter file {py_file}: {e}"

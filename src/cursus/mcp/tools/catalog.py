@@ -122,6 +122,37 @@ def _step_info(args: Dict[str, Any]) -> ToolResult:
     return ToolResult.success(data, step_name=step_name)
 
 
+def _step_spec(args: Dict[str, Any]) -> ToolResult:
+    """Return a step's full specification: its declared dependencies and outputs.
+
+    Loads the step's StepInterface (YAML-first, Python fallback) and serializes it to the
+    standard ``{step_type, node_type, dependencies, outputs}`` dict — the I/O contract an
+    agent needs to wire a step into a DAG. Unlike ``catalog.step_info`` (which gives
+    naming/component metadata), this exposes the actual ports.
+    """
+    step_name = args.get("step_name")
+
+    catalog = _new_catalog()
+    spec = catalog.load_spec_class(step_name)
+    if spec is None:
+        return ToolResult.failure(
+            f"no specification found for step '{step_name}'",
+            code="not_found",
+            details={"step_name": step_name},
+            remedy={
+                "suggested_tools": ["catalog.list_steps", "catalog.search"],
+                "fix_action": "Confirm the step name (some abstract steps like 'Base' / "
+                "'Processing' have no spec); list or search the catalog for valid names.",
+            },
+        )
+
+    data = catalog.serialize_spec(spec)
+    # Convenience counts so an agent can reason without re-counting the lists.
+    data["dependency_count"] = len(data.get("dependencies") or [])
+    data["output_count"] = len(data.get("outputs") or [])
+    return ToolResult.success(data, step_name=step_name)
+
+
 def _config_fields(args: Dict[str, Any]) -> ToolResult:
     """List the fields (name/type/required/default) of a step's configuration class."""
     step_name = args.get("step_name")
@@ -346,6 +377,28 @@ TOOLS: List[ToolDef] = [
             "additionalProperties": False,
         },
         handler=_step_info,
+        tags=("planner",),
+    ),
+    ToolDef(
+        name="catalog.step_spec",
+        description=(
+            "Get a step's full specification — its declared dependencies (input ports, "
+            "with compatible sources + semantic keywords) and outputs (output ports, with "
+            "property paths). Use this to understand a step's I/O contract before wiring "
+            "it into a DAG. (catalog.step_info gives naming/components; this gives ports.)"
+        ),
+        schema={
+            "type": "object",
+            "properties": {
+                "step_name": {
+                    "type": "string",
+                    "description": "Canonical step name (PascalCase, e.g. 'XGBoostTraining').",
+                },
+            },
+            "required": ["step_name"],
+            "additionalProperties": False,
+        },
+        handler=_step_spec,
         tags=("planner",),
     ),
     ToolDef(

@@ -75,19 +75,30 @@ class TestContractAutoDiscovery:
         assert discovery.workspace_dirs is None
 
     def test_pascal_to_snake_case_conversion(self, contract_discovery):
-        """Test PascalCase to snake_case conversion - critical for contract discovery."""
-        # Test cases based on our debugging experience
+        """Test PascalCase to snake_case conversion - critical for contract discovery.
+
+        _pascal_to_snake_case now delegates to cursus.step_catalog.naming, which splits
+        capital-runs correctly (``MLModelTraining`` -> ``ml_model_training``,
+        ``XMLParser`` -> ``xml_parser``) instead of gluing them as the old bare regex did.
+        It also protects compound acronyms (XGBoost, PyTorch, ...). No real registry step
+        uses an ``ML``/``XML`` prefix, so these are purely synthetic edge cases; the
+        compound-acronym cases below are the ones that matter in practice.
+        """
         test_cases = [
             ("XGBoostTraining", "xgboost_training"),
             ("XGBoostModel", "xgboost_model"),
             ("XGBoostModelEval", "xgboost_model_eval"),
+            (
+                "PyTorchTraining",
+                "pytorch_training",
+            ),  # previously mangled -> py_torch_training
             ("SimpleStep", "simple_step"),
-            ("MLModelTraining", "mlmodel_training"),
+            ("MLModelTraining", "ml_model_training"),
             ("DataProcessing", "data_processing"),
             ("already_snake_case", "already_snake_case"),
             ("SingleWord", "single_word"),
             ("ABC", "abc"),
-            ("XMLParser", "xmlparser"),
+            ("XMLParser", "xml_parser"),
         ]
 
         for pascal_case, expected_snake_case in test_cases:

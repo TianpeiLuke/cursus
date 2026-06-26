@@ -6,10 +6,8 @@ directories, with workspace prioritization support for interactive runtime testi
 """
 
 import logging
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Set
-import importlib.util
+from typing import Dict, List, Optional, Any
 
 logger = logging.getLogger(__name__)
 
@@ -340,10 +338,9 @@ class ScriptAutoDiscovery:
             f"Starting DAG + config instance script discovery for {len(dag.nodes)} DAG nodes"
         )
 
-        # First, discover all scripts from config instances
-        config_scripts = self.discover_scripts_from_config_instances(loaded_configs)
-
-        # Then, filter to only scripts that correspond to DAG nodes
+        # Walk the DAG nodes and resolve each to its script via the config instance.
+        # (Previously this also ran a full discover_scripts_from_config_instances() scan up
+        # front and discarded the result -- the per-node extraction below is the real work.)
         for node_name in dag.nodes:
             # Check if this DAG node has a corresponding config
             if node_name in loaded_configs:
@@ -425,38 +422,12 @@ class ScriptAutoDiscovery:
         """
         Convert canonical step name (PascalCase) to script name (snake_case).
 
-        Handles special cases for compound technical terms.
-
-        Args:
-            canonical_name: PascalCase canonical name
-
-        Returns:
-            snake_case script name
+        Delegates to the shared naming module (cursus.step_catalog.naming) so compound
+        acronyms (XGBoost/PyTorch/LightGBM/...) are handled from one source of truth.
         """
-        import re
+        from .naming import canonical_to_snake
 
-        # Handle special cases for compound technical terms
-        special_cases = {
-            "XGBoost": "Xgboost",
-            "PyTorch": "Pytorch",
-            "MLFlow": "Mlflow",
-            "TensorFlow": "Tensorflow",
-            "SageMaker": "Sagemaker",
-            "AutoML": "Automl",
-        }
-
-        # Apply special case replacements
-        processed_name = canonical_name
-        for original, replacement in special_cases.items():
-            processed_name = processed_name.replace(original, replacement)
-
-        # Convert PascalCase to snake_case
-        # Handle sequences of capitals followed by lowercase
-        result = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", processed_name)
-        # Handle lowercase followed by uppercase
-        result = re.sub(r"([a-z\d])([A-Z])", r"\1_\2", result)
-
-        return result.lower()
+        return canonical_to_snake(canonical_name)
 
     def _find_fuzzy_script_match(
         self, target_name: str, available_scripts: Dict[str, ScriptInfo]
@@ -719,8 +690,6 @@ class ScriptAutoDiscovery:
         Returns:
             ScriptInfo object or None if no entry point found
         """
-        import re
-
         try:
             # Get class fields using Pydantic model inspection
             if hasattr(config_class, "__fields__"):
@@ -736,7 +705,11 @@ class ScriptAutoDiscovery:
                         for name in dir(instance)
                         if not name.startswith("_")
                     }
-                except:
+                except Exception as e:
+                    self.logger.debug(
+                        f"Could not instantiate {getattr(config_class, '__name__', config_class)} "
+                        f"to inspect fields: {e}"
+                    )
                     return None
 
             # Use regex to find entry point fields (more flexible than hard-coded list)
@@ -755,8 +728,10 @@ class ScriptAutoDiscovery:
                 ):
                     try:
                         entry_point_value = field_info.default_factory()
-                    except:
-                        pass
+                    except Exception as e:
+                        self.logger.debug(
+                            f"default_factory for entry-point field '{field_name}' raised: {e}"
+                        )
 
                 if entry_point_value and isinstance(entry_point_value, str):
                     # Extract script name from entry point (e.g., "xgboost_training.py" -> "xgboost_training")
@@ -921,8 +896,10 @@ class ScriptAutoDiscovery:
                 ):
                     try:
                         entry_point_value = field_info.default_factory()
-                    except:
-                        pass
+                    except Exception as e:
+                        self.logger.debug(
+                            f"default_factory for contract entry_point raised: {e}"
+                        )
 
                 if entry_point_value and isinstance(entry_point_value, str):
                     # Extract script name from entry point

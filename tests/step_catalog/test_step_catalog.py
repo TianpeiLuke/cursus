@@ -76,6 +76,7 @@ class TestStepCatalogInitialization:
             "avg_response_time": 0.0,
             "index_build_time": 0.0,
             "last_index_build": None,
+            "index_build_error": None,
         }
 
         assert catalog.metrics == expected_metrics
@@ -839,6 +840,33 @@ class TestAdditionalUtilityMethods:
         assert report["last_index_build"] == "2023-01-01T12:00:00"
         assert report["total_steps_indexed"] == 5
         assert report["total_workspaces"] == 1
+        # Health signals: a healthy catalog reports no build error and a live interface.
+        assert report["index_build_error"] is None
+        assert report["pipeline_interface_available"] is True
+
+    def test_metrics_report_surfaces_index_build_error(self, catalog_with_variants):
+        """A failed index build is surfaced, not hidden behind an empty index."""
+        catalog_with_variants.metrics["index_build_error"] = (
+            "boom: registry unavailable"
+        )
+        report = catalog_with_variants.get_metrics_report()
+        assert report["index_build_error"] == "boom: registry unavailable"
+
+    def test_pipeline_interface_methods_degrade_gracefully_when_unavailable(
+        self, catalog_with_variants
+    ):
+        """When pipeline_interface failed to init, dependent methods return a clear
+        degraded result instead of raising AttributeError on None."""
+        catalog_with_variants.pipeline_interface = None
+
+        report = catalog_with_variants.get_metrics_report()
+        assert report["pipeline_interface_available"] is False
+
+        result = catalog_with_variants.validate_dag_compatibility(["XGBoostTraining"])
+        assert result["valid"] is False
+        assert result["error"] == "pipeline_interface_unavailable"
+
+        assert catalog_with_variants.get_step_builder_suggestions("XGBoostConfig") == []
 
 
 class TestIndexBuilding:
