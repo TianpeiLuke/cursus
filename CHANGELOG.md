@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.9.0] - 2026-06-26
 
-A brittleness-review fix tranche mirroring a 9-commit fix series from AmazonCursus: three live-bug fixes (job-type variant loading, CLI exit codes, dropped processing fields), centralization of duplicated step-name/job-type vocabulary into `step_catalog/naming.py`, and a sweep that surfaces previously-swallowed exceptions. 19 source + 11 test files (3 new); no dependency changes. Full suite: **1758 passed**. New public helpers are purely additive (minor bump).
+A brittleness-review fix tranche: three live-bug fixes (job-type variant loading, CLI exit codes, dropped processing fields), centralization of duplicated step-name/job-type vocabulary into `step_catalog/naming.py`, and a sweep that surfaces previously-swallowed exceptions. 19 source + 11 test files (3 new); no dependency changes. Full suite: **1758 passed**. New public helpers are purely additive (minor bump).
 
 ### Fixed
 
@@ -82,7 +82,7 @@ This release completes the **specification-unification** and **agent-enablement*
 - **Reorganized CLI into focused command groups.** New `cursus` subcommands `config`, `dag`, `mcp`, `pipeline-catalog`, `projects`, `validate` (modules `config_cli.py`, `dag_cli.py`, `mcp_cli.py`, `pipeline_catalog_cli.py`, `project_cli.py`, `validate_cli.py`, plus a shared `_shared.py`).
 - **YAML-backed step registry.** `registry/step_names.yaml` + `registry/step_names_base.py` load the canonical step-name table from data instead of a Python literal.
 - **Pipeline-project discovery.** `core/utils/project_discovery.py` + `cursus projects list|show` — a read-only helper that became the standard way to enumerate pipeline projects (a `pipeline_config[s]/` + `dockers/` + pipeline `.py` layout, with `metadata.config_types` mapping nodes to config classes). Replaces the removed workspace module's only goal-relevant use.
-- **Full test-suite sync from AmazonCursus** — 139 test files across `tests/` (alignment validators, step_catalog, core/deps, core/compiler, registry, mcp, cli, integration, …).
+- **Full test-suite sync** — 139 test files across `tests/` (alignment validators, step_catalog, core/deps, core/compiler, registry, mcp, cli, integration, …).
 
 ### Changed
 
@@ -258,7 +258,7 @@ Dependency-tree pruning: 6 declared deps that have **zero imports in `src/cursus
 - **Tokenizer Folder Layout** — `tokenizer/` renamed to avoid module/import conflicts.
 - **Names3Risk Text Field Conversion** — text-field handling reworked.
 - **Package Metadata Refactor** — `src/cursus/__init__.py` now derives `__title__` / `__version__` / `__description__` / `__author__` from `pyproject.toml` (via `importlib.metadata`) + `VERSION` file as the single source of truth — no hardcoded values; removed the obsolete `src/cursus/__version__.py`.
-- **`AmazonCursus` → `Cursus`** — package-name reference cleanup; `pyproject.toml` already declared `name = "cursus"` so no PyPI distribution-name change.
+- **Internal package-name references standardized to `Cursus`** — naming cleanup; `pyproject.toml` already declared `name = "cursus"` so no PyPI distribution-name change.
 
 ### Fixed
 
