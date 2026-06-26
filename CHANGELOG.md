@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-06-26
+
+A path-resolution feature: a **caller-hook project-root anchor (Strategy 0)** that lets a pipeline's entry point push its own project folder, so a step's relative `source_dir` / `processing_source_dir` resolves directly as `project_root / source_dir` — making both the `CURSUS_PROJECT_BASE` env var and the `project_root_folder` config field **optional**. Fully backward compatible; the new public API is additive (minor bump). 5 source files + 4 new test files (38 tests).
+
+### Added
+
+- **Caller-hook project-root anchor (Strategy 0)** (`core/utils/hybrid_path_resolution.py`). New `set_project_root()` / `get_project_root()` (re-exported from `cursus.core.utils`) push the project folder process-wide, and a new top-priority `_pushed_project_root_discovery` resolves a relative path directly as `project_root / relative_path`. Because the caller's `__file__` always lives inside the project, this is the most robust anchor across deployment modes (Lambda/MODS, SAIS notebook, pip-installed). It is **distinct from `CURSUS_PROJECT_BASE`**: that env var is a *package base* under which a named `project_root_folder` sibling is searched, whereas the pushed value is the *project folder itself*. The previous strategies become 0b (explicit `CURSUS_PROJECT_BASE`) and 1–4 fallbacks.
+- **`project_root` parameter on `PipelineDAGCompiler.__init__`.** Pipelines pass `Path(__file__).parent` from the module defining `generate_pipeline()`; when omitted it is inferred from `config_path` (walking up past a `pipeline_config[s]/` directory to the project root). The resolved root is pushed process-wide so the config → resolver → builder chain anchors on it.
+- **`project_root` parameter on `build_and_compile`** (`pipeline_catalog/core/builders.py`), forwarded to the compiler. The generated MODS template (`build_mods_pipeline`) now passes `project_root=caller_dir`, since its `generate_pipeline()` lives in the project folder.
+
+### Changed
+
+- **`BasePipelineConfig.resolve_hybrid_path` no longer requires `project_root_folder`.** It now proceeds when *either* `project_root_folder` is set *or* a project root was pushed by the caller hook, so a config without `project_root_folder` still resolves (anchored on the pushed folder).
+- Dropped pre-existing unused imports and lint nits in the touched files — `ConfigurationError` / `ValidationError` / `RegistryError` imports and two `f""`-without-placeholders log strings in `dag_compiler.py`, and an unused `PipelineDAG` import in `builders.py`.
+
 ## [1.9.0] - 2026-06-26
 
 A brittleness-review fix tranche: three live-bug fixes (job-type variant loading, CLI exit codes, dropped processing fields), centralization of duplicated step-name/job-type vocabulary into `step_catalog/naming.py`, and a sweep that surfaces previously-swallowed exceptions. 19 source + 11 test files (3 new); no dependency changes. Full suite: **1758 passed**. New public helpers are purely additive (minor bump).
