@@ -25,9 +25,13 @@ class PipelineDAG:
         self.adj_list = {n: [] for n in self.nodes}
         self.reverse_adj = {n: [] for n in self.nodes}
 
+        # Build adjacency. Edge endpoints not present in ``nodes`` (dangling edges) are
+        # tolerated here — they get an adjacency entry but are NOT added to ``nodes`` — so
+        # construction never raises an opaque KeyError. Dangling edges are reported with a
+        # clear message by the serializer's validation layer.
         for src, dst in self.edges:
-            self.adj_list[src].append(dst)
-            self.reverse_adj[dst].append(src)
+            self.adj_list.setdefault(src, []).append(dst)
+            self.reverse_adj.setdefault(dst, []).append(src)
 
     def add_node(self, node: str) -> None:
         """Add a single node to the DAG."""
@@ -58,18 +62,27 @@ class PipelineDAG:
         return self.reverse_adj.get(node, [])
 
     def topological_sort(self) -> List[str]:
-        """Return nodes in topological order."""
+        """Return nodes in topological order.
+
+        Tolerates edges whose endpoints are not in ``nodes`` (dangling edges) by ignoring
+        the unknown endpoints here rather than raising an opaque ``KeyError`` — structural
+        problems like dangling edges are surfaced with clear messages by the serializer's
+        validation layer.
+        """
 
         in_degree = {n: 0 for n in self.nodes}
-        for src, dst in self.edges:
-            in_degree[dst] += 1
+        for _src, dst in self.edges:
+            if dst in in_degree:
+                in_degree[dst] += 1
 
         queue = deque([n for n in self.nodes if in_degree[n] == 0])
         order = []
         while queue:
             node = queue.popleft()
             order.append(node)
-            for neighbor in self.adj_list[node]:
+            for neighbor in self.adj_list.get(node, []):
+                if neighbor not in in_degree:
+                    continue
                 in_degree[neighbor] -= 1
                 if in_degree[neighbor] == 0:
                     queue.append(neighbor)

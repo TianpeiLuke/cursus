@@ -81,6 +81,7 @@ def _collect_tooldefs() -> List[ToolDef]:
         "validate",
         "execdoc",
         "pipeline_catalog",
+        "info",
     ]
     defs: List[ToolDef] = []
     for ns in namespaces:
@@ -209,27 +210,38 @@ def call_tool(name: str, args: Optional[Dict[str, Any]] = None) -> ToolResult:
 
 
 def export_openai_tools(namespace: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Export tools in OpenAI / Claude function-calling shape."""
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": td.name,
-                "description": td.description,
-                "parameters": td.schema,
-            },
+    """Export tools in OpenAI / Claude function-calling shape.
+
+    The phase ``tags`` (planner/validator/programmer) are surfaced under the function's
+    ``metadata`` so an agent can group/route tools by lifecycle phase rather than scanning
+    every description.
+    """
+    out: List[Dict[str, Any]] = []
+    for td in list_tools(namespace):
+        fn: Dict[str, Any] = {
+            "name": td.name,
+            "description": td.description,
+            "parameters": td.schema,
         }
-        for td in list_tools(namespace)
-    ]
+        if td.tags:
+            fn["metadata"] = {"tags": list(td.tags)}
+        out.append({"type": "function", "function": fn})
+    return out
 
 
 def export_mcp_tools(namespace: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Export tools in MCP ``list_tools`` shape (name / description / inputSchema)."""
-    return [
-        {
+    """Export tools in MCP ``list_tools`` shape (name / description / inputSchema).
+
+    Includes the phase ``tags`` so agents can filter by planner/validator/programmer.
+    """
+    out: List[Dict[str, Any]] = []
+    for td in list_tools(namespace):
+        entry: Dict[str, Any] = {
             "name": td.name,
             "description": td.description,
             "inputSchema": td.schema,
         }
-        for td in list_tools(namespace)
-    ]
+        if td.tags:
+            entry["tags"] = list(td.tags)
+        out.append(entry)
+    return out

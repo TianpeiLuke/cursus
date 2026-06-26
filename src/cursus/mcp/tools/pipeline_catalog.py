@@ -42,7 +42,25 @@ def _recommend(args: Dict[str, Any]) -> ToolResult:
         return ToolResult.failure(
             result.get("message", "recommendation failed"), code="invalid_input"
         )
-    return ToolResult.success(result, total_matches=result.get("total_matches"))
+    # Surface the catalog's own "next_step" guidance as a structured next step: once a
+    # candidate is chosen, the agent fetches its config guidance then compiles.
+    next_steps = [
+        {
+            "tool": "pipeline_catalog.config_guidance",
+            "when": "after choosing a recommended dag_id",
+            "why": "get prerequisites + the config fields that DAG needs",
+            "args_hint": {"dag_id": "<chosen dag_id>"},
+        },
+        {
+            "tool": "pipeline_catalog.get_dag",
+            "when": "to inspect a candidate's nodes/edges before committing",
+            "why": "see the topology you would compile",
+            "args_hint": {"dag_id": "<chosen dag_id>"},
+        },
+    ]
+    return ToolResult.success(
+        result, total_matches=result.get("total_matches"), next_steps=next_steps
+    )
 
 
 # ---------------------------------------------------------------------------

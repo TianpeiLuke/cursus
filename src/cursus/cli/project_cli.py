@@ -25,7 +25,7 @@ from typing import Optional
 
 import click
 
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -61,11 +61,17 @@ def list_projects(root: Optional[str], format: str):
         click.echo(
             "❌ --root is required for 'list' (the directory to scan).", err=True
         )
-        return 1
+        raise SystemExit(1)
 
-    projects = discover_pipeline_projects(root=root)
+    fmt = format.lower()
+    try:
+        projects = discover_pipeline_projects(root=root)
+    except Exception as e:
+        click.echo(f"❌ Failed to discover projects under {root}: {e}", err=True)
+        logger.error("Project discovery error", exc_info=True)
+        raise SystemExit(1)
 
-    if format == "json":
+    if fmt == "json":
         click.echo(json.dumps([p.to_dict() for p in projects], indent=2))
         return 0
 
@@ -110,13 +116,19 @@ def show_project(name: str, root: Optional[str], format: str):
     """
     from ..core.utils import discover_pipeline_projects
 
-    matches = discover_pipeline_projects(root=root, names=[name])
+    fmt = format.lower()
+    try:
+        matches = discover_pipeline_projects(root=root, names=[name])
+    except Exception as e:
+        click.echo(f"❌ Failed to discover project '{name}': {e}", err=True)
+        logger.error("Project discovery error", exc_info=True)
+        raise SystemExit(1)
     if not matches:
         click.echo(f"❌ Pipeline project '{name}' not found.", err=True)
-        return 1
+        raise SystemExit(1)
     info = matches[0]
 
-    if format == "json":
+    if fmt == "json":
         click.echo(json.dumps(info.to_dict(), indent=2))
         return 0
 

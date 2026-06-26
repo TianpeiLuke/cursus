@@ -19,6 +19,7 @@ from typing import Any, Dict, List
 
 from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
+from .shared import resolve_dag as _build_dag  # canonical DAG resolver
 
 
 # ---------------------------------------------------------------------------
@@ -60,52 +61,6 @@ def _clean_requirements(reqs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             }
         )
     return cleaned
-
-
-def _build_dag(args: Dict[str, Any]):
-    """
-    Build a ``PipelineDAG`` from the ``dag`` argument.
-
-    Accepts either:
-      - ``{"nodes": [...], "edges": [[src, dst], ...]}`` (flat form), or
-      - ``{"dag": {"nodes": [...], "edges": [...]}}`` (serializer/wrapped form).
-
-    Raises ``ToolError(code="invalid_input")`` on a malformed DAG.
-    """
-    from ...api.dag.base_dag import PipelineDAG
-
-    dag_arg = args.get("dag")
-    if not isinstance(dag_arg, dict):
-        raise ToolError(
-            "'dag' must be an object with 'nodes' and 'edges'",
-            code="invalid_input",
-        )
-
-    # Unwrap the serializer form {"dag": {...}} if present.
-    body = dag_arg.get("dag") if isinstance(dag_arg.get("dag"), dict) else dag_arg
-
-    nodes = body.get("nodes")
-    edges = body.get("edges", [])
-    if not isinstance(nodes, list) or not nodes:
-        raise ToolError(
-            "'dag.nodes' must be a non-empty list of step names",
-            code="invalid_input",
-        )
-    if not isinstance(edges, list):
-        raise ToolError(
-            "'dag.edges' must be a list of [src, dst] pairs", code="invalid_input"
-        )
-
-    norm_edges = []
-    for edge in edges:
-        if not isinstance(edge, (list, tuple)) or len(edge) != 2:
-            raise ToolError(
-                f"invalid edge {edge!r}; expected a [src, dst] pair",
-                code="invalid_input",
-            )
-        norm_edges.append((edge[0], edge[1]))
-
-    return PipelineDAG(nodes=list(nodes), edges=norm_edges)
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +257,15 @@ def _merge_save(args: Dict[str, Any]) -> ToolResult:
         details={
             "engine_api": "cursus.core.config_fields.merge_and_save_configs",
             "reason": "requires live Pydantic config objects, not JSON-serializable input",
+        },
+        remedy={
+            "suggested_tools": ["config.requirements"],
+            "fix_action": (
+                "Use config.requirements to learn the fields a DAG needs, then build the "
+                "configs in-process with DAGConfigFactory and call "
+                "cursus.core.config_fields.merge_and_save_configs directly — this step is "
+                "not expressible over the stateless JSON tool boundary."
+            ),
         },
     )
 

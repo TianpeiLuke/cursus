@@ -1,136 +1,53 @@
-"""Command-line interfaces for the Cursus package."""
+"""Command-line interface for the Cursus package.
 
-import sys
-import argparse
+A single root ``click`` group composes the subcommand groups defined in the sibling
+modules. Install the package to get a ``cursus`` console command (see ``[project.scripts]``
+in pyproject.toml); ``python -m cursus.cli`` works too.
 
-# Import all CLI modules
-from .alignment_cli import main as alignment_main
-from .catalog_cli import main as catalog_main
-from .compile_cli import main as compile_main
-from .exec_doc_cli import main as exec_doc_main
-from .project_cli import main as projects_main
-from .registry_cli import main as registry_main
+    cursus --help
+    cursus catalog list --framework xgboost
+    cursus compile -d dag.json -c config.json
+    cursus projects list --root ./projects
+"""
 
-__all__ = ["main"]
+import click
+
+from .alignment_cli import alignment
+from .catalog_cli import catalog_cli
+from .compile_cli import compile_pipeline
+from .config_cli import config_cli
+from .dag_cli import dag_cli
+from .exec_doc_cli import exec_doc_cli
+from .mcp_cli import mcp_cli
+from .pipeline_catalog_cli import pipeline_catalog_cli
+from .project_cli import projects_cli
+from .registry_cli import registry_cli
+from .validate_cli import validate_cli
+
+__all__ = ["cli", "main"]
 
 
-def main():
-    """Main CLI entry point - dispatcher for all Cursus CLI tools."""
-    parser = argparse.ArgumentParser(
-        prog="cursus.cli",
-        description="Cursus CLI - Pipeline development and validation tools",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Available commands:
-  alignment       - Alignment validation tools
-  catalog         - Step catalog management
-  compile         - Compile DAG and config to SageMaker pipeline
-  exec-doc        - Generate execution documents from DAG and config
-  projects        - Discover and inspect Cursus pipeline projects
-  registry        - Registry management tools
+@click.group()
+@click.version_option(package_name="amzn-cursus", message="cursus %(version)s")
+def cli():
+    """Cursus — specification-driven SageMaker pipeline development and validation."""
 
-Examples:
 
-  # Pipeline Compilation - Compile DAG + config to SageMaker pipeline
-  python -m cursus.cli compile -d dag.json -c config.json
-  python -m cursus.cli compile -d dag.json -c config.json --upsert
-  python -m cursus.cli compile -d dag.json -c config.json --upsert --start
-  python -m cursus.cli compile -d dag.json -c config.json -o pipeline_def.json
-  python -m cursus.cli compile -d dag.json -c config.json --validate-only
+# Register each subcommand group/command under its canonical name. The objects already
+# declare their own name= where it differs from the function name, so add_command()
+# composes them natively (no argparse shim, no sys.argv mutation).
+cli.add_command(alignment, name="alignment")
+cli.add_command(catalog_cli, name="catalog")
+cli.add_command(compile_pipeline, name="compile")
+cli.add_command(config_cli, name="config")
+cli.add_command(dag_cli, name="dag")
+cli.add_command(exec_doc_cli, name="exec-doc")
+cli.add_command(mcp_cli, name="mcp")
+cli.add_command(pipeline_catalog_cli, name="pipeline-catalog")
+cli.add_command(projects_cli, name="projects")
+cli.add_command(registry_cli, name="registry")
+cli.add_command(validate_cli, name="validate")
 
-  # Execution Document Generation - Generate execution docs from DAG and config
-  python -m cursus.cli exec-doc generate -d dag.json -c config.json
-  python -m cursus.cli exec-doc generate -d dag.json -c config.json -o my_exec_doc.json
-  python -m cursus.cli exec-doc generate -d dag.json -c config.json --template base_template.json
-  python -m cursus.cli exec-doc generate -d dag.json -c config.json --format yaml
-  python -m cursus.cli exec-doc generate -d dag.json -c config.json --role arn:aws:iam::123:role/MyRole
-
-  # Step Catalog - Discover and manage steps
-  python -m cursus.cli catalog list --framework xgboost --limit 10
-  python -m cursus.cli catalog search "training" --job-type validation
-  python -m cursus.cli catalog show XGBoostTraining --show-components
-  python -m cursus.cli catalog frameworks --format json
-  python -m cursus.cli catalog discover --workspace-dir /path/to/workspace
-
-  # Registry Management - Workspace and step validation
-  python -m cursus.cli registry init-workspace my_developer --template advanced
-  python -m cursus.cli registry list-steps --workspace my_developer --conflicts-only
-  python -m cursus.cli registry validate-registry --check-conflicts
-  python -m cursus.cli registry resolve-step XGBoostTraining --workspace my_developer
-  python -m cursus.cli registry validate-step-definition --name MyStep --auto-correct
-
-  # Alignment Validation - Ensure component consistency
-  python -m cursus.cli alignment validate --step XGBoostTraining --check-all-components
-  python -m cursus.cli alignment report --workspace my_workspace --format json
-
-  # Pipeline Projects - Discover and inspect projects under a root
-  python -m cursus.cli projects list --root ./projects
-  python -m cursus.cli projects show rnr_pytorch_bedrock --root ./projects
-  python -m cursus.cli projects list --root ./projects --format json
-
-For help with a specific command:
-  python -m cursus.cli <command> --help
-
-For detailed command options:
-  python -m cursus.cli catalog --help
-  python -m cursus.cli pipeline --help
-  python -m cursus.cli registry --help
-        """,
-    )
-
-    parser.add_argument(
-        "command",
-        choices=[
-            "alignment",
-            "catalog",
-            "compile",
-            "exec-doc",
-            "projects",
-            "registry",
-        ],
-        help="CLI command to run",
-    )
-
-    parser.add_argument(
-        "args",
-        nargs=argparse.REMAINDER,
-        help="Arguments to pass to the selected command",
-    )
-
-    # Parse only the first argument to get the command
-    if len(sys.argv) < 2:
-        parser.print_help()
-        return 1
-
-    args = parser.parse_args()
-
-    # Modify sys.argv to pass remaining arguments to the selected CLI
-    original_argv = sys.argv[:]
-    sys.argv = [f"cursus.cli.{args.command}"] + args.args
-
-    try:
-        # Route to appropriate CLI module
-        if args.command == "alignment":
-            return alignment_main()
-        elif args.command == "catalog":
-            return catalog_main()
-        elif args.command == "compile":
-            return compile_main()
-        elif args.command == "exec-doc":
-            return exec_doc_main()
-        elif args.command == "projects":
-            return projects_main()
-        elif args.command == "registry":
-            return registry_main()
-        else:
-            parser.print_help()
-            return 1
-    except SystemExit as e:
-        # Preserve exit codes from sub-commands
-        return e.code
-    except Exception as e:
-        print(f"Error running {args.command}: {e}")
-        return 1
-    finally:
-        # Restore original sys.argv
-        sys.argv = original_argv
+# Backward-compat shim: `from cursus.cli import main` and `python -m cursus.cli` keep
+# working for one release. Kept thin so it can be removed later.
+main = cli

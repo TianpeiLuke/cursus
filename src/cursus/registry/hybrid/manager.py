@@ -114,15 +114,16 @@ class UnifiedRegistryManager:
             return current_file.parent.parent.parent  # hybrid -> registry -> cursus
 
     def _load_core_registry(self):
-        """Load core registry from original step names to avoid circular imports."""
+        """Load the core registry from the base step-name leaf to avoid circular imports."""
         from ..exceptions import RegistryLoadError
 
         try:
-            # Import directly from step_names_original to avoid circular imports
-            from ..step_names_original import STEP_NAMES as ORIGINAL_STEP_NAMES
+            # Import directly from the base leaf (step_names_base) to avoid the circular
+            # import with the step_names.py access layer.
+            from ..step_names_base import STEP_NAMES as BASE_STEP_NAMES
 
             # Convert to StepDefinition objects
-            for step_name, step_info in ORIGINAL_STEP_NAMES.items():
+            for step_name, step_info in BASE_STEP_NAMES.items():
                 step_def = from_legacy_format(
                     step_name, step_info, registry_type="core", workspace_id=None
                 )

@@ -47,6 +47,14 @@ class ToolResult:
         code: Machine-readable error code on failure (e.g. ``"not_found"``,
             ``"invalid_input"``, ``"internal_error"``).
         warnings: Non-fatal messages an agent may surface or reason about.
+        next_steps: Optional in-band guidance for an agent on a *successful* result —
+            a list of ``{"tool", "when", "why"}`` (``"args_hint"`` optional) entries
+            naming the tool(s) the agent would typically call next. Lets the golden
+            path live on the result instead of in the agent's prompt.
+        remedy: Optional in-band recovery hint on a *failure* —
+            ``{"suggested_tools": [...], "fix_action": str}`` naming the tool(s) or
+            action that typically resolves this error, so the agent does not have to
+            reverse-engineer a remedy from the bare ``code``.
         meta: Optional side-band info (tool name, timings, counts) — never required
             for correctness.
     """
@@ -56,6 +64,8 @@ class ToolResult:
     error: Optional[str] = None
     code: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
+    next_steps: List[Dict[str, Any]] = field(default_factory=list)
+    remedy: Optional[Dict[str, Any]] = None
     meta: Dict[str, Any] = field(default_factory=dict)
 
     # --- constructors ---
@@ -65,9 +75,16 @@ class ToolResult:
         cls,
         data: Any = None,
         warnings: Optional[List[str]] = None,
+        next_steps: Optional[List[Dict[str, Any]]] = None,
         **meta: Any,
     ) -> "ToolResult":
-        return cls(ok=True, data=data, warnings=list(warnings or []), meta=dict(meta))
+        return cls(
+            ok=True,
+            data=data,
+            warnings=list(warnings or []),
+            next_steps=list(next_steps or []),
+            meta=dict(meta),
+        )
 
     @classmethod
     def failure(
@@ -76,6 +93,7 @@ class ToolResult:
         code: str = "tool_error",
         details: Optional[Dict[str, Any]] = None,
         warnings: Optional[List[str]] = None,
+        remedy: Optional[Dict[str, Any]] = None,
     ) -> "ToolResult":
         meta: Dict[str, Any] = {}
         if details:
@@ -85,6 +103,7 @@ class ToolResult:
             error=message,
             code=code,
             warnings=list(warnings or []),
+            remedy=remedy,
             meta=meta,
         )
 
@@ -95,9 +114,13 @@ class ToolResult:
         out: Dict[str, Any] = {"ok": self.ok}
         if self.ok:
             out["data"] = self.data
+            if self.next_steps:
+                out["next_steps"] = self.next_steps
         else:
             out["error"] = self.error
             out["code"] = self.code
+            if self.remedy:
+                out["remedy"] = self.remedy
         if self.warnings:
             out["warnings"] = self.warnings
         if self.meta:

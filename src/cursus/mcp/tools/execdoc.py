@@ -17,62 +17,7 @@ from typing import Any, Dict, List
 
 from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
-
-
-def _build_dag(args: Dict[str, Any]):
-    """
-    Build a PipelineDAG from the tool args.
-
-    Accepts either:
-      - ``dag_file``: path to a serialized DAG JSON file (loaded via
-        ``import_dag_from_json``), or
-      - ``dag``: an inline object ``{"nodes": [...], "edges": [[src, dst], ...]}``.
-
-    Raises ToolError on invalid/missing input. Returns a PipelineDAG instance.
-    """
-    dag_file = args.get("dag_file")
-    inline_dag = args.get("dag")
-
-    if dag_file:
-        from ...api.dag.pipeline_dag_serializer import import_dag_from_json
-
-        try:
-            return import_dag_from_json(dag_file)
-        except FileNotFoundError as exc:
-            raise ToolError(str(exc), code="not_found")
-        except (ValueError, IOError) as exc:
-            raise ToolError(
-                f"failed to load DAG from '{dag_file}': {exc}", code="invalid_input"
-            )
-
-    if inline_dag is not None:
-        if not isinstance(inline_dag, dict):
-            raise ToolError(
-                "'dag' must be an object with 'nodes' and 'edges'", code="invalid_input"
-            )
-        from ...api.dag.base_dag import PipelineDAG
-
-        nodes = inline_dag.get("nodes")
-        if not isinstance(nodes, list) or not all(isinstance(n, str) for n in nodes):
-            raise ToolError(
-                "'dag.nodes' must be a list of step-name strings", code="invalid_input"
-            )
-        raw_edges = inline_dag.get("edges", []) or []
-        if not isinstance(raw_edges, list):
-            raise ToolError(
-                "'dag.edges' must be a list of [src, dst] pairs", code="invalid_input"
-            )
-        edges: List[tuple] = []
-        for edge in raw_edges:
-            if not isinstance(edge, (list, tuple)) or len(edge) != 2:
-                raise ToolError(
-                    f"invalid edge {edge!r}: expected a [src, dst] pair",
-                    code="invalid_input",
-                )
-            edges.append((edge[0], edge[1]))
-        return PipelineDAG(nodes=list(nodes), edges=edges)
-
-    raise ToolError("provide either 'dag_file' or inline 'dag'", code="invalid_input")
+from .shared import resolve_dag as _build_dag  # canonical DAG resolver
 
 
 def _generate(args: Dict[str, Any]) -> ToolResult:

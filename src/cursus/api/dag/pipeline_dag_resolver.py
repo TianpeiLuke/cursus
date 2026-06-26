@@ -14,7 +14,6 @@ from ...core.base.step_interface import StepInterface, ContractSection
 from ...step_catalog.adapters.config_resolver import (
     StepConfigResolverAdapter as StepConfigResolver,
 )
-from ...core.compiler.exceptions import ConfigurationError
 from ...registry.step_names import (
     get_canonical_name_from_file_name,
 )
@@ -139,6 +138,11 @@ class PipelineDAGResolver:
         # Resolve step configs if available
         step_configs = {}
         if self.config_resolver and self.available_configs:
+            # Imported lazily (not at module scope) to avoid a circular import:
+            # core.compiler.__init__ imports the assembler, which imports api.dag, which
+            # would re-enter core.compiler before it finished initializing.
+            from ...core.compiler.exceptions import ConfigurationError
+
             try:
                 logger.info(
                     f"Resolving step configurations for {len(execution_order)} nodes"

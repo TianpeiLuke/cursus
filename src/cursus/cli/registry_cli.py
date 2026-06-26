@@ -8,12 +8,11 @@ This module provides command-line tools for:
 - Detecting and resolving conflicts
 """
 
-import os
-import sys
+import shutil
 import click
 import logging
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -67,7 +66,7 @@ def init_workspace(
             click.echo(
                 "   Workspace ID must contain only alphanumeric characters, hyphens, and underscores"
             )
-            return
+            raise SystemExit(1)
 
         # Determine workspace path
         if not workspace_path:
@@ -79,7 +78,7 @@ def init_workspace(
         if workspace_dir.exists() and not force:
             click.echo(f"❌ Workspace already exists: {workspace_path}")
             click.echo("   Use --force to overwrite or choose a different path")
-            return
+            raise SystemExit(1)
 
         click.echo(f"🚀 Initializing developer workspace: {workspace_id}")
         click.echo(f"📁 Workspace path: {workspace_path}")
@@ -112,7 +111,7 @@ def init_workspace(
         click.echo(f"   1. Edit {registry_file} to add your custom steps")
         click.echo(f"   2. Implement your step components in src/cursus_dev/steps/")
         click.echo(
-            f"   3. Test with: python -m cursus.cli.registry validate-registry --workspace {workspace_id}"
+            f"   3. Test with: cursus registry validate-registry --workspace {workspace_id}"
         )
         click.echo(
             f"   4. Set workspace context: export CURSUS_WORKSPACE_ID={workspace_id}"
@@ -122,8 +121,6 @@ def init_workspace(
         click.echo(f"❌ Failed to create developer workspace: {e}")
         # Cleanup on failure
         if workspace_dir.exists():
-            import shutil
-
             shutil.rmtree(workspace_dir, ignore_errors=True)
             click.echo("🧹 Cleaned up partial workspace creation")
 
@@ -169,7 +166,7 @@ def list_steps(workspace: Optional[str], conflicts_only: bool, include_source: b
 
             except ImportError:
                 click.echo("❌ Hybrid registry not available - cannot check conflicts")
-                return
+                raise SystemExit(1)
         else:
             # Show all steps
             steps = get_all_step_names(effective_workspace)
@@ -692,20 +689,20 @@ config_class = get_config_class_name("MyCustomStep")  # Uses your local registry
 
 ```bash
 # List steps in this workspace
-python -m cursus.cli.registry list-steps --workspace {workspace_id}
+cursus registry list-steps --workspace {workspace_id}
 
 # Validate registry
-python -m cursus.cli.registry validate-registry --workspace {workspace_id}
+cursus registry validate-registry --workspace {workspace_id}
 
 # Check for conflicts
-python -m cursus.cli.registry validate-registry --workspace {workspace_id} --check-conflicts
+cursus registry validate-registry --workspace {workspace_id} --check-conflicts
 ```
 
 ## Support
 
 For questions or issues, validate your setup:
 ```bash
-python -m cursus.cli.registry validate-registry --workspace {workspace_id}
+cursus registry validate-registry --workspace {workspace_id}
 ```
 """
 

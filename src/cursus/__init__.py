@@ -30,13 +30,14 @@ Advanced Usage:
     >>> pipeline = compile_dag_to_pipeline(dag, config_path="config.yaml")
 """
 
+
 # Package metadata — pyproject.toml is the single source of truth.
-# - Version: VERSION file at repo root is checked first (live source of truth,
-#   declared in pyproject as `version = {file = "VERSION"}`), so an updated
-#   VERSION wins over stale installed metadata. Falls back to importlib.metadata
-#   when running an installed wheel without the source tree.
-# - Title / description / author: read from importlib.metadata, which picks
-#   them up from pyproject.toml at install time. No values are hardcoded here.
+# - Title / version / description / author are read from importlib.metadata, which
+#   picks them up from pyproject.toml at install time. Nothing is hardcoded here, so
+#   __version__ can never drift to a stale literal.
+# - A VERSION file at the package root, if present, takes priority for the version
+#   (live source of truth in dev mode, so an updated VERSION wins over stale installed
+#   metadata). amzn-cursus normally has no VERSION file and uses the pyproject version.
 def _resolve_metadata():
     from pathlib import Path
 
@@ -45,7 +46,7 @@ def _resolve_metadata():
     try:
         from importlib.metadata import metadata as _meta_lookup
 
-        _m = _meta_lookup("cursus")
+        _m = _meta_lookup("amzn-cursus")
         title = _m.get("Name")
         version = _m.get("Version")
         description = _m.get("Summary")

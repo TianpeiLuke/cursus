@@ -17,7 +17,7 @@ import json
 import click
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any
 
 from ..validation.alignment.unified_alignment_tester import UnifiedAlignmentTester
 # Note: AlignmentScorer removed in refactored system - scoring integrated into UnifiedAlignmentTester
@@ -217,9 +217,9 @@ def _make_json_serializable(obj: Any) -> Any:
 
 
 def save_report(
-    script_name: str, results: Dict[str, Any], output_dir: Path, format: str
+    script_name: str, results: Dict[str, Any], output_dir: Path, format: str = "json"
 ) -> None:
-    """Save validation results to file."""
+    """Save validation results to a JSON file."""
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if format == "json":
@@ -249,151 +249,6 @@ def save_report(
                     f"❌ Failed to save even simplified JSON report for {script_name}: {e2}"
                 )
 
-    elif format == "html":
-        output_file = output_dir / f"{script_name}_alignment_report.html"
-        html_content = generate_html_report(script_name, results)
-        with open(output_file, "w", encoding="utf-8") as f:
-            f.write(html_content)
-        click.echo(f"🌐 HTML report saved: {output_file}")
-
-
-def generate_html_report(script_name: str, results: Dict[str, Any]) -> str:
-    """Generate HTML report for validation results."""
-    status = results.get("overall_status", "UNKNOWN")
-    status_class = "passing" if status == "PASSING" else "failing"
-    timestamp = results.get("metadata", {}).get("validation_timestamp", "Unknown")
-
-    # Count issues by severity
-    total_issues = 0
-    critical_issues = 0
-    error_issues = 0
-    warning_issues = 0
-
-    for level_num in range(1, 5):
-        level_key = f"level{level_num}"
-        level_result = results.get(level_key, {})
-        issues = level_result.get("issues", [])
-        total_issues += len(issues)
-
-        for issue in issues:
-            severity = issue.get("severity", "ERROR")
-            if severity == "CRITICAL":
-                critical_issues += 1
-            elif severity == "ERROR":
-                error_issues += 1
-            elif severity == "WARNING":
-                warning_issues += 1
-
-    # Generate level sections
-    level_sections = ""
-    for level_num, level_name in enumerate(
-        [
-            "Level 1: Script ↔ Contract",
-            "Level 2: Contract ↔ Specification",
-            "Level 3: Specification ↔ Dependencies",
-            "Level 4: Builder ↔ Configuration",
-        ],
-        1,
-    ):
-        level_key = f"level{level_num}"
-        level_result = results.get(level_key, {})
-        level_passed = level_result.get("passed", False)
-        level_issues = level_result.get("issues", [])
-
-        result_class = "test-passed" if level_passed else "test-failed"
-        status_text = "PASSED" if level_passed else "FAILED"
-
-        issues_html = ""
-        for issue in level_issues:
-            severity = issue.get("severity", "ERROR").lower()
-            message = issue.get("message", "No message")
-            recommendation = issue.get("recommendation", "")
-
-            issues_html += f"""
-            <div class="issue {severity}">
-                <strong>{issue.get("severity", "ERROR")}:</strong> {message}
-                {f"<br><em>Recommendation: {recommendation}</em>" if recommendation else ""}
-            </div>
-            """
-
-        level_sections += f"""
-        <div class="test-result {result_class}">
-            <h4>{level_name}</h4>
-            <p>Status: {status_text}</p>
-            {issues_html}
-        </div>
-        """
-
-    html_template = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>Alignment Validation Report - {script_name}</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; }}
-        .header {{ background-color: #f0f0f0; padding: 20px; border-radius: 5px; }}
-        .summary {{ display: flex; justify-content: space-around; margin: 20px 0; }}
-        .metric {{ text-align: center; padding: 10px; }}
-        .metric h3 {{ margin: 0; font-size: 2em; }}
-        .metric p {{ margin: 5px 0; color: #666; }}
-        .passing {{ color: #28a745; }}
-        .failing {{ color: #dc3545; }}
-        .warning {{ color: #ffc107; }}
-        .level-section {{ margin: 20px 0; border: 1px solid #ddd; border-radius: 5px; }}
-        .level-header {{ background-color: #e9ecef; padding: 10px; font-weight: bold; }}
-        .test-result {{ padding: 10px; border-bottom: 1px solid #eee; }}
-        .test-passed {{ border-left: 4px solid #28a745; }}
-        .test-failed {{ border-left: 4px solid #dc3545; }}
-        .issue {{ margin: 5px 0; padding: 5px; background-color: #f8f9fa; border-radius: 3px; }}
-        .critical {{ border-left: 4px solid #dc3545; }}
-        .error {{ border-left: 4px solid #fd7e14; }}
-        .warning {{ border-left: 4px solid #ffc107; }}
-        .info {{ border-left: 4px solid #17a2b8; }}
-        .metadata {{ margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Alignment Validation Report</h1>
-        <h2>Script: {script_name}</h2>
-        <p>Generated: {timestamp}</p>
-        <p>Overall Status: <span class="{status_class}">{status}</span></p>
-    </div>
-    
-    <div class="summary">
-        <div class="metric">
-            <h3>{total_issues}</h3>
-            <p>Total Issues</p>
-        </div>
-        <div class="metric">
-            <h3>{critical_issues}</h3>
-            <p>Critical Issues</p>
-        </div>
-        <div class="metric">
-            <h3>{error_issues}</h3>
-            <p>Error Issues</p>
-        </div>
-        <div class="metric">
-            <h3>{warning_issues}</h3>
-            <p>Warning Issues</p>
-        </div>
-    </div>
-    
-    <div class="level-section">
-        <div class="level-header">Alignment Validation Results</div>
-        {level_sections}
-    </div>
-    
-    <div class="metadata">
-        <h3>Metadata</h3>
-        <p><strong>Script Path:</strong> {results.get("metadata", {}).get("script_path", "Unknown")}</p>
-        <p><strong>Validation Timestamp:</strong> {timestamp}</p>
-        <p><strong>Validator Version:</strong> {results.get("metadata", {}).get("validator_version", "Unknown")}</p>
-    </div>
-</body>
-</html>"""
-
-    return html_template
-
 
 @click.group()
 @click.pass_context
@@ -421,22 +276,10 @@ def alignment(ctx):
     help="Workspace directories to include in validation",
 )
 @click.option(
-    "--level3-mode",
-    type=click.Choice(["strict", "relaxed", "permissive"]),
-    default="relaxed",
-    help="Level 3 validation mode",
-)
-@click.option(
     "--output-dir",
     "-o",
     type=click.Path(path_type=Path),
-    help="Output directory for reports",
-)
-@click.option(
-    "--format",
-    type=click.Choice(["json", "html", "both"]),
-    default="json",
-    help="Output format for reports",
+    help="Output directory for the JSON report",
 )
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
 @click.option("--show-scoring", is_flag=True, help="Show alignment scoring information")
@@ -445,9 +288,7 @@ def validate(
     ctx,
     script_name,
     workspace_dirs,
-    level3_mode,
     output_dir,
-    format,
     verbose,
     show_scoring,
 ):
@@ -458,13 +299,12 @@ def validate(
 
     Example:
         cursus alignment validate currency_conversion --verbose
-        cursus alignment validate dummy_training --output-dir ./reports --format html
+        cursus alignment validate dummy_training --output-dir ./reports
     """
     if verbose:
         click.echo(f"🔍 Validating script: {script_name}")
         if workspace_dirs:
             click.echo(f"📁 Workspace directories: {list(workspace_dirs)}")
-        click.echo(f"⚙️  Level 3 validation mode: {level3_mode}")
 
     try:
         # Initialize the unified alignment tester with workspace support
@@ -479,19 +319,15 @@ def validate(
             "script_name": script_name,
             "validation_timestamp": datetime.now().isoformat(),
             "validator_version": "2.0.0",
-            "level3_mode": level3_mode,
             "workspace_dirs": workspace_dir_list or [],
         }
 
         # Print results
         print_validation_summary(results, verbose, show_scoring)
 
-        # Save reports if output directory specified
+        # Save JSON report if output directory specified
         if output_dir:
-            if format in ["json", "both"]:
-                save_report(script_name, results, output_dir, "json")
-            if format in ["html", "both"]:
-                save_report(script_name, results, output_dir, "html")
+            save_report(script_name, results, output_dir, "json")
 
         # Return appropriate exit code - fix status value check
         status = results.get("overall_status", "UNKNOWN")
@@ -524,24 +360,13 @@ def validate(
     help="Workspace directories to include in validation",
 )
 @click.option(
-    "--level3-mode",
-    type=click.Choice(["strict", "relaxed", "permissive"]),
-    default="relaxed",
-    help="Level 3 validation mode",
-)
-@click.option(
     "--output-dir",
     "-o",
     type=click.Path(path_type=Path),
-    help="Output directory for reports",
-)
-@click.option(
-    "--format",
-    type=click.Choice(["json", "html", "both"]),
-    default="json",
-    help="Output format for reports",
+    help="Output directory for JSON reports",
 )
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
+@click.option("--show-scoring", is_flag=True, help="Show alignment scoring information")
 @click.option(
     "--continue-on-error",
     is_flag=True,
@@ -551,10 +376,9 @@ def validate(
 def validate_all(
     ctx,
     workspace_dirs,
-    level3_mode,
     output_dir,
-    format,
     verbose,
+    show_scoring,
     continue_on_error,
 ):
     """
@@ -564,14 +388,13 @@ def validate_all(
     comprehensive alignment validation for each one, generating detailed reports.
 
     Example:
-        cursus alignment validate-all --output-dir ./reports --format both --verbose
+        cursus alignment validate-all --output-dir ./reports --verbose
     """
     try:
         click.echo("🚀 Starting Comprehensive Script Alignment Validation")
         if verbose:
             if workspace_dirs:
                 click.echo(f"📁 Workspace directories: {list(workspace_dirs)}")
-            click.echo(f"⚙️  Level 3 validation mode: {level3_mode}")
             if output_dir:
                 click.echo(f"📁 Output directory: {output_dir}")
 
@@ -631,21 +454,15 @@ def validate_all(
                     "script_name": script_name,
                     "validation_timestamp": datetime.now().isoformat(),
                     "validator_version": "2.0.0",
-                    "level3_mode": level3_mode,
                     "workspace_dirs": workspace_dir_list or [],
                 }
 
                 # Print results
-                print_validation_summary(
-                    results, verbose, False
-                )  # show_scoring not defined in this scope
+                print_validation_summary(results, verbose, show_scoring)
 
-                # Save reports if output directory specified
+                # Save JSON report if output directory specified
                 if output_dir:
-                    if format in ["json", "both"]:
-                        save_report(script_name, results, output_dir, "json")
-                    if format in ["html", "both"]:
-                        save_report(script_name, results, output_dir, "html")
+                    save_report(script_name, results, output_dir, "json")
 
                 # Update summary - fix status value checks
                 status = results.get("overall_status", "UNKNOWN")
@@ -750,12 +567,6 @@ def validate_all(
     type=click.Path(exists=True),
     help="Workspace directories to include in validation",
 )
-@click.option(
-    "--level3-mode",
-    type=click.Choice(["strict", "relaxed", "permissive"]),
-    default="relaxed",
-    help="Level 3 validation mode",
-)
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed output")
 @click.pass_context
 def validate_level(
@@ -763,7 +574,6 @@ def validate_level(
     script_name,
     level,
     workspace_dirs,
-    level3_mode,
     verbose,
 ):
     """
@@ -791,7 +601,6 @@ def validate_level(
         if verbose:
             if workspace_dirs:
                 click.echo(f"📁 Workspace directories: {list(workspace_dirs)}")
-            click.echo(f"⚙️  Level 3 validation mode: {level3_mode}")
 
         # Initialize the unified alignment tester with workspace support
         workspace_dir_list = list(workspace_dirs) if workspace_dirs else []
@@ -881,14 +690,8 @@ def validate_level(
     type=click.Path(exists=True),
     help="Workspace directories to include in validation",
 )
-@click.option(
-    "--level3-mode",
-    type=click.Choice(["strict", "relaxed", "permissive"]),
-    default="relaxed",
-    help="Level 3 validation mode",
-)
 @click.pass_context
-def list_scripts(ctx, workspace_dirs, level3_mode):
+def list_scripts(ctx, workspace_dirs):
     """
     List all available scripts that can be validated.
 

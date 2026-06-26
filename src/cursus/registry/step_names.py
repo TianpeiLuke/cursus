@@ -130,10 +130,10 @@ def _create_fallback_manager():
 
     class FallbackManager:
         def __init__(self):
-            # Import original step names
-            from .step_names_original import STEP_NAMES as ORIGINAL_STEP_NAMES
+            # Import the base step-name registry (dependency-free leaf)
+            from .step_names_base import STEP_NAMES as BASE_STEP_NAMES
 
-            self._step_names = ORIGINAL_STEP_NAMES
+            self._step_names = BASE_STEP_NAMES
 
         def create_legacy_step_names_dict(
             self, workspace_id: str = None

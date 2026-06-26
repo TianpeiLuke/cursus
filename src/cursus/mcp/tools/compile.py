@@ -16,75 +16,16 @@ from typing import Any, Dict, List
 
 from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
+from .shared import (
+    resolve_dag as _resolve_dag,  # canonical DAG resolver
+    DAG_INPUT_PROPS,
+    CONFIG_INPUT_PROPS,
+)
 
 
 # ---------------------------------------------------------------------------
-# Helpers (not tools) — shared DAG-loading logic
+# Helpers (not tools)
 # ---------------------------------------------------------------------------
-
-
-def _resolve_dag(args: Dict[str, Any]) -> Any:
-    """
-    Build a ``PipelineDAG`` from either an inline ``dag`` JSON object or a ``dag_file``
-    path. Exactly one source must be supplied. Raises :class:`ToolError` on bad input.
-
-    Inline ``dag`` shape:  ``{"nodes": ["a", "b"], "edges": [["a", "b"]]}`` (edges
-    optional). A ``dag_file`` is read via the engine's ``import_dag_from_json``.
-    """
-    dag_file = args.get("dag_file")
-    inline = args.get("dag")
-
-    if dag_file and inline:
-        raise ToolError(
-            "provide either 'dag' (inline JSON) or 'dag_file' (path), not both",
-            code="invalid_input",
-        )
-    if not dag_file and not inline:
-        raise ToolError(
-            "must provide one of 'dag' (inline JSON) or 'dag_file' (path)",
-            code="invalid_input",
-        )
-
-    if dag_file:
-        import os
-
-        if not os.path.exists(dag_file):
-            raise ToolError(f"dag_file not found: {dag_file}", code="not_found")
-        from ...api.dag import import_dag_from_json
-
-        try:
-            return import_dag_from_json(dag_file)
-        except Exception as exc:  # noqa: BLE001 - surface as handled error
-            raise ToolError(
-                f"failed to load DAG from '{dag_file}': {exc}",
-                code="invalid_input",
-            )
-
-    # Inline DAG object -> PipelineDAG
-    if not isinstance(inline, dict):
-        raise ToolError(
-            "'dag' must be a JSON object with 'nodes' and optional 'edges'",
-            code="invalid_input",
-        )
-    nodes = inline.get("nodes")
-    if not isinstance(nodes, list) or not nodes:
-        raise ToolError(
-            "'dag.nodes' must be a non-empty list of step names",
-            code="invalid_input",
-        )
-    raw_edges = inline.get("edges", []) or []
-    edges: List[tuple] = []
-    for edge in raw_edges:
-        if not isinstance(edge, (list, tuple)) or len(edge) != 2:
-            raise ToolError(
-                f"invalid edge {edge!r}: each edge must be a [src, dst] pair",
-                code="invalid_input",
-            )
-        edges.append((edge[0], edge[1]))
-
-    from ...api.dag.base_dag import PipelineDAG
-
-    return PipelineDAG(nodes=list(nodes), edges=edges)
 
 
 def _require_config_exists(config_file: str) -> None:
@@ -113,7 +54,32 @@ def _validate(args: Dict[str, Any]) -> ToolResult:
     # ValidationResult is a pydantic BaseModel -> model_dump() is JSON-safe.
     data = result.model_dump()
     data["summary"] = result.summary()
-    return ToolResult.success(data, warnings=list(result.warnings or []))
+
+    # In-band guidance: where to go next depending on the validation outcome.
+    if getattr(result, "is_valid", False):
+        next_steps = [
+            {
+                "tool": "compile.dag",
+                "when": "the DAG is valid and you want to build the pipeline",
+                "why": "validation passed, so compilation should succeed",
+            }
+        ]
+    else:
+        next_steps = [
+            {
+                "tool": "compile.preview",
+                "when": "to see the node->config->builder mapping and ambiguities",
+                "why": "explains why nodes did not resolve",
+            },
+            {
+                "tool": "catalog.search",
+                "when": "a node has no matching config/builder",
+                "why": "find the correct step name for an unresolved node",
+            },
+        ]
+    return ToolResult.success(
+        data, warnings=list(result.warnings or []), next_steps=next_steps
+    )
 
 
 def _preview(args: Dict[str, Any]) -> ToolResult:
@@ -298,42 +264,11 @@ def _name(args: Dict[str, Any]) -> ToolResult:
 # Schema fragments shared across DAG-taking tools
 # ---------------------------------------------------------------------------
 
+# DAG (dag / dag_file) + config_file come from the canonical shared fragments so every
+# DAG-taking tool advertises the identical input contract; compile adds an optional role.
 _DAG_PROPS: Dict[str, Any] = {
-    "dag": {
-        "type": "object",
-        "description": (
-            'Inline DAG as JSON: {"nodes": ["step_a", "step_b"], '
-            '"edges": [["step_a", "step_b"]]}. Provide this OR \'dag_file\'.'
-        ),
-        "properties": {
-            "nodes": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Step names (one per DAG node).",
-            },
-            "edges": {
-                "type": "array",
-                "items": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 2,
-                    "maxItems": 2,
-                },
-                "description": "Directed dependency edges as [src, dst] pairs.",
-            },
-        },
-    },
-    "dag_file": {
-        "type": "string",
-        "description": (
-            "Path to a serialized DAG JSON file (loaded via import_dag_from_json). "
-            "Provide this OR inline 'dag'."
-        ),
-    },
-    "config_file": {
-        "type": "string",
-        "description": "Path to the configuration JSON file containing step configs.",
-    },
+    **DAG_INPUT_PROPS,
+    **CONFIG_INPUT_PROPS,
     "role": {
         "type": "string",
         "description": "Optional IAM role ARN for the SageMaker pipeline.",

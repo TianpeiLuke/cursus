@@ -121,7 +121,7 @@ def generate_exec_doc(
         except Exception as e:
             click.echo(f"❌ Failed to load DAG: {e}")
             logger.error(f"DAG loading error: {e}", exc_info=True)
-            return
+            raise SystemExit(1)
 
         # Step 2: Create or load base execution document
         click.echo(f"\n📋 Preparing execution document template")
@@ -135,7 +135,7 @@ def generate_exec_doc(
             except Exception as e:
                 click.echo(f"❌ Failed to load template: {e}")
                 logger.error(f"Template loading error: {e}", exc_info=True)
-                return
+                raise SystemExit(1)
         else:
             click.echo(f"  Auto-generating base template from DAG")
             execution_document = {
@@ -168,7 +168,7 @@ def generate_exec_doc(
         except Exception as e:
             click.echo(f"❌ Failed to initialize generator: {e}")
             logger.error(f"Generator initialization error: {e}", exc_info=True)
-            return
+            raise SystemExit(1)
 
         # Step 4: Fill execution document
         click.echo(f"\n🔄 Filling execution document")
@@ -200,7 +200,7 @@ def generate_exec_doc(
         except Exception as e:
             click.echo(f"❌ Failed to fill execution document: {e}")
             logger.error(f"Execution document generation error: {e}", exc_info=True)
-            return
+            raise SystemExit(1)
 
         # Step 5: Save output
         click.echo(f"\n💾 Saving execution document")
@@ -229,7 +229,7 @@ def generate_exec_doc(
         except Exception as e:
             click.echo(f"❌ Failed to save execution document: {e}")
             logger.error(f"Output saving error: {e}", exc_info=True)
-            return
+            raise SystemExit(1)
 
         # Success summary
         click.echo(f"\n✅ Execution document generation complete!")

@@ -15,6 +15,11 @@ from .base_dag import PipelineDAG
 
 logger = logging.getLogger(__name__)
 
+# Serialization schema version. Bump when the on-disk format changes incompatibly; readers
+# reject versions whose major component differs from a supported one.
+SCHEMA_VERSION = "1.0.0"
+_SUPPORTED_MAJOR_VERSIONS = {"1"}
+
 
 class PipelineDAGWriter:
     """
@@ -46,6 +51,7 @@ class PipelineDAGWriter:
             Dictionary with complete DAG representation including metadata
         """
         return {
+            "version": SCHEMA_VERSION,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "metadata": self.metadata,
             "dag": {
@@ -119,7 +125,7 @@ class PipelineDAGWriter:
             self.dag.topological_sort()
         except ValueError as e:
             logger.error(f"DAG validation failed: {e}")
-            raise
+            raise ValueError(f"DAG validation failed: {e}") from e
 
         # Check for empty nodes
         if not self.dag.nodes:
@@ -319,6 +325,7 @@ class PipelineDAGReader:
             data = json.load(f)
 
         return {
+            "version": data.get("version"),
             "created_at": data.get("created_at"),
             "metadata": data.get("metadata", {}),
             "statistics": data.get("statistics", {}),
@@ -333,8 +340,19 @@ class PipelineDAGReader:
             data: Dictionary to validate
 
         Raises:
-            ValueError: If data is invalid
+            ValueError: If data is invalid or its version is unsupported
         """
+        # Reject incompatible schema versions (by major component). A missing version is
+        # tolerated for backward compatibility with documents written before versioning.
+        version = data.get("version")
+        if version is not None:
+            major = str(version).split(".", 1)[0]
+            if major not in _SUPPORTED_MAJOR_VERSIONS:
+                raise ValueError(
+                    f"Unsupported version: {version!r} "
+                    f"(supported major versions: {sorted(_SUPPORTED_MAJOR_VERSIONS)})"
+                )
+
         # Check required fields
         if "dag" not in data:
             raise ValueError("Missing required field: 'dag'")

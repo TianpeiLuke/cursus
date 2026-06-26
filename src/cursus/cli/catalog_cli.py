@@ -9,13 +9,12 @@ This module provides command-line tools for:
 - Validating step catalog integrity
 """
 
-import os
-import sys
 import click
-import json
 import logging
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
+
+from ._shared import get_catalog, echo_json
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -34,9 +33,9 @@ def catalog_cli():
 @click.option("--framework", help="Filter by detected framework")
 @click.option(
     "--format",
-    type=click.Choice(["table", "json"]),
-    default="table",
-    help="Output format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
 )
 @click.option("--limit", type=int, help="Maximum number of results to show")
 def list_steps(
@@ -48,9 +47,7 @@ def list_steps(
 ):
     """List available steps with optional filtering."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
 
         # Get all steps
         steps = catalog.list_available_steps(workspace_id=workspace, job_type=job_type)
@@ -81,7 +78,7 @@ def list_steps(
                     "framework": framework,
                 },
             }
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n📂 Available Steps ({len(steps)} found):")
             click.echo("=" * 50)
@@ -125,17 +122,15 @@ def list_steps(
 @click.option("--job-type", help="Filter by job type")
 @click.option(
     "--format",
-    type=click.Choice(["table", "json"]),
-    default="table",
-    help="Output format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
 )
 @click.option("--limit", type=int, default=10, help="Maximum number of results")
 def search_steps(query: str, job_type: Optional[str], format: str, limit: int):
     """Search steps by name with fuzzy matching."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         results = catalog.search_steps(query, job_type=job_type)
 
         # Apply limit
@@ -155,12 +150,7 @@ def search_steps(query: str, job_type: Optional[str], format: str, limit: int):
                     }
                 )
 
-            click.echo(
-                json.dumps(
-                    {"query": query, "results": json_results, "total": len(results)},
-                    indent=2,
-                )
-            )
+            echo_json({"query": query, "results": json_results, "total": len(results)})
         else:
             click.echo(f"\n🔍 Search Results for '{query}' ({len(results)} found):")
             click.echo("=" * 60)
@@ -203,9 +193,7 @@ def search_steps(query: str, job_type: Optional[str], format: str, limit: int):
 def show_step(step_name: str, format: str, show_components: bool):
     """Show detailed information about a specific step."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         step_info = catalog.get_step_info(step_name)
 
         if not step_info:
@@ -236,7 +224,7 @@ def show_step(step_name: str, format: str, show_components: bool):
             if framework:
                 result["detected_framework"] = framework
 
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n📋 Step: {step_name}")
             click.echo("=" * (len(step_name) + 8))
@@ -293,9 +281,7 @@ def show_step(step_name: str, format: str, show_components: bool):
 def show_components(step_name: str, component_type: Optional[str], format: str):
     """Show components available for a specific step."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         step_info = catalog.get_step_info(step_name)
 
         if not step_info:
@@ -321,7 +307,7 @@ def show_components(step_name: str, component_type: Optional[str], format: str):
                         else None,
                     }
 
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n🔧 Components for {step_name}:")
             click.echo("=" * (len(step_name) + 16))
@@ -346,16 +332,14 @@ def show_components(step_name: str, component_type: Optional[str], format: str):
 @catalog_cli.command("frameworks")
 @click.option(
     "--format",
-    type=click.Choice(["table", "json"]),
-    default="table",
-    help="Output format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
 )
 def list_frameworks(format: str):
     """List detected frameworks across all steps."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         steps = catalog.list_available_steps()
 
         framework_counts = {}
@@ -372,7 +356,7 @@ def list_frameworks(format: str):
                 "frameworks": framework_counts,
                 "steps_by_framework": step_frameworks,
             }
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n🔧 Detected Frameworks ({len(framework_counts)} total):")
             click.echo("=" * 40)
@@ -401,16 +385,14 @@ def list_frameworks(format: str):
 @catalog_cli.command("workspaces")
 @click.option(
     "--format",
-    type=click.Choice(["table", "json"]),
-    default="table",
-    help="Output format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
 )
 def list_workspaces(format: str):
     """List available workspaces and their step counts."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         cross_workspace = catalog.discover_cross_workspace_components()
 
         if format == "json":
@@ -424,7 +406,7 @@ def list_workspaces(format: str):
                     "steps": steps,
                 }
 
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n🏢 Available Workspaces ({len(cross_workspace)} total):")
             click.echo("=" * 40)
@@ -465,13 +447,11 @@ def list_workspaces(format: str):
 def show_metrics(format: str):
     """Show step catalog performance metrics."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         metrics = catalog.get_metrics_report()
 
         if format == "json":
-            click.echo(json.dumps(metrics, indent=2))
+            echo_json(metrics)
         else:
             click.echo(f"\n📊 Step Catalog Metrics:")
             click.echo("=" * 25)
@@ -527,7 +507,7 @@ def discover_workspace(workspace_dir: Optional[str], format: str):
                 "discovered_steps": steps,
                 "total": len(steps),
             }
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n🔍 Discovery Results for {workspace_dir}:")
             click.echo("=" * 50)
@@ -556,7 +536,12 @@ def discover_workspace(workspace_dir: Optional[str], format: str):
 @catalog_cli.command("list-configs")
 @click.option("--project-id", help="Filter by project/workspace")
 @click.option("--framework", help="Filter by framework")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table")
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
+)
 @click.option("--show-fields", is_flag=True, help="Show field count for each config")
 def list_configs(
     project_id: Optional[str],
@@ -566,9 +551,7 @@ def list_configs(
 ):
     """List all configuration classes."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         config_classes = catalog.discover_config_classes(project_id)
 
         if format == "json":
@@ -576,7 +559,7 @@ def list_configs(
                 "config_classes": list(config_classes.keys()),
                 "total": len(config_classes),
             }
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n📋 Configuration Classes ({len(config_classes)} found):")
             click.echo("=" * 50)
@@ -596,7 +579,12 @@ def list_configs(
 @catalog_cli.command("list-builders")
 @click.option("--step-type", help="Filter by SageMaker step type")
 @click.option("--framework", help="Filter by framework")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table")
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
+)
 @click.option("--show-path", is_flag=True, help="Show file path")
 def list_builders(
     step_type: Optional[str],
@@ -606,9 +594,7 @@ def list_builders(
 ):
     """List all builder classes."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
 
         if step_type:
             builders = catalog.get_builders_by_step_type(step_type)
@@ -625,7 +611,7 @@ def list_builders(
 
         if format == "json":
             result = {"builders": list(builders.keys()), "total": len(builders)}
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n🔧 Builder Classes ({len(builders)} found):")
             click.echo("=" * 50)
@@ -659,7 +645,12 @@ def list_builders(
 @click.option(
     "--with-scripts-only", is_flag=True, help="Only show contracts with scripts"
 )
-@click.option("--format", type=click.Choice(["table", "json"]), default="table")
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
+)
 @click.option("--show-entry-points", is_flag=True, help="Show script entry points")
 def list_contracts(
     with_scripts_only: bool,
@@ -668,9 +659,7 @@ def list_contracts(
 ):
     """List all contract classes."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
 
         if with_scripts_only:
             contract_names = catalog.discover_contracts_with_scripts()
@@ -691,7 +680,7 @@ def list_contracts(
                 "total": len(contract_names),
                 "entry_points": entry_points if show_entry_points else {},
             }
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n📜 Contract Classes ({len(contract_names)} found):")
             click.echo("=" * 50)
@@ -709,7 +698,12 @@ def list_contracts(
 @catalog_cli.command("list-specs")
 @click.option("--job-type", help="Filter by job type")
 @click.option("--framework", help="Filter by framework")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table")
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
+)
 @click.option("--show-dependencies", is_flag=True, help="Show dependency count")
 def list_specs(
     job_type: Optional[str],
@@ -719,9 +713,7 @@ def list_specs(
 ):
     """List all specification classes."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         spec_names = catalog.list_steps_with_specs(job_type=job_type)
 
         if framework:
@@ -734,7 +726,7 @@ def list_specs(
 
         if format == "json":
             result = {"specifications": spec_names, "total": len(spec_names)}
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n📐 Specification Classes ({len(spec_names)} found):")
             click.echo("=" * 50)
@@ -757,7 +749,12 @@ def list_specs(
 
 @catalog_cli.command("list-scripts")
 @click.option("--project-id", help="Filter by project/workspace")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table")
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
+)
 @click.option("--show-path", is_flag=True, help="Show full file path")
 def list_scripts(
     project_id: Optional[str],
@@ -766,14 +763,12 @@ def list_scripts(
 ):
     """List all script files discovered."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         script_names = catalog.list_available_scripts()
 
         if format == "json":
             result = {"scripts": script_names, "total": len(script_names)}
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n📜 Script Files ({len(script_names)} found):")
             click.echo("=" * 50)
@@ -795,7 +790,12 @@ def list_scripts(
 @catalog_cli.command("search-field")
 @click.argument("field_name")
 @click.option("--field-type", help="Filter by field type (str, int, bool, dict, list)")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table")
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
+)
 @click.option("--show-default", is_flag=True, help="Show default values")
 def search_field(
     field_name: str,
@@ -805,9 +805,7 @@ def search_field(
 ):
     """Find steps with configs containing a specific field."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         config_classes = catalog.discover_config_classes()
 
         results = []
@@ -835,9 +833,7 @@ def search_field(
                     )
 
         if format == "json":
-            click.echo(
-                json.dumps({"results": results, "total": len(results)}, indent=2)
-            )
+            echo_json({"results": results, "total": len(results)})
         else:
             click.echo(f"\n🔍 Steps with field '{field_name}':")
             click.echo("=" * 50)
@@ -861,7 +857,12 @@ def search_field(
 @catalog_cli.command("list-by-type")
 @click.argument("step_type")
 @click.option("--framework", help="Filter by framework")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table")
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
+)
 def list_by_type(
     step_type: str,
     framework: Optional[str],
@@ -869,9 +870,7 @@ def list_by_type(
 ):
     """Filter steps by SageMaker step type."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         all_steps = catalog.list_available_steps()
 
         filtered_steps = []
@@ -894,7 +893,7 @@ def list_by_type(
                 "type": step_type,
                 "total": len(filtered_steps),
             }
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(
                 f"\n📦 Steps with type '{step_type}' ({len(filtered_steps)} found):"
@@ -920,7 +919,12 @@ def list_by_type(
 @catalog_cli.command("fields")
 @click.argument("step_name")
 @click.option("--inherited", is_flag=True, help="Show inherited fields")
-@click.option("--format", type=click.Choice(["table", "json"]), default="table")
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json", "table"], case_sensitive=False),
+    default="text",
+    help="Output format ('table' is a deprecated alias for 'text').",
+)
 @click.option("--show-types", is_flag=True, help="Show field types")
 @click.option("--show-defaults", is_flag=True, help="Show default values")
 def show_fields(
@@ -932,9 +936,7 @@ def show_fields(
 ):
     """Show all configuration fields for a step."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         config_classes = catalog.discover_config_classes()
 
         # Find config for this step
@@ -965,7 +967,7 @@ def show_fields(
                 "fields": fields_data,
                 "total_fields": len(fields_data),
             }
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n🔧 Configuration Fields for {step_name}:")
             click.echo("=" * 50)
@@ -1025,9 +1027,7 @@ def component_info(
 ):
     """Get detailed information about a specific component."""
     try:
-        from ..step_catalog import StepCatalog
-
-        catalog = StepCatalog()
+        catalog = get_catalog()
         step_info = catalog.get_step_info(step_name)
 
         if not step_info:
@@ -1081,7 +1081,7 @@ def component_info(
                     )
 
         if format == "json":
-            click.echo(json.dumps(result, indent=2))
+            echo_json(result)
         else:
             click.echo(f"\n📋 Component Info: {step_name} ({component_type})")
             click.echo("=" * 50)

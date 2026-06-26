@@ -261,6 +261,57 @@ def _run_scripts(args: Dict[str, Any]) -> ToolResult:
     return ToolResult.success(data)
 
 
+def _builder(args: Dict[str, Any]) -> ToolResult:
+    """
+    Run the universal builder test suite for a single step's builder: builder↔config
+    alignment, integration, step-creation, and (optionally) quality scoring. Returns the
+    structured result dict from :class:`UniversalStepBuilderTest`.
+    """
+    from ...validation.builders.universal_test import UniversalStepBuilderTest
+
+    step_name = args["step_name"]
+    workspace_dirs = args.get("workspace_dirs")
+    enable_scoring = args.get("enable_scoring", True)
+
+    if not isinstance(step_name, str) or not step_name.strip():
+        raise ToolError("'step_name' must be a non-empty string", code="invalid_input")
+    if workspace_dirs is not None and not isinstance(workspace_dirs, list):
+        raise ToolError(
+            "'workspace_dirs' must be a list of directory paths",
+            code="invalid_input",
+        )
+
+    tester = UniversalStepBuilderTest(
+        workspace_dirs=workspace_dirs,
+        enable_scoring=bool(enable_scoring),
+    )
+    # run_validation_for_step returns a plain dict (it does not raise for an unknown step —
+    # it produces a result describing the failure), so surface it directly.
+    result = tester.run_validation_for_step(step_name)
+    return ToolResult.success(result, step_name=step_name)
+
+
+def _deps_explain(args: Dict[str, Any]) -> ToolResult:
+    """
+    Explain the semantic similarity between two names: the overall score plus the
+    per-component breakdown (string / token-overlap / synonym / substring) the dependency
+    resolver uses for matching. Useful for debugging why two step/port names did or did
+    not match.
+    """
+    from ...core.deps.semantic_matcher import SemanticMatcher
+
+    name1 = args["name1"]
+    name2 = args["name2"]
+    if not isinstance(name1, str) or not name1.strip():
+        raise ToolError("'name1' must be a non-empty string", code="invalid_input")
+    if not isinstance(name2, str) or not name2.strip():
+        raise ToolError("'name2' must be a non-empty string", code="invalid_input")
+
+    matcher = SemanticMatcher()
+    explanation = matcher.explain_similarity(name1, name2)
+    return ToolResult.success(explanation, name1=name1, name2=name2)
+
+
 def _info(args: Dict[str, Any]) -> ToolResult:
     """Return capability metadata for the validation and script-testing frameworks."""
     from ...validation import get_validation_info
@@ -409,6 +460,63 @@ TOOLS: List[ToolDef] = [
             "additionalProperties": False,
         },
         handler=_run_scripts,
+        tags=("validator",),
+    ),
+    ToolDef(
+        name="validate.builder",
+        description=(
+            "Run the universal builder test suite for one step's builder — builder↔config "
+            "alignment, integration, step-creation, and (by default) quality scoring — and "
+            "return the structured result. Use to validate a builder before registration."
+        ),
+        schema={
+            "type": "object",
+            "properties": {
+                "step_name": {
+                    "type": "string",
+                    "description": "Canonical step name whose builder to test (e.g. "
+                    "'XGBoostTraining').",
+                },
+                "enable_scoring": {
+                    "type": "boolean",
+                    "description": "Include quality scoring in the result (default true).",
+                },
+                "workspace_dirs": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Optional workspace directories to widen step "
+                    "discovery beyond the installed package.",
+                },
+            },
+            "required": ["step_name"],
+            "additionalProperties": False,
+        },
+        handler=_builder,
+        tags=("validator",),
+    ),
+    ToolDef(
+        name="validate.deps_explain",
+        description=(
+            "Explain the semantic similarity between two names: overall score plus the "
+            "per-component breakdown (string / token / synonym / substring) the dependency "
+            "resolver uses. Use to debug why two step or port names did or did not match."
+        ),
+        schema={
+            "type": "object",
+            "properties": {
+                "name1": {
+                    "type": "string",
+                    "description": "First name to compare.",
+                },
+                "name2": {
+                    "type": "string",
+                    "description": "Second name to compare.",
+                },
+            },
+            "required": ["name1", "name2"],
+            "additionalProperties": False,
+        },
+        handler=_deps_explain,
         tags=("validator",),
     ),
     ToolDef(
