@@ -1377,11 +1377,14 @@ class StepCatalog:
             if step_name in registry:
                 return step_name
 
-            # Try snake_case to PascalCase conversion
+            # Try snake_case to PascalCase conversion via the shared naming module so
+            # compound acronyms resolve correctly (pytorch_training -> PyTorchTraining,
+            # not Pytorch_Training; the naive str.capitalize() join got these wrong and
+            # orphaned the pytorch/xgboost/lightgbm file components into phantom entries).
             if "_" in step_name and step_name.islower():
-                pascal_candidate = "".join(
-                    word.capitalize() for word in step_name.split("_")
-                )
+                from .naming import parts_to_pascal
+
+                pascal_candidate = parts_to_pascal(step_name.split("_"))
                 if pascal_candidate in registry:
                     return pascal_candidate
 
@@ -1447,8 +1450,8 @@ class StepCatalog:
             registry = get_step_names()
             canonical_steps = set()
 
-            # Base configurations to exclude
-            BASE_CONFIGS = {"Base", "Processing"}
+            # Base configurations to exclude (shared single source of truth)
+            from .naming import BASE_CONFIGS
 
             for step_name in steps:
                 # Skip job type variants
@@ -1474,26 +1477,21 @@ class StepCatalog:
             return sorted(list(set(steps)))  # Fallback to simple deduplication
 
     def _is_job_type_variant(self, step_name: str) -> bool:
-        """Check if step name is a job type variant."""
-        JOB_SUFFIXES = [
-            "_calibration",
-            "_testing",
-            "_training",
-            "_validation",
-            "_inference",
-            "_evaluation",
-        ]
-        return any(step_name.endswith(suffix) for suffix in JOB_SUFFIXES)
+        """Check if step name is a job type variant (delegates to the shared vocabulary)."""
+        from .naming import is_job_type_variant
+
+        return is_job_type_variant(step_name)
 
     def _resolve_to_canonical_name(
         self, step_name: str, registry: Dict[str, Any]
     ) -> Optional[str]:
         """Resolve snake_case step name to canonical PascalCase name."""
-        # Simple snake_case to PascalCase conversion
+        # snake_case -> PascalCase via the shared naming module so compound acronyms
+        # resolve correctly (xgboost_model_eval -> XGBoostModelEval, not Xgboost_Model_Eval).
         if "_" in step_name and step_name.islower():
-            pascal_candidate = "".join(
-                word.capitalize() for word in step_name.split("_")
-            )
+            from .naming import parts_to_pascal
+
+            pascal_candidate = parts_to_pascal(step_name.split("_"))
             if pascal_candidate in registry:
                 self.logger.debug(
                     f"Resolved canonical name: {step_name} → {pascal_candidate}"

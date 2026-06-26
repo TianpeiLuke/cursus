@@ -584,23 +584,37 @@ class UnifiedConfigManager:
         return result
 
 
-# Global instance for backward compatibility
-_unified_manager = None
+# Cache of manager instances keyed by their workspace_dirs. Previously a single global was
+# cached on first call, so a later call with DIFFERENT workspace_dirs silently returned the
+# stale (wrong-context) manager. Keying by the dirs makes each distinct context get its own.
+_unified_managers: "Dict[tuple, UnifiedConfigManager]" = {}
+
+
+def _workspace_dirs_key(workspace_dirs: Optional[List[str]]) -> tuple:
+    """Normalize workspace_dirs into a stable, hashable cache key."""
+    return tuple(str(d) for d in (workspace_dirs or []))
 
 
 def get_unified_config_manager(
     workspace_dirs: Optional[List[str]] = None,
 ) -> UnifiedConfigManager:
     """
-    Get global unified config manager instance.
+    Get a unified config manager instance, cached per ``workspace_dirs``.
 
     Args:
         workspace_dirs: List of workspace directories for step catalog integration
 
     Returns:
-        UnifiedConfigManager instance
+        UnifiedConfigManager instance (one per distinct workspace_dirs key)
     """
-    global _unified_manager
-    if _unified_manager is None:
-        _unified_manager = UnifiedConfigManager(workspace_dirs)
-    return _unified_manager
+    key = _workspace_dirs_key(workspace_dirs)
+    manager = _unified_managers.get(key)
+    if manager is None:
+        manager = UnifiedConfigManager(workspace_dirs)
+        _unified_managers[key] = manager
+    return manager
+
+
+def reset_unified_config_manager_cache() -> None:
+    """Clear the per-workspace_dirs manager cache (mainly for tests / hot-reload)."""
+    _unified_managers.clear()

@@ -56,6 +56,11 @@ class ScriptExecutionRegistry:
             "message_log": [],  # Message passing history for debugging
         }
 
+        # Per-node specs are populated by initialize_from_dependency_matcher(); initialize
+        # here so reads (e.g. in get_node_config) never hit an AttributeError on a registry
+        # that was constructed but not yet initialized from a matcher.
+        self._node_specs = {}
+
         # Initialize execution status
         for node_name in self.dag.nodes:
             self._state["execution_status"][node_name] = "pending"

@@ -15,23 +15,12 @@ Tests focus on:
 import pytest
 import tempfile
 import shutil
-from pathlib import Path
-from unittest.mock import patch, MagicMock, call, Mock
+from unittest.mock import patch, Mock
 from click.testing import CliRunner
 
 # Import the CLI functions we want to test
 try:
-    from cursus.cli.catalog_cli import (
-        catalog_cli,
-        list_steps,
-        search_steps,
-        show_step,
-        show_components,
-        list_frameworks,
-        list_workspaces,
-        show_metrics,
-        discover_workspace,
-    )
+    from cursus.cli.catalog_cli import catalog_cli
     from cursus.cli._shared import get_catalog
 
     CLI_AVAILABLE = True
@@ -223,7 +212,7 @@ class TestListStepsCommand:
 
         result = runner.invoke(catalog_cli, ["list"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Failed to list steps: Test error" in result.output
 
 
@@ -308,7 +297,7 @@ class TestShowStepCommand:
 
         result = runner.invoke(catalog_cli, ["show", "NonExistentStep"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Step not found: NonExistentStep" in result.output
 
     @patch("cursus.cli.catalog_cli.get_catalog")
@@ -520,7 +509,7 @@ class TestDiscoverCommand:
         """Test discover command without workspace directory."""
         result = runner.invoke(catalog_cli, ["discover"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Please specify a workspace directory" in result.output
 
 
@@ -535,7 +524,7 @@ class TestCLIErrorHandling:
 
         result = runner.invoke(catalog_cli, ["search", "test"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Failed to search steps: Search error" in result.output
 
     @patch("cursus.cli.catalog_cli.get_catalog")
@@ -545,7 +534,7 @@ class TestCLIErrorHandling:
 
         result = runner.invoke(catalog_cli, ["show", "TestStep"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Failed to show step: Show error" in result.output
 
     @patch("cursus.cli.catalog_cli.get_catalog")
@@ -555,7 +544,7 @@ class TestCLIErrorHandling:
 
         result = runner.invoke(catalog_cli, ["components", "TestStep"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Failed to show components: Components error" in result.output
 
     @patch("cursus.cli.catalog_cli.get_catalog")
@@ -565,7 +554,7 @@ class TestCLIErrorHandling:
 
         result = runner.invoke(catalog_cli, ["frameworks"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Failed to list frameworks: Frameworks error" in result.output
 
     @patch("cursus.cli.catalog_cli.get_catalog")
@@ -575,7 +564,7 @@ class TestCLIErrorHandling:
 
         result = runner.invoke(catalog_cli, ["workspaces"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Failed to list workspaces: Workspaces error" in result.output
 
     @patch("cursus.cli.catalog_cli.get_catalog")
@@ -585,7 +574,7 @@ class TestCLIErrorHandling:
 
         result = runner.invoke(catalog_cli, ["metrics"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Failed to show metrics: Metrics error" in result.output
 
     @patch("cursus.step_catalog.StepCatalog")
@@ -595,7 +584,7 @@ class TestCLIErrorHandling:
 
         result = runner.invoke(catalog_cli, ["discover", "--workspace-dir", "/tmp"])
 
-        assert result.exit_code == 0
+        assert result.exit_code != 0
         assert "❌ Failed to discover workspace: Discover error" in result.output
 
 

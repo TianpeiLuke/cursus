@@ -46,6 +46,26 @@ if TYPE_CHECKING:
     from .contract_base import ValidationResult
 
 
+def _deep_merge(base: Dict, override: Dict) -> Dict:
+    """
+    Recursively merge ``override`` onto ``base``, returning a new dict.
+
+    Used to apply a ``.step.yaml`` job-type variant over the base sections. Nested
+    dicts are merged key-by-key (so a variant restating only some ``dependencies`` /
+    ``outputs`` / ``inputs`` overrides just those entries' fields and preserves the
+    rest of the base set); any non-dict value in ``override`` replaces the base value
+    outright. Neither input is mutated.
+    """
+    result = dict(base)
+    for key, ov in override.items():
+        bv = result.get(key)
+        if isinstance(bv, dict) and isinstance(ov, dict):
+            result[key] = _deep_merge(bv, ov)
+        else:
+            result[key] = ov
+    return result
+
+
 # --- Valid SageMaker path prefixes (unified processing + training conventions) ---
 
 VALID_INPUT_PREFIXES = (
@@ -361,22 +381,30 @@ class StepInterface(BaseModel):
         """
         Build a StepInterface from a parsed ``.step.yaml`` dict, resolving variants.
 
-        Reproduces the loader's merge semantics: when ``job_type`` names a variant,
-        that variant's ``spec``/``contract`` overrides are shallow-merged over the
-        base sections before validation. Steps without a matching variant fall back
-        to the base sections unchanged.
+        When ``job_type`` names a variant, that variant's ``spec``/``contract``
+        overrides are **deep-merged** over the base sections before validation. The
+        merge is recursive: a variant that lists only a subset of
+        ``spec.dependencies`` (or ``outputs`` / contract ``inputs``) overrides just
+        those ports' fields and leaves the rest of the base set intact — it does not
+        replace the whole nested dict. Steps without a matching variant fall back to
+        the base sections unchanged.
+
+        A shallow merge here was a latent bug: because variants routinely restate
+        only the ports they tweak, ``{**base, **variant}`` at the section level
+        dropped every base port the variant happened to omit (e.g. it dropped
+        ``hyperparameters_s3_uri`` from ``RiskTableMapping``'s variants, which then
+        violated the contract↔spec alignment invariant and raised at construction).
         """
         data = dict(data)
         variants = data.get("variants") or {}
         if job_type and job_type in variants:
             variant = variants[job_type] or {}
             if variant.get("spec"):
-                data["spec"] = {**(data.get("spec") or {}), **variant["spec"]}
+                data["spec"] = _deep_merge(data.get("spec") or {}, variant["spec"])
             if variant.get("contract"):
-                data["contract"] = {
-                    **(data.get("contract") or {}),
-                    **variant["contract"],
-                }
+                data["contract"] = _deep_merge(
+                    data.get("contract") or {}, variant["contract"]
+                )
         return cls(**data)
 
     @model_validator(mode="after")

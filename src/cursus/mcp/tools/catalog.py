@@ -114,12 +114,15 @@ def _step_info(args: Dict[str, Any]) -> ToolResult:
         )
 
     data = _step_info_to_dict(info)
-    # Framework detection is best-effort and may be None.
+    # Framework detection is best-effort and may be None. Surface a warning on failure rather
+    # than swallowing, so None-because-undetected is distinguishable from None-because-error.
+    warnings: List[str] = []
     try:
         data["framework"] = catalog.detect_framework(step_name)
-    except Exception:  # pragma: no cover - detection is non-essential
+    except Exception as exc:  # pragma: no cover - detection is non-essential
         data["framework"] = None
-    return ToolResult.success(data, step_name=step_name)
+        warnings.append(f"framework detection failed for {step_name}: {exc}")
+    return ToolResult.success(data, warnings=warnings, step_name=step_name)
 
 
 def _step_spec(args: Dict[str, Any]) -> ToolResult:

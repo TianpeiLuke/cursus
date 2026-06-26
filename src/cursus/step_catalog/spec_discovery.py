@@ -695,15 +695,10 @@ class SpecAutoDiscovery:
                     # Extract potential job type
                     parts = spec_name.split("_")
                     if len(parts) > 1:
+                        from .naming import JOB_TYPE_KEYWORDS
+
                         potential_job_type = parts[-1].lower()
-                        known_job_types = [
-                            "training",
-                            "validation",
-                            "testing",
-                            "calibration",
-                            "model",
-                        ]
-                        if potential_job_type in known_job_types:
+                        if potential_job_type in JOB_TYPE_KEYWORDS:
                             variants.append(potential_job_type)
                         else:
                             variants.append("default")
@@ -915,16 +910,10 @@ class SpecAutoDiscovery:
             # Try to extract job type using registry patterns
             spec_name_lower = spec_name.lower()
 
-            # Check for known job type patterns in the spec name
-            known_job_types = [
-                "training",
-                "validation",
-                "testing",
-                "calibration",
-                "model",
-            ]
+            # Check for known job type patterns in the spec name (shared vocabulary)
+            from .naming import JOB_TYPE_KEYWORDS
 
-            for job_type in known_job_types:
+            for job_type in JOB_TYPE_KEYWORDS:
                 if job_type in spec_name_lower:
                     return job_type
 

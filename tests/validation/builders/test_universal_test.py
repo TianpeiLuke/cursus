@@ -10,9 +10,8 @@ Following pytest best practices:
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 from pathlib import Path
-from typing import Dict, Any, List, Type
 import tempfile
 import json
 
@@ -32,6 +31,10 @@ class TestUniversalStepBuilderTestInitialization:
         assert tester.verbose is False
         assert tester.enable_scoring is True
         assert tester.enable_structured_reporting is False
+        # Set on the direct-construction path (previously only from_builder_class set
+        # these, so reading single_builder_mode raised AttributeError).
+        assert tester.single_builder_mode is False
+        assert tester.builder_class is None
 
     def test_init_with_custom_parameters(self):
         """Test initialization with custom parameters."""
@@ -1097,7 +1100,7 @@ class TestUniversalStepBuilderTestExportAndReporting:
                 mock_results = {"test": "data"}
                 mock_full_report.return_value = mock_results
 
-                json_content = tester.export_results_to_json(str(output_path))
+                tester.export_results_to_json(str(output_path))
 
                 # Verify file was created
                 assert output_path.exists()

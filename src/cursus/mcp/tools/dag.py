@@ -250,12 +250,15 @@ def _deserialize(args: Dict[str, Any]) -> ToolResult:
         # Malformed JSON / missing fields / bad edge shape.
         return ToolResult.failure(f"invalid DAG file: {exc}", code="invalid_input")
 
-    # Pull persisted metadata/statistics (best-effort; never fatal).
+    # Pull persisted metadata/statistics (best-effort; never fatal). Surface a warning
+    # rather than swallowing silently so an agent can tell "no metadata" from "read failed".
     file_meta: Dict[str, Any] = {}
+    warnings: List[str] = []
     try:
         file_meta = PipelineDAGReader.extract_metadata(path)
-    except Exception:  # pragma: no cover - metadata is optional
+    except Exception as exc:  # pragma: no cover - metadata is optional
         file_meta = {}
+        warnings.append(f"could not read embedded DAG metadata: {exc}")
 
     return ToolResult.success(
         {
@@ -265,6 +268,7 @@ def _deserialize(args: Dict[str, Any]) -> ToolResult:
             "metadata": file_meta.get("metadata", {}),
             "created_at": file_meta.get("created_at"),
         },
+        warnings=warnings,
         node_count=len(dag.nodes),
         edge_count=len(dag.edges),
     )

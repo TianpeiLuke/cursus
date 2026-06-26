@@ -462,27 +462,43 @@ class InheritanceAwareFieldGenerator:
         return categorization
 
 
-# Global instance for backward compatibility
-_field_generator = None
+# Cache of generators keyed by (workspace_dirs, project_id). Previously a single global was
+# cached on first call, so a later call with a DIFFERENT project_id/workspace_dirs silently
+# returned the stale generator bound to the wrong context. Keying by both fixes that.
+_field_generators: "Dict[tuple, InheritanceAwareFieldGenerator]" = {}
+
+
+def _generator_key(
+    workspace_dirs: Optional[List[str]], project_id: Optional[str]
+) -> tuple:
+    """Normalize (workspace_dirs, project_id) into a stable, hashable cache key."""
+    return (tuple(str(d) for d in (workspace_dirs or [])), project_id)
 
 
 def get_inheritance_aware_field_generator(
     workspace_dirs: Optional[List[str]] = None, project_id: Optional[str] = None
 ) -> InheritanceAwareFieldGenerator:
     """
-    Get global inheritance-aware field generator instance.
+    Get an inheritance-aware field generator, cached per ``(workspace_dirs, project_id)``.
 
     Args:
         workspace_dirs: Optional workspace directories for step catalog integration
         project_id: Optional project ID for workspace-specific processing
 
     Returns:
-        InheritanceAwareFieldGenerator instance
+        InheritanceAwareFieldGenerator instance (one per distinct context key)
     """
-    global _field_generator
-    if _field_generator is None:
-        _field_generator = InheritanceAwareFieldGenerator(workspace_dirs, project_id)
-    return _field_generator
+    key = _generator_key(workspace_dirs, project_id)
+    generator = _field_generators.get(key)
+    if generator is None:
+        generator = InheritanceAwareFieldGenerator(workspace_dirs, project_id)
+        _field_generators[key] = generator
+    return generator
+
+
+def reset_inheritance_aware_field_generator_cache() -> None:
+    """Clear the per-context generator cache (mainly for tests / hot-reload)."""
+    _field_generators.clear()
 
 
 # Convenience function for direct usage

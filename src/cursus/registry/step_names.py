@@ -107,21 +107,57 @@ def workspace_context(workspace_id: str) -> ContextManager[None]:
 # Global registry manager instance
 _global_registry_manager = None
 
+# Health signal: when the hybrid UnifiedRegistryManager fails to initialize we silently fall
+# back to a static manager. That degradation (no workspace-aware resolution) was previously
+# invisible to callers — record the failure so it can be surfaced via get_registry_health().
+_registry_init_error: "Optional[str]" = None
+
 
 def _get_registry_manager():
     """Get or create global registry manager instance."""
-    global _global_registry_manager
+    global _global_registry_manager, _registry_init_error
     if _global_registry_manager is None:
         try:
             from .hybrid.manager import UnifiedRegistryManager
 
             _global_registry_manager = UnifiedRegistryManager()
+            _registry_init_error = None
             logger.debug("Initialized hybrid registry manager")
         except Exception as e:
-            logger.warning(f"Failed to initialize hybrid registry manager: {e}")
+            # Surface with full traceback (not just the message) and remember it so the
+            # degraded state is distinguishable from a healthy static registry.
+            _registry_init_error = str(e)
+            logger.warning(
+                f"Failed to initialize hybrid registry manager; falling back to static "
+                f"registry (workspace-aware resolution unavailable): {e}",
+                exc_info=True,
+            )
             # Fallback to original implementation
             _global_registry_manager = _create_fallback_manager()
     return _global_registry_manager
+
+
+def is_hybrid_active() -> bool:
+    """Return True if the hybrid (workspace-aware) registry manager is in use.
+
+    False means initialization failed and the static fallback registry is active — see
+    :func:`get_registry_health` for the captured error.
+    """
+    _get_registry_manager()
+    return _registry_init_error is None
+
+
+def get_registry_health() -> Dict[str, Any]:
+    """Report registry-manager health so callers can detect a silent fallback.
+
+    Returns a dict with ``hybrid_active`` and, when degraded, ``init_error`` (the stringified
+    exception that forced the static fallback).
+    """
+    _get_registry_manager()
+    return {
+        "hybrid_active": _registry_init_error is None,
+        "init_error": _registry_init_error,
+    }
 
 
 def _create_fallback_manager():
@@ -168,11 +204,11 @@ def get_step_names(workspace_id: str = None) -> Dict[str, Dict[str, str]]:
     return manager.create_legacy_step_names_dict(effective_workspace)
 
 
-# Dynamic registry variables that update with workspace context
-@property
-def STEP_NAMES() -> Dict[str, Dict[str, str]]:
-    """Dynamic STEP_NAMES that respects workspace context."""
-    return get_step_names()
+# NOTE: a module-level ``@property def STEP_NAMES`` used to live here, intending to make
+# STEP_NAMES "dynamic". It was dead code: @property has no effect at module scope, and the
+# real STEP_NAMES is the dict bound below (``STEP_NAMES = get_step_names()``), which shadowed
+# it. Workspace-aware reads must call get_step_names(workspace_id) — the module-level snapshot
+# is bound once at import. Removed to stop implying dynamic behavior that never existed.
 
 
 # Generate derived registries dynamically

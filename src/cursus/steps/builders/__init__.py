@@ -165,3 +165,6 @@ if REGISTRATION_AVAILABLE:
 
 if DATA_UPLOADING_AVAILABLE:
     __all__.append("DataUploadingStepBuilder")
+
+if EDX_UPLOADING_AVAILABLE:
+    __all__.append("EdxUploadingStepBuilder")

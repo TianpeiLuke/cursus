@@ -81,8 +81,10 @@ def main() -> int:
     try:
         import anyio  # type: ignore
         from mcp.server.stdio import stdio_server  # type: ignore
-    except Exception:
-        raise RuntimeError(_SDK_HINT)
+    except Exception as exc:
+        # Chain the original ImportError so the missing-module cause is preserved
+        # (matches _require_sdk's `raise ... from exc` pattern).
+        raise RuntimeError(_SDK_HINT) from exc
 
     server = build_server()
 

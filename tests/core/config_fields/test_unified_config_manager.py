@@ -14,10 +14,7 @@ Test Coverage Target: >80%
 import json
 import os
 import tempfile
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-from unittest.mock import Mock, MagicMock, patch, mock_open
+from unittest.mock import Mock, patch, mock_open
 
 import pytest
 from pydantic import BaseModel
@@ -677,14 +674,26 @@ class TestGlobalUnifiedConfigManager:
         assert result.workspace_dirs == workspace_dirs
 
     def test_get_unified_config_manager_subsequent_calls(self):
-        """Test subsequent calls return same instance."""
+        """Subsequent calls with the SAME workspace_dirs return the same cached instance."""
         workspace_dirs = ["/test/workspace"]
 
         first_call = get_unified_config_manager(workspace_dirs)
-        second_call = get_unified_config_manager()
+        second_call = get_unified_config_manager(workspace_dirs)
 
-        # Should return same instance
+        # Same key -> same instance
         assert first_call is second_call
+
+    def test_get_unified_config_manager_different_dirs_are_distinct(self):
+        """Calls with DIFFERENT workspace_dirs must NOT return the stale instance.
+
+        Regression: the factory used to cache a single global on first call, so a later
+        call with different dirs silently returned the wrong-context manager.
+        """
+        a = get_unified_config_manager(["/test/workspace"])
+        b = get_unified_config_manager()  # different (empty) key
+        assert a is not b
+        assert a.workspace_dirs == ["/test/workspace"]
+        assert b.workspace_dirs == []
 
     def test_get_unified_config_manager_none_workspace_dirs(self):
         """Test get_unified_config_manager with None workspace_dirs."""

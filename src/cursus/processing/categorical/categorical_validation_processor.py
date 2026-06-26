@@ -121,34 +121,48 @@ class CategoricalValidationProcessor(Processor):
         # Apply custom validation rules
         for col, rule_func in self.validation_rules.items():
             if col in result.columns:
+                # Evaluate the rule. A rule that itself raises (e.g. a misconfigured
+                # column/dtype) must NOT be silently swallowed: under 'strict' the caller
+                # asked to fail loudly, so re-raise; otherwise log and skip this rule. The
+                # ValueError raised below for actual violations is intentional and is kept
+                # OUTSIDE this try so strict-mode rejection is never downgraded to a log.
                 try:
                     rule_violations = result[col].apply(
                         lambda x: not rule_func(x) if pd.notna(x) else False
                     )
-                    if rule_violations.any():
-                        violation_count = rule_violations.sum()
-                        violations[f"{col}_custom_rule"] = {
-                            "count": violation_count,
-                            "percentage": (violation_count / len(result)) * 100,
-                        }
-
-                        if self.validation_strategy == "strict":
-                            raise ValueError(
-                                f"Custom validation rule failed for column {col}: {violation_count} violations"
-                            )
-                        elif self.validation_strategy == "warn":
-                            logger.warning(
-                                f"Custom validation rule failed for column {col}: {violation_count} violations"
-                            )
-                        elif self.validation_strategy == "filter":
-                            result = result[~rule_violations]
-                            logger.info(
-                                f"Filtered {violation_count} rows failing custom rule for column {col}"
-                            )
                 except Exception as e:
+                    if self.validation_strategy == "strict":
+                        raise ValueError(
+                            f"Custom validation rule for column {col} raised an error "
+                            f"in strict mode: {e}"
+                        ) from e
                     logger.error(
-                        f"Error applying custom validation rule for column {col}: {e}"
+                        f"Error applying custom validation rule for column {col}; "
+                        f"skipping this rule: {e}",
+                        exc_info=True,
                     )
+                    continue
+
+                if rule_violations.any():
+                    violation_count = rule_violations.sum()
+                    violations[f"{col}_custom_rule"] = {
+                        "count": violation_count,
+                        "percentage": (violation_count / len(result)) * 100,
+                    }
+
+                    if self.validation_strategy == "strict":
+                        raise ValueError(
+                            f"Custom validation rule failed for column {col}: {violation_count} violations"
+                        )
+                    elif self.validation_strategy == "warn":
+                        logger.warning(
+                            f"Custom validation rule failed for column {col}: {violation_count} violations"
+                        )
+                    elif self.validation_strategy == "filter":
+                        result = result[~rule_violations]
+                        logger.info(
+                            f"Filtered {violation_count} rows failing custom rule for column {col}"
+                        )
 
         # Store violation counts
         self.violation_counts = violations

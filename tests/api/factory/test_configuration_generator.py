@@ -10,27 +10,58 @@ Following pytest best practices:
 """
 
 import pytest
-from typing import Dict, List, Type, Any, Optional
 from pydantic import BaseModel, Field
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from cursus.api.factory.configuration_generator import ConfigurationGenerator
+from cursus.core.base.config_base import BasePipelineConfig
+from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 
-# Test fixtures - Mock configuration classes with Pydantic V2 compatibility
-class MockBasePipelineConfig(BaseModel):
-    """Mock base pipeline configuration."""
+# Test fixtures - Mock configuration classes.
+#
+# These subclass the REAL base classes (BasePipelineConfig / ProcessingStepConfigBase)
+# so that ConfigurationGenerator's issubclass()-based inheritance checks behave
+# correctly. (They previously subclassed a name-faked BaseModel that only matched the
+# old, buggy MRO-name-substring check — which always returned False for the real
+# transposed class name, silently disabling the processing-inheritance branch.)
+#
+# BasePipelineConfig requires 7 Tier-1 fields; the mocks default them so existing
+# instantiations like MockBasePipelineConfig(project_name="test") keep working — the
+# extra fields (project_name/version/debug) are retained for the tests that read them.
+_REQUIRED_DEFAULTS = dict(
+    author="tester",
+    bucket="test-bucket",
+    role="arn:aws:iam::000000000000:role/test",
+    region="NA",
+    service_name="test-service",
+    pipeline_version="1.0.0",
+    project_root_folder="test_project",
+)
 
-    project_name: str = Field(description="Project name")
+
+class MockBasePipelineConfig(BasePipelineConfig):
+    """Mock base pipeline configuration (real BasePipelineConfig subclass)."""
+
+    project_name: str = Field(default="test", description="Project name")
     version: str = Field(default="1.0.0", description="Version")
     debug: bool = Field(default=False, description="Debug mode")
 
+    def __init__(self, **kwargs):
+        super().__init__(**{**_REQUIRED_DEFAULTS, **kwargs})
 
-class MockBaseProcessingStepConfig(MockBasePipelineConfig):
-    """Mock base processing step configuration."""
 
+class MockBaseProcessingStepConfig(ProcessingStepConfigBase):
+    """Mock base processing step configuration (real ProcessingStepConfigBase subclass)."""
+
+    project_name: str = Field(default="test", description="Project name")
+    version: str = Field(default="1.0.0", description="Version")
+    debug: bool = Field(default=False, description="Debug mode")
     processing_mode: str = Field(default="batch", description="Processing mode")
     max_workers: int = Field(default=4, description="Maximum workers")
+
+    def __init__(self, **kwargs):
+        super().__init__(**{**_REQUIRED_DEFAULTS, **kwargs})
 
 
 class MockStepConfigA(MockBasePipelineConfig):
@@ -100,8 +131,7 @@ class TestConfigurationGenerator:
             base_config=MockBasePipelineConfig(project_name="test")
         )
 
-        # The actual implementation checks for 'BasePipelineConfig' in the class name in MRO
-        # MockStepConfigA inherits from MockBasePipelineConfig which has 'BasePipelineConfig' in name
+        # issubclass-based check: MockStepConfigA -> MockBasePipelineConfig -> BasePipelineConfig
         result = generator._inherits_from_base_config(MockStepConfigA)
         assert result is True
 
@@ -120,8 +150,7 @@ class TestConfigurationGenerator:
             base_config=MockBasePipelineConfig(project_name="test")
         )
 
-        # The actual implementation checks for 'BaseProcessingStepConfig' in class names in MRO
-        # MockStepConfigB inherits from MockBaseProcessingStepConfig which has the right pattern
+        # issubclass-based check: MockStepConfigB -> MockBaseProcessingStepConfig -> ProcessingStepConfigBase
         result = generator._inherits_from_processing_config(MockStepConfigB)
         assert result is True
 

@@ -13,11 +13,10 @@ import pytest
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List, Optional, Type, Any
+from unittest.mock import Mock, patch
 
 from cursus.step_catalog.step_catalog import StepCatalog
-from cursus.step_catalog.models import StepInfo, FileMetadata, StepSearchResult
+from cursus.step_catalog.models import StepInfo, FileMetadata
 from cursus.step_catalog.config_discovery import ConfigAutoDiscovery
 
 
@@ -41,7 +40,7 @@ class TestStepCatalogInitialization:
         assert catalog._step_index == {}
         assert catalog._component_index == {}
         assert catalog._workspace_steps == {}
-        assert catalog._index_built == False
+        assert not catalog._index_built
         assert isinstance(catalog.metrics, dict)
 
     def test_init_with_workspace_dirs(self, temp_workspace):
@@ -55,7 +54,7 @@ class TestStepCatalogInitialization:
         assert catalog._step_index == {}
         assert catalog._component_index == {}
         assert catalog._workspace_steps == {}
-        assert catalog._index_built == False
+        assert not catalog._index_built
         assert isinstance(catalog.metrics, dict)
 
     def test_init_with_multiple_workspace_dirs(self, temp_workspace):
@@ -702,17 +701,17 @@ class TestDeduplicationFunctionality:
         catalog = catalog_with_deduplication
 
         # Should detect job type variants
-        assert catalog._is_job_type_variant("step_training") == True
-        assert catalog._is_job_type_variant("step_validation") == True
-        assert catalog._is_job_type_variant("step_calibration") == True
-        assert catalog._is_job_type_variant("step_testing") == True
-        assert catalog._is_job_type_variant("step_inference") == True
-        assert catalog._is_job_type_variant("step_evaluation") == True
+        assert catalog._is_job_type_variant("step_training")
+        assert catalog._is_job_type_variant("step_validation")
+        assert catalog._is_job_type_variant("step_calibration")
+        assert catalog._is_job_type_variant("step_testing")
+        assert catalog._is_job_type_variant("step_inference")
+        assert catalog._is_job_type_variant("step_evaluation")
 
         # Should not detect regular steps
-        assert catalog._is_job_type_variant("regular_step") == False
-        assert catalog._is_job_type_variant("BatchTransform") == False
-        assert catalog._is_job_type_variant("CurrencyConversion") == False
+        assert not catalog._is_job_type_variant("regular_step")
+        assert not catalog._is_job_type_variant("BatchTransform")
+        assert not catalog._is_job_type_variant("CurrencyConversion")
 
     def test_resolve_to_canonical_name(self, catalog_with_deduplication):
         """Test canonical name resolution."""
@@ -893,13 +892,13 @@ class TestIndexBuilding:
         """Test that index is built lazily on first access."""
         catalog, _, _ = catalog_for_indexing
 
-        assert catalog._index_built == False
+        assert not catalog._index_built
 
         with patch.object(catalog, "_build_index") as mock_build:
             catalog._ensure_index_built()
 
             mock_build.assert_called_once()
-            assert catalog._index_built == True
+            assert catalog._index_built
 
     def test_ensure_index_built_already_built(self, catalog_for_indexing):
         """Test that index is not rebuilt if already built."""
@@ -1054,7 +1053,7 @@ class TestErrorHandlingAndResilience:
 
         # Mock registry to avoid real data loading
         with patch("cursus.registry.step_names.STEP_NAMES", {}):
-            with patch.object(catalog.logger, "error") as mock_error:
+            with patch.object(catalog.logger, "error"):
                 with patch.object(
                     catalog,
                     "_discover_workspace_components",

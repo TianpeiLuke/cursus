@@ -3,7 +3,6 @@
 import pytest
 import os
 from contextlib import nullcontext
-from unittest.mock import patch, MagicMock
 from cursus.registry.step_names import (
     # Core registry data structures (now dynamic)
     STEP_NAMES,
@@ -37,6 +36,9 @@ from cursus.registry.step_names import (
     list_available_workspaces,
     get_workspace_step_count,
     has_workspace_conflicts,
+    # NEW: registry health signals
+    get_registry_health,
+    is_hybrid_active,
     # Internal functions for testing
     _get_registry_manager,
     _create_fallback_manager,
@@ -752,3 +754,24 @@ class TestEnhancedFunctionality:
             # Clean up
             if "CURSUS_WORKSPACE_ID" in os.environ:
                 del os.environ["CURSUS_WORKSPACE_ID"]
+
+
+class TestRegistryHealth:
+    """Health signals that surface a silent fallback to the static registry manager."""
+
+    def test_health_shape(self):
+        health = get_registry_health()
+        assert set(health) == {"hybrid_active", "init_error"}
+        assert isinstance(health["hybrid_active"], bool)
+
+    def test_health_consistent_with_is_hybrid_active(self):
+        assert get_registry_health()["hybrid_active"] == is_hybrid_active()
+
+    def test_healthy_registry_has_no_init_error(self):
+        # In the normal environment the hybrid manager initializes; if it ever falls back,
+        # init_error must be populated (never silently None while degraded).
+        health = get_registry_health()
+        if health["hybrid_active"]:
+            assert health["init_error"] is None
+        else:
+            assert health["init_error"]  # non-empty string explaining the fallback

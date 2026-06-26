@@ -122,7 +122,7 @@ def compile_pipeline(
         # Validate that --start requires --upsert
         if start and not upsert:
             click.echo("❌ Error: --start flag requires --upsert flag", err=True)
-            return 1
+            raise SystemExit(1)
 
         # Step 1: Load DAG from JSON
         try:
@@ -135,13 +135,13 @@ def compile_pipeline(
         except Exception as e:
             click.echo(f"❌ Failed to load DAG from {dag_file}: {e}", err=True)
             logger.error(f"DAG loading error: {e}", exc_info=True)
-            return 1
+            raise SystemExit(1)
 
         # Step 2: Validate configuration file exists
         config_path = Path(config_file)
         if not config_path.exists():
             click.echo(f"❌ Configuration file not found: {config_file}", err=True)
-            return 1
+            raise SystemExit(1)
 
         # Load config to get step count
         try:
@@ -155,7 +155,8 @@ def compile_pipeline(
                 click.echo(f"✓ Config loaded: {config_count} step configurations")
         except Exception as e:
             click.echo(f"❌ Failed to load config from {config_file}: {e}", err=True)
-            return 1
+            logger.error(f"Config loading error: {e}", exc_info=True)
+            raise SystemExit(1)
 
         # Step 3: Validation only mode
         if validate_only:
@@ -178,33 +179,37 @@ def compile_pipeline(
                     }
                     click.echo(json.dumps(result, indent=2))
                 else:
-                    click.echo(f"\nValidation Results:")
+                    click.echo("\nValidation Results:")
                     if validation_result.is_valid:
                         click.echo("✓ All DAG nodes have matching configurations")
                         click.echo("✓ All step builders resolved successfully")
                         click.echo("✓ No dependency issues found")
-                        click.echo(f"\nValidation passed! Ready for compilation.")
+                        click.echo("\nValidation passed! Ready for compilation.")
                     else:
                         click.echo("❌ Validation failed!")
                         if validation_result.missing_configs:
-                            click.echo(f"\nMissing configurations:")
+                            click.echo("\nMissing configurations:")
                             for node in validation_result.missing_configs:
                                 click.echo(f"  - {node}")
                         if validation_result.unresolvable_builders:
-                            click.echo(f"\nUnresolvable builders:")
+                            click.echo("\nUnresolvable builders:")
                             for node in validation_result.unresolvable_builders:
                                 click.echo(f"  - {node}")
                         if validation_result.warnings:
-                            click.echo(f"\nWarnings:")
+                            click.echo("\nWarnings:")
                             for warning in validation_result.warnings:
                                 click.echo(f"  - {warning}")
 
-                return 0 if validation_result.is_valid else 1
+                if not validation_result.is_valid:
+                    raise SystemExit(1)
+                return
 
+            except SystemExit:
+                raise
             except Exception as e:
                 click.echo(f"❌ Validation failed: {e}", err=True)
                 logger.error(f"Validation error: {e}", exc_info=True)
-                return 1
+                raise SystemExit(1)
 
         # Step 4: Compile pipeline
         try:
@@ -220,19 +225,19 @@ def compile_pipeline(
                 )
 
                 if format == "text":
-                    click.echo(f"✓ Pipeline compiled successfully")
-                    click.echo(f"\n📋 Compilation Report:")
+                    click.echo("✓ Pipeline compiled successfully")
+                    click.echo("\n📋 Compilation Report:")
                     click.echo(f"   Pipeline: {report.pipeline_name}")
                     click.echo(f"   Steps: {len(report.steps)}")
                     click.echo(f"   Average confidence: {report.avg_confidence:.2f}")
                     click.echo(f"   Warnings: {len(report.warnings)}")
 
                     if report.warnings:
-                        click.echo(f"\n   Warnings:")
+                        click.echo("\n   Warnings:")
                         for warning in report.warnings:
                             click.echo(f"     - {warning}")
 
-                    click.echo(f"\n   Resolution Details:")
+                    click.echo("\n   Resolution Details:")
                     for node, details in report.resolution_details.items():
                         config_type = details.get("config_type", "Unknown")
                         builder_type = details.get("builder_type", "Unknown")
@@ -250,7 +255,7 @@ def compile_pipeline(
                 )
 
                 if format == "text":
-                    click.echo(f"✓ Pipeline compiled successfully")
+                    click.echo("✓ Pipeline compiled successfully")
 
             # Get pipeline details
             pipeline_name_final = pipeline.name
@@ -263,7 +268,7 @@ def compile_pipeline(
         except Exception as e:
             click.echo(f"❌ Failed to compile pipeline: {e}", err=True)
             logger.error(f"Compilation error: {e}", exc_info=True)
-            return 1
+            raise SystemExit(1)
 
         # Step 5: Save pipeline definition to file
         if output:
@@ -284,33 +289,33 @@ def compile_pipeline(
             except Exception as e:
                 click.echo(f"❌ Failed to save pipeline definition: {e}", err=True)
                 logger.error(f"Output save error: {e}", exc_info=True)
-                return 1
+                raise SystemExit(1)
 
         # Step 6: Upsert to SageMaker
         if upsert:
             try:
                 if format == "text":
-                    click.echo(f"\nUpserting to SageMaker...")
+                    click.echo("\nUpserting to SageMaker...")
 
                 response = pipeline.upsert(role_arn=role)
 
                 pipeline_arn = response.get("PipelineArn", "N/A")
 
                 if format == "text":
-                    click.echo(f"✓ Pipeline created/updated")
+                    click.echo("✓ Pipeline created/updated")
                     click.echo(f"  Pipeline Name: {pipeline_name_final}")
                     click.echo(f"  Pipeline ARN: {pipeline_arn}")
 
             except Exception as e:
                 click.echo(f"❌ Failed to upsert pipeline: {e}", err=True)
                 logger.error(f"Upsert error: {e}", exc_info=True)
-                return 1
+                raise SystemExit(1)
 
         # Step 7: Start execution
         if start:
             try:
                 if format == "text":
-                    click.echo(f"\nStarting execution...")
+                    click.echo("\nStarting execution...")
 
                 execution = pipeline.start()
 
@@ -320,10 +325,10 @@ def compile_pipeline(
                 )
 
                 if format == "text":
-                    click.echo(f"✓ Execution started")
+                    click.echo("✓ Execution started")
                     click.echo(f"  Execution ARN: {execution_arn}")
                     click.echo(f"  Execution ID: {execution_id}")
-                    click.echo(f"  Status: Executing")
+                    click.echo("  Status: Executing")
 
                     # Try to extract region from ARN for console link
                     if execution_arn != "N/A" and ":" in execution_arn:
@@ -331,7 +336,7 @@ def compile_pipeline(
                         if len(parts) >= 4:
                             region = parts[3]
                             pipeline_name_url = pipeline_name_final.lower()
-                            click.echo(f"\nMonitor execution at:")
+                            click.echo("\nMonitor execution at:")
                             click.echo(
                                 f"  https://console.aws.amazon.com/sagemaker/home?region={region}#/pipelines/{pipeline_name_url}/executions/{execution_id}"
                             )
@@ -339,7 +344,7 @@ def compile_pipeline(
             except Exception as e:
                 click.echo(f"❌ Failed to start execution: {e}", err=True)
                 logger.error(f"Execution start error: {e}", exc_info=True)
-                return 1
+                raise SystemExit(1)
 
         # Step 8: JSON output format
         if format == "json":
@@ -360,12 +365,14 @@ def compile_pipeline(
 
             click.echo(json.dumps(result, indent=2))
 
-        return 0
-
+    except SystemExit:
+        # Propagate intentional nonzero exits from the per-step error handlers above
+        # (Click ignores function return values, so exit status must come from SystemExit).
+        raise
     except Exception as e:
         click.echo(f"❌ Unexpected error: {e}", err=True)
         logger.error(f"Unexpected error in compile command: {e}", exc_info=True)
-        return 1
+        raise SystemExit(1)
 
 
 def main():

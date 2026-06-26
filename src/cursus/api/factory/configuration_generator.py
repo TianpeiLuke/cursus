@@ -109,25 +109,28 @@ class ConfigurationGenerator:
 
     def _inherits_from_processing_config(self, config_class: Type[BaseModel]) -> bool:
         """
-        Check if config class inherits from BaseProcessingStepConfig.
+        Check if config class inherits from ProcessingStepConfigBase.
+
+        Uses issubclass against the imported base class (mirroring
+        DAGConfigFactory). The previous implementation scanned the MRO for the
+        substring "BaseProcessingStepConfig" — a transposition of the real class
+        name ``ProcessingStepConfigBase`` — so it matched no class and always
+        returned False, silently disabling the processing-inheritance branch and
+        dropping the 9 processing-specific base fields.
 
         Args:
             config_class: Configuration class to check
 
         Returns:
-            True if class inherits from BaseProcessingStepConfig
+            True if class inherits from ProcessingStepConfigBase
         """
         try:
-            # Check method resolution order for BaseProcessingStepConfig
-            mro = getattr(config_class, "__mro__", [])
-            for base_class in mro:
-                if (
-                    hasattr(base_class, "__name__")
-                    and "BaseProcessingStepConfig" in base_class.__name__
-                ):
-                    return True
-            return False
-        except Exception:
+            from ...steps.configs.config_processing_step_base import (
+                ProcessingStepConfigBase,
+            )
+
+            return issubclass(config_class, ProcessingStepConfigBase)
+        except (ImportError, TypeError):
             return False
 
     def _inherits_from_base_config(self, config_class: Type[BaseModel]) -> bool:
@@ -141,16 +144,10 @@ class ConfigurationGenerator:
             True if class inherits from BasePipelineConfig
         """
         try:
-            # Check method resolution order for BasePipelineConfig
-            mro = getattr(config_class, "__mro__", [])
-            for base_class in mro:
-                if (
-                    hasattr(base_class, "__name__")
-                    and "BasePipelineConfig" in base_class.__name__
-                ):
-                    return True
-            return False
-        except Exception:
+            from ...core.base.config_base import BasePipelineConfig
+
+            return issubclass(config_class, BasePipelineConfig)
+        except (ImportError, TypeError):
             return False
 
     def _generate_with_processing_inheritance(

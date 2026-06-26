@@ -46,6 +46,56 @@ COMPOUND_ACRONYMS: List[str] = [
 _SNAKE_TO_PASCAL = {a.lower(): a for a in COMPOUND_ACRONYMS}
 
 
+# --- Job-type vocabulary (single source of truth) -----------------------------------
+#
+# These were previously duplicated (and had drifted) across step_catalog.py, spec_discovery.py
+# and registry/step_names.py. Two genuinely-different concepts are kept distinct here:
+#
+# JOB_TYPE_SUFFIXES — trailing tokens that mark a *job-type variant* of a step (used to
+#   detect/filter variants like ``xgboost_training`` or ``foo_inference``). It deliberately
+#   does NOT contain "model": a step like ``XGBoostModel`` is a distinct step kind, not a
+#   variant, and including "model" here would wrongly filter it out of list_available_steps.
+JOB_TYPE_SUFFIXES = (
+    "training",
+    "validation",
+    "testing",
+    "calibration",
+    "inference",
+    "evaluation",
+    "batch",
+    "export",
+    "scoring",
+)
+
+# JOB_TYPE_KEYWORDS — tokens used to *classify* which job type a spec/file name belongs to
+#   (matched as a substring, first-hit-wins). This is the classification concept, distinct from
+#   the variant-suffix concept above: it includes "model" (e.g. ``xgboost_model_eval`` ->
+#   "model") and is intentionally ordered so the more specific structural words win first.
+#   Order and membership preserve the historical spec_discovery classification behavior.
+JOB_TYPE_KEYWORDS = (
+    "training",
+    "validation",
+    "testing",
+    "calibration",
+    "model",
+)
+
+# Abstract/base config step names that are never concrete pipeline steps and must be excluded
+# from discovery/listing. Previously duplicated as a literal set in step_catalog.py and
+# validation/builders/universal_test.py.
+BASE_CONFIGS = frozenset({"Base", "Processing"})
+
+
+def is_job_type_variant(step_name: str) -> bool:
+    """Return True if ``step_name`` ends in a known job-type suffix (``foo_training``).
+
+    Matches on a trailing ``_<suffix>`` so it only fires on snake_case variant names and
+    never on a base step whose name merely contains a job word.
+    """
+    lowered = step_name.lower()
+    return any(lowered.endswith(f"_{suffix}") for suffix in JOB_TYPE_SUFFIXES)
+
+
 def canonical_to_snake(canonical_name: str) -> str:
     """Convert a PascalCase canonical step name to its snake_case file stem.
 

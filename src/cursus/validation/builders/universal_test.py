@@ -74,6 +74,11 @@ class UniversalStepBuilderTest:
         self.enable_scoring = enable_scoring
         self.enable_structured_reporting = enable_structured_reporting
         self.logger = logging.getLogger(__name__)
+        # Set on every construction path (the from_builder_class classmethod overrides it).
+        # Previously only from_builder_class set it, so a directly-constructed instance
+        # raised AttributeError when single_builder_mode was later read.
+        self.single_builder_mode = False
+        self.builder_class = None
 
         # Step catalog integration (like UnifiedAlignmentTester)
         try:
@@ -501,7 +506,12 @@ class UniversalStepBuilderTest:
 
             try:
                 step_type = get_sagemaker_step_type(step_name)
-            except:
+            except Exception as e:
+                # Non-critical: an unknown step type degrades the sagemaker-method check to
+                # a no-op pass. Log it so the degradation is visible instead of a bare swallow.
+                self.logger.debug(
+                    f"Could not resolve SageMaker step type for '{step_name}': {e}"
+                )
                 step_type = "Unknown"
 
             expected_methods = []
@@ -1338,8 +1348,9 @@ class UniversalStepBuilderTest:
         results = {}
 
         try:
-            # Base configurations that should be excluded (no concrete builders expected)
-            BASE_CONFIGS = {"Processing", "Base"}
+            # Base configurations that should be excluded (no concrete builders expected).
+            # Shared single source of truth so this can't drift from step_catalog's copy.
+            from ...step_catalog.naming import BASE_CONFIGS
 
             # Get all steps of the specified type from registry
             matching_steps = []
@@ -1603,12 +1614,15 @@ class TestUniversalStepBuilder(unittest.TestCase):
 
     def test_refactored_initialization(self):
         """Test that the refactored system initializes correctly."""
-        # Test new multi-builder mode
+        # Test new multi-builder mode (direct construction)
         tester = UniversalStepBuilderTest(workspace_dirs=["."], verbose=False)
         self.assertFalse(tester.single_builder_mode)
         self.assertEqual(tester.workspace_dirs, ["."])
+        self.assertIsNone(tester.builder_class)
 
-        # Test legacy single-builder mode
+        # Single-builder mode is entered via the from_builder_class classmethod (the
+        # legacy positional ``UniversalStepBuilderTest(MockBuilder)`` form no longer
+        # exists — the simplified constructor takes workspace_dirs first).
         from ...core.base.builder_base import StepBuilderBase
 
         class MockBuilder(StepBuilderBase):
@@ -1618,7 +1632,9 @@ class TestUniversalStepBuilder(unittest.TestCase):
             def create_step(self):
                 pass
 
-        legacy_tester = UniversalStepBuilderTest(MockBuilder, verbose=False)
+        legacy_tester = UniversalStepBuilderTest.from_builder_class(
+            MockBuilder, verbose=False
+        )
         self.assertTrue(legacy_tester.single_builder_mode)
         self.assertEqual(legacy_tester.builder_class, MockBuilder)
 

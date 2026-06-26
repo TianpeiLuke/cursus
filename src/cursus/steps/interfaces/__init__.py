@@ -155,3 +155,13 @@ def load_step_interface(
 def list_available_interfaces() -> List[str]:
     """List all available step interface names."""
     return [f.stem.replace(".step", "") for f in INTERFACES_DIR.glob("*.step.yaml")]
+
+
+def clear_interface_cache() -> None:
+    """Clear the in-process interface cache.
+
+    Interfaces are cached by ``step_name:job_type`` for the life of the process. This
+    helper lets tests and dev hot-reload pick up edited ``.step.yaml`` files without a
+    restart (long-running processes otherwise serve stale interface data).
+    """
+    _cache.clear()

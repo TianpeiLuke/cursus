@@ -11,11 +11,8 @@ critical issues with relative import paths and contract object discovery.
 
 import pytest
 import tempfile
-import ast
-import importlib
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, Type, Any, List
+from unittest.mock import Mock, patch
 
 from cursus.step_catalog.contract_discovery import ContractAutoDiscovery
 
@@ -122,26 +119,23 @@ class TestContractAutoDiscovery:
         # Test _CONTRACT suffix (most common pattern)
         assert (
             contract_discovery._is_contract_object("XGBOOST_TRAIN_CONTRACT", Mock())
-            == True
         )
-        assert contract_discovery._is_contract_object("STEP_CONTRACT", Mock()) == True
+        assert contract_discovery._is_contract_object("STEP_CONTRACT", Mock())
 
         # Test Contract suffix
-        assert contract_discovery._is_contract_object("MyContract", Mock()) == True
+        assert contract_discovery._is_contract_object("MyContract", Mock())
         assert (
-            contract_discovery._is_contract_object("ProcessingContract", Mock()) == True
+            contract_discovery._is_contract_object("ProcessingContract", Mock())
         )
 
         # Test non-contract names with objects that don't have contract attributes
         regular_obj = object()  # Plain object without contract attributes
         assert (
-            contract_discovery._is_contract_object("regular_variable", regular_obj)
-            == False
+            not contract_discovery._is_contract_object("regular_variable", regular_obj)
         )
-        assert contract_discovery._is_contract_object("SomeClass", regular_obj) == False
+        assert not contract_discovery._is_contract_object("SomeClass", regular_obj)
         assert (
-            contract_discovery._is_contract_object("CONSTANT_VALUE", regular_obj)
-            == False
+            not contract_discovery._is_contract_object("CONSTANT_VALUE", regular_obj)
         )
 
     def test_is_contract_object_by_attributes(self, contract_discovery):
@@ -153,7 +147,7 @@ class TestContractAutoDiscovery:
         mock_contract.entry_point = "training_script.py"
 
         assert (
-            contract_discovery._is_contract_object("some_name", mock_contract) == True
+            contract_discovery._is_contract_object("some_name", mock_contract)
         )
 
         # Test with only entry_point
@@ -161,7 +155,6 @@ class TestContractAutoDiscovery:
         mock_entry_point_only.entry_point = "script.py"
         assert (
             contract_discovery._is_contract_object("some_name", mock_entry_point_only)
-            == True
         )
 
         # Test with Contract in type name
@@ -169,7 +162,6 @@ class TestContractAutoDiscovery:
         type(mock_contract_type).__name__ = "TrainingScriptContract"
         assert (
             contract_discovery._is_contract_object("some_name", mock_contract_type)
-            == True
         )
 
         # Test object without contract attributes - use a simple object
@@ -178,7 +170,7 @@ class TestContractAutoDiscovery:
                 self.some_attr = "value"
 
         simple_obj = SimpleObject()
-        assert contract_discovery._is_contract_object("some_name", simple_obj) == False
+        assert not contract_discovery._is_contract_object("some_name", simple_obj)
 
     def test_discover_contract_objects_in_module(self, contract_discovery):
         """Test automatic contract object discovery in module - core functionality."""
