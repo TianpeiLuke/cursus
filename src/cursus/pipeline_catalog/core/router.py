@@ -161,17 +161,27 @@ def recommend_for_agent(
         str
     ] = None,  # "small" (<100K), "medium" (100K-10M), "large" (>10M)
     gpu_available: bool = True,
+    framework: Optional[str] = None,  # "xgboost", "pytorch", "lightgbm", ... (hard filter)
 ) -> List[Dict[str, Any]]:
     """
     Agent-friendly recommendation using semantic constraints.
 
     Returns ranked DAGs with agent_context (when_to_use, prerequisites, config_guidance).
     Designed for LLM agents to make pipeline selection decisions.
+
+    When ``framework`` is given it is a HARD filter: only that framework's DAGs are
+    considered. The filter is applied before scoring/truncation, so a requested
+    framework can never be crowded out of the top-N by higher-scoring other-framework
+    DAGs.
     """
     index = get_catalog_index()
     scored = []
 
     for dag in index["dags"]:
+        # Framework hard filter — applied before scoring so it survives truncation.
+        if framework and dag.get("framework") != framework:
+            continue
+
         score = 1.0
         reasons = []
         req = dag.get("input_requirements", {})

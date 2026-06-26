@@ -28,7 +28,7 @@ __all__ = ["cli", "main"]
 
 
 @click.group()
-@click.version_option(package_name="amzn-cursus", message="cursus %(version)s")
+@click.version_option(package_name="cursus", message="cursus %(version)s")
 def cli():
     """Cursus — specification-driven SageMaker pipeline development and validation."""
 

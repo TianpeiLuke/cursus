@@ -37,7 +37,7 @@ Advanced Usage:
 #   __version__ can never drift to a stale literal.
 # - A VERSION file at the package root, if present, takes priority for the version
 #   (live source of truth in dev mode, so an updated VERSION wins over stale installed
-#   metadata). amzn-cursus normally has no VERSION file and uses the pyproject version.
+#   metadata). An installed wheel has no VERSION file and uses the pyproject version.
 def _resolve_metadata():
     from pathlib import Path
 

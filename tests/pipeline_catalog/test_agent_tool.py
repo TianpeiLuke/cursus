@@ -53,6 +53,11 @@ class TestRecommendAction:
             framework="xgboost",
         )
         assert res["status"] == "success"
+        # A requested framework is a hard filter: every recommendation must match it,
+        # and the result must not fall back to unrelated frameworks.
+        recs = res["recommendations"]
+        assert recs, "expected at least one xgboost recommendation"
+        assert all(r["framework"] == "xgboost" for r in recs)
 
 
 class TestGetDagAction:

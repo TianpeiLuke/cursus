@@ -107,6 +107,9 @@ def pipeline_catalog_tool(
     """
     if action == "recommend":
         fw = framework if framework and framework != "any" else None
+        # framework is a hard filter applied inside recommend_for_agent (before
+        # scoring/truncation), so a requested framework can't be crowded out of the
+        # top-N — and we never fall back to unrelated frameworks.
         results = recommend_for_agent(
             data_type=data_type,
             has_labels=has_labels,
@@ -114,10 +117,8 @@ def pipeline_catalog_tool(
             multi_task=multi_task,
             incremental=incremental,
             gpu_available=gpu_available,
+            framework=fw,
         )
-        # Filter by framework if specified
-        if fw:
-            results = [r for r in results if r.get("framework") == fw] or results[:3]
 
         return {
             "status": "success",
