@@ -25,13 +25,12 @@ Usage:
 
 import logging
 from pathlib import Path
-from typing import Optional, Tuple, Type
+from typing import Optional, Tuple, Type, Union
 
 from sagemaker import Session
 from sagemaker.workflow.pipeline import Pipeline
 
 from ...api.dag import import_dag_from_json
-from ...api.dag.base_dag import PipelineDAG
 from ...core.compiler.dag_compiler import PipelineDAGCompiler
 
 logger = logging.getLogger(__name__)
@@ -58,6 +57,7 @@ def build_and_compile(
     config_path: str,
     sagemaker_session: Optional[Session] = None,
     role: Optional[str] = None,
+    project_root: Optional[Union[str, Path]] = None,
 ) -> Tuple[Pipeline, any]:
     """
     Build and compile a pipeline from DAG + config paths. No class needed.
@@ -67,6 +67,8 @@ def build_and_compile(
         config_path: Path to config JSON
         sagemaker_session: SageMaker session
         role: IAM role ARN
+        project_root: Optional explicit project folder for docker source_dir resolution
+            (the caller hook). When omitted, the compiler infers it from ``config_path``.
 
     Returns:
         (Pipeline, CompilationReport)
@@ -76,6 +78,7 @@ def build_and_compile(
         config_path=config_path,
         sagemaker_session=sagemaker_session,
         role=role,
+        project_root=project_root,
     )
     pipeline, report = compiler.compile_with_report(dag=dag)
     logger.info(f"Pipeline '{pipeline.name}' compiled: {len(pipeline.steps)} steps")
@@ -134,6 +137,12 @@ def build_mods_pipeline(
                 config_path=abs_config_path,
                 sagemaker_session=self.sagemaker_session,
                 role=self.execution_role,
+                # Caller hook (Strategy 0): the generated template lives in the project
+                # folder, so caller_dir IS the project root. Passing it explicitly anchors
+                # docker source_dir resolution on the project across all deployment modes
+                # (Lambda/MODS, SAIS, pip-installed) without CURSUS_PROJECT_BASE or a
+                # project_root_folder config field.
+                project_root=caller_dir,
             )
 
         def generate_pipeline(self) -> Pipeline:

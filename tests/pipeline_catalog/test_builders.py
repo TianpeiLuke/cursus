@@ -85,3 +85,65 @@ class TestBuildModsPipeline:
         if not builders.MODS_AVAILABLE:
             assert cls._mods_author == "bjjin"
             assert cls._mods_version == "0.0.5"
+
+
+class TestCallerHookWiring:
+    """The generated MODS pipeline must push project_root=caller_dir (the project folder)
+    to the compiler, so docker source_dir resolves on the project across deployment modes."""
+
+    def test_generated_pipeline_passes_project_root_to_compiler(self, monkeypatch):
+        from pathlib import Path
+        from unittest.mock import MagicMock
+
+        captured = {}
+
+        def fake_compiler(*args, **kwargs):
+            captured.update(kwargs)
+            return MagicMock()
+
+        # build_mods_pipeline uses inspect.stack()[1] → THIS test file's dir as caller_dir.
+        expected_caller_dir = Path(__file__).parent
+
+        monkeypatch.setattr(builders, "PipelineDAGCompiler", fake_compiler)
+        monkeypatch.setattr(builders, "import_dag_from_json", lambda p: MagicMock())
+        # Session() is called in __init__; stub it so no AWS is touched.
+        monkeypatch.setattr(builders, "Session", lambda *a, **k: MagicMock())
+
+        cls = build_mods_pipeline(
+            author="t",
+            version="0.0.1",
+            description="Hook Demo",
+            dag_path="dag.json",
+            config_path="config.json",
+            class_name="HookDemo",
+        )
+        # Instantiate → __init__ constructs the (patched) compiler with project_root.
+        cls(sagemaker_session=MagicMock(), execution_role="role")
+
+        assert "project_root" in captured
+        assert captured["project_root"] == expected_caller_dir
+
+    def test_build_and_compile_forwards_project_root(self, monkeypatch, tmp_path):
+        from unittest.mock import MagicMock
+
+        captured = {}
+
+        class FakeCompiler:
+            def __init__(self, *args, **kwargs):
+                captured.update(kwargs)
+
+            def compile_with_report(self, dag):
+                p = MagicMock()
+                p.name = "p"
+                p.steps = []
+                return p, MagicMock()
+
+        monkeypatch.setattr(builders, "PipelineDAGCompiler", FakeCompiler)
+        monkeypatch.setattr(builders, "import_dag_from_json", lambda p: MagicMock())
+
+        build_and_compile(
+            dag_path="d.json",
+            config_path="c.json",
+            project_root=str(tmp_path),
+        )
+        assert captured.get("project_root") == str(tmp_path)

@@ -113,6 +113,38 @@ class HybridResolutionConfig:
 _hybrid_resolution_metrics = HybridResolutionMetrics()
 
 
+# Process-level project root pushed by the pipeline entry point (the "caller hook").
+#
+# When a pipeline is compiled, the module that defines generate_pipeline() physically lives
+# inside the user's project folder. That module (or the compiler it calls) pushes its project
+# folder here, so path resolution can anchor on the project directly — without the consumer
+# emitting CURSUS_PROJECT_BASE or declaring project_root_folder. This is the highest-priority
+# anchor (Strategy 0) and is the most robust across deployment modes (Lambda/MODS, SAIS
+# notebook, pip-installed), because the caller's __file__ is always inside the project.
+#
+# Distinct from CURSUS_PROJECT_BASE: that env var is a *package base* under which a named
+# project_root_folder sibling is searched; this is the *project folder itself*, so the
+# relative source_dir resolves directly as project_root / source_dir.
+_pushed_project_root: "Optional[str]" = None
+
+
+def set_project_root(project_root: "Optional[str]") -> None:
+    """Push the project folder for caller-hook (Strategy 0) path resolution.
+
+    Args:
+        project_root: Absolute path to the user's project folder (typically
+            ``Path(__file__).parent`` of the module defining ``generate_pipeline()``),
+            or ``None`` to clear it.
+    """
+    global _pushed_project_root
+    _pushed_project_root = str(project_root) if project_root else None
+
+
+def get_project_root() -> "Optional[str]":
+    """Return the currently pushed project root (caller-hook anchor), or None."""
+    return _pushed_project_root
+
+
 def get_hybrid_resolution_metrics() -> Dict[str, Any]:
     """Get current hybrid resolution performance metrics."""
     return _hybrid_resolution_metrics.get_metrics()
@@ -155,7 +187,21 @@ class HybridPathResolver:
         start_time = time.time()
 
         try:
-            # Strategy 0: Explicit project base (set by consumer package at import time)
+            # Strategy 0 (caller hook): project root pushed by the pipeline entry point.
+            # Highest priority — the project folder itself, so relative_path resolves directly
+            # as project_root / relative_path. Independent of where cursus is installed and of
+            # cwd, so it is robust across Lambda/MODS, SAIS notebook, and pip-installed.
+            resolved = self._pushed_project_root_discovery(relative_path)
+            if resolved:
+                resolution_time = time.time() - start_time
+                _hybrid_resolution_metrics.record_strategy_0_success(resolution_time)
+                logger.info(
+                    f"Hybrid resolution completed successfully via Caller Hook (pushed project root): {resolved}"
+                )
+                return resolved
+
+            # Strategy 0b: Explicit project base (CURSUS_PROJECT_BASE env var, set by a
+            # consumer package at import time). Package-base + project_root_folder semantics.
             resolved = self._explicit_project_base_discovery(
                 project_root_folder, relative_path
             )
@@ -224,6 +270,46 @@ class HybridPathResolver:
             resolution_time = time.time() - start_time
             _hybrid_resolution_metrics.record_failure(resolution_time)
             logger.error(f"Hybrid resolution error: {e}")
+            return None
+
+    def _pushed_project_root_discovery(self, relative_path: str) -> Optional[str]:
+        """
+        Discover paths using the project root pushed by the pipeline entry point (caller hook).
+
+        The pipeline's ``generate_pipeline()`` (or the compiler it calls) pushes the project
+        folder via :func:`set_project_root`. Because that is the project folder *itself*,
+        ``relative_path`` resolves directly as ``project_root / relative_path`` — no
+        ``project_root_folder`` name and no ``CURSUS_PROJECT_BASE`` env var needed. This is the
+        most robust anchor across deployment scenarios since the caller's module always lives
+        inside the project.
+
+        Args:
+            relative_path: Relative path from the project root to the target.
+
+        Returns:
+            Resolved absolute path if found, None otherwise.
+        """
+        project_root = _pushed_project_root
+        if not project_root:
+            return None
+
+        try:
+            base_path = Path(project_root)
+            if not base_path.exists():
+                logger.debug(f"Pushed project root does not exist: {base_path}")
+                return None
+
+            target = base_path / relative_path
+            logger.debug(f"Caller-hook project root checking: {target}")
+            if target.exists():
+                logger.info(f"Caller-hook project root discovery succeeded: {target}")
+                return str(target)
+
+            logger.debug(f"Caller-hook project root target not found: {target}")
+            return None
+
+        except Exception as e:
+            logger.warning(f"Caller-hook project root discovery failed with error: {e}")
             return None
 
     def _explicit_project_base_discovery(

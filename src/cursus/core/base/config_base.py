@@ -533,14 +533,25 @@ class BasePipelineConfig(BaseModel, ABC):
         Returns:
             Resolved absolute path if found, None otherwise
         """
-        if not self.project_root_folder or not relative_path:
-            logger.debug(
-                "Missing project_root_folder or relative_path for hybrid resolution"
-            )
+        if not relative_path:
+            logger.debug("Missing relative_path for hybrid resolution")
             return None
 
         try:
-            from ..utils.hybrid_path_resolution import resolve_hybrid_path
+            from ..utils.hybrid_path_resolution import (
+                resolve_hybrid_path,
+                get_project_root,
+            )
+
+            # Proceed if EITHER a project root was pushed by the pipeline entry point (the
+            # caller hook — Strategy 0) OR project_root_folder is set on the config. The
+            # caller hook makes project_root_folder optional: a config without it can still
+            # resolve, anchored on the pushed project folder.
+            if not self.project_root_folder and not get_project_root():
+                logger.debug(
+                    "No project_root_folder and no pushed project root for hybrid resolution"
+                )
+                return None
 
             return resolve_hybrid_path(self.project_root_folder, relative_path)
         except ImportError:

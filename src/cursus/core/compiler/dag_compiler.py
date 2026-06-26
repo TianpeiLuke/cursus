@@ -7,8 +7,13 @@ into executable SageMaker pipelines.
 
 from __future__ import annotations
 
-from typing import Optional, Dict, Any, Tuple, List, Union
+from typing import Optional, Dict, Any, Tuple, List, Union, TYPE_CHECKING
 import logging
+
+if TYPE_CHECKING:
+    # Imported lazily at runtime inside create_template(); declared here only so the
+    # "DynamicPipelineTemplate" string annotations resolve for type checkers/linters.
+    from .dynamic_template import DynamicPipelineTemplate
 from pathlib import Path
 
 from sagemaker.workflow.pipeline import Pipeline
@@ -54,8 +59,7 @@ from .validation import (
     ConversionReport,
     ValidationEngine,
 )
-from .exceptions import PipelineAPIError, ConfigurationError, ValidationError
-from ...registry.exceptions import RegistryError
+from .exceptions import PipelineAPIError
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +186,7 @@ class PipelineDAGCompiler:
         config_resolver: Optional[StepConfigResolver] = None,
         step_catalog: Optional[StepCatalog] = None,
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
+        project_root: Optional[Union[str, Path]] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -194,12 +199,30 @@ class PipelineDAGCompiler:
             config_resolver: Custom config resolver (optional)
             step_catalog: Custom step catalog (optional)
             pipeline_parameters: Pipeline parameters to pass to template (optional)
+            project_root: Absolute path to the user's project folder, used as the
+                highest-priority anchor for resolving step ``source_dir``/``processing_source_dir``
+                across deployment scenarios (the "caller hook"). Pipelines should pass
+                ``Path(__file__).parent`` from the module that defines ``generate_pipeline()``.
+                When omitted, it is inferred from ``config_path`` (the project directory that
+                contains the config file). Pushed process-wide so configs resolve against it
+                without needing ``CURSUS_PROJECT_BASE`` or a ``project_root_folder`` field.
             **kwargs: Additional arguments for template constructor
         """
         self.config_path = config_path
         self.sagemaker_session = sagemaker_session
         self.role = role
         self.template_kwargs = kwargs
+
+        # Caller hook: push the project root for path resolution (Strategy 0). Explicit value
+        # wins; otherwise infer from the config file's location (config-anchored fallback).
+        self.project_root = self._resolve_project_root(project_root, config_path)
+        if self.project_root:
+            try:
+                from ..utils.hybrid_path_resolution import set_project_root
+
+                set_project_root(self.project_root)
+            except Exception:  # pragma: no cover - resolution is best-effort
+                pass
 
         # Store pipeline parameters for template creation
         # Use default parameters if none provided
@@ -227,6 +250,39 @@ class PipelineDAGCompiler:
         config_path_obj = Path(config_path)
         if not config_path_obj.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
+    @staticmethod
+    def _resolve_project_root(
+        project_root: Optional[Union[str, Path]], config_path: str
+    ) -> Optional[str]:
+        """Resolve the project-root anchor for path resolution.
+
+        Priority:
+        1. Explicit ``project_root`` (the caller hook — typically ``Path(__file__).parent``).
+        2. Inferred from ``config_path``: walk up from the config file to the nearest project
+           directory, treating a ``pipeline_config``/``pipeline_configs`` parent as the config
+           dir and using its parent as the project root; otherwise the config file's directory.
+
+        Returns an absolute path string, or None if nothing usable.
+        """
+        if project_root:
+            try:
+                return str(Path(project_root).expanduser().resolve())
+            except Exception:  # pragma: no cover
+                return str(project_root)
+
+        try:
+            config_dir = Path(config_path).expanduser().resolve().parent
+            # If the config lives in a recognized config dir, the project is its parent.
+            if config_dir.name in ("pipeline_config", "pipeline_configs"):
+                return str(config_dir.parent)
+            # If a recognized config dir is the parent (config in a versioned subdir),
+            # the project is one level above that.
+            if config_dir.parent.name in ("pipeline_config", "pipeline_configs"):
+                return str(config_dir.parent.parent)
+            return str(config_dir)
+        except Exception:  # pragma: no cover
+            return None
 
     def validate_dag_compatibility(
         self, dag: Union[PipelineDAG, str]
@@ -530,7 +586,7 @@ class PipelineDAGCompiler:
             dag = import_dag_from_json(dag)
 
         try:
-            self.logger.info(f"Compiling DAG with detailed reporting")
+            self.logger.info("Compiling DAG with detailed reporting")
 
             # Compile pipeline with the loaded DAG instance
             pipeline = self.compile(dag, pipeline_name=pipeline_name, **kwargs)
@@ -672,7 +728,7 @@ class PipelineDAGCompiler:
                 **template_kwargs,
             )
 
-            self.logger.info(f"Successfully created template")
+            self.logger.info("Successfully created template")
             return template
 
         except Exception as e:
