@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-06-26
+
+A brittleness-review fix tranche mirroring a 9-commit fix series from AmazonCursus: three live-bug fixes (job-type variant loading, CLI exit codes, dropped processing fields), centralization of duplicated step-name/job-type vocabulary into `step_catalog/naming.py`, and a sweep that surfaces previously-swallowed exceptions. 19 source + 11 test files (3 new); no dependency changes. Full suite: **1758 passed**. New public helpers are purely additive (minor bump).
+
+### Fixed
+
+- **Job-type variant loading silently broke for variants that restate only a subset of ports** (`core/base/step_interface.py`). `StepInterface.from_yaml_dict` shallow-merged a `.step.yaml` job-type variant over the base sections (`{**base, **variant}`), so a variant that listed only the ports it tweaked **dropped every base port it omitted** — e.g. `hyperparameters_s3_uri` vanished from `RiskTableMapping`'s variants, violating the contract↔spec alignment invariant and raising at construction. Now uses a recursive `_deep_merge`, so a variant overrides just the fields it names and preserves the rest. Fixes `RiskTableMapping` / `BatchTransform` variant loading.
+- **CLI commands exited 0 on failure** (`cli/catalog_cli.py`, `cli/compile_cli.py`). Error paths did `return 1`, but Click ignores a command function's return value, so failures reported success to the shell. All error exits now `raise SystemExit(1)` (propagated past the outer handlers). `catalog_cli` was refactored onto a shared `safe_cli_command` decorator, removing 17 per-command `try/except` blocks in favor of one central error→exit-code path.
+- **`ConfigurationGenerator` silently dropped the 9 processing-specific base fields** (`api/factory/configuration_generator.py`). `_inherits_from_processing_config` scanned the MRO for the substring `"BaseProcessingStepConfig"` — a transposition of the real class name `ProcessingStepConfigBase` — so it matched nothing and always returned `False`, disabling the processing-inheritance branch. Now uses `issubclass` against the imported base class (mirroring `DAGConfigFactory`); `_inherits_from_base_config` was hardened the same way.
+- **Compound-acronym phantom catalog entries** (`step_catalog/step_catalog.py`). A naive `str.capitalize()` join turned `pytorch_training` into `Pytorch_Training` instead of `PyTorchTraining`, orphaning PyTorch/XGBoost/LightGBM file components into phantom entries. Now delegates to `naming.parts_to_pascal`.
+- **Custom validation rules that raised were swallowed even in strict mode** (`processing/categorical/categorical_validation_processor.py`). A misconfigured rule's exception was caught and logged regardless of `validation_strategy`. Now re-raises as a `ValueError` under `strict`, and the intentional `ValueError` for actual violations was moved outside the `try` so strict-mode rejection can never be downgraded to a log.
+
+### Added
+
+- **Registry health signals** (`registry/step_names.py`). When the hybrid (workspace-aware) `UnifiedRegistryManager` fails to initialize, the code silently falls back to a static manager — previously invisible. New `is_hybrid_active()` and `get_registry_health()` (`{hybrid_active, init_error}`) surface the degraded state, and the fallback now logs the full traceback.
+- **Centralized job-type / base-config vocabulary** (`step_catalog/naming.py`). `JOB_TYPE_SUFFIXES`, `JOB_TYPE_KEYWORDS`, `BASE_CONFIGS`, and `is_job_type_variant()` are now the single source of truth, replacing duplicated (and drifted) literals in `step_catalog.py`, `spec_discovery.py`, and `validation/builders/universal_test.py`. The two genuinely-distinct concepts (variant-suffix detection vs. classification keywords) are kept separate and documented.
+- **Cache-reset / hot-reload helpers** — `reset_unified_config_manager_cache()`, `reset_inheritance_aware_field_generator_cache()`, and `clear_interface_cache()` (for tests and dev hot-reload of edited `.step.yaml` files).
+- **`EdxUploadingStepBuilder`** is now exported from `steps/builders/__init__.py`.
+
+### Changed
+
+- **Per-context cache keying for config-field singletons** (`core/config_fields/{unified_config_manager,inheritance_aware_field_generator}.py`). Both `get_*` factories cached a single global on first call, so a later call with **different** `workspace_dirs` / `project_id` silently returned the stale wrong-context instance. Each is now keyed by its context (`workspace_dirs`, and additionally `project_id` for the field generator).
+- **Surfaced previously-swallowed exceptions** across the discovery/tool layer (Theme 1): the MCP `catalog.step_info` and `dag.deserialize` tools now attach a `warning` when best-effort framework/metadata detection fails (so `None`-because-undetected is distinguishable from `None`-because-error); `mcp/server.py` chains the original `ImportError` (`raise … from exc`); `universal_test` logs unresolved SageMaker step types at debug instead of a bare `except`; and `ScriptExecutionRegistry._node_specs` is initialized in `__init__` to avoid an `AttributeError` on an uninitialized registry.
+
+### Removed
+
+- **Dead module-level `@property def STEP_NAMES`** (`registry/step_names.py`) — `@property` has no effect at module scope and the descriptor was immediately shadowed by the real `STEP_NAMES = get_step_names()` snapshot bound below it. Removed to stop implying a dynamic behavior that never existed; workspace-aware reads must call `get_step_names(workspace_id)`.
+
+### Docs
+
+- **`CategoricalLabelProcessor` multi-worker hazard documented.** With `update_on_new=True` (the default) `process()` mutates the category→label mapping on first sight of a new category, which is unsafe under `num_workers > 0` (each forked worker assigns divergent ids). The class/arg docstrings now direct multi-worker / distributed use to a fixed `initial_categories` list with `update_on_new=False`.
+
 ## [1.8.1] - 2026-06-26
 
 Post-1.8.0 step-catalog hardening, a new MCP tool, and two CLI bug fixes found while testing the 1.8.0 CLI. No public-API or dependency changes; `step_catalog`/`registry`/`mcp`/`steps`/`pipeline_catalog` test suites green.
