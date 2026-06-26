@@ -13,9 +13,7 @@ from unittest.mock import Mock, patch
 from cursus.mods.exe_doc.generator import ExecutionDocumentGenerator
 from cursus.mods.exe_doc.cradle_helper import CradleDataLoadingHelper
 from cursus.mods.exe_doc.registration_helper import RegistrationHelper
-from cursus.pipeline_catalog.shared_dags.xgboost.complete_e2e_dag import (
-    create_xgboost_complete_e2e_dag,
-)
+from cursus.pipeline_catalog import load_shared_dag
 
 
 class TestExecutionDocumentGeneratorIntegration:
@@ -60,7 +58,7 @@ class TestExecutionDocumentGeneratorIntegration:
     @pytest.fixture
     def xgboost_dag(self):
         """Create the XGBoost complete E2E DAG."""
-        return create_xgboost_complete_e2e_dag()
+        return load_shared_dag("xgboost_complete_e2e")
 
     def test_fill_execution_document_integration(
         self, config_path, sample_execution_document, expected_result, xgboost_dag

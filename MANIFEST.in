@@ -26,7 +26,6 @@ recursive-exclude dist *
 recursive-exclude *.egg-info *
 
 # Exclude test files from distribution
-recursive-exclude test *
 recursive-exclude tests *
 
 # Exclude development directories
