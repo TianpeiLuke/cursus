@@ -1,0 +1,237 @@
+import pytest
+import tempfile
+import os
+
+from cursus.core.base.contract_base import (
+    ValidationResult,
+    ScriptAnalyzer,
+)
+
+
+class TestValidationResult:
+    """Test cases for ValidationResult class."""
+
+    def test_init_valid(self):
+        """Test initialization with valid result."""
+        result = ValidationResult(is_valid=True)
+
+        assert result.is_valid
+        assert result.errors == []
+        assert result.warnings == []
+
+    def test_init_invalid_with_errors(self):
+        """Test initialization with invalid result and errors."""
+        errors = ["Error 1", "Error 2"]
+        warnings = ["Warning 1"]
+
+        result = ValidationResult(is_valid=False, errors=errors, warnings=warnings)
+
+        assert not result.is_valid
+        assert result.errors == errors
+        assert result.warnings == warnings
+
+    def test_success_class_method(self):
+        """Test success class method."""
+        result = ValidationResult.success("Test success")
+
+        assert result.is_valid
+        assert result.errors == []
+        assert result.warnings == []
+
+    def test_error_class_method_with_list(self):
+        """Test error class method with list of errors."""
+        errors = ["Error 1", "Error 2"]
+        result = ValidationResult.error(errors)
+
+        assert not result.is_valid
+        assert result.errors == errors
+
+    def test_error_class_method_with_string(self):
+        """Test error class method with single error string."""
+        error = "Single error"
+        result = ValidationResult.error(error)
+
+        assert not result.is_valid
+        assert result.errors == [error]
+
+    def test_combine_class_method(self):
+        """Test combine class method."""
+        result1 = ValidationResult(is_valid=True, warnings=["Warning 1"])
+        result2 = ValidationResult(
+            is_valid=False, errors=["Error 1"], warnings=["Warning 2"]
+        )
+        result3 = ValidationResult(is_valid=False, errors=["Error 2"])
+
+        combined = ValidationResult.combine([result1, result2, result3])
+
+        assert not combined.is_valid
+        assert combined.errors == ["Error 1", "Error 2"]
+        assert combined.warnings == ["Warning 1", "Warning 2"]
+
+    def test_combine_all_valid(self):
+        """Test combine with all valid results."""
+        result1 = ValidationResult(is_valid=True)
+        result2 = ValidationResult(is_valid=True, warnings=["Warning 1"])
+
+        combined = ValidationResult.combine([result1, result2])
+
+        assert combined.is_valid
+        assert combined.errors == []
+        assert combined.warnings == ["Warning 1"]
+
+
+class TestScriptAnalyzer:
+    """Test cases for ScriptAnalyzer class."""
+
+    @pytest.fixture
+    def sample_script(self):
+        """Set up test fixtures."""
+        return """
+import os
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input-path", required=True)
+    parser.add_argument("--output-path", required=True)
+    parser.add_argument("-v", "--verbose", action="store_true")
+    
+    args = parser.parse_args()
+    
+    # Input paths
+    train_data = "/opt/ml/processing/input/train"
+    val_data = "/opt/ml/processing/input/validation"
+    
+    # Output paths
+    model_path = "/opt/ml/processing/output/model"
+    metrics_path = "/opt/ml/processing/output/metrics"
+    
+    # Environment variables
+    model_type = os.environ["MODEL_TYPE"]
+    learning_rate = os.environ.get("LEARNING_RATE", "0.1")
+    batch_size = os.getenv("BATCH_SIZE", "32")
+    
+    print(f"Training with {model_type}")
+
+if __name__ == "__main__":
+    main()
+"""
+
+    def test_get_input_paths(self, sample_script):
+        """Test extraction of input paths."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(sample_script)
+            f.flush()
+
+            try:
+                analyzer = ScriptAnalyzer(f.name)
+                input_paths = analyzer.get_input_paths()
+
+                expected_paths = {
+                    "/opt/ml/processing/input/train",
+                    "/opt/ml/processing/input/validation",
+                }
+                assert input_paths == expected_paths
+            finally:
+                os.unlink(f.name)
+
+    def test_get_output_paths(self, sample_script):
+        """Test extraction of output paths."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(sample_script)
+            f.flush()
+
+            try:
+                analyzer = ScriptAnalyzer(f.name)
+                output_paths = analyzer.get_output_paths()
+
+                expected_paths = {
+                    "/opt/ml/processing/output/model",
+                    "/opt/ml/processing/output/metrics",
+                }
+                assert output_paths == expected_paths
+            finally:
+                os.unlink(f.name)
+
+    def test_get_env_var_usage(self, sample_script):
+        """Test extraction of environment variable usage."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(sample_script)
+            f.flush()
+
+            try:
+                analyzer = ScriptAnalyzer(f.name)
+                env_vars = analyzer.get_env_var_usage()
+
+                expected_vars = {"MODEL_TYPE", "LEARNING_RATE", "BATCH_SIZE"}
+                assert env_vars == expected_vars
+            finally:
+                os.unlink(f.name)
+
+    def test_get_argument_usage(self, sample_script):
+        """Test extraction of argument usage."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(sample_script)
+            f.flush()
+
+            try:
+                analyzer = ScriptAnalyzer(f.name)
+                arguments = analyzer.get_argument_usage()
+
+                expected_args = {
+                    "input-path",
+                    "output-path",
+                    "v",
+                }  # Script analyzer finds short form "v"
+                assert arguments == expected_args
+            finally:
+                os.unlink(f.name)
+
+    def test_ast_tree_lazy_loading(self, sample_script):
+        """Test that AST tree is lazily loaded."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(sample_script)
+            f.flush()
+
+            try:
+                analyzer = ScriptAnalyzer(f.name)
+
+                # AST should not be loaded yet
+                assert analyzer._ast_tree is None
+
+                # Access AST tree
+                ast_tree = analyzer.ast_tree
+
+                # Should now be loaded
+                assert ast_tree is not None
+                assert analyzer._ast_tree == ast_tree
+
+                # Second access should return same object
+                ast_tree2 = analyzer.ast_tree
+                assert ast_tree == ast_tree2
+            finally:
+                os.unlink(f.name)
+
+    def test_caching_behavior(self, sample_script):
+        """Test that analysis results are cached."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(sample_script)
+            f.flush()
+
+            try:
+                analyzer = ScriptAnalyzer(f.name)
+
+                # First call should populate cache
+                input_paths1 = analyzer.get_input_paths()
+                assert analyzer._input_paths is not None
+
+                # Second call should use cache
+                input_paths2 = analyzer.get_input_paths()
+                assert input_paths1 == input_paths2
+
+                # Same for other methods
+                env_vars1 = analyzer.get_env_var_usage()
+                env_vars2 = analyzer.get_env_var_usage()
+                assert env_vars1 == env_vars2
+            finally:
+                os.unlink(f.name)

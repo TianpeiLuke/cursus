@@ -1,0 +1,802 @@
+import pytest
+from cursus.core.deps import (
+    UnifiedDependencyResolver,
+    SpecificationRegistry,
+    SemanticMatcher,
+    DependencyResolutionError,
+    PropertyReference,
+)
+from cursus.core.base.step_interface import StepInterface, OutputDecl
+from cursus.core.base.enums import DependencyType, NodeType
+
+
+class TestDependencyResolver:
+    @pytest.fixture
+    def registry(self):
+        """Create a SpecificationRegistry instance."""
+        return SpecificationRegistry()
+
+    @pytest.fixture
+    def semantic_matcher(self):
+        """Create a SemanticMatcher instance."""
+        return SemanticMatcher()
+
+    @pytest.fixture
+    def resolver(self, registry, semantic_matcher):
+        """Create a UnifiedDependencyResolver instance."""
+        return UnifiedDependencyResolver(registry, semantic_matcher)
+
+    def test_dependency_resolution_with_aliases(self, resolver, registry):
+        """Test that dependency resolution uses aliases for matching."""
+        # Create producer step specification with aliases
+        producer_spec = StepInterface(
+            step_type="PreprocessingStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "dependencies": {},  # No dependencies for this test
+                "outputs": {
+                    "processed_data": {
+                        "aliases": ["training_data", "model_input"],
+                        "type": "processing_output",
+                        "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Create consumer step specification
+        consumer_spec = StepInterface(
+            step_type="TrainingStep",
+            node_type=NodeType.SINK,
+            contract={},
+            spec={
+                "dependencies": {
+                    "training_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": ["PreprocessingStep"],
+                        "data_type": "S3Uri",
+                    }
+                },
+                "outputs": {},  # No outputs needed for this test
+            },
+        )
+
+        # Register step specifications
+        registry.register("producer", producer_spec)
+        registry.register("consumer", consumer_spec)
+
+        # Resolve dependencies
+        resolved = resolver.resolve_step_dependencies("consumer", ["producer"])
+
+        # Assert that resolution was successful
+        assert "training_data" in resolved
+        assert resolved["training_data"].step_name == "producer"
+        assert resolved["training_data"].output_spec.logical_name == "processed_data"
+
+    def test_weight_calculation(self, resolver, registry):
+        """Test that the weight calculation is correct."""
+        # Create producer step specification
+        producer_spec = StepInterface(
+            step_type="PreprocessingStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "dependencies": {},
+                "outputs": {
+                    "processed_data": {
+                        "type": "processing_output",
+                        "property_path": "properties.test",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Create consumer step specification
+        consumer_spec = StepInterface(
+            step_type="TrainingStep",
+            node_type=NodeType.SINK,
+            contract={},
+            spec={
+                "dependencies": {
+                    "training_data": {
+                        "type": "processing_output",
+                        "data_type": "S3Uri",
+                        "compatible_sources": ["PreprocessingStep"],
+                        "semantic_keywords": ["data"],
+                    }
+                },
+                "outputs": {},
+            },
+        )
+
+        # Calculate scores
+        dep_spec = consumer_spec.dependencies["training_data"]
+        output_spec = producer_spec.outputs["processed_data"]
+
+        type_compatibility_score = 0.4  # Exact match
+        data_type_score = 0.2  # Exact match
+        semantic_score = (
+            resolver.semantic_matcher.calculate_similarity_with_aliases(
+                dep_spec.logical_name, output_spec
+            )
+            * 0.25
+        )
+        direct_match_bonus = 0.0
+        compatible_source_score = 0.1
+        keyword_match_score = (
+            resolver._calculate_keyword_match(
+                dep_spec.semantic_keywords, output_spec.logical_name
+            )
+            * 0.05
+        )
+
+        # Expected score
+        expected_score = (
+            type_compatibility_score
+            + data_type_score
+            + semantic_score
+            + direct_match_bonus
+            + compatible_source_score
+            + keyword_match_score
+        )
+
+        # Actual score
+        actual_score = resolver._calculate_compatibility(
+            dep_spec, output_spec, producer_spec
+        )
+
+        # Assert that the scores are equal
+        assert abs(expected_score - actual_score) < 1e-5
+
+    def test_multiple_competing_candidates(self, resolver, registry):
+        """Test that resolver selects the best candidate among multiple options."""
+        # Create three producer step specifications with varying compatibility scores
+        # Producer 1: Good type match but poor semantic match
+        producer1_spec = StepInterface(
+            step_type="DataLoadingStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "raw_data": {
+                        "type": "processing_output",
+                        "property_path": "properties.ProcessingOutputConfig.Outputs['raw_data'].S3Output.S3Uri",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Producer 2: Perfect match (best candidate)
+        producer2_spec = StepInterface(
+            step_type="PreprocessingStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "training_dataset": {
+                        "aliases": ["training_data"],
+                        "type": "processing_output",
+                        "property_path": "properties.ProcessingOutputConfig.Outputs['training_dataset'].S3Output.S3Uri",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Producer 3: Good semantic match but wrong type
+        producer3_spec = StepInterface(
+            step_type="EvaluationStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "training_metrics": {
+                        "type": "custom_property",
+                        "property_path": "properties.CustomMetrics",
+                        "data_type": "String",
+                    }
+                },
+            },
+        )
+
+        # Consumer step that needs training data
+        consumer_spec = StepInterface(
+            step_type="TrainingStep",
+            node_type=NodeType.SINK,
+            contract={},
+            spec={
+                "dependencies": {
+                    "training_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": ["DataLoadingStep", "PreprocessingStep"],
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Register all steps
+        registry.register("data_loading", producer1_spec)
+        registry.register("preprocessing", producer2_spec)
+        registry.register("evaluation", producer3_spec)
+        registry.register("training", consumer_spec)
+
+        # Resolve dependencies
+        resolved = resolver.resolve_step_dependencies(
+            "training", ["data_loading", "preprocessing", "evaluation"]
+        )
+
+        # Assert that the resolver selected the best candidate (producer2)
+        assert "training_data" in resolved
+        assert resolved["training_data"].step_name == "preprocessing"
+        assert resolved["training_data"].output_spec.logical_name == "training_dataset"
+
+    def test_type_compatibility_matrix(self, resolver):
+        """Test compatibility matrix for different dependency types."""
+        # Test compatible types according to the matrix in dependency_resolver.py
+        compatible_pairs = [
+            (DependencyType.MODEL_ARTIFACTS, DependencyType.MODEL_ARTIFACTS),
+            (DependencyType.TRAINING_DATA, DependencyType.PROCESSING_OUTPUT),
+            (DependencyType.TRAINING_DATA, DependencyType.TRAINING_DATA),
+            (DependencyType.PROCESSING_OUTPUT, DependencyType.PROCESSING_OUTPUT),
+            (DependencyType.PROCESSING_OUTPUT, DependencyType.TRAINING_DATA),
+            (DependencyType.HYPERPARAMETERS, DependencyType.HYPERPARAMETERS),
+            (DependencyType.HYPERPARAMETERS, DependencyType.CUSTOM_PROPERTY),
+            (DependencyType.PAYLOAD_SAMPLES, DependencyType.PAYLOAD_SAMPLES),
+            (DependencyType.PAYLOAD_SAMPLES, DependencyType.PROCESSING_OUTPUT),
+            (DependencyType.CUSTOM_PROPERTY, DependencyType.CUSTOM_PROPERTY),
+        ]
+
+        # Test incompatible types
+        incompatible_pairs = [
+            (DependencyType.MODEL_ARTIFACTS, DependencyType.PROCESSING_OUTPUT),
+            (DependencyType.MODEL_ARTIFACTS, DependencyType.TRAINING_DATA),
+            (DependencyType.MODEL_ARTIFACTS, DependencyType.HYPERPARAMETERS),
+            (DependencyType.TRAINING_DATA, DependencyType.MODEL_ARTIFACTS),
+            (DependencyType.PROCESSING_OUTPUT, DependencyType.HYPERPARAMETERS),
+            (DependencyType.HYPERPARAMETERS, DependencyType.MODEL_ARTIFACTS),
+            (DependencyType.PAYLOAD_SAMPLES, DependencyType.MODEL_ARTIFACTS),
+            (DependencyType.CUSTOM_PROPERTY, DependencyType.MODEL_ARTIFACTS),
+        ]
+
+        # Assert compatible types
+        for dep_type, output_type in compatible_pairs:
+            assert resolver._are_types_compatible(dep_type, output_type), (
+                f"Types should be compatible: {dep_type.value} <- {output_type.value}"
+            )
+
+        # Assert incompatible types
+        for dep_type, output_type in incompatible_pairs:
+            assert not resolver._are_types_compatible(dep_type, output_type), (
+                f"Types should not be compatible: {dep_type.value} <- {output_type.value}"
+            )
+
+    def test_data_type_compatibility(self, resolver):
+        """Test data type compatibility rules."""
+        # Compatible data type pairs (dep_type, output_type)
+        compatible_pairs = [
+            ("S3Uri", "S3Uri"),
+            ("S3Uri", "String"),
+            ("String", "String"),
+            ("String", "S3Uri"),
+            ("Integer", "Integer"),
+            ("Integer", "Float"),
+            ("Float", "Float"),
+            ("Float", "Integer"),
+            ("Boolean", "Boolean"),
+        ]
+
+        # Incompatible data type pairs
+        incompatible_pairs = [
+            ("S3Uri", "Integer"),
+            ("S3Uri", "Boolean"),
+            ("String", "Integer"),
+            ("String", "Boolean"),
+            ("Integer", "Boolean"),
+            ("Integer", "S3Uri"),
+            ("Float", "Boolean"),
+            ("Float", "String"),
+            ("Boolean", "Integer"),
+            ("Boolean", "Float"),
+            ("Boolean", "String"),
+            ("Boolean", "S3Uri"),
+        ]
+
+        # Assert compatible data types
+        for dep_type, output_type in compatible_pairs:
+            assert resolver._are_data_types_compatible(dep_type, output_type), (
+                f"Data types should be compatible: {dep_type} <- {output_type}"
+            )
+
+        # Assert incompatible data types
+        for dep_type, output_type in incompatible_pairs:
+            assert not resolver._are_data_types_compatible(dep_type, output_type), (
+                f"Data types should not be compatible: {dep_type} <- {output_type}"
+            )
+
+    def test_semantic_matching(self, semantic_matcher):
+        """Test semantic similarity for name matching."""
+        # Test exact match
+        exact_score = semantic_matcher.calculate_similarity(
+            "training_data", "training_data"
+        )
+        assert exact_score == 1.0
+
+        # Test close match
+        close_score = semantic_matcher.calculate_similarity(
+            "training_data", "training_dataset"
+        )
+        assert close_score > 0.7
+
+        # Test partial match
+        partial_score = semantic_matcher.calculate_similarity("training_data", "data")
+        assert partial_score > 0.3
+
+        # Test synonym match based on semantic matcher's synonym dictionary
+        # "data" and "dataset" should be considered related
+        synonym_score = semantic_matcher.calculate_similarity("data", "dataset")
+        assert synonym_score > 0.3
+
+        # Test unrelated terms
+        unrelated_score = semantic_matcher.calculate_similarity(
+            "training_data", "model_output"
+        )
+        assert unrelated_score < 0.3
+
+        # Test with aliases
+        output_spec = OutputDecl(
+            logical_name="processed_data",
+            aliases=["training_data", "model_input"],
+            type=DependencyType.PROCESSING_OUTPUT,
+            property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+        )
+
+        alias_score = semantic_matcher.calculate_similarity_with_aliases(
+            "training_dataset", output_spec
+        )
+        assert alias_score > 0.7
+
+    def test_required_vs_optional_dependencies(self, resolver, registry):
+        """Test resolution of required vs. optional dependencies."""
+        # Create a producer step
+        producer_spec = StepInterface(
+            step_type="PreprocessingStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "processed_data": {
+                        "type": "processing_output",
+                        "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Consumer with one required and one optional dependency
+        # Use CUSTOM_PROPERTY type for validation_data to prevent matching with processed_data
+        consumer_spec = StepInterface(
+            step_type="TrainingStep",
+            node_type=NodeType.INTERNAL,
+            contract={},
+            spec={
+                "dependencies": {
+                    "training_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": ["PreprocessingStep"],
+                        "data_type": "S3Uri",
+                    },
+                    "validation_data": {
+                        "type": "custom_property",  # Different type to avoid matching
+                        "required": False,  # Optional dependency
+                        "compatible_sources": ["ValidationStep"],
+                        "data_type": "String",  # Different data type
+                    },
+                },
+                "outputs": {
+                    "model": {
+                        "type": "model_artifacts",
+                        "property_path": "properties.ModelArtifacts.S3ModelArtifacts",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Register the steps
+        registry.register("preprocessing", producer_spec)
+        registry.register("training", consumer_spec)
+
+        # Resolve dependencies (only required dependency will be resolved)
+        resolved = resolver.resolve_step_dependencies("training", ["preprocessing"])
+
+        # Assert that only the required dependency is resolved
+        assert "training_data" in resolved
+        assert resolved["training_data"].step_name == "preprocessing"
+        assert "validation_data" not in resolved  # Optional dependency not resolved
+
+    def test_unresolvable_dependencies(self, resolver, registry):
+        """Test error handling for unresolvable dependencies."""
+        # Create a consumer step with a required dependency
+        consumer_spec = StepInterface(
+            step_type="TrainingStep",
+            node_type=NodeType.SINK,
+            contract={},
+            spec={
+                "dependencies": {
+                    "training_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": ["PreprocessingStep"],
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Create an incompatible producer (wrong type)
+        wrong_type_producer = StepInterface(
+            step_type="PreprocessingStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "processed_data": {
+                        "type": "custom_property",  # Wrong type
+                        "property_path": "properties.CustomProperty",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Register the steps
+        registry.register("training", consumer_spec)
+        registry.register("wrong_producer", wrong_type_producer)
+
+        # Attempt to resolve with incompatible producer
+        with pytest.raises(DependencyResolutionError) as exc_info:
+            resolver.resolve_step_dependencies("training", ["wrong_producer"])
+
+        # Check that the error message mentions the unresolved dependency
+        assert "training_data" in str(exc_info.value)
+        assert "unresolved required dependencies" in str(exc_info.value).lower()
+
+    def test_registry_isolation(self):
+        """Test that different registry contexts remain isolated."""
+        # Create two separate registries
+        registry1 = SpecificationRegistry()
+        registry2 = SpecificationRegistry()
+
+        # Create resolvers for each registry
+        resolver1 = UnifiedDependencyResolver(registry1, SemanticMatcher())
+        resolver2 = UnifiedDependencyResolver(registry2, SemanticMatcher())
+
+        # Create a specification for each registry
+        spec1 = StepInterface(
+            step_type="PreprocessingStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "processed_data": {
+                        "type": "processing_output",
+                        "property_path": "properties.test",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        spec2 = StepInterface(
+            step_type="ProcessingStep",  # Different name
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "data_output": {  # Different name
+                        "type": "processing_output",
+                        "property_path": "properties.test",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Register specs in their respective registries
+        registry1.register("step1", spec1)
+        registry2.register("step1", spec2)  # Same step name, different spec
+
+        # Assert registries have isolated contents
+        assert registry1.get_specification("step1").step_type == "PreprocessingStep"
+        assert registry2.get_specification("step1").step_type == "ProcessingStep"
+
+        # Assert resolvers use their own registry
+        assert (
+            resolver1.registry.get_specification("step1").step_type
+            == "PreprocessingStep"
+        )
+        assert (
+            resolver2.registry.get_specification("step1").step_type == "ProcessingStep"
+        )
+
+    def test_property_reference_functionality(self):
+        """Test PropertyReference navigation and conversion."""
+        # Create an output spec
+        output_spec = OutputDecl(
+            logical_name="processed_data",
+            type=DependencyType.PROCESSING_OUTPUT,
+            property_path="properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+            data_type="S3Uri",
+        )
+
+        # Create a property reference
+        prop_ref = PropertyReference(step_name="preprocessing", output_spec=output_spec)
+
+        # Test to_sagemaker_property - implementation removes "properties." prefix
+        sagemaker_prop = prop_ref.to_sagemaker_property()
+        assert sagemaker_prop == {
+            "Get": "Steps.preprocessing.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri"
+        }
+
+        # Test string representation
+        assert str(prop_ref) == "preprocessing.processed_data"
+
+        # Test parsing of property path
+        path_parts = prop_ref._parse_property_path(output_spec.property_path)
+
+        # Expected path parts
+        expected_parts = [
+            "ProcessingOutputConfig",
+            ("Outputs", "processed_data"),
+            "S3Output",
+            "S3Uri",
+        ]
+
+        assert len(path_parts) == len(expected_parts)
+
+        # Check first part is a string
+        assert path_parts[0] == expected_parts[0]
+
+        # Check second part is a tuple with correct dict access
+        assert isinstance(path_parts[1], tuple)
+        assert path_parts[1][0] == expected_parts[1][0]
+        assert path_parts[1][1] == expected_parts[1][1]
+
+        # Check remaining parts
+        assert path_parts[2] == expected_parts[2]
+        assert path_parts[3] == expected_parts[3]
+
+    def test_end_to_end_resolution(self, resolver, registry):
+        """Test end-to-end resolution of a multi-step pipeline."""
+        # Create a chain of steps: data loading → preprocessing → training → evaluation
+        data_loading_spec = StepInterface(
+            step_type="DataLoadingStep",
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "raw_data": {
+                        "type": "processing_output",
+                        "property_path": "properties.ProcessingOutputConfig.Outputs['raw_data'].S3Output.S3Uri",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        preprocessing_spec = StepInterface(
+            step_type="PreprocessingStep",
+            node_type=NodeType.INTERNAL,
+            contract={},
+            spec={
+                "dependencies": {
+                    "input_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": ["DataLoadingStep"],
+                        "data_type": "S3Uri",
+                    }
+                },
+                "outputs": {
+                    "processed_data": {
+                        "type": "processing_output",
+                        "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+                        "data_type": "S3Uri",
+                    },
+                    "validation_data": {
+                        "type": "processing_output",
+                        "property_path": "properties.ProcessingOutputConfig.Outputs['validation_data'].S3Output.S3Uri",
+                        "data_type": "S3Uri",
+                    },
+                },
+            },
+        )
+
+        training_spec = StepInterface(
+            step_type="TrainingStep",
+            node_type=NodeType.INTERNAL,
+            contract={},
+            spec={
+                "dependencies": {
+                    "training_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": ["PreprocessingStep"],
+                        "data_type": "S3Uri",
+                    },
+                    "validation_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": ["PreprocessingStep"],
+                        "data_type": "S3Uri",
+                    },
+                },
+                "outputs": {
+                    "model_artifacts": {
+                        "type": "model_artifacts",
+                        "property_path": "properties.ModelArtifacts.S3ModelArtifacts",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        evaluation_spec = StepInterface(
+            step_type="EvaluationStep",
+            node_type=NodeType.SINK,
+            contract={},
+            spec={
+                "dependencies": {
+                    "model": {
+                        "type": "model_artifacts",
+                        "required": True,
+                        "compatible_sources": ["TrainingStep"],
+                        "data_type": "S3Uri",
+                    },
+                    "test_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": ["PreprocessingStep"],
+                        "semantic_keywords": [
+                            "validation",
+                            "test",
+                        ],  # Added keywords to match validation_data
+                        "data_type": "S3Uri",
+                    },
+                },
+                "outputs": {},
+            },
+        )
+
+        # Register all steps
+        registry.register("data_loading", data_loading_spec)
+        registry.register("preprocessing", preprocessing_spec)
+        registry.register("training", training_spec)
+        registry.register("evaluation", evaluation_spec)
+
+        # Resolve all dependencies
+        all_steps = ["data_loading", "preprocessing", "training", "evaluation"]
+        resolved = resolver.resolve_all_dependencies(all_steps)
+
+        # Check that all expected steps have dependencies resolved
+        assert "preprocessing" in resolved
+        assert "training" in resolved
+        assert "evaluation" in resolved
+
+        # Check preprocessing step dependencies
+        assert "input_data" in resolved["preprocessing"]
+        assert resolved["preprocessing"]["input_data"].step_name == "data_loading"
+        assert (
+            resolved["preprocessing"]["input_data"].output_spec.logical_name
+            == "raw_data"
+        )
+
+        # Check training step dependencies
+        assert "training_data" in resolved["training"]
+        assert "validation_data" in resolved["training"]
+        assert resolved["training"]["training_data"].step_name == "preprocessing"
+        assert (
+            resolved["training"]["training_data"].output_spec.logical_name
+            == "processed_data"
+        )
+        assert resolved["training"]["validation_data"].step_name == "preprocessing"
+        assert (
+            resolved["training"]["validation_data"].output_spec.logical_name
+            == "validation_data"
+        )
+
+        # Check evaluation step dependencies
+        assert "model" in resolved["evaluation"]
+        assert "test_data" in resolved["evaluation"]
+        assert resolved["evaluation"]["model"].step_name == "training"
+        assert (
+            resolved["evaluation"]["model"].output_spec.logical_name
+            == "model_artifacts"
+        )
+        assert resolved["evaluation"]["test_data"].step_name == "preprocessing"
+        # Given the added semantic keywords, it should now match with validation_data
+        assert (
+            resolved["evaluation"]["test_data"].output_spec.logical_name
+            == "validation_data"
+        )
+
+    def test_job_type_normalization(self, resolver, registry):
+        """Test that job type normalization works correctly for compatible sources."""
+        # Create a producer step with job type suffix
+        producer_spec = StepInterface(
+            step_type="TabularPreprocessing_Training",  # Job type variant
+            node_type=NodeType.SOURCE,
+            contract={},
+            spec={
+                "outputs": {
+                    "processed_data": {
+                        "type": "processing_output",
+                        "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Create a consumer step that expects the base step type (without job suffix)
+        consumer_spec = StepInterface(
+            step_type="XGBoostTraining",
+            node_type=NodeType.SINK,
+            contract={},
+            spec={
+                "dependencies": {
+                    "training_data": {
+                        "type": "processing_output",
+                        "required": True,
+                        "compatible_sources": [
+                            "TabularPreprocessing"
+                        ],  # Base type without job suffix
+                        "data_type": "S3Uri",
+                    }
+                },
+            },
+        )
+
+        # Register the steps
+        registry.register("preprocessing", producer_spec)
+        registry.register("training", consumer_spec)
+
+        # Resolve dependencies - this should work due to job type normalization
+        resolved = resolver.resolve_step_dependencies("training", ["preprocessing"])
+
+        # Assert that resolution was successful despite the job type suffix
+        assert "training_data" in resolved
+        assert resolved["training_data"].step_name == "preprocessing"
+        assert resolved["training_data"].output_spec.logical_name == "processed_data"
+
+        # Test the normalization method directly
+        normalized = resolver._normalize_step_type_for_compatibility(
+            "TabularPreprocessing_Training"
+        )
+        assert normalized == "TabularPreprocessing"
+
+        # Test with other job type suffixes
+        test_cases = [
+            ("TabularPreprocessing_Testing", "TabularPreprocessing"),
+            ("TabularPreprocessing_Validation", "TabularPreprocessing"),
+            ("TabularPreprocessing_Calibration", "TabularPreprocessing"),
+            (
+                "XGBoostTraining",
+                "XGBoostTraining",
+            ),  # No suffix, should remain unchanged
+        ]
+
+        for input_type, expected_output in test_cases:
+            normalized = resolver._normalize_step_type_for_compatibility(input_type)
+            assert normalized == expected_output, (
+                f"Failed to normalize {input_type} to {expected_output}, got {normalized}"
+            )
