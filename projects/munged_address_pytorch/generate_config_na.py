@@ -4,7 +4,7 @@ Generate config_NA.json for Munged Address Detection pipeline using DAGConfigFac
 Usage:
     python projects/munged_address_pytorch/generate_config_na.py
 
-Produces: projects/munged_address_pytorch/pipeline_configs/config_NA.json
+Produces: projects/munged_address_pytorch/pipeline_config/config_NA.json
 """
 
 import sys
@@ -500,7 +500,7 @@ print(f"✅ Generated {len(configs)} configuration instances")
 # Step 8: Save
 # ============================================================================
 
-output_dir = Path(__file__).parent / "pipeline_configs"
+output_dir = Path(__file__).parent / "pipeline_config"
 output_dir.mkdir(parents=True, exist_ok=True)
 output_path = output_dir / "config_NA.json"
 

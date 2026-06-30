@@ -134,7 +134,7 @@ class MungedAddressTrainingPipelineNA:
         )
 
         module_dir = Path(__file__).resolve().parent
-        config_dir = module_dir / "pipeline_configs"
+        config_dir = module_dir / "pipeline_config"
         config_path = str(config_dir / f"config_{regional_alias}.json")
         logger.info(f"Using config path: {config_path}")
 
