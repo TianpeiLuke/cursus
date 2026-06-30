@@ -30,9 +30,11 @@ class BertTokenizeProcessor(Processor):
         tokenized_output = []
 
         for chunk in input_chunks:
-            # Skip empty or whitespace-only chunks
+            # Tokenize empty/whitespace-only chunks too (as ""), rather than
+            # silently dropping them. Skipping made the output shorter than the
+            # input, breaking 1:1 cardinality for any consumer that zips them.
             if not chunk or not chunk.strip():
-                continue
+                chunk = ""
 
             encoded = self.tokenizer(
                 chunk,

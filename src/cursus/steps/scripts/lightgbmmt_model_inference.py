@@ -138,10 +138,49 @@ import tarfile
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
 
-# Import unified model architecture
-from models.implementations.mtgbm_model import MtgbmModel
-from models.factory.model_factory import ModelFactory
-from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
+# ============================================================================
+# OPEN SECTION — USER-SUPPLIED MODEL + HYPERPARAMS PACKAGES (`models`, `hyperparams`)
+# ----------------------------------------------------------------------------
+# Generic multi-task LightGBM (MTGBM) model-INFERENCE reference script. It owns
+# everything model-agnostic — data I/O, preprocessing (load-and-apply), per-task
+# prediction save, and the SageMaker I/O contract. The model + hyperparameter
+# schema come from `models` + `hyperparams` packages YOU bundle into this step's
+# `source_dir` (cursus does NOT ship them; use the SAME packages the model was
+# trained with). REFERENCE: <project>/dockers/{models,hyperparams}/ in
+# BuyerAbuseModsTemplate (e.g. example_mtgbm, transportation_risk_mtl).
+#
+# WHAT YOU MUST IMPLEMENT (the steps this script delegates to your packages):
+#   1. MODEL — `models/implementations/mtgbm_model.py::MtgbmModel`
+#      The trained multi-task model class: load from the saved artifact and
+#      `.predict(...)` per task to produce the scores this script writes out.
+#   2. MODEL FACTORY — `models/factory/model_factory.py::ModelFactory`
+#      Reconstruct/assemble the MtgbmModel from the artifact + hyperparameters
+#      (the load seam this script calls).
+#   3. HYPERPARAMETERS — `hyperparams/hyperparameters_lightgbmmt.py`
+#      `LightGBMMtModelHyperparameters` (Pydantic): the schema this script parses
+#      hyperparameters.json into (task names, score field names, etc.).
+#
+# What you do NOT implement (already provided here): path handling, load-and-
+# apply risk-table + imputation preprocessing, the multi-task prediction save,
+# and the SageMaker container I/O.
+#
+# If the packages are absent, the import below raises an instructive error — a
+# missing user dependency, not a bug.
+# ============================================================================
+try:
+    from models.implementations.mtgbm_model import MtgbmModel
+    from models.factory.model_factory import ModelFactory
+    from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
+except ImportError as _e:  # pragma: no cover - user must supply models/hyperparams
+    raise ImportError(
+        "MTGBM model inference requires user-supplied `models` "
+        "(models.implementations.MtgbmModel, models.factory.ModelFactory) and "
+        "`hyperparams` (hyperparameters_lightgbmmt.LightGBMMtModelHyperparameters) "
+        "packages bundled into this step's source_dir. The cursus package does not "
+        "ship them. See the OPEN SECTION banner above and the reference layout under "
+        "<project>/dockers/{models,hyperparams}/ in BuyerAbuseModsTemplate "
+        f"(e.g. example_mtgbm, transportation_risk_mtl). Original import error: {_e}"
+    ) from _e
 
 # Embedded processor classes to remove external dependencies
 

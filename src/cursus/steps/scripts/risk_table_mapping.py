@@ -536,41 +536,6 @@ def process_streaming_mode_risk_mapping(
     return total_stats
 
 
-def find_input_shards(input_dir: str, log_func: Callable) -> List[Path]:
-    """
-    Find all input shards in directory.
-
-    Searches for various shard formats (CSV, JSON, Parquet with/without compression).
-
-    Args:
-        input_dir: Directory containing input shards
-        log_func: Logging function
-
-    Returns:
-        Sorted list of shard paths
-
-    Raises:
-        RuntimeError: If no shards found in input directory
-    """
-    input_path = Path(input_dir)
-    patterns = [
-        "part-*.csv",
-        "part-*.csv.gz",
-        "part-*.json",
-        "part-*.json.gz",
-        "part-*.parquet",
-        "part-*.snappy.parquet",
-        "part-*.parquet.gz",
-    ]
-    all_shards = sorted([p for pat in patterns for p in input_path.glob(pat)])
-
-    if not all_shards:
-        raise RuntimeError(f"No shards found in {input_dir}")
-
-    log_func(f"[STREAMING] Found {len(all_shards)} input shards")
-    return all_shards
-
-
 def find_split_shards(
     input_dir: str, split_name: str, log_func: Callable
 ) -> List[Path]:
@@ -755,33 +720,6 @@ def _read_file_to_df(
     else:
         # Default to CSV
         return pd.read_csv(file_path)
-
-
-def aggregate_shard_results(
-    results: List[Dict[str, int]], job_type: str
-) -> Dict[str, int]:
-    """
-    Aggregate statistics from parallel shard processing.
-
-    Args:
-        results: List of statistics dictionaries from each shard
-        job_type: Type of job ('training', 'validation', etc.)
-
-    Returns:
-        Dictionary with total row counts per split
-    """
-    if job_type == "training":
-        # Training mode: aggregate train/val/test splits
-        total_stats = {
-            "train": sum(r.get("train", 0) for r in results),
-            "val": sum(r.get("val", 0) for r in results),
-            "test": sum(r.get("test", 0) for r in results),
-        }
-    else:
-        # Single split mode
-        total_stats = {job_type: sum(r.get(job_type, 0) for r in results)}
-
-    return total_stats
 
 
 # --- File I/O Helper Functions with Format Preservation ---

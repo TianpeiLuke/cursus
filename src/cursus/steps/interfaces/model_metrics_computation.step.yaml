@@ -25,12 +25,26 @@ contract:
   - flag: --job_type
     source: job_type
   env_vars:
-    required:
-    - ID_FIELD
-    - LABEL_FIELD
+    required: []
     optional:
-      AMOUNT_FIELD: order_amount
+      AMOUNT_FIELD: ''
       GENERATE_PLOTS: 'true'
+      ID_FIELD: id
+      LABEL_FIELD: label
+      INPUT_FORMAT: auto
+      SCORE_FIELDS: ''
+      SCORE_FIELD: ''
+      TASK_LABEL_NAMES: ''
+      PREVIOUS_SCORE_FIELDS: ''
+      COMPUTE_DOLLAR_RECALL: 'true'
+      COMPUTE_COUNT_RECALL: 'true'
+      DOLLAR_RECALL_FPR: '0.1'
+      COUNT_RECALL_CUTOFF: '0.1'
+      COMPARISON_MODE: 'false'
+      PREVIOUS_SCORE_FIELD: ''
+      COMPARISON_METRICS: all
+      STATISTICAL_TESTS: 'true'
+      COMPARISON_PLOTS: 'true'
   framework_requirements:
     pandas: '>=1.3.0'
     numpy: '>=1.21.0'

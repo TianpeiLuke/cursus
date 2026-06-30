@@ -626,22 +626,58 @@ def load_model_artifacts(
     decompress_model_artifacts(model_dir)
 
     model_file = os.path.join(model_dir, "lightgbm_model.txt")
-    model = lgb.Booster(model_file=model_file)
+    try:
+        model = lgb.Booster(model_file=model_file)
+    except (FileNotFoundError, lgb.basic.LightGBMError) as e:
+        logger.error(f"Critical artifact missing or invalid: {model_file}")
+        raise ValueError(f"Model artifact not found or invalid: {model_file} ({e})") from e
     logger.info(f"Loaded lightgbm_model.txt")
 
-    with open(os.path.join(model_dir, "risk_table_map.pkl"), "rb") as f:
-        risk_tables = pkl.load(f)
+    risk_table_file = os.path.join(model_dir, "risk_table_map.pkl")
+    try:
+        with open(risk_table_file, "rb") as f:
+            risk_tables = pkl.load(f)
+    except FileNotFoundError as e:
+        logger.error(f"Critical artifact missing: {risk_table_file}")
+        raise ValueError(f"Risk table artifact not found: {risk_table_file} ({e})") from e
     logger.info("Loaded risk_table_map.pkl")
-    with open(os.path.join(model_dir, "impute_dict.pkl"), "rb") as f:
-        impute_dict = pkl.load(f)
+
+    impute_file = os.path.join(model_dir, "impute_dict.pkl")
+    try:
+        with open(impute_file, "rb") as f:
+            impute_dict = pkl.load(f)
+    except FileNotFoundError as e:
+        logger.error(f"Critical artifact missing: {impute_file}")
+        raise ValueError(f"Imputation artifact not found: {impute_file} ({e})") from e
     logger.info("Loaded impute_dict.pkl")
-    with open(os.path.join(model_dir, "feature_columns.txt"), "r") as f:
-        feature_columns = [
-            line.strip().split(",")[1] for line in f if not line.startswith("#")
-        ]
+
+    feature_columns_file = os.path.join(model_dir, "feature_columns.txt")
+    try:
+        with open(feature_columns_file, "r") as f:
+            feature_columns = []
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                parts = line.strip().split(",")
+                if len(parts) > 1:
+                    feature_columns.append(parts[1])
+                elif line.strip():
+                    logger.warning(
+                        f"Malformed feature_columns line (expected 2+ comma-separated "
+                        f"fields), skipping: {line.strip()!r}"
+                    )
+    except FileNotFoundError as e:
+        logger.error(f"Critical artifact missing: {feature_columns_file}")
+        raise ValueError(f"Feature columns artifact not found: {feature_columns_file} ({e})") from e
     logger.info(f"Loaded feature_columns.txt: {feature_columns}")
-    with open(os.path.join(model_dir, "hyperparameters.json"), "r") as f:
-        hyperparams = json.load(f)
+
+    hyperparams_file = os.path.join(model_dir, "hyperparameters.json")
+    try:
+        with open(hyperparams_file, "r") as f:
+            hyperparams = json.load(f)
+    except FileNotFoundError as e:
+        logger.error(f"Critical artifact missing: {hyperparams_file}")
+        raise ValueError(f"Hyperparameters artifact not found: {hyperparams_file} ({e})") from e
     logger.info("Loaded hyperparameters.json")
 
     return model, risk_tables, impute_dict, feature_columns, hyperparams
@@ -1908,6 +1944,15 @@ def main(
     output_metrics_dir = output_paths.get(
         "metrics_output", output_paths.get("output_metrics_dir")
     )
+
+    # Validate required paths before any directory operations to avoid an
+    # opaque TypeError from os.makedirs(None) further down.
+    if None in (model_dir, eval_data_dir, output_eval_dir, output_metrics_dir):
+        raise ValueError(
+            "Missing required paths. "
+            f"Got model_dir={model_dir}, eval_data_dir={eval_data_dir}, "
+            f"output_eval_dir={output_eval_dir}, output_metrics_dir={output_metrics_dir}"
+        )
 
     # Extract environment variables
     id_field = environ_vars.get("ID_FIELD", "id")

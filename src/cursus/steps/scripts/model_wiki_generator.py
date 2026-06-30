@@ -3,7 +3,6 @@ import os
 import json
 import argparse
 import pandas as pd
-import numpy as np
 from pathlib import Path
 from datetime import datetime
 import logging
@@ -1292,6 +1291,17 @@ def main(
     output_wiki_dir = output_paths.get(
         "wiki_output", output_paths.get("output_wiki_dir")
     )
+
+    # Validate required paths before use to fail fast with a clear error
+    # instead of an opaque TypeError deep in os.path.join / os.makedirs.
+    if not metrics_input_dir:
+        raise ValueError(
+            "Missing required input path: 'metrics_input' (or 'metrics_input_dir')"
+        )
+    if not output_wiki_dir:
+        raise ValueError(
+            "Missing required output path: 'wiki_output' (or 'output_wiki_dir')"
+        )
 
     # Extract environment variables
     model_name = environ_vars.get("MODEL_NAME", "ML Model")

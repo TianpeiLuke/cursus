@@ -22,14 +22,14 @@ contract:
   - flag: --job_type
     source: job_type
   env_vars:
-    required:
-    - CURRENCY_CONVERSION_VARS
-    - CURRENCY_CONVERSION_DICT
+    required: []
     optional:
       CURRENCY_CODE_FIELD: ''
       MARKETPLACE_ID_FIELD: ''
       DEFAULT_CURRENCY: USD
       N_WORKERS: '50'
+      CURRENCY_CONVERSION_VARS: '[]'
+      CURRENCY_CONVERSION_DICT: '{}'
   framework_requirements:
     pandas: '>=1.3.0'
     numpy: '>=1.21.0'

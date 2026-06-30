@@ -48,7 +48,7 @@ class ValidationResult:
         self.type_mismatches = []
         self.warnings = []
 
-    def __dict__(self):
+    def to_dict(self):
         """Convert to dictionary for JSON serialization."""
         return {
             "valid": self.valid,
@@ -878,10 +878,10 @@ def main(
         # Save detailed validation report
         validation_report = {
             "validation_status": "failed",
-            "label_validation": label_validation.__dict__()
+            "label_validation": label_validation.to_dict()
             if label_validation
             else None,
-            "logic_validation": logic_validation.__dict__()
+            "logic_validation": logic_validation.to_dict()
             if logic_validation
             else None,
         }
@@ -958,10 +958,10 @@ def main(
     validation_report = {
         "validation_status": "passed",
         "field_validation": {"passed_at_config_level": True},
-        "label_validation": label_validation.__dict__()
+        "label_validation": label_validation.to_dict()
         if label_validation
         else {"skipped": True},
-        "logic_validation": logic_validation.__dict__()
+        "logic_validation": logic_validation.to_dict()
         if logic_validation
         else {"skipped": True},
         "optimization_applied": enable_optimization,

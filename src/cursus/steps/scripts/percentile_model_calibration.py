@@ -242,9 +242,14 @@ def get_calibrated_score_map(
                 pct[p] <= calibration_dictionary[s]
                 and pct[p + 1] >= calibration_dictionary[s]
             ):
-                scr = thresholds[p] + (thresholds[p + 1] - thresholds[p]) * (
-                    calibration_dictionary[s] - pct[p]
-                ) / (pct[p + 1] - pct[p])
+                # Guard against duplicate consecutive percentiles (roc_curve can
+                # produce identical TPR values), which would divide by zero.
+                if pct[p + 1] == pct[p]:
+                    scr = thresholds[p]
+                else:
+                    scr = thresholds[p] + (thresholds[p + 1] - thresholds[p]) * (
+                        calibration_dictionary[s] - pct[p]
+                    ) / (pct[p + 1] - pct[p])
                 score_map.append((scr, s))
     score_map.append((1.0, 1.0))
     return score_map
@@ -1638,6 +1643,14 @@ def main(
         logger.info(f"\n{'=' * 60}")
         logger.info(f"Calibration complete for all tasks")
         logger.info(f"{'=' * 60}\n")
+
+        # Fail loudly if every task was skipped (no valid scores, out-of-range,
+        # or constant scores). An empty result must not be reported as success.
+        if not task_calibrations:
+            raise ValueError(
+                "No valid tasks calibrated. Check data quality and score field "
+                "configuration."
+            )
 
         # Save unified calibration dictionary file (PRIMARY - aligns with model_calibration.py)
         if task_calibrations:

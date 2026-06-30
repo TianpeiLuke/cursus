@@ -30,6 +30,14 @@ contract:
       MODEL_VERSION: '1.0'
       PIPELINE_NAME: ML Pipeline
       AUTHOR: ML Team
+      TEAM_ALIAS: ml-team@
+      CONTACT_EMAIL: ml-team@company.com
+      CTI_CLASSIFICATION: Internal
+      REGION: Global
+      OUTPUT_FORMATS: wiki,html,markdown
+      INCLUDE_TECHNICAL_DETAILS: 'true'
+      MODEL_DESCRIPTION: ''
+      MODEL_PURPOSE: perform classification tasks
   framework_requirements:
     jinja2: '>=3.0.0'
     pandas: '>=1.3.0'

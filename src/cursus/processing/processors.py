@@ -54,6 +54,7 @@ class IdentityProcessor(Processor):
     """
 
     def __init__(self):
+        super().__init__()
         self.processor_name = "identity"
 
     def process(self, x):

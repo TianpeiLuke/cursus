@@ -216,7 +216,9 @@ class CompressionBPETokenizer:
               Vocab size: 4127
               compression: 2.503 (250.3%)
         """
-        # Split data for training and compression validation
+        # Split data for training and compression validation. Shuffle a COPY so
+        # we don't mutate the caller's list in place (random.shuffle is in-place).
+        texts = list(texts)
         random.shuffle(texts)
         split_idx = int(0.8 * len(texts))
         train_texts = texts[:split_idx]

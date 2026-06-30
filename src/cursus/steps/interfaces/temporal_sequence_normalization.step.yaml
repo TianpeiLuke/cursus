@@ -25,12 +25,23 @@ contract:
   - flag: --job_type
     source: job_type
   env_vars:
-    required:
-    - SEQUENCE_GROUPING_FIELD
-    - TEMPORAL_FIELD
+    required: []
     optional:
-      SEQUENCE_LENGTH: '100'
-      PADDING_STRATEGY: zero
+      SEQUENCE_LENGTH: '51'
+      PADDING_STRATEGY: pre
+      SEQUENCE_GROUPING_FIELD: customerId
+      TEMPORAL_FIELD: orderDate
+      SEQUENCE_SEPARATOR: '~'
+      RECORD_ID_FIELD: objectId
+      MISSING_INDICATORS: '["", "My Text String", null]'
+      TIME_DELTA_MAX_SECONDS: '10000000'
+      TRUNCATION_STRATEGY: post
+      ENABLE_MULTI_SEQUENCE: 'False'
+      SECONDARY_ENTITY_FIELD: creditCardId
+      SEQUENCE_NAMING_PATTERN: '*_seq_by_{entity}.*'
+      VALIDATION_STRATEGY: strict
+      OUTPUT_FORMAT: numpy
+      INCLUDE_ATTENTION_MASKS: 'True'
   framework_requirements:
     pandas: '>=1.3.0'
     numpy: '>=1.21.0'

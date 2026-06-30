@@ -39,7 +39,10 @@ class CategoricalImputationProcessor(Processor):
         super().__init__()
 
         if missing_indicators is None:
-            missing_indicators = ["", "My Text String", None, np.nan]
+            # NOTE: do NOT include placeholder strings like "My Text String" here —
+            # any real value equal to such a string would be silently imputed as
+            # missing. Only true missing markers belong in the default.
+            missing_indicators = ["", None, np.nan]
 
         self.default_values = default_values or {}
         self.missing_indicators = missing_indicators
@@ -153,12 +156,17 @@ class CategoricalImputationProcessor(Processor):
         return result
 
     def _get_default_value(self, key: str) -> Any:
-        """Get default value for a specific key/column"""
-        return (
-            self.default_values.get(key)
-            or self.learned_defaults.get(key)
-            or self.constant_value
-        )
+        """Get default value for a specific key/column.
+
+        Uses explicit membership checks rather than ``a or b or c`` so a
+        legitimately-falsy configured default (``0``, ``False``, ``""``) is
+        honored instead of being skipped as if it were missing.
+        """
+        if key in self.default_values:
+            return self.default_values[key]
+        if key in self.learned_defaults:
+            return self.learned_defaults[key]
+        return self.constant_value
 
     def add_missing_indicator(self, indicator: Any) -> None:
         """Add a new missing indicator"""

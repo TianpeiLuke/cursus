@@ -200,8 +200,12 @@ class RuleEngine:
                     # output_label should be int/str for single-label
                     self.rule_match_counts[output_col][rule_id] += 1
                     return output_label
-            except Exception as e:
-                logger.warning(f"Error evaluating rule {rule['rule_id']}: {e}")
+            except (KeyError, TypeError, ValueError, AttributeError) as e:
+                logger.warning(
+                    f"Error evaluating rule {rule.get('rule_id', '<unknown>')} "
+                    f"on row {getattr(row, 'name', '<unknown>')}: "
+                    f"{type(e).__name__}: {e}"
+                )
                 continue
 
         self.default_label_counts[output_col] += 1
@@ -247,8 +251,12 @@ class RuleEngine:
                             result[col] = value
                             self.rule_match_counts[col][rule["rule_id"]] += 1
 
-            except Exception as e:
-                logger.warning(f"Error evaluating rule {rule['rule_id']}: {e}")
+            except (KeyError, TypeError, ValueError, AttributeError) as e:
+                logger.warning(
+                    f"Error evaluating rule {rule.get('rule_id', '<unknown>')} "
+                    f"on row {getattr(row, 'name', '<unknown>')}: "
+                    f"{type(e).__name__}: {e}"
+                )
                 continue
 
         # Fill remaining NaN columns with default if dense mode

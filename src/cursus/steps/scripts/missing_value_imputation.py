@@ -11,7 +11,6 @@ import argparse
 import os
 import sys
 import pandas as pd
-import numpy as np
 import json
 import pickle as pkl
 import traceback
@@ -864,11 +863,17 @@ def analyze_missing_values(df: pd.DataFrame) -> Dict[str, Any]:
             if pd.api.types.is_numeric_dtype(df[col]):
                 try:
                     skewness = df[col].skew()
-                    if abs(skewness) > 1:  # Highly skewed
+                    # skew() can return NaN (e.g. constant column, <3 non-null
+                    # values); treat that as not-skewed and fall back to mean.
+                    if pd.notna(skewness) and abs(skewness) > 1:  # Highly skewed
                         missing_analysis["imputation_recommendations"][col] = "median"
                     else:
                         missing_analysis["imputation_recommendations"][col] = "mean"
-                except:
+                except (ValueError, TypeError, AttributeError) as e:
+                    logger.warning(
+                        f"Skewness computation failed for column '{col}' "
+                        f"({type(e).__name__}: {e}); defaulting to mean imputation."
+                    )
                     missing_analysis["imputation_recommendations"][col] = "mean"
             else:
                 missing_analysis["imputation_recommendations"][col] = "mode"

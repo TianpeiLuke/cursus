@@ -303,6 +303,9 @@ def extract_split_ratios(
     """
     total = sum(len(df) for df in base_splits.values())
 
+    if not base_splits or total == 0:
+        raise ValueError("Base splits must contain non-empty data")
+
     ratios = {name: len(df) / total for name, df in base_splits.items()}
 
     logger.info(f"Extracted split ratios from base data: {ratios}")

@@ -173,6 +173,10 @@ required_packages = [
     "pyarrow>=4.0.0,<6.0.0",
     "pydantic>=2.0.0,<3.0.0",
     "typing-extensions>=4.2.0",
+    "xgboost==1.7.6",
+    "numpy>=1.19.0",
+    "boto3>=1.26.0",
+    "matplotlib>=3.0.0",
 ]
 
 # Install packages using unified installation function

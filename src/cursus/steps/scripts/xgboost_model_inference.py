@@ -571,7 +571,7 @@ def save_predictions(
             elif "int" in str(output_df_json[col].dtype):
                 output_df_json[col] = output_df_json[col].astype(int)
             elif "float" in str(output_df_json[col].dtype):
-                output_df_json[col].astype(float)
+                output_df_json[col] = output_df_json[col].astype(float)
 
         # Save as JSON with specified orientation
         output_df_json.to_json(output_path, orient=json_orient, indent=2)

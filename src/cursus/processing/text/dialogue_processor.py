@@ -113,7 +113,13 @@ class DialogueChunkerProcessor(Processor):
                 # Truncate the message to max_tokens
                 tokens = tokens[: self.max_tokens]
                 msg = self.tokenizer.decode(tokens, skip_special_tokens=True)
-                token_count = self.max_tokens
+                # Recompute from the decoded text: decode→re-encode is not
+                # round-trip-stable, so the post-truncation msg may tokenize to a
+                # DIFFERENT count than max_tokens. Assuming max_tokens here would
+                # desync token_count from the msg actually used downstream.
+                token_count = len(
+                    self.tokenizer.encode(msg, add_special_tokens=False)
+                )
 
             # If adding this message would exceed limit, save current chunk and start a new one.
             if current_tokens + token_count > self.max_tokens:

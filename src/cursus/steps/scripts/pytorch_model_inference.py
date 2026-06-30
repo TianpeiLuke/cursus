@@ -258,12 +258,54 @@ from ...processing.processor_registry import build_text_pipeline_from_steps
 from ...processing.datasets.pipeline_datasets import PipelineDataset
 from ...processing.dataloaders.pipeline_dataloader import build_collate_batch
 
-from lightning_models.utils.pl_train import (
-    model_inference,
-    load_model,
-    load_artifacts,
-    is_main_process,
-)
+# ============================================================================
+# OPEN SECTION — USER-SUPPLIED MODEL PACKAGE (`lightning_models`)
+# ----------------------------------------------------------------------------
+# Generic PyTorch model-INFERENCE reference script. It owns everything
+# model-agnostic — data loading, preprocessing (load-and-apply), dataset/
+# dataloader, prediction save, and the SageMaker I/O contract. It loads the
+# trained model + inference utilities from a `lightning_models` package YOU
+# bundle into this step's `source_dir` (cursus does NOT ship it; use the SAME
+# package the model was trained with). REFERENCE:
+# <project>/dockers/lightning_models/ in BuyerAbuseModsTemplate.
+#
+# WHAT YOU MUST IMPLEMENT (the steps this script delegates to your package),
+# all in `lightning_models/utils/pl_train.py`:
+#   1. load_model(model_dir/checkpoint, config, device, ...) -> the trained
+#      pl.LightningModule (reconstruct the SAME architecture used in training).
+#   2. load_artifacts(artifacts_dir) -> the non-model artifacts saved at train
+#      time that inference needs (label map, embedding matrix, etc.).
+#   3. model_inference(model, loader, device, ...) -> predictions this script
+#      attaches to the output dataframe and saves.
+#   4. is_main_process() -> bool (gate writes to rank 0 under distributed).
+#
+# Note: this script (the EMBEDDING_MODE path) can emit a [tabular | embedding]
+# stack for a downstream model — your model_inference must return embeddings when
+# the encoder is run in that mode.
+#
+# What you do NOT implement (already provided here): path handling, load-and-
+# apply preprocessing, dataset/dataloader build, OUTPUT_FORMAT-aware save, and
+# the container I/O.
+#
+# If `lightning_models` is absent, the import below raises an instructive error
+# — a missing user-supplied dependency, not a bug.
+# ============================================================================
+try:
+    from lightning_models.utils.pl_train import (
+        model_inference,
+        load_model,
+        load_artifacts,
+        is_main_process,
+    )
+except ImportError as _e:  # pragma: no cover - user must supply lightning_models
+    raise ImportError(
+        "PyTorch model inference requires a user-supplied `lightning_models` "
+        "package (utils.pl_train: model_inference/load_model/load_artifacts/"
+        "is_main_process) bundled into this step's source_dir. The cursus package "
+        "does not ship it. See the OPEN SECTION banner above and the reference "
+        "layout under <project>/dockers/lightning_models/ in BuyerAbuseModsTemplate "
+        f"(e.g. atoz_bsm_pytorch, names3risk_pytorch). Original import error: {_e}"
+    ) from _e
 
 # Configure logging
 logging.basicConfig(

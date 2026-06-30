@@ -1497,6 +1497,13 @@ def save_selection_results(
     )
 
     # Save selection summary report (merged into same directory)
+    # Guard against empty combined scores (e.g., all selection methods failed or
+    # returned no features) so aggregation statistics below do not crash.
+    combined_scores_list = list(
+        selection_results["combined_result"]["scores"].values()
+    )
+    if not combined_scores_list:
+        combined_scores_list = [0.0]
     summary_report = {
         "selection_summary": {
             "total_features": selection_results["n_original_features"],
@@ -1521,14 +1528,10 @@ def save_selection_results(
             for result in selection_results["method_results"]
         },
         "feature_statistics": {
-            "avg_score": np.mean(
-                list(selection_results["combined_result"]["scores"].values())
-            ),
-            "score_std": np.std(
-                list(selection_results["combined_result"]["scores"].values())
-            ),
-            "min_score": min(selection_results["combined_result"]["scores"].values()),
-            "max_score": max(selection_results["combined_result"]["scores"].values()),
+            "avg_score": float(np.mean(combined_scores_list)),
+            "score_std": float(np.std(combined_scores_list)),
+            "min_score": min(combined_scores_list),
+            "max_score": max(combined_scores_list),
         },
     }
 

@@ -151,10 +151,52 @@ import tarfile
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Union
 
-# Model factory imports
-from models.factory.model_factory import ModelFactory
-from models.base.training_state import TrainingState
-from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
+# ============================================================================
+# OPEN SECTION — USER-SUPPLIED MODEL + HYPERPARAMS PACKAGES (`models`, `hyperparams`)
+# ----------------------------------------------------------------------------
+# Generic multi-task LightGBM (MTGBM) model-EVALUATION reference script. It owns
+# everything model-agnostic — data I/O, preprocessing, per-task metric +
+# comparison computation, the (multitask) ROC/PR/distribution plots, prediction/
+# metric save, and the SageMaker I/O contract. The model + hyperparameter schema
+# come from `models` + `hyperparams` packages YOU bundle into this step's
+# `source_dir` (cursus does NOT ship them; use the SAME packages the model was
+# trained with). REFERENCE: <project>/dockers/{models,hyperparams}/ in
+# BuyerAbuseModsTemplate (e.g. example_mtgbm, transportation_risk_mtl).
+#
+# WHAT YOU MUST IMPLEMENT (the steps this script delegates to your packages):
+#   1. MODEL FACTORY (load + predict) — `models/factory/model_factory.py::ModelFactory`
+#      Reconstruct the trained MTGBM model from the saved artifact and produce
+#      per-task scores for the eval split (the predictions this script scores).
+#   2. TRAINING STATE — `models/base/training_state.py::TrainingState`
+#      The persisted training-state object this script reads to recover task
+#      structure / metadata needed to interpret predictions.
+#   3. HYPERPARAMETERS — `hyperparams/hyperparameters_lightgbmmt.py`
+#      `LightGBMMtModelHyperparameters` (Pydantic): the schema this script parses
+#      hyperparameters.json into (task names, score fields, etc.).
+#   (The underlying `models/lightgbmmt` engine is pulled in transitively by the
+#    factory; you do not call it here directly.)
+#
+# What you do NOT implement (already provided here): path handling, load-and-
+# apply preprocessing, the per-task metric/comparison math, all plotting, the
+# evaluate-with-comparison orchestration, prediction/metric save, container I/O.
+#
+# If the packages are absent, the import below raises an instructive error — a
+# missing user-supplied dependency, not a bug.
+# ============================================================================
+try:
+    from models.factory.model_factory import ModelFactory
+    from models.base.training_state import TrainingState
+    from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
+except ImportError as _e:  # pragma: no cover - user must supply models/hyperparams
+    raise ImportError(
+        "MTGBM model evaluation requires user-supplied `models` "
+        "(models.factory.ModelFactory, models.base.TrainingState) and "
+        "`hyperparams` (hyperparameters_lightgbmmt.LightGBMMtModelHyperparameters) "
+        "packages bundled into this step's source_dir. The cursus package does not "
+        "ship them. See the OPEN SECTION banner above and the reference layout under "
+        "<project>/dockers/{models,hyperparams}/ in BuyerAbuseModsTemplate "
+        f"(e.g. example_mtgbm, transportation_risk_mtl). Original import error: {_e}"
+    ) from _e
 
 # Embedded processor classes to remove external dependencies
 

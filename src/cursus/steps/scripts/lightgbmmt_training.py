@@ -147,11 +147,64 @@ from sklearn.metrics import (
     precision_recall_curve,
 )
 
-from models.loss.loss_factory import LossFactory
-from models.factory.model_factory import ModelFactory
-from models.base.training_state import TrainingState
-
-from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
+# ============================================================================
+# OPEN SECTION — USER-SUPPLIED MODEL + HYPERPARAMS PACKAGES (`models`, `hyperparams`)
+# ----------------------------------------------------------------------------
+# Generic multi-task LightGBM (MTGBM) TRAINING reference script. It owns
+# everything model-agnostic — data I/O, preprocessing (risk-table + imputation),
+# dataset prep, the train->evaluate->save orchestration, and the SageMaker I/O
+# contract. The multi-task model, its loss functions, training state, and the
+# hyperparameter schema come from `models` + `hyperparams` packages YOU bundle
+# into this step's `source_dir` (cursus does NOT ship them). REFERENCE:
+# <project>/dockers/{models,hyperparams}/ in BuyerAbuseModsTemplate (e.g.
+# example_mtgbm, transportation_risk_mtl, pfw_mtgbm_na).
+#
+# WHAT YOU MUST IMPLEMENT (the steps this script delegates to your packages):
+#   1. MTGBM ENGINE — `models/lightgbmmt/` (+ `models/implementations/`)
+#      The actual multi-task gradient-boosting training engine (the per-task
+#      tree build / shared-split logic). ModelFactory builds it; this script
+#      never touches it directly.
+#   2. LOSS — `models/loss/loss_factory.py::LossFactory`
+#      LossFactory.create(...) -> the multi-task loss/objective (fixed-weight,
+#      adaptive-weight, knowledge-distillation, etc.) used during boosting.
+#   3. MODEL FACTORY — `models/factory/model_factory.py::ModelFactory`
+#      ModelFactory(...).build(...) / .train(...) -> assemble the MTGBM model
+#      from the hyperparameters + loss and run training. This is the seam where
+#      your engine + loss + config come together.
+#   4. TRAINING STATE — `models/base/training_state.py::TrainingState`
+#      The object that tracks per-iteration/per-task training state this script
+#      persists and reports.
+#   5. HYPERPARAMETERS — `hyperparams/hyperparameters_lightgbmmt.py`
+#      `LightGBMMtModelHyperparameters` (Pydantic): the typed schema this script
+#      parses the hyperparameters.json into and hands to ModelFactory.
+#
+# What you do NOT implement (already provided here): input/output path handling,
+# risk-table + numerical-imputation preprocessing, dataset prep, the
+# train/evaluate/save orchestration in main(), metric + plot helpers for the
+# eval split, artifact save, and the SageMaker container I/O.
+#
+# If the packages are absent, the import below raises an instructive error — a
+# missing user-supplied dependency, not a bug.
+# ============================================================================
+try:
+    from models.loss.loss_factory import LossFactory
+    from models.factory.model_factory import ModelFactory
+    from models.base.training_state import TrainingState
+    from hyperparams.hyperparameters_lightgbmmt import (
+        LightGBMMtModelHyperparameters,
+    )
+except ImportError as _e:  # pragma: no cover - user must supply models/hyperparams
+    raise ImportError(
+        "MTGBM training requires user-supplied `models` "
+        "(models.loss.LossFactory, models.factory.ModelFactory, "
+        "models.base.TrainingState + the models.lightgbmmt engine) and `hyperparams` "
+        "(hyperparameters_lightgbmmt.LightGBMMtModelHyperparameters) packages bundled "
+        "into this step's source_dir. The cursus package does not ship them. See the "
+        "OPEN SECTION banner above and the reference layout under "
+        "<project>/dockers/{models,hyperparams}/ in BuyerAbuseModsTemplate "
+        "(e.g. example_mtgbm, transportation_risk_mtl). "
+        f"Original import error: {_e}"
+    ) from _e
 
 # Preprocessing imports
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor

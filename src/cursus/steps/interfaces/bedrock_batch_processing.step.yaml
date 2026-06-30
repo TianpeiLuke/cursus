@@ -46,6 +46,24 @@ contract:
       BEDROCK_MAX_TOKENS: '32768'
       BEDROCK_BATCH_SIZE: '10'
       BEDROCK_CONCURRENCY_MODE: sequential
+      BEDROCK_INFERENCE_PROFILE_ARN: ''
+      BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS: '[]'
+      BEDROCK_TEMPERATURE: '1.0'
+      BEDROCK_TOP_P: '0.999'
+      BEDROCK_MAX_RETRIES: '3'
+      BEDROCK_OUTPUT_COLUMN_PREFIX: llm_
+      BEDROCK_SKIP_ERROR_RECORDS: 'false'
+      BEDROCK_MAX_CONCURRENT_WORKERS: '5'
+      BEDROCK_RATE_LIMIT_PER_SECOND: '10'
+      BEDROCK_BATCH_MODE: auto
+      BEDROCK_BATCH_THRESHOLD: '1000'
+      BEDROCK_BATCH_ROLE_ARN: ''
+      BEDROCK_BATCH_TIMEOUT_HOURS: '24'
+      BEDROCK_MAX_RECORDS_PER_JOB: '45000'
+      BEDROCK_MAX_CONCURRENT_BATCH_JOBS: '20'
+      BEDROCK_MAX_INPUT_FIELD_LENGTH: '400000'
+      BEDROCK_TRUNCATION_ENABLED: 'true'
+      BEDROCK_LOG_TRUNCATIONS: 'true'
   # COMPUTED-S3-ENV pattern (FZ 31e1d3g3 A3): the script reads/writes batch JSONL via S3 paths whose
   # value is derived from the pipeline execution prefix (base_output_path), not a config field. The
   # base _get_environment_variables sets each to Join(base_output_path, *segments) — replacing the

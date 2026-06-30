@@ -1842,6 +1842,18 @@ def main(
     # Get the available features (those that exist in the DataFrame)
     available_features = [col for col in feature_columns if col in df.columns]
 
+    # Fail fast if none of the model's expected feature columns are present in
+    # the evaluation data. Without this guard, downstream code would pass an
+    # empty feature set to the model (df[[]] -> zero-column matrix), silently
+    # producing meaningless predictions instead of surfacing the data mismatch.
+    if not available_features:
+        missing = list(feature_columns)
+        raise ValueError(
+            f"No expected feature columns were found in the evaluation data. "
+            f"The model expects {len(missing)} feature column(s): {missing}. "
+            f"Available data columns: {list(df.columns)}"
+        )
+
     # Log inference strategy
     logger.info("INFERENCE STRATEGY:")
     logger.info(f"  → Using {len(available_features)} features for model inference")

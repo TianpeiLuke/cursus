@@ -29,11 +29,16 @@ class TemporalMaskProcessor(Processor):
 
     def __init__(
         self,
-        mask_value: Union[int, float, bool] = True,
         padding_value: Union[int, float] = 0,
         output_format: str = "boolean",
+        mask_value: Union[int, float, bool] = True,
     ):
         super().__init__()
+        # NOTE: `mask_value` is RESERVED and currently unused. The mask is derived
+        # as (input != padding_value) and emitted via `output_format`
+        # (boolean / float 1.0-0.0 / int 1-0). It is kept as a trailing keyword for
+        # API stability; do not rely on it to relabel valid positions yet. Moved
+        # last in the signature so positional callers are unaffected.
         self.mask_value = mask_value
         self.padding_value = padding_value
         self.output_format = output_format

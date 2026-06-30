@@ -37,10 +37,8 @@ contract:
   env_vars:
     required: []
     optional:
-      USE_SECURE_PYPI: 'true'
       USE_PRECOMPUTED_IMPUTATION: 'false'
       USE_PRECOMPUTED_RISK_TABLES: 'false'
-      USE_PRECOMPUTED_FEATURES: 'false'
       ENABLE_TRUE_STREAMING: 'false'
       NUM_WORKERS_PER_RANK: '4'
       PREFETCH_FACTOR: '2'

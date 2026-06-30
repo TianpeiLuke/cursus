@@ -253,38 +253,104 @@ from ...processing.dataloaders.pipeline_dataloader import (
     build_collate_batch,
     build_trimodal_collate_batch,
 )
-from ...processing.dataloaders.pipeline_dataloader import build_collate_batch
-from lightning_models.tabular.pl_tab_ae import TabAE
-from lightning_models.text.pl_text_cnn import TextCNN
-from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
-from lightning_models.bimodal.pl_bimodal_bert import BimodalBert
-from lightning_models.bimodal.pl_bimodal_moe import BimodalBertMoE
-from lightning_models.bimodal.pl_bimodal_gate_fusion import BimodalBertGateFusion
-from lightning_models.bimodal.pl_bimodal_cross_attn import BimodalBertCrossAttn
-from lightning_models.trimodal.pl_trimodal_bert import TrimodalBert
-from lightning_models.trimodal.pl_trimodal_cross_attn import TrimodalCrossAttentionBert
-from lightning_models.trimodal.pl_trimodal_gate_fusion import TrimodalGateFusionBert
-from lightning_models.text.pl_bert_classification import TextBertClassification
-from lightning_models.text.pl_lstm import TextLSTM
-from lightning_models.bimodal.pl_lstm2risk import LSTM2Risk
-from lightning_models.bimodal.pl_transformer2risk import Transformer2Risk
-from lightning_models.utils.pl_train import (
-    model_train,
-    model_inference,
-    predict_stack_transform,
-    save_model,
-    save_prediction,
-    save_artifacts,
-    load_model,
-    load_artifacts,
-    load_checkpoint,
-)
-from lightning_models.utils.pl_model_plots import (
-    compute_metrics,
-    roc_metric_plot,
-    pr_metric_plot,
-)
-from lightning_models.utils.dist_utils import get_rank, is_main_process
+
+# ============================================================================
+# OPEN SECTION — USER-SUPPLIED MODEL PACKAGE (`lightning_models`)
+# ----------------------------------------------------------------------------
+# This is a generic PyTorch-training REFERENCE script. It owns everything that
+# is model-agnostic — data loading, preprocessing (risk-table + imputation),
+# config/hyperparameter parsing, the train->evaluate->export->save orchestration,
+# and the SageMaker I/O contract. It does NOT define the model itself; you supply
+# a `lightning_models` package in this step's `source_dir` (cursus does NOT ship
+# it). REFERENCE: <project>/dockers/lightning_models/{tabular,text,bimodal,
+# trimodal,utils}/ in BuyerAbuseModsTemplate (e.g. atoz_bsm_pytorch,
+# names3risk_pytorch) — copy that tree and adapt the model classes to your data.
+#
+# WHAT YOU MUST IMPLEMENT (the steps this script delegates to your package):
+#
+#   1. MODEL CLASSES — `lightning_models/<family>/<arch>.py`
+#      One `pl.LightningModule` subclass per architecture, constructed as
+#      `Model(config_dict)` (tabular/bert/bimodal/trimodal) or
+#      `Model(config_dict, vocab_size, embedding_mat)` (cnn/lstm). Each must
+#      define forward + training_step/validation_step + configure_optimizers so
+#      `model_train(...)` can fit it. Register every arch in the `model_select()`
+#      map (the second OPEN SECTION, below) keyed by your `model_class` string.
+#
+#   2. TRAINING/INFERENCE LOOP — `lightning_models/utils/pl_train.py`
+#      - model_train(model, train_loader, val_loader, config, device, ...) -> trained model
+#        (build the pl.Trainer / FSDP/DDP strategy, run fit, return the model).
+#      - model_inference(model, loader, device, ...) -> predictions (numpy/tensor).
+#      - predict_stack_transform(...) -> stack/transform batched predictions.
+#      - save_model / load_model / load_checkpoint -> (de)serialize the model.
+#      - save_prediction -> write predictions; save_artifacts / load_artifacts ->
+#        (de)serialize non-model artifacts (e.g. embedding matrix, label map).
+#
+#   3. METRICS + PLOTS — `lightning_models/utils/pl_model_plots.py`
+#      - compute_metrics(y_true, y_score, ...) -> dict of eval metrics.
+#      - roc_metric_plot(...) / pr_metric_plot(...) -> write ROC / PR figures.
+#
+#   4. DISTRIBUTED HELPERS — `lightning_models/utils/dist_utils.py`
+#      - get_rank() -> int; is_main_process() -> bool (used to gate logging,
+#        checkpoint writes, and ONNX export to rank 0).
+#
+#   5. (in this file) REGISTER your arch in `model_select()` below — that is the
+#      ONLY edit you make to this script; everything else here stays as-is.
+#
+# What you do NOT implement (this script already provides it): reading
+# input_paths/output_paths, risk-table + numerical-imputation preprocessing,
+# building the PipelineDataset + dataloader (collate), config/hyperparameter
+# parsing, the train/eval/export/save orchestration in main(), ONNX export, and
+# the SageMaker container I/O. Keep your model package free of those concerns.
+#
+# If `lightning_models` is absent, the import below fails with an instructive
+# error pointing back here — it is a missing user-supplied dependency, not a bug.
+# ============================================================================
+try:
+    from lightning_models.tabular.pl_tab_ae import TabAE
+    from lightning_models.text.pl_text_cnn import TextCNN
+    from lightning_models.bimodal.pl_bimodal_cnn import BimodalCNN
+    from lightning_models.bimodal.pl_bimodal_bert import BimodalBert
+    from lightning_models.bimodal.pl_bimodal_moe import BimodalBertMoE
+    from lightning_models.bimodal.pl_bimodal_gate_fusion import BimodalBertGateFusion
+    from lightning_models.bimodal.pl_bimodal_cross_attn import BimodalBertCrossAttn
+    from lightning_models.trimodal.pl_trimodal_bert import TrimodalBert
+    from lightning_models.trimodal.pl_trimodal_cross_attn import (
+        TrimodalCrossAttentionBert,
+    )
+    from lightning_models.trimodal.pl_trimodal_gate_fusion import (
+        TrimodalGateFusionBert,
+    )
+    from lightning_models.text.pl_bert_classification import TextBertClassification
+    from lightning_models.text.pl_lstm import TextLSTM
+    from lightning_models.bimodal.pl_lstm2risk import LSTM2Risk
+    from lightning_models.bimodal.pl_transformer2risk import Transformer2Risk
+    from lightning_models.utils.pl_train import (
+        model_train,
+        model_inference,
+        predict_stack_transform,
+        save_model,
+        save_prediction,
+        save_artifacts,
+        load_model,
+        load_artifacts,
+        load_checkpoint,
+    )
+    from lightning_models.utils.pl_model_plots import (
+        compute_metrics,
+        roc_metric_plot,
+        pr_metric_plot,
+    )
+    from lightning_models.utils.dist_utils import get_rank, is_main_process
+except ImportError as _e:  # pragma: no cover - user must supply lightning_models
+    raise ImportError(
+        "PyTorch training requires a user-supplied `lightning_models` package "
+        "(model classes + utils.pl_train / pl_model_plots / dist_utils) bundled "
+        "into this step's source_dir. The cursus package does not ship it. "
+        "See the OPEN SECTION banner at the top of pytorch_training.py and the "
+        "reference layout under <project>/dockers/lightning_models/ in "
+        "BuyerAbuseModsTemplate (e.g. atoz_bsm_pytorch, names3risk_pytorch). "
+        f"Original import error: {_e}"
+    ) from _e
 from pydantic import (
     BaseModel,
     Field,
@@ -1391,20 +1457,31 @@ def model_select(
     model_class: str, config_dict: Dict, vocab_size: int, embedding_mat: torch.Tensor
 ) -> nn.Module:
     """
-    Select and instantiate a model based on model_class string.
+    OPEN SECTION (model implementation) — map a ``model_class`` string to a model
+    instance from the user-supplied ``lightning_models`` package.
+
+    This is the single seam where the PROJECT plugs in its model. The reference
+    map below is the BuyerAbuseModsTemplate set; in your project, edit this map
+    (and the OPEN SECTION import block at the top of the file) to register your
+    own ``pl.LightningModule`` architectures. The rest of this script — data,
+    preprocessing, training loop, evaluation, export, I/O — is complete and does
+    not depend on which model you choose.
+
+    Constructor contract this script relies on:
+      * tabular/bimodal/trimodal/bert models: ``Model(config_dict)``
+      * embedding-matrix models (cnn / lstm):  ``Model(config_dict, vocab_size, embedding_mat)``
+    Register new architectures following the same constructor shape so the
+    downstream ``build_model_and_optimizer`` / ``model_train`` flow is unchanged.
 
     Args:
-        model_class: String identifier for model type
-        config_dict: Configuration dictionary (includes hyperparameters + runtime paths)
-        vocab_size: Vocabulary size for embedding layer
-        embedding_mat: Pretrained embedding matrix
+        model_class: String identifier for model type.
+        config_dict: Configuration dictionary (hyperparameters + runtime paths).
+        vocab_size: Vocabulary size for the embedding layer.
+        embedding_mat: Pretrained embedding matrix.
 
-    Supports:
-    - General categories: "bimodal", "trimodal"
-    - Specific bimodal models: "bimodal_bert", "bimodal_cnn", etc.
-    - Specific trimodal models: "trimodal_bert", etc.
-    - Text-only models: "bert", "lstm"
-    - Backward compatibility: "multimodal_*" maps to "bimodal_*"
+    Supports (reference set): "bimodal"/"trimodal" + the specific *_bert/_cnn/_moe/
+    _gate_fusion/_cross_attn variants, "bert"/"lstm", the Names2Risk
+    "lstm2risk"/"transformer2risk", and the "multimodal_*" back-compat aliases.
     """
     model_map = {
         # General categories (default to bert variants)

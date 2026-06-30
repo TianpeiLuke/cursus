@@ -22,15 +22,25 @@ contract:
   - flag: --job_type
     source: job_type
   env_vars:
-    required:
-    - SEQUENCE_GROUPING_FIELD
-    - TIMESTAMP_FIELD
-    - VALUE_FIELDS
+    required: []
     optional:
       FEATURE_TYPES: '["statistical", "temporal", "behavioral"]'
       CATEGORICAL_FIELDS: '["merchantCategory", "paymentMethod"]'
       WINDOW_SIZES: '[7, 14, 30, 90]'
       AGGREGATION_FUNCTIONS: '["mean", "sum", "std", "min", "max", "count"]'
+      SEQUENCE_GROUPING_FIELD: customerId
+      TIMESTAMP_FIELD: orderDate
+      VALUE_FIELDS: '["transactionAmount", "merchantRiskScore"]'
+      LAG_FEATURES: '[1, 7, 14, 30]'
+      EXPONENTIAL_SMOOTHING_ALPHA: '0.3'
+      TIME_UNIT: days
+      INPUT_FORMAT: numpy
+      OUTPUT_FORMAT: numpy
+      ENABLE_VALIDATION: 'True'
+      MISSING_VALUE_THRESHOLD: '0.95'
+      CORRELATION_THRESHOLD: '0.99'
+      VARIANCE_THRESHOLD: '0.01'
+      OUTLIER_DETECTION: 'True'
   framework_requirements:
     pandas: '>=1.3.0'
     numpy: '>=1.21.0'

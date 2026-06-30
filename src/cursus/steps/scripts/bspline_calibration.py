@@ -2,6 +2,22 @@
 """
 Monotone B-Spline Calibration Script for SageMaker Processing.
 
+==============================================================================
+This is an ALTERNATIVE entry_point for the ModelCalibration step — NOT a
+separate step. It is fully interchangeable with model_calibration.py: same
+main(input_paths, output_paths, environ_vars, job_args) contract, same I/O
+channels (input `evaluation_data` -> outputs `calibration_output` /
+`metrics_output` / `calibrated_data`), and the same env-var surface (it sets
+CALIBRATION_METHOD=bspline where model_calibration.py defaults to gam, plus the
+B-spline knobs MONOTONIC_CONSTRAINT / DEGREE / N_KNOTS / ERROR_THRESHOLD).
+
+It therefore has NO `.step.yaml` of its own (and no registry entry) by design —
+it satisfies the existing `model_calibration.step.yaml` interface. To use the
+B-spline method instead of GAM for the ModelCalibration step, point the step's
+`contract.entry_point` (or the project's source_dir runner) at this script.
+See model_calibration.py for the GAM/isotonic/Platt sibling.
+==============================================================================
+
 Python port of COSA's generic_rfuge.r — fits a monotone logistic B-spline
 to calibrate raw model scores to probabilities. Monotonicity is enforced
 via quadratic programming (hard constraint: delta[j+1] >= delta[j]).
@@ -613,8 +629,34 @@ def main(
                 logger.error(f"Label field '{lf}' not found in data")
                 continue
 
-            scores = df[sf].values.astype(float)
-            tags = df[lf].values.astype(float)
+            # Coerce to numeric (non-numeric values become NaN) so we can report
+            # bad rows with context instead of an uninformative ValueError.
+            score_series = pd.to_numeric(df[sf], errors="coerce")
+            label_series = pd.to_numeric(df[lf], errors="coerce")
+
+            # Drop rows where either field is missing/non-numeric. Rows with
+            # fully valid numeric data are unaffected, preserving prior behavior.
+            valid_mask = score_series.notna() & label_series.notna()
+            n_dropped = int((~valid_mask).sum())
+            if n_dropped:
+                logger.warning(
+                    f"Dropping {n_dropped} row(s) with missing/non-numeric values "
+                    f"in '{sf}' or '{lf}' before calibration"
+                )
+            if not valid_mask.any():
+                logger.error(
+                    f"No valid numeric rows for score_field='{sf}', "
+                    f"label_field='{lf}'; skipping calibration"
+                )
+                all_results[sf] = {
+                    "status": "Fail",
+                    "error": "No valid numeric rows",
+                }
+                continue
+
+            valid_idx = df.index[valid_mask]
+            scores = score_series[valid_mask].values.astype(float)
+            tags = label_series[valid_mask].values.astype(float)
 
             # Run B-spline calibration
             result = run_bspline_calibration(
@@ -633,16 +675,17 @@ def main(
                     zip(score_range.tolist(), calibrated_values.tolist())
                 )
 
-                # Apply calibration to data
+                # Apply calibration to data (only to the valid numeric rows)
                 raw_scores = np.array([s for s, _ in lookup_table])
                 cal_scores = np.array([c for _, c in lookup_table])
-                df[f"{sf}_calibrated"] = np.interp(scores, raw_scores, cal_scores)
+                calibrated_scores = np.interp(scores, raw_scores, cal_scores)
+                df.loc[valid_idx, f"{sf}_calibrated"] = calibrated_scores
 
                 # Compute metrics
                 from sklearn.metrics import brier_score_loss
 
                 uncal_brier = brier_score_loss(tags, scores)
-                cal_brier = brier_score_loss(tags, df[f"{sf}_calibrated"].values)
+                cal_brier = brier_score_loss(tags, calibrated_scores)
 
                 all_results[sf] = {
                     "status": "Success",

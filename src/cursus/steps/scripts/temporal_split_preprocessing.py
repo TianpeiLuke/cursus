@@ -1149,7 +1149,20 @@ def main(
             )
     else:
         max_workers = 4  # Default to 4 workers
-    batch_size = int(environ_vars.get("BATCH_SIZE", 10))
+    batch_size_str = environ_vars.get("BATCH_SIZE", "10")
+    if (
+        batch_size_str
+        and str(batch_size_str).lower() != "none"
+        and str(batch_size_str).strip() != ""
+    ):
+        try:
+            batch_size = int(batch_size_str)
+        except ValueError as e:
+            raise RuntimeError(
+                f"Invalid BATCH_SIZE value: '{batch_size_str}'. Error: {e}"
+            )
+    else:
+        batch_size = 10  # Default batch size
 
     # Streaming mode parameters
     enable_true_streaming = (

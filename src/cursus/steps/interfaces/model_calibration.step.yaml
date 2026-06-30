@@ -26,10 +26,7 @@ contract:
   - flag: --job_type
     source: job_type
   env_vars:
-    required:
-    - CALIBRATION_METHOD
-    - IS_BINARY
-    - LABEL_FIELD
+    required: []
     optional:
       SCORE_FIELD: prob_class_1
       SCORE_FIELDS: ''
@@ -39,9 +36,11 @@ contract:
       ERROR_THRESHOLD: '0.05'
       NUM_CLASSES: '2'
       SCORE_FIELD_PREFIX: prob_class_
-      MULTICLASS_CATEGORIES: '[0, 1]'
+      MULTICLASS_CATEGORIES: ''
       CALIBRATION_SAMPLE_POINTS: '1000'
-      USE_SECURE_PYPI: 'true'
+      CALIBRATION_METHOD: gam
+      IS_BINARY: 'True'
+      LABEL_FIELD: label
   framework_requirements:
     scikit-learn: '>=0.23.2,<1.0.0'
     pandas: '>=1.2.0,<2.0.0'

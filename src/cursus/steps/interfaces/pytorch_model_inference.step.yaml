@@ -12,7 +12,7 @@ compute:
   framework_version_field: framework_version
   py_version_field: py_version
 contract:
-  entry_point: pytorch_inference.py
+  entry_point: pytorch_model_inference.py
   source_dir: true
   inputs:
     model_input:
@@ -29,9 +29,12 @@ contract:
   - flag: --job_type
     source: job_type
   env_vars:
-    required:
-    - ID_FIELD
-    optional: {}
+    required: []
+    optional:
+      ID_FIELD: id
+      DEVICE: auto
+      LABEL_FIELD: ''
+      EMBEDDING_MODE: 'false'
   framework_requirements:
     torch: ==2.1.2
     transformers: ==4.37.2

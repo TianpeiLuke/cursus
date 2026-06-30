@@ -241,12 +241,16 @@ class PipelineIterableDataset(IterableDataset):
         Returns:
             DataFrame with converted types
         """
-        if self.cat_field_list:
-            for col in df.columns:
-                if col in self.cat_field_list:
-                    df[col] = df[col].astype(str).fillna("")
-                else:
-                    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(-1.0)
+        # Run the per-column conversion unconditionally. The inner check already
+        # routes each column (categorical → str, else → numeric); gating the whole
+        # loop on a truthy cat_field_list meant an EMPTY cat_field_list ([] = "no
+        # categorical fields") skipped numeric coercion of every column.
+        cat_fields = self.cat_field_list or []
+        for col in df.columns:
+            if col in cat_fields:
+                df[col] = df[col].astype(str).fillna("")
+            else:
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(-1.0)
 
         # Apply missing value rules if set
         if self._missing_value_rules:

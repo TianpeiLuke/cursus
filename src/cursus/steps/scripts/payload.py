@@ -764,8 +764,16 @@ def extract_hyperparameters_from_tarball(
         raise FileNotFoundError("hyperparameters.json not found in model artifacts")
 
     # Load the hyperparameters
-    with open(hyperparams_path, "r") as f:
-        hyperparams = json.load(f)
+    try:
+        with open(hyperparams_path, "r") as f:
+            hyperparams = json.load(f)
+    except json.JSONDecodeError as e:
+        logger.error(
+            f"Failed to parse hyperparameters.json at {hyperparams_path}: {e}"
+        )
+        raise ValueError(
+            f"Malformed hyperparameters.json at {hyperparams_path}: {e}"
+        ) from e
 
     # Copy to working directory if not already there
     if not str(hyperparams_path).startswith(str(working_directory)):

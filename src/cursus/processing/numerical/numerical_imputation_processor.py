@@ -109,7 +109,11 @@ class NumericalVariableImputationProcessor(Processor):
                 f"Imputation value must be numeric, got {type(value)} for column '{self.column_name}'"
             )
         if pd.isna(value):
-            logger.warning(f"Imputation value is NaN for column '{self.column_name}'")
+            # A NaN imputation value imputes NaN — i.e. silently does nothing while
+            # appearing to fill, corrupting the contract. Reject it outright.
+            raise ValueError(
+                f"Imputation value cannot be NaN for column '{self.column_name}'"
+            )
 
     def fit(
         self, X: Union[pd.Series, pd.DataFrame], y: Optional[pd.Series] = None
@@ -148,6 +152,17 @@ class NumericalVariableImputationProcessor(Processor):
             self.imputation_value = float(data.median())
         elif self.strategy == "mode":
             mode_values = data.mode()
+            # pandas .mode() returns all tied modes sorted ascending; take the
+            # smallest for a DETERMINISTIC choice (log when there is a tie so the
+            # selection is transparent rather than silently arbitrary).
+            if len(mode_values) > 1:
+                logger.debug(
+                    "Column '%s' has %d tied modes %s; using the smallest (%s).",
+                    self.column_name,
+                    len(mode_values),
+                    list(mode_values),
+                    mode_values[0],
+                )
             self.imputation_value = (
                 float(mode_values[0]) if len(mode_values) > 0 else 0.0
             )

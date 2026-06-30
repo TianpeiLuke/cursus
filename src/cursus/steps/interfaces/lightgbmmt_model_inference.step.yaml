@@ -29,12 +29,12 @@ contract:
   - flag: --job_type
     source: job_type
   env_vars:
-    required:
-    - ID_FIELD
-    - TASK_LABEL_NAMES
+    required: []
     optional:
       OUTPUT_FORMAT: csv
       JSON_ORIENT: records
+      ID_FIELD: id
+      TASK_LABEL_NAMES: ''
   framework_requirements:
     pandas: '>=1.2.0,<2.0.0'
     numpy: '>=1.21.0'

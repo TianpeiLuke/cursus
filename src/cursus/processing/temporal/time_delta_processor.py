@@ -39,6 +39,14 @@ class TimeDeltaProcessor(Processor):
         max_delta: Optional[float] = 10000000,
     ):
         super().__init__()
+        if reference_strategy not in ("most_recent", "first"):
+            # 'custom' was advertised in the docstring but never implemented in
+            # fit(); reject unknown strategies up front rather than silently
+            # leaving reference_time=None (which corrupts every delta).
+            raise ValueError(
+                "reference_strategy must be one of {'most_recent', 'first'}, "
+                f"got {reference_strategy!r}"
+            )
         self.reference_strategy = reference_strategy
         self.reference_field = reference_field
         self.output_field = output_field
@@ -47,8 +55,25 @@ class TimeDeltaProcessor(Processor):
         self.reference_time = None
         self.is_fitted = False
 
+    def _require_field(self, data: Union[Dict, pd.DataFrame]) -> None:
+        """Raise a clear error if the reference field is absent (vs a bare KeyError)."""
+        if isinstance(data, dict) and self.reference_field not in data:
+            raise KeyError(
+                f"reference_field '{self.reference_field}' not found in input dict keys "
+                f"{list(data.keys())}"
+            )
+        if isinstance(data, pd.DataFrame) and self.reference_field not in data.columns:
+            raise KeyError(
+                f"reference_field '{self.reference_field}' not found in DataFrame columns "
+                f"{list(data.columns)}"
+            )
+
     def fit(self, data: Union[Dict, List, np.ndarray]) -> "TimeDeltaProcessor":
         """Learn reference time from data"""
+        self._require_field(data)
+        if isinstance(data, np.ndarray) and data.size == 0:
+            raise ValueError("Cannot fit TimeDeltaProcessor on an empty array.")
+
         if self.reference_strategy == "most_recent":
             if isinstance(data, dict):
                 timestamps = data[self.reference_field]
@@ -70,6 +95,17 @@ class TimeDeltaProcessor(Processor):
             elif isinstance(data, pd.DataFrame):
                 self.reference_time = data[self.reference_field].min()
 
+        # An all-NaN (or empty) reference field yields a NaN reference_time, which
+        # would silently propagate NaN into every computed delta. Fail loudly.
+        if self.reference_time is None or (
+            isinstance(self.reference_time, (float, np.floating))
+            and pd.isna(self.reference_time)
+        ):
+            raise ValueError(
+                f"Could not derive a reference time from field "
+                f"'{self.reference_field}' (empty or all-NaN)."
+            )
+
         self.is_fitted = True
         logger.info(
             f"TimeDeltaProcessor fitted with reference_time: {self.reference_time}"
@@ -84,6 +120,7 @@ class TimeDeltaProcessor(Processor):
             raise RuntimeError("Processor must be fitted before processing")
 
         if isinstance(input_data, dict):
+            self._require_field(input_data)
             timestamps = input_data[self.reference_field]
             if isinstance(timestamps, list):
                 deltas = [self.reference_time - t for t in timestamps]
@@ -95,7 +132,10 @@ class TimeDeltaProcessor(Processor):
                 if isinstance(deltas, list):
                     deltas = [min(d, self.max_delta) for d in deltas]
                 else:
-                    deltas = min(deltas, self.max_delta)
+                    # deltas may be a numpy array (timestamps was an ndarray);
+                    # the builtin min(arr, scalar) raises on arrays, so use
+                    # np.minimum which is correct for both scalars and arrays.
+                    deltas = np.minimum(deltas, self.max_delta)
 
             result = input_data.copy()
             result[self.output_field] = deltas

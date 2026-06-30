@@ -73,6 +73,7 @@ class CSChatSplitterProcessor(Processor):
 
 class CSAdapter(Processor):
     def __init__(self):
+        super().__init__()
         self.processor_name = "cs_adapter_processor"
 
     def process(self, chat_messages: List[Dict[str, str]]) -> List[str]:

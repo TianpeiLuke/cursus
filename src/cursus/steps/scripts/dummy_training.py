@@ -146,7 +146,10 @@ def create_tarfile(output_tar_path: Path, source_dir: Path) -> None:
         if output_tar_path.exists():
             compressed_size = output_tar_path.stat().st_size / 1024 / 1024
             logger.info(f"  Compressed tar size: {compressed_size:.2f}MB")
-            logger.info(f"  Compression ratio: {compressed_size / total_size:.2%}")
+            if total_size > 0:
+                logger.info(
+                    f"  Compression ratio: {compressed_size / total_size:.2%}"
+                )
 
     except Exception as e:
         logger.error(f"Error creating tar file: {str(e)}", exc_info=True)

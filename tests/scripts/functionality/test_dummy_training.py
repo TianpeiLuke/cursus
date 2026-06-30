@@ -208,20 +208,21 @@ class TestDummyTrainingHelpers:
             assert "subdir/file2.txt" in members
 
     def test_create_tarfile_empty_directory(self, temp_dir):
-        """Test creating tar file from empty directory causes ZeroDivisionError.
+        """Creating a tar from an empty directory must NOT raise.
 
-        Note: This test documents actual implementation behavior where creating
-        a tar from an empty directory causes a division by zero error when
-        calculating compression ratio. This is an edge case in the implementation.
+        Previously the compression-ratio log did ``compressed_size / total_size``
+        with ``total_size == 0`` for an empty source dir, raising ZeroDivisionError.
+        The script now guards ``if total_size > 0`` before logging the ratio, so an
+        empty directory produces a (tiny) tar without error.
         """
         source_dir = temp_dir / "empty_source"
         source_dir.mkdir()
 
         tar_path = temp_dir / "output.tar.gz"
 
-        # Implementation has a bug with empty directories (division by zero)
-        with pytest.raises(ZeroDivisionError):
-            create_tarfile(tar_path, source_dir)
+        # No exception, and the tar is still created.
+        create_tarfile(tar_path, source_dir)
+        assert tar_path.exists()
 
 
 class TestProcessModelWithHyperparameters:

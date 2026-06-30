@@ -38,6 +38,16 @@ contract:
       COMPARISON_MODE: 'false'
       PREVIOUS_SCORE_FIELD: ''
       STATISTICAL_TESTS: 'true'
+      COMPARISON_METRICS: all
+      COMPARISON_PLOTS: 'true'
+      DEVICE: auto
+      ACCELERATOR: auto
+      BATCH_SIZE: '32'
+      NUM_WORKERS: '0'
+      ENABLE_TRUE_STREAMING: 'false'
+      NUM_WORKERS_PER_RANK: '0'
+      PREFETCH_FACTOR: None
+      USE_PERSISTENT_WORKERS: 'false'
   framework_requirements:
     torch: ==2.1.2
     transformers: ==4.37.2

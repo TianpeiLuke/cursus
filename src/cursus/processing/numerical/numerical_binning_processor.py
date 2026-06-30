@@ -284,7 +284,11 @@ class NumericalBinningProcessor(Processor):
 
         # Initialize final binned series with object dtype to allow various assignments
         final_binned_series = pd.Series(index=series_to_bin.index, dtype=object)
-        final_binned_series[series_to_bin.notna()] = binned_series_cat
+        # Assign by the EXPLICIT non-NaN index so the binned values land on exactly
+        # the rows they came from. (A boolean-mask assignment of a Series RHS aligns
+        # by index, which is ambiguous if the index has duplicate labels; .loc with
+        # binned_series_cat's own index is unambiguous.)
+        final_binned_series.loc[binned_series_cat.index] = binned_series_cat
 
         # 1. Handle original NaNs
         if self.handle_missing_value != "as_is":
@@ -452,7 +456,15 @@ class NumericalBinningProcessor(Processor):
         processor.min_fitted_value_ = params.get("min_fitted_value")
         processor.max_fitted_value_ = params.get("max_fitted_value")
 
-        if processor.bin_edges_ is not None and processor.n_bins_actual_ is not None:
+        # Only mark fitted when ALL state transform() needs is present. Previously
+        # is_fitted could be set True with actual_labels_ still None, which then
+        # broke transform() (pd.cut got labels=None). actual_labels_ is valid as
+        # either a list of labels or the sentinel False (= integer-coded bins).
+        if (
+            processor.bin_edges_ is not None
+            and processor.n_bins_actual_ is not None
+            and processor.actual_labels_ is not None
+        ):
             processor.is_fitted = True
 
         return processor

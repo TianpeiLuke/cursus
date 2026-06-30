@@ -19,6 +19,9 @@ import numpy as np
 import logging
 from torch.utils.data import IterableDataset
 
+# Setup logger (must precede the tqdm fallback below, which logs on ImportError)
+logger = logging.getLogger(__name__)
+
 try:
     from tqdm import tqdm
 
@@ -28,9 +31,6 @@ except ImportError:
     logger.warning("tqdm not available - progress bars will be disabled")
 
 from .risk_table_processor import RiskTableMappingProcessor
-
-# Setup logger
-logger = logging.getLogger(__name__)
 
 
 class StreamingRiskTableProcessor(RiskTableMappingProcessor):

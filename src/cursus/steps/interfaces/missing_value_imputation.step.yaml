@@ -27,18 +27,31 @@ contract:
   - flag: --job_type
     source: job_type
   env_vars:
-    required:
-    - LABEL_FIELD
+    required: []
     optional:
       DEFAULT_NUMERICAL_STRATEGY: mean
       DEFAULT_CATEGORICAL_STRATEGY: mode
+      LABEL_FIELD: target
+      DEFAULT_TEXT_STRATEGY: mode
+      NUMERICAL_CONSTANT_VALUE: '0'
+      CATEGORICAL_CONSTANT_VALUE: Unknown
+      TEXT_CONSTANT_VALUE: Unknown
+      CATEGORICAL_PRESERVE_DTYPE: 'true'
+      AUTO_DETECT_CATEGORICAL: 'true'
+      CATEGORICAL_UNIQUE_RATIO_THRESHOLD: '0.1'
+      VALIDATE_FILL_VALUES: 'true'
+      EXCLUDE_COLUMNS: ''
+      ENABLE_TRUE_STREAMING: 'false'
+      MAX_WORKERS: '0'
   framework_requirements:
     pandas: '>=1.3.0'
     numpy: '>=1.21.0'
     scikit-learn: '>=1.0.0'
   description: 'Missing value imputation script. Handles missing values using statistical
     methods (mean, median, mode, constant). Training mode fits imputers; inference
-    applies pre-fitted.
+    applies pre-fitted. Per-column strategies can also be supplied dynamically via
+    COLUMN_STRATEGY_<column_name> environment variables (discovered at runtime, not
+    pre-declared).
 
     '
 spec:

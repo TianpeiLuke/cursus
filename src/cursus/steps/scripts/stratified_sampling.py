@@ -485,12 +485,22 @@ def main(
     if sampling_strategy == "external_proportional":
         reference_path = Path(input_data_dir) / "reference_counts.json"
         if reference_path.exists():
-            reference_counts = json.loads(reference_path.read_text())
+            try:
+                reference_counts = json.loads(reference_path.read_text())
+            except json.JSONDecodeError as e:
+                raise ValueError(
+                    f"Invalid JSON in reference_counts.json ({reference_path}): {e}"
+                )
             log(f"[INFO] Loaded reference counts from sidecar: {reference_path}")
         else:
             ref_json = environ_vars.get("REFERENCE_COUNTS_JSON", "")
             if ref_json:
-                reference_counts = json.loads(ref_json)
+                try:
+                    reference_counts = json.loads(ref_json)
+                except json.JSONDecodeError as e:
+                    raise ValueError(
+                        f"Invalid JSON in REFERENCE_COUNTS_JSON env var: {e}"
+                    )
                 log("[INFO] Loaded reference counts from REFERENCE_COUNTS_JSON env var")
             else:
                 raise RuntimeError(

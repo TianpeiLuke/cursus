@@ -39,6 +39,14 @@ class SequencePaddingProcessor(Processor):
         axis: int = 0,
     ):
         super().__init__()
+        if not isinstance(target_length, int) or target_length <= 0:
+            raise ValueError(
+                f"target_length must be a positive int, got {target_length!r}"
+            )
+        if not isinstance(axis, int) or axis < 0:
+            # This processor indexes shape[axis] for an N-D sequence; a negative
+            # or non-int axis silently mis-pads. Restrict to non-negative ints.
+            raise ValueError(f"axis must be a non-negative int, got {axis!r}")
         self.target_length = target_length
         self.padding_strategy = padding_strategy
         self.truncation_strategy = truncation_strategy

@@ -34,12 +34,16 @@ contract:
     source: job_type
   env_vars:
     required:
-    - ID_FIELD
     - TASK_LABEL_NAMES
     optional:
       GENERATE_PLOTS: 'true'
       COMPARISON_MODE: 'false'
       STATISTICAL_TESTS: 'true'
+      ID_FIELD: id
+      PREVIOUS_SCORE_FIELDS: ''
+      COMPARISON_METRICS: all
+      COMPARISON_PLOTS: 'true'
+      DOLLAR_COLUMN: val_usd
   framework_requirements:
     pandas: '>=1.2.0,<2.0.0'
     numpy: '>=1.21.0'

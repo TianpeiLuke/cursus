@@ -65,6 +65,14 @@ class SequenceOrderingProcessor(Processor):
 
     def _process_numpy_array(self, input_data: np.ndarray) -> np.ndarray:
         """Process numpy array input"""
+        # This expects a 2D [rows, features] sequence (last column = timestamp).
+        # A 1D array would make input_data[:, -1] raise an opaque IndexError, so
+        # validate the shape up front with a clear message.
+        if input_data.ndim != 2:
+            raise ValueError(
+                f"Expected a 2D array [rows, features], got {input_data.ndim}D "
+                f"with shape {input_data.shape}."
+            )
         # Assume last column contains timestamps for TSA compatibility
         sort_indices = np.argsort(input_data[:, -1])
         if self.sort_order == "descending":

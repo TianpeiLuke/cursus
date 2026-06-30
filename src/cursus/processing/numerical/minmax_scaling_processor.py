@@ -50,7 +50,13 @@ class MinMaxScalingProcessor(Processor):
             )
 
     def fit(self, data: Union[np.ndarray, pd.DataFrame]) -> "MinMaxScalingProcessor":
-        """Learn scaling parameters from data"""
+        """Learn scaling parameters from data.
+
+        If params were pre-supplied at construction (``learned_params``), fit is
+        intentionally a no-op that REUSES them (load-a-prior-fit pattern) — it
+        logs that it is skipping recomputation so the no-op is not mistaken for a
+        silent failure. Pass ``learned_params=None`` to force learning from data.
+        """
         if not self.scale_params:
             if isinstance(data, np.ndarray):
                 self._fit_numpy_array(data)
@@ -58,6 +64,11 @@ class MinMaxScalingProcessor(Processor):
                 self._fit_dataframe(data)
             else:
                 raise ValueError(f"Unsupported data type for fitting: {type(data)}")
+        else:
+            logger.info(
+                "MinMaxScalingProcessor.fit: reusing pre-supplied learned_params; "
+                "skipping recomputation from data."
+            )
 
         self.is_fitted = True
         logger.info(
@@ -67,9 +78,10 @@ class MinMaxScalingProcessor(Processor):
 
     def _fit_numpy_array(self, data: np.ndarray) -> None:
         """Fit scaling parameters for numpy array"""
-        # Compute min and max for each column
-        data_min = np.min(data, axis=0)
-        data_max = np.max(data, axis=0)
+        # Compute min and max for each column, ignoring NaN (np.min/np.max would
+        # propagate a single NaN into the fitted params and corrupt all scaling).
+        data_min = np.nanmin(data, axis=0)
+        data_max = np.nanmax(data, axis=0)
         data_range = data_max - data_min
 
         # Avoid division by zero
@@ -99,8 +111,9 @@ class MinMaxScalingProcessor(Processor):
                 continue
 
             col_data = data[col].values
-            data_min = np.min(col_data)
-            data_max = np.max(col_data)
+            # Ignore NaN so a single missing value doesn't corrupt the fitted params.
+            data_min = np.nanmin(col_data)
+            data_max = np.nanmax(col_data)
             data_range = data_max - data_min
 
             if data_range == 0:

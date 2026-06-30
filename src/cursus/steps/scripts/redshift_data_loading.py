@@ -225,6 +225,16 @@ def start_redshift_data_loading(redshift_data_load_config):
     )
     query_specification = redshift_data_load_config.get(QUERY_SPECIFICATION_PARAMETER)
     output_specification = redshift_data_load_config.get(OUTPUT_SPECIFICATION_PARAMETER)
+
+    if not cluster_specification:
+        raise ValueError(
+            f"Missing required config field: {CLUSTER_SPECIFICATION_PARAMETER}"
+        )
+    if not query_specification:
+        raise ValueError(
+            f"Missing required config field: {QUERY_SPECIFICATION_PARAMETER}"
+        )
+
     connector_type = query_specification.get(
         CONNECTOR_TYPE_FIELD, REDSHIFT_CONNECTOR_TYPE
     )

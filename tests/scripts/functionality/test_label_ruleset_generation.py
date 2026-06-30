@@ -67,7 +67,7 @@ class TestValidationResult:
         result.invalid_labels = [("rule1", "invalid_label", "not in label_values")]
         result.warnings = ["Warning message"]
 
-        result_dict = result.__dict__()
+        result_dict = result.to_dict()
 
         assert isinstance(result_dict, dict)
         assert result_dict["valid"] is False
@@ -1231,7 +1231,7 @@ class TestEdgeCases:
         result.type_mismatches = [("rule6", "mismatch")]
         result.warnings = ["warning1", "warning2"]
 
-        result_dict = result.__dict__()
+        result_dict = result.to_dict()
 
         assert not result_dict["valid"]
         assert len(result_dict["warnings"]) == 2

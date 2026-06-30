@@ -1982,6 +1982,15 @@ def main(
             f"Loaded validation schema with {len(validation_schema.get('properties', {}))} properties"
         )
 
+        # Fail fast with a clear message if the one genuinely-required env var is
+        # missing — otherwise it surfaces later as a cryptic 'NoneType' deep inside
+        # the processor __init__ (config['primary_model_id'] is consumed unguarded).
+        if not environ_vars.get("BEDROCK_PRIMARY_MODEL_ID"):
+            raise ValueError(
+                "BEDROCK_PRIMARY_MODEL_ID is required but was not provided "
+                "(unset or empty). Set it to the Bedrock model id to use."
+            )
+
         # Build configuration with template integration
         # Priority: Templates (highest) > Environment Variables > Defaults (lowest)
         config = {

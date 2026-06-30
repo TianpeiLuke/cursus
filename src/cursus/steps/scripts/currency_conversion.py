@@ -273,13 +273,25 @@ def process_currency_conversion(
     exchange_rates = []
     mappings = currency_conversion_dict.get("mappings", [])
 
+    _bad_rate_codes = set()
     for currency_code in df["__temp_currency_code__"]:
         rate = 1.0  # Default no conversion
         for mapping in mappings:
             if mapping.get("currency_code") == currency_code:
                 rate = mapping.get("conversion_rate", 1.0)
                 break
+        # A non-positive rate would make the division produce inf/NaN silently.
+        # Fall back to 1.0 (no conversion) and record the code for a single warning.
+        if not rate or rate <= 0:
+            _bad_rate_codes.add(currency_code)
+            rate = 1.0
         exchange_rates.append(rate)
+    if _bad_rate_codes:
+        logger.warning(
+            "Non-positive conversion_rate for currency code(s) %s; "
+            "defaulting those rows to 1.0 (no conversion) to avoid inf/NaN.",
+            sorted(_bad_rate_codes),
+        )
 
     exchange_rate_series = pd.Series(exchange_rates, index=df.index)
 

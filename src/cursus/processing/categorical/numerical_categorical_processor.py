@@ -62,7 +62,15 @@ class NumericalCategoricalProcessor(Processor):
     def fit(
         self, data: Union[np.ndarray, pd.DataFrame]
     ) -> "NumericalCategoricalProcessor":
-        """Learn binning parameters from data"""
+        """Learn binning parameters from data.
+
+        For ``equal_width`` / ``equal_frequency`` the bin edges are LEARNED here.
+        For ``custom`` / ``threshold`` the bins come from the constructor params
+        (``bin_edges`` / ``thresholds``) and there is nothing to learn — but we
+        still validate the required param is present so ``is_fitted`` is never set
+        True for a strategy that has no usable bins (which previously caused a
+        silent mis-binning at transform time).
+        """
         if self.binning_strategy in ["equal_width", "equal_frequency"]:
             if isinstance(data, np.ndarray):
                 self._fit_numpy_array(data)
@@ -70,6 +78,18 @@ class NumericalCategoricalProcessor(Processor):
                 self._fit_dataframe(data)
             else:
                 raise ValueError(f"Unsupported data type for fitting: {type(data)}")
+        elif self.binning_strategy == "custom":
+            if not self.bin_edges:
+                raise ValueError(
+                    "binning_strategy='custom' requires `bin_edges` to be provided "
+                    "at construction; nothing to fit and no edges to bin with."
+                )
+        elif self.binning_strategy == "threshold":
+            if not self.thresholds:
+                raise ValueError(
+                    "binning_strategy='threshold' requires `thresholds` to be "
+                    "provided at construction; nothing to fit."
+                )
 
         self.is_fitted = True
         logger.info(
@@ -79,15 +99,27 @@ class NumericalCategoricalProcessor(Processor):
 
     def _fit_numpy_array(self, data: np.ndarray) -> None:
         """Fit binning parameters for numpy array"""
+        # Drop NaN before computing edges: np.min/np.max/np.percentile would
+        # otherwise return NaN edges and corrupt every downstream bin assignment.
+        clean = data[~np.isnan(data)] if np.issubdtype(data.dtype, np.floating) else data
+        if clean.size == 0:
+            raise ValueError(
+                "Cannot fit binning: column has no non-NaN values."
+            )
         if self.binning_strategy == "equal_width":
-            data_min = np.min(data)
-            data_max = np.max(data)
+            data_min = np.nanmin(clean)
+            data_max = np.nanmax(clean)
+            if data_min == data_max:
+                # Zero-variance column: linspace would produce duplicate edges,
+                # which breaks pd.cut. Widen the single value into a degenerate
+                # but valid 1-bin range.
+                data_max = data_min + 1.0
             self.learned_bins["edges"] = np.linspace(
                 data_min, data_max, self.n_bins + 1
             )
         elif self.binning_strategy == "equal_frequency":
-            self.learned_bins["edges"] = np.percentile(
-                data, np.linspace(0, 100, self.n_bins + 1)
+            self.learned_bins["edges"] = np.nanpercentile(
+                clean, np.linspace(0, 100, self.n_bins + 1)
             )
 
     def _fit_dataframe(self, data: pd.DataFrame) -> None:

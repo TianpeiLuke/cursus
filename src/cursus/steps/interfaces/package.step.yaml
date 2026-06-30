@@ -28,7 +28,8 @@ contract:
   arguments: {}
   env_vars:
     required: []
-    optional: {}
+    optional:
+      WORKING_DIRECTORY: /tmp/mims_packaging_directory
   framework_requirements:
     python: '>=3.7'
   description: 'MIMS packaging script that extracts model artifacts, includes calibration

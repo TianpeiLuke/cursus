@@ -17,8 +17,6 @@ import argparse
 import logging
 import sys
 import traceback
-import random
-import unicodedata
 from pathlib import Path
 from typing import List, Dict, Optional, Callable
 

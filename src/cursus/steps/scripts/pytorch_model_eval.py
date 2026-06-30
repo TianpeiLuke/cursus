@@ -260,17 +260,61 @@ from ...processing.dataloaders.pipeline_dataloader import (
     build_trimodal_collate_batch,
 )
 
-from lightning_models.utils.pl_train import (
-    model_inference,
-    load_model,
-    load_artifacts,
-)
-from lightning_models.utils.dist_utils import is_main_process
-from lightning_models.utils.pl_model_plots import (
-    compute_metrics,
-    roc_metric_plot,
-    pr_metric_plot,
-)
+# ============================================================================
+# OPEN SECTION — USER-SUPPLIED MODEL PACKAGE (`lightning_models`)
+# ----------------------------------------------------------------------------
+# Generic PyTorch model-EVALUATION reference script. It owns everything
+# model-agnostic — data loading, preprocessing, dataset/dataloader, metric +
+# plotting orchestration, prediction/metric save, and the SageMaker I/O contract.
+# It loads the trained model + eval utilities from a `lightning_models` package
+# YOU bundle into this step's `source_dir` (cursus does NOT ship it). It must be
+# the SAME package used to TRAIN the model (so load_model can reconstruct it).
+# REFERENCE: <project>/dockers/lightning_models/ in BuyerAbuseModsTemplate
+# (e.g. atoz_bsm_pytorch, names3risk_pytorch).
+#
+# WHAT YOU MUST IMPLEMENT (the steps this script delegates to your package):
+#   1. MODEL LOAD/INFERENCE — `lightning_models/utils/pl_train.py`
+#      - load_model(model_dir/checkpoint, config, device, ...) -> the trained
+#        pl.LightningModule (must reconstruct the SAME architecture used in
+#        training, e.g. via your model_select / config).
+#      - load_artifacts(artifacts_dir) -> the non-model artifacts saved at train
+#        time (label map, embedding matrix, etc.) this script feeds to inference.
+#      - model_inference(model, loader, device, ...) -> predictions for metrics.
+#   2. METRICS + PLOTS — `lightning_models/utils/pl_model_plots.py`
+#      - compute_metrics(y_true, y_score, ...) -> dict of eval metrics this
+#        script writes to the metrics output.
+#      - roc_metric_plot(...) / pr_metric_plot(...) -> write ROC / PR figures.
+#   3. DISTRIBUTED — `lightning_models/utils/dist_utils.py`: is_main_process()
+#      (used to gate metric/plot writes to rank 0).
+#
+# What you do NOT implement (already provided here): input/output path handling,
+# load-and-apply of risk-table + imputation artifacts, dataset/dataloader build,
+# the evaluate orchestration in main(), prediction/metric save, container I/O.
+#
+# If `lightning_models` is absent, the import below raises an instructive error
+# — a missing user-supplied dependency, not a bug.
+# ============================================================================
+try:
+    from lightning_models.utils.pl_train import (
+        model_inference,
+        load_model,
+        load_artifacts,
+    )
+    from lightning_models.utils.dist_utils import is_main_process
+    from lightning_models.utils.pl_model_plots import (
+        compute_metrics,
+        roc_metric_plot,
+        pr_metric_plot,
+    )
+except ImportError as _e:  # pragma: no cover - user must supply lightning_models
+    raise ImportError(
+        "PyTorch model evaluation requires a user-supplied `lightning_models` "
+        "package (utils.pl_train / dist_utils / pl_model_plots) bundled into this "
+        "step's source_dir. The cursus package does not ship it. See the OPEN "
+        "SECTION banner above and the reference layout under "
+        "<project>/dockers/lightning_models/ in BuyerAbuseModsTemplate "
+        f"(e.g. atoz_bsm_pytorch, names3risk_pytorch). Original import error: {_e}"
+    ) from _e
 
 # Configure logging
 logging.basicConfig(

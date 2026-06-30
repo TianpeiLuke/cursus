@@ -253,22 +253,25 @@ def detect_file_format(file_path: Path) -> str:
         # Try CSV first
         pd.read_csv(file_path, nrows=1)
         return "csv"
-    except:
-        pass
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, ValueError, UnicodeDecodeError, OSError) as e:
+        logger.debug(f"CSV detection failed for {file_path}: {e}")
 
     try:
         # Try Parquet
         pd.read_parquet(file_path)
         return "parquet"
-    except:
-        pass
+    except Exception as e:
+        # Parquet backend (pyarrow/fastparquet) raises backend-specific errors;
+        # catch broadly but log instead of silently swallowing. Note: catching
+        # Exception (not BaseException) lets KeyboardInterrupt/SystemExit propagate.
+        logger.debug(f"Parquet detection failed for {file_path}: {e}")
 
     try:
         # Try JSON
         pd.read_json(file_path, lines=True, nrows=1)
         return "json"
-    except:
-        pass
+    except (ValueError, OSError) as e:
+        logger.debug(f"JSON detection failed for {file_path}: {e}")
 
     logger.warning(f"Could not detect format for file: {file_path}")
     return "unknown"

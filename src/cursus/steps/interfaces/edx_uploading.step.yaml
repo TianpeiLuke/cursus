@@ -23,8 +23,6 @@ contract:
     optional:
       EDX_MANIFEST_KEY_PARTS: "{}"
       EDX_OUTPUT_COLUMNS: ""
-      AWS_STS_REGIONAL_ENDPOINTS: regional
-      AWS_DEFAULT_REGION: us-east-1
   framework_requirements:
     python: ">=3.7"
   description: >

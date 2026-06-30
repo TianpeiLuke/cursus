@@ -33,11 +33,26 @@ class MultiClassLabelProcessor(Processor):
         self.one_hot = one_hot
         self.strict = strict
 
-        if label_list:
+        # `is not None` (not truthiness): an explicitly-empty label_list=[] means
+        # "fixed vocab, currently empty" and must be distinguishable from None
+        # ("learn the vocab from data").
+        if label_list is not None:
             self.label_to_id = {
-                str(label): i for i, label in enumerate(label_list)
-            }  # {label: i for i, label in enumerate(label_list)}
-            self.id_to_label = list(map(str, label_list))  # label_list
+                self._normalize(label): i for i, label in enumerate(label_list)
+            }
+            self.id_to_label = [self._normalize(label) for label in label_list]
+
+    @staticmethod
+    def _normalize(label) -> str:
+        """Normalize a label to a stable string key.
+
+        Coerce integer-valued floats to their int form first so that 1, 1.0,
+        "1" all map to the same key "1" (str(1.0) would otherwise yield "1.0"
+        and silently create a separate class from the int/str 1).
+        """
+        if isinstance(label, float) and label.is_integer():
+            return str(int(label))
+        return str(label)
 
     def process(self, labels: Union[str, List[str]]) -> np.ndarray:
         """
@@ -55,7 +70,7 @@ class MultiClassLabelProcessor(Processor):
 
         encoded_labels = []
         for label in labels:
-            label = str(label)  # Normalize all labels to string
+            label = self._normalize(label)  # consistent with __init__ mapping
             if label not in self.label_to_id:
                 if self.strict:
                     raise ValueError(f"Label '{label}' not found in known label list.")

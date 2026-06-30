@@ -57,7 +57,10 @@ class GensimTokenizeProcessor(Processor):
             if self.pad_to_max_length and self.max_length is not None:
                 pad_len = self.max_length - len(embeddings)
                 if pad_len > 0:
-                    embeddings.extend([[0.0] * self.dim] * pad_len)
+                    # Build independent pad vectors. `[[0.0]*dim] * pad_len` would
+                    # repeat the SAME inner-list reference pad_len times, so a later
+                    # in-place edit of one pad row would mutate them all.
+                    embeddings.extend([[0.0] * self.dim for _ in range(pad_len)])
                     mask.extend([0] * pad_len)
 
             output.append(

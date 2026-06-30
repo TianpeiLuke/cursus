@@ -29,11 +29,14 @@ contract:
       DEFAULT_NUMERIC_VALUE: '0.0'
       DEFAULT_TEXT_VALUE: DEFAULT_TEXT
       FIELD_DEFAULTS: '{}'
+      WORKING_DIRECTORY: /tmp/mims_payload_work
   framework_requirements:
     python: '>=3.7'
   description: 'MIMS payload generation script that extracts hyperparameters from
     model artifacts, detects model type (tabular/bimodal/trimodal), generates sample
     payloads with text field support, and archives payload files for deployment.
+    Per-field overrides can also be supplied dynamically via SPECIAL_FIELD_<field_name>
+    environment variables (discovered at runtime, not pre-declared).
 
     '
 spec:

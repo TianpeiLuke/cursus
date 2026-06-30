@@ -334,7 +334,7 @@ class MissingValueHandlingOperation:
 
     def __init__(
         self,
-        missing_indicators: List[str] = MISSING_INDICATORS,
+        missing_indicators: List[str],
         logger: Optional[Callable] = None,
     ):
         self.missing_indicators = missing_indicators
@@ -365,8 +365,8 @@ class TimeDeltaComputationOperation:
 
     def __init__(
         self,
-        temporal_field: str = TEMPORAL_FIELD,
-        max_seconds: int = TIME_DELTA_MAX_SECONDS,
+        temporal_field: str,
+        max_seconds: int,
         logger: Optional[Callable] = None,
     ):
         self.temporal_field = temporal_field
@@ -403,14 +403,16 @@ class SequencePaddingOperation:
 
     def __init__(
         self,
-        target_length: int = SEQUENCE_LENGTH,
-        padding_strategy: str = PADDING_STRATEGY,
-        truncation_strategy: str = TRUNCATION_STRATEGY,
+        target_length: int,
+        padding_strategy: str,
+        truncation_strategy: str,
+        include_attention_masks: bool,
         logger: Optional[Callable] = None,
     ):
         self.target_length = target_length
         self.padding_strategy = padding_strategy
         self.truncation_strategy = truncation_strategy
+        self.include_attention_masks = include_attention_masks
         self.log = logger or print
 
     def process(self, sequence_data: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
@@ -425,7 +427,7 @@ class SequencePaddingOperation:
 
             if seq_len == self.target_length:
                 padded_data[seq_type] = seq_array
-                if INCLUDE_ATTENTION_MASKS:
+                if self.include_attention_masks:
                     attention_masks[f"{seq_type}_attention_mask"] = np.ones(
                         (batch_size, seq_len), dtype=np.int8
                     )
@@ -442,7 +444,7 @@ class SequencePaddingOperation:
                 )
                 padded_data[seq_type] = padded_array
 
-                if INCLUDE_ATTENTION_MASKS:
+                if self.include_attention_masks:
                     mask = np.zeros((batch_size, self.target_length), dtype=np.int8)
                     if self.padding_strategy == "pre":
                         mask[:, pad_width:] = 1
@@ -458,13 +460,13 @@ class SequencePaddingOperation:
 
                 padded_data[seq_type] = truncated_array
 
-                if INCLUDE_ATTENTION_MASKS:
+                if self.include_attention_masks:
                     attention_masks[f"{seq_type}_attention_mask"] = np.ones(
                         (batch_size, self.target_length), dtype=np.int8
                     )
 
         # Add attention masks to the output
-        if INCLUDE_ATTENTION_MASKS:
+        if self.include_attention_masks:
             padded_data.update(attention_masks)
 
         self.log(f"[INFO] Sequence padding/truncation completed")
@@ -474,17 +476,26 @@ class SequencePaddingOperation:
 # --- Sequence Field Detection ---
 
 
-def detect_sequence_fields(df: pd.DataFrame) -> Dict[str, List[str]]:
+def detect_sequence_fields(
+    df: pd.DataFrame,
+    sequence_separator: str,
+    entity_id_field: str,
+    secondary_entity_field: str,
+    sequence_naming_pattern: str,
+    enable_multi_sequence: bool,
+    temporal_field: str,
+    missing_indicators: List[str],
+) -> Dict[str, List[str]]:
     """Automatically detect sequence fields based on naming patterns."""
     sequence_fields = {"categorical": [], "numerical": [], "temporal": []}
 
     # Create pattern for sequence field detection
     entity_pattern = (
-        f"({ENTITY_ID_FIELD}|{SECONDARY_ENTITY_FIELD})"
-        if ENABLE_MULTI_SEQUENCE
-        else ENTITY_ID_FIELD
+        f"({entity_id_field}|{secondary_entity_field})"
+        if enable_multi_sequence
+        else entity_id_field
     )
-    pattern = SEQUENCE_NAMING_PATTERN.replace("{entity}", entity_pattern)
+    pattern = sequence_naming_pattern.replace("{entity}", entity_pattern)
 
     for col in df.columns:
         # Check if column matches sequence pattern
@@ -500,17 +511,17 @@ def detect_sequence_fields(df: pd.DataFrame) -> Dict[str, List[str]]:
                 for num_indicator in ["num_seq", "numerical", "amount", "age", "count"]
             ):
                 sequence_fields["numerical"].append(col)
-        elif col == TEMPORAL_FIELD:
+        elif col == temporal_field:
             sequence_fields["temporal"].append(col)
 
     # If no explicit sequence fields found, try to infer from column names
     if not sequence_fields["categorical"] and not sequence_fields["numerical"]:
         for col in df.columns:
-            if SEQUENCE_SEPARATOR in str(df[col].iloc[0] if len(df) > 0 else ""):
+            if sequence_separator in str(df[col].iloc[0] if len(df) > 0 else ""):
                 # Check if values look categorical or numerical
-                sample_values = str(df[col].iloc[0]).split(SEQUENCE_SEPARATOR)[:5]
+                sample_values = str(df[col].iloc[0]).split(sequence_separator)[:5]
                 try:
-                    [float(v) for v in sample_values if v not in MISSING_INDICATORS]
+                    [float(v) for v in sample_values if v not in missing_indicators]
                     sequence_fields["numerical"].append(col)
                 except (ValueError, TypeError):
                     sequence_fields["categorical"].append(col)
@@ -524,6 +535,8 @@ def detect_sequence_fields(df: pd.DataFrame) -> Dict[str, List[str]]:
 def parse_sequence_data(
     df: pd.DataFrame,
     sequence_fields: Dict[str, List[str]],
+    sequence_separator: str,
+    missing_indicators: List[str],
     logger: Optional[Callable] = None,
 ) -> Dict[str, np.ndarray]:
     """Parse sequence data from DataFrame into numpy arrays."""
@@ -542,10 +555,10 @@ def parse_sequence_data(
                 # Parse sequences
                 sequences = []
                 for seq_str in df[field]:
-                    if pd.isna(seq_str) or seq_str in MISSING_INDICATORS:
+                    if pd.isna(seq_str) or seq_str in missing_indicators:
                         seq_values = [""]
                     else:
-                        seq_values = str(seq_str).split(SEQUENCE_SEPARATOR)
+                        seq_values = str(seq_str).split(sequence_separator)
                     sequences.append(seq_values)
 
                 # Find max sequence length for this field
@@ -588,14 +601,14 @@ def parse_sequence_data(
                 # Parse sequences
                 sequences = []
                 for seq_str in df[field]:
-                    if pd.isna(seq_str) or seq_str in MISSING_INDICATORS:
+                    if pd.isna(seq_str) or seq_str in missing_indicators:
                         seq_values = [0.0]
                     else:
                         seq_values = []
-                        for val in str(seq_str).split(SEQUENCE_SEPARATOR):
+                        for val in str(seq_str).split(sequence_separator):
                             try:
                                 seq_values.append(
-                                    float(val) if val not in MISSING_INDICATORS else 0.0
+                                    float(val) if val not in missing_indicators else 0.0
                                 )
                             except (ValueError, TypeError):
                                 seq_values.append(0.0)
@@ -637,6 +650,13 @@ def parse_sequence_data(
 def save_normalized_sequences(
     sequence_data: Dict[str, np.ndarray],
     output_dir: str,
+    output_format: str,
+    sequence_length: int,
+    sequence_separator: str,
+    temporal_field: str,
+    entity_id_field: str,
+    id_field: str,
+    include_attention_masks: bool,
     logger: Optional[Callable] = None,
 ) -> None:
     """Save normalized sequences in the specified format."""
@@ -644,15 +664,15 @@ def save_normalized_sequences(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    log(f"[INFO] Saving normalized sequences in {OUTPUT_FORMAT} format")
+    log(f"[INFO] Saving normalized sequences in {output_format} format")
 
-    if OUTPUT_FORMAT == "numpy":
+    if output_format == "numpy":
         for seq_type, seq_array in sequence_data.items():
             output_file = output_path / f"{seq_type}.npy"
             np.save(output_file, seq_array)
             log(f"[INFO] Saved {output_file} with shape {seq_array.shape}")
 
-    elif OUTPUT_FORMAT == "parquet":
+    elif output_format == "parquet":
         # Convert arrays to DataFrames and save as parquet
         for seq_type, seq_array in sequence_data.items():
             if seq_array.ndim == 3:
@@ -672,7 +692,7 @@ def save_normalized_sequences(
             df.to_parquet(output_file, index=False)
             log(f"[INFO] Saved {output_file} with shape {df.shape}")
 
-    elif OUTPUT_FORMAT == "csv":
+    elif output_format == "csv":
         # Convert arrays to DataFrames and save as CSV
         for seq_type, seq_array in sequence_data.items():
             if seq_array.ndim == 3:
@@ -694,13 +714,13 @@ def save_normalized_sequences(
 
     # Save metadata
     metadata = {
-        "sequence_length": SEQUENCE_LENGTH,
-        "sequence_separator": SEQUENCE_SEPARATOR,
-        "temporal_field": TEMPORAL_FIELD,
-        "entity_id_field": ENTITY_ID_FIELD,
-        "id_field": ID_FIELD,
-        "output_format": OUTPUT_FORMAT,
-        "include_attention_masks": INCLUDE_ATTENTION_MASKS,
+        "sequence_length": sequence_length,
+        "sequence_separator": sequence_separator,
+        "temporal_field": temporal_field,
+        "entity_id_field": entity_id_field,
+        "id_field": id_field,
+        "output_format": output_format,
+        "include_attention_masks": include_attention_masks,
         "shapes": {
             seq_type: list(seq_array.shape)
             for seq_type, seq_array in sequence_data.items()
@@ -748,6 +768,11 @@ def main(
         "SEQUENCE_GROUPING_FIELD", DEFAULT_SEQUENCE_GROUPING_FIELD
     )
     record_id_field = environ_vars.get("RECORD_ID_FIELD", DEFAULT_RECORD_ID_FIELD)
+
+    # Entity grouping field and per-record id field used for sequence detection,
+    # ordering/dedup, and output metadata.
+    entity_id_field = sequence_grouping_field
+    id_field = record_id_field
 
     # Parse JSON configuration
     missing_indicators = json.loads(
@@ -821,6 +846,7 @@ def main(
         sequence_naming_pattern,
         enable_multi_sequence,
         temporal_field,
+        missing_indicators,
     )
     log(f"[INFO] Detected sequence fields: {sequence_fields}")
 
