@@ -15,7 +15,25 @@ from datetime import datetime
 import tempfile
 import os
 
-from cursus.step_catalog.builder_discovery import BuilderAutoDiscovery
+from cursus.step_catalog.builder_discovery import BuilderAutoDiscovery, _BuilderDescriptor
+
+
+def _desc(cls, step_name="test_step", file_path=None):
+    """Wrap a class as an already-materialized ``_BuilderDescriptor``.
+
+    Phase 2 (FZ 31e1d3g) changed ``_package_builders``/``_workspace_builders`` to hold
+    import-free descriptors instead of raw classes; the class is materialized lazily via
+    ``descriptor.get_class()``. Tests seed via this helper so ``get_class()`` returns the
+    mock class directly (``_attempted=True`` short-circuits the loader).
+    """
+    return _BuilderDescriptor(
+        step_name=step_name,
+        file_path=file_path or Path(f"/path/to/builder_{step_name}_step.py"),
+        class_name=getattr(cls, "__name__", "MockBuilder"),
+        _loader=lambda *_a, **_k: cls,
+        _cached=cls,
+        _attempted=True,
+    )
 
 
 class TestBuilderAutoDiscovery:
@@ -101,11 +119,14 @@ class TestBuilderAutoDiscovery:
         mock_class = Mock()
         mock_class.__name__ = "TestBuilder"
 
-        builder_discovery._package_builders = {"test_step": mock_class}
+        builder_discovery._package_builders = {"test_step": _desc(mock_class)}
         builder_discovery._workspace_builders = {
-            "workspace1": {"workspace_step": mock_class}
+            "workspace1": {"workspace_step": _desc(mock_class, "workspace_step")}
         }
         builder_discovery._discovery_complete = True
+        # Isolate to descriptor materialization: empty the registry so the Phase-A registry-walk
+        # fill (which would synthesize a shell for every routable registry step) adds nothing here.
+        builder_discovery._registry_info = {}
 
         # Test discovery
         builders = builder_discovery.discover_builder_classes()
@@ -119,10 +140,10 @@ class TestBuilderAutoDiscovery:
         mock_class = Mock()
         mock_class.__name__ = "TestBuilder"
 
-        builder_discovery._package_builders = {"test_step": mock_class}
+        builder_discovery._package_builders = {"test_step": _desc(mock_class)}
         builder_discovery._workspace_builders = {
-            "workspace1": {"workspace1_step": mock_class},
-            "workspace2": {"workspace2_step": mock_class},
+            "workspace1": {"workspace1_step": _desc(mock_class, "workspace1_step")},
+            "workspace2": {"workspace2_step": _desc(mock_class, "workspace2_step")},
         }
         builder_discovery._discovery_complete = True
 
@@ -132,6 +153,61 @@ class TestBuilderAutoDiscovery:
         assert "test_step" in builders
         assert "workspace1_step" in builders
         assert "workspace2_step" not in builders
+
+    def test_synthesize_builder_fabricates_fileless_routable_step(self, builder_discovery):
+        """FZ 31e1d3g3 Phase A: a routable, interface-having step with NO physical file is
+        synthesized as a real TemplateStepBuilder subclass keyed on STEP_NAME (the deletion
+        mechanism for the 45 shells)."""
+        from cursus.core.base.builder_templates import TemplateStepBuilder
+
+        builder_discovery._run_discovery()
+        # Simulate a deleted builder_*.py for a normal routable step.
+        builder_discovery._package_builders.pop("XGBoostTraining", None)
+        builder_discovery._builder_cache.pop("XGBoostTraining", None)
+
+        cls = builder_discovery.load_builder_class("XGBoostTraining")
+        assert cls is not None
+        assert cls.__name__ == "XGBoostTrainingStepBuilder"
+        assert cls.STEP_NAME == "XGBoostTraining"
+        assert issubclass(cls, TemplateStepBuilder)
+        # Identity is stable within a process (cached per step_name).
+        assert builder_discovery.load_builder_class("XGBoostTraining") is cls
+
+    def test_synthesize_builder_skips_nonroutable_and_sdk_steps_offline(self, builder_discovery):
+        """Offline (no SAIS SDK), the synthesizer returns None for abstract rows (Base/Processing —
+        no interface) and the 4 SDK-delegation steps (the lazy sdk_bindings import fails), so the
+        offline discovered set is unchanged and the closure gate's SDK carve-out holds."""
+        _has_sais = True
+        try:
+            import secure_ai_sandbox_workflow_python_sdk  # noqa: F401
+        except Exception:
+            _has_sais = False
+
+        builder_discovery._run_discovery()
+        assert builder_discovery._synthesize_builder("Base") is None
+        assert builder_discovery._synthesize_builder("Processing") is None
+        if not _has_sais:
+            for sdk_step in (
+                "CradleDataLoading",
+                "RedshiftDataLoading",
+                "Registration",
+                "DataUploading",
+            ):
+                assert builder_discovery._synthesize_builder(sdk_step) is None
+
+    def test_synthesize_sdk_builder_bakes_handler_knobs_in_sais_env(self, builder_discovery):
+        """In the SAIS env, an SDK-delegation step synthesizes WITH the sdk_step_class knob baked into
+        HANDLER_KNOBS (mirroring the hand-written SDK shells), via the lazy sdk_bindings thunk."""
+        try:
+            import secure_ai_sandbox_workflow_python_sdk  # noqa: F401
+        except Exception:
+            pytest.skip("SAIS SDK absent — SDK synthesis only works in the SAIS env")
+
+        builder_discovery._run_discovery()
+        cls = builder_discovery._synthesize_builder("CradleDataLoading")
+        assert cls is not None
+        assert cls.STEP_NAME == "CradleDataLoading"
+        assert "sdk_step_class" in cls.HANDLER_KNOBS
 
     def test_extract_step_name_from_builder_file(self, builder_discovery):
         """Test extracting step name from builder file."""
@@ -170,6 +246,53 @@ class TestBuilder:
         # The important thing is that it doesn't crash
         assert result is None or hasattr(result, "__name__")
 
+    # --- Phase 0a: base-name discovery gate (STEP_BUILDER_BASE_NAMES) ---
+
+    def _inherits(self, builder_discovery, source: str) -> bool:
+        """Parse a class definition and run it through the base-name gate."""
+        import ast
+
+        tree = ast.parse(source)
+        class_node = next(
+            n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)
+        )
+        return builder_discovery._inherits_from_step_builder_base(class_node)
+
+    def test_inherits_legacy_step_builder_base(self, builder_discovery):
+        """Legacy builders (direct StepBuilderBase base) are still recognized."""
+        assert self._inherits(
+            builder_discovery, "class XStepBuilder(StepBuilderBase): pass"
+        )
+
+    def test_inherits_template_step_builder(self, builder_discovery):
+        """Routed shells (direct TemplateStepBuilder base) are recognized — the Phase-0a fix."""
+        assert self._inherits(
+            builder_discovery, "class XStepBuilder(TemplateStepBuilder): pass"
+        )
+
+    def test_inherits_qualified_base_names(self, builder_discovery):
+        """Qualified bases (module.StepBuilderBase / module.TemplateStepBuilder) match."""
+        assert self._inherits(
+            builder_discovery, "class A(base.StepBuilderBase): pass"
+        )
+        assert self._inherits(
+            builder_discovery, "class B(mod.TemplateStepBuilder): pass"
+        )
+
+    def test_does_not_inherit_unrelated_base(self, builder_discovery):
+        """A non-builder class is NOT recognized (no false positives)."""
+        assert not self._inherits(
+            builder_discovery, "class NotABuilder(SomethingElse): pass"
+        )
+        assert not self._inherits(builder_discovery, "class Plain: pass")
+
+    def test_base_name_set_is_strict_superset(self):
+        """STEP_BUILDER_BASE_NAMES still contains the legacy name (superset guarantee)."""
+        from cursus.step_catalog.builder_discovery import STEP_BUILDER_BASE_NAMES
+
+        assert "StepBuilderBase" in STEP_BUILDER_BASE_NAMES
+        assert "TemplateStepBuilder" in STEP_BUILDER_BASE_NAMES
+
     def test_get_builder_info_cached(self, builder_discovery):
         """Test getting builder info with caching."""
         # Create a mock class and cache it
@@ -196,7 +319,7 @@ class TestBuilder:
         mock_class.__name__ = "TestBuilder"
 
         # Set up the discovery system to find the builder
-        builder_discovery._package_builders = {"test_step": mock_class}
+        builder_discovery._package_builders = {"test_step": _desc(mock_class)}
         builder_discovery._discovery_complete = True
 
         result = builder_discovery.load_builder_class("test_step")
@@ -306,7 +429,9 @@ class TestBuilderAutoDiscoveryIntegration:
         mock_class.__name__ = "XGBoostTrainingStepBuilder"
 
         # Set up the discovery system
-        discovery._package_builders = {"xgboost_training": mock_class}
+        discovery._package_builders = {
+            "xgboost_training": _desc(mock_class, "xgboost_training")
+        }
         discovery._builder_paths = {
             "xgboost_training": Path("/path/to/builder_xgboost_training_step.py")
         }
@@ -332,8 +457,10 @@ class TestBuilderAutoDiscoveryIntegration:
         workspace_class.__name__ = "TestStepBuilder"
 
         # Set up discovery system with both package and workspace builders
-        discovery._package_builders = {"test_step": package_class}
-        discovery._workspace_builders = {"test_project": {"test_step": workspace_class}}
+        discovery._package_builders = {"test_step": _desc(package_class)}
+        discovery._workspace_builders = {
+            "test_project": {"test_step": _desc(workspace_class)}
+        }
         discovery._builder_paths = {
             "test_step": Path("/workspace/test_project/builder_test_step.py")
         }
@@ -359,8 +486,8 @@ class TestBuilderAutoDiscoveryIntegration:
 
         # Set up discovery system
         discovery._workspace_builders = {
-            "project1": {"workspace1_step": workspace1_class},
-            "project2": {"workspace2_step": workspace2_class},
+            "project1": {"workspace1_step": _desc(workspace1_class, "workspace1_step")},
+            "project2": {"workspace2_step": _desc(workspace2_class, "workspace2_step")},
         }
         discovery._builder_paths = {
             "workspace1_step": Path("/workspace1/project1/builder_workspace1_step.py"),
@@ -387,8 +514,10 @@ class TestBuilderAutoDiscoveryIntegration:
         mock_class = Mock()
         mock_class.__name__ = "TestBuilder"
 
-        discovery._package_builders = {"package_step": mock_class}
-        discovery._workspace_builders = {"workspace1": {"workspace_step": mock_class}}
+        discovery._package_builders = {"package_step": _desc(mock_class, "package_step")}
+        discovery._workspace_builders = {
+            "workspace1": {"workspace_step": _desc(mock_class, "workspace_step")}
+        }
         discovery._discovery_complete = True
 
         # Test listing
@@ -408,9 +537,12 @@ class TestBuilderAutoDiscoveryIntegration:
         mock_class = Mock()
         mock_class.__name__ = "TestBuilder"
 
-        discovery._package_builders = {"package_step": mock_class}
+        discovery._package_builders = {"package_step": _desc(mock_class, "package_step")}
         discovery._workspace_builders = {
-            "workspace1": {"workspace_step1": mock_class, "workspace_step2": mock_class}
+            "workspace1": {
+                "workspace_step1": _desc(mock_class, "workspace_step1"),
+                "workspace_step2": _desc(mock_class, "workspace_step2"),
+            }
         }
         discovery._builder_cache = {"cached_step": mock_class}
         discovery._discovery_complete = True

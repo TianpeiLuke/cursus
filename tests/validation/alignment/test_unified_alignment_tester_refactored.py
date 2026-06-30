@@ -128,20 +128,17 @@ class TestUnifiedAlignmentTesterRefactored:
         mock_get_step_type.return_value = "Processing"
         mock_is_excluded.return_value = False
         mock_ruleset = Mock()
+        # 3 boundaries — CONTRACT_SPEC removed (FZ 31e1d3h/D5).
         mock_ruleset.enabled_levels = {
             ValidationLevel.SCRIPT_CONTRACT,
-            ValidationLevel.CONTRACT_SPEC,
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         }
-        mock_ruleset.level_4_validator_class = "ProcessingStepBuilderValidator"
+        mock_ruleset.level_4_validator_class = "RegistryBindingValidator"
         mock_get_ruleset.return_value = mock_ruleset
 
-        # Mock level validators
+        # Mock the surviving level validators (no run_level_2_validation any more).
         tester.level_validators.run_level_1_validation = Mock(
-            return_value={"passed": True, "issues": []}
-        )
-        tester.level_validators.run_level_2_validation = Mock(
             return_value={"passed": True, "issues": []}
         )
         tester.level_validators.run_level_3_validation = Mock(
@@ -154,18 +151,15 @@ class TestUnifiedAlignmentTesterRefactored:
         # Run validation
         result = tester.run_validation_for_step("processing_script")
 
-        # Should run all validation levels
+        # Should run the 3 surviving validation levels
         tester.level_validators.run_level_1_validation.assert_called_once_with(
-            "processing_script"
-        )
-        tester.level_validators.run_level_2_validation.assert_called_once_with(
             "processing_script"
         )
         tester.level_validators.run_level_3_validation.assert_called_once_with(
             "processing_script"
         )
         tester.level_validators.run_level_4_validation.assert_called_once_with(
-            "processing_script", "ProcessingStepBuilderValidator"
+            "processing_script", "RegistryBindingValidator"
         )
 
         # Should return passing status
@@ -173,7 +167,7 @@ class TestUnifiedAlignmentTesterRefactored:
         assert result["sagemaker_step_type"] == "Processing"
         assert result["overall_status"] == "PASSED"
         assert "level_1" in result["validation_results"]
-        assert "level_2" in result["validation_results"]
+        assert "level_2" not in result["validation_results"]
         assert "level_3" in result["validation_results"]
         assert "level_4" in result["validation_results"]
 
@@ -196,12 +190,11 @@ class TestUnifiedAlignmentTesterRefactored:
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         }
-        mock_ruleset.level_4_validator_class = "CreateModelStepBuilderValidator"
+        mock_ruleset.level_4_validator_class = "RegistryBindingValidator"
         mock_get_ruleset.return_value = mock_ruleset
 
-        # Mock level validators
+        # Mock the surviving level validators (no run_level_2_validation any more).
         tester.level_validators.run_level_1_validation = Mock()
-        tester.level_validators.run_level_2_validation = Mock()
         tester.level_validators.run_level_3_validation = Mock(
             return_value={"passed": True, "issues": []}
         )
@@ -212,16 +205,15 @@ class TestUnifiedAlignmentTesterRefactored:
         # Run validation
         result = tester.run_validation_for_step("create_model_step")
 
-        # Should skip levels 1 and 2
+        # Should skip level 1 (non-script)
         tester.level_validators.run_level_1_validation.assert_not_called()
-        tester.level_validators.run_level_2_validation.assert_not_called()
 
         # Should run levels 3 and 4
         tester.level_validators.run_level_3_validation.assert_called_once_with(
             "create_model_step"
         )
         tester.level_validators.run_level_4_validation.assert_called_once_with(
-            "create_model_step", "CreateModelStepBuilderValidator"
+            "create_model_step", "RegistryBindingValidator"
         )
 
         # Should return passing status with only levels 3 and 4
@@ -250,11 +242,10 @@ class TestUnifiedAlignmentTesterRefactored:
         mock_ruleset = Mock()
         mock_ruleset.enabled_levels = {
             ValidationLevel.SCRIPT_CONTRACT,
-            ValidationLevel.CONTRACT_SPEC,
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         }
-        mock_ruleset.level_4_validator_class = "ProcessingStepBuilderValidator"
+        mock_ruleset.level_4_validator_class = "RegistryBindingValidator"
         mock_get_ruleset.return_value = mock_ruleset
 
         # Mock level validators with failures
@@ -265,9 +256,6 @@ class TestUnifiedAlignmentTesterRefactored:
                     {"severity": "ERROR", "message": "Script validation failed"}
                 ],
             }
-        )
-        tester.level_validators.run_level_2_validation = Mock(
-            return_value={"status": "PASSED", "issues": []}
         )
         tester.level_validators.run_level_3_validation = Mock(
             return_value={
@@ -357,11 +345,10 @@ class TestUnifiedAlignmentTesterRefactored:
                 ruleset = Mock()
                 ruleset.enabled_levels = {
                     ValidationLevel.SCRIPT_CONTRACT,
-                    ValidationLevel.CONTRACT_SPEC,
                     ValidationLevel.SPEC_DEPENDENCY,
                     ValidationLevel.BUILDER_CONFIG,
                 }
-                ruleset.level_4_validator_class = "ProcessingStepBuilderValidator"
+                ruleset.level_4_validator_class = "RegistryBindingValidator"
                 return ruleset
             elif step_type == "CreateModel":
                 ruleset = Mock()
@@ -369,7 +356,7 @@ class TestUnifiedAlignmentTesterRefactored:
                     ValidationLevel.SPEC_DEPENDENCY,
                     ValidationLevel.BUILDER_CONFIG,
                 }
-                ruleset.level_4_validator_class = "CreateModelStepBuilderValidator"
+                ruleset.level_4_validator_class = "RegistryBindingValidator"
                 return ruleset
             elif step_type == "Base":
                 ruleset = Mock()
@@ -379,11 +366,8 @@ class TestUnifiedAlignmentTesterRefactored:
 
         mock_get_ruleset.side_effect = mock_ruleset_side_effect
 
-        # Mock level validators
+        # Mock the surviving level validators (no run_level_2_validation any more).
         tester.level_validators.run_level_1_validation = Mock(
-            return_value={"passed": True, "issues": []}
-        )
-        tester.level_validators.run_level_2_validation = Mock(
             return_value={"passed": True, "issues": []}
         )
         tester.level_validators.run_level_3_validation = Mock(
@@ -399,17 +383,17 @@ class TestUnifiedAlignmentTesterRefactored:
         # Should validate all discovered scripts
         assert len(results) == 3
 
-        # Processing script should have all levels
+        # Processing script should have the 3 surviving levels
         processing_result = next(
             r for r in results.values() if r["step_name"] == "processing_script"
         )
         assert processing_result["overall_status"] == "PASSED"
         assert "level_1" in processing_result["validation_results"]
-        assert "level_2" in processing_result["validation_results"]
+        assert "level_2" not in processing_result["validation_results"]
         assert "level_3" in processing_result["validation_results"]
         assert "level_4" in processing_result["validation_results"]
 
-        # CreateModel step should skip levels 1-2
+        # CreateModel step should skip level 1
         createmodel_result = next(
             r for r in results.values() if r["step_name"] == "create_model_step"
         )
@@ -504,12 +488,11 @@ class TestUnifiedAlignmentTesterRefactored:
                 ValidationLevel.SPEC_DEPENDENCY,
                 ValidationLevel.BUILDER_CONFIG,
             }
-            mock_ruleset.level_4_validator_class = "CreateModelStepBuilderValidator"
+            mock_ruleset.level_4_validator_class = "RegistryBindingValidator"
             mock_get_ruleset.return_value = mock_ruleset
 
-            # Mock level validators to track calls
+            # Mock the surviving level validators to track calls (no run_level_2_validation).
             tester.level_validators.run_level_1_validation = Mock()
-            tester.level_validators.run_level_2_validation = Mock()
             tester.level_validators.run_level_3_validation = Mock(
                 return_value={"passed": True, "issues": []}
             )
@@ -520,9 +503,8 @@ class TestUnifiedAlignmentTesterRefactored:
             # Run validation
             result = tester.run_validation_for_step("create_model_step")
 
-            # Verify performance optimization: levels 1 and 2 should be skipped
+            # Verify performance optimization: level 1 should be skipped (non-script)
             tester.level_validators.run_level_1_validation.assert_not_called()
-            tester.level_validators.run_level_2_validation.assert_not_called()
 
             # Only levels 3 and 4 should be called
             tester.level_validators.run_level_3_validation.assert_called_once()

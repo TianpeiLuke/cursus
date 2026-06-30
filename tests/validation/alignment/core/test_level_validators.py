@@ -49,35 +49,8 @@ class TestLevelValidators:
         assert result["status"] == "COMPLETED"
         assert "result" in result
 
-    @patch(
-        "cursus.validation.alignment.core.contract_spec_alignment.ContractSpecificationAlignmentTester"
-    )
-    def test_run_level_2_validation(self, mock_alignment_class):
-        """Test Level 2: Contract ↔ Specification validation."""
-        # Mock the alignment class and its method
-        mock_alignment = Mock()
-        mock_alignment.validate_contract_spec_alignment.return_value = {
-            "passed": True,
-            "issues": [],
-            "level": 2,
-            "validation_type": "contract_spec",
-        }
-        mock_alignment_class.return_value = mock_alignment
-
-        result = self.level_validators.run_level_2_validation("test_contract")
-
-        # Verify alignment class was instantiated with correct workspace_dirs
-        mock_alignment_class.assert_called_once_with(workspace_dirs=self.workspace_dirs)
-
-        # Verify validation method was called
-        mock_alignment.validate_contract.assert_called_once_with("test_contract")
-
-        # Verify result structure
-        assert result["level"] == 2
-        assert result["step_name"] == "test_contract"
-        assert result["validation_type"] == "contract_spec"
-        assert result["status"] == "COMPLETED"
-        assert "result" in result
+    # test_run_level_2_validation removed — Level 2 (CONTRACT_SPEC) is gone (construction invariant;
+    # FZ 31e1d3h/D5). Its property-path check moved to Level 3 (B2).
 
     @patch(
         "cursus.validation.alignment.core.spec_dependency_alignment.SpecificationDependencyAlignmentTester"
@@ -175,68 +148,52 @@ class TestLevelValidators:
         assert "reason" in result
         assert "InvalidValidator is not yet implemented" in result["reason"]
 
-    @patch("cursus.validation.alignment.validators.validator_factory.ValidatorFactory")
-    def test_get_step_type_validator_success(self, mock_factory_class):
-        """Test successful step-type validator retrieval."""
-        # Mock validator factory and validator
-        mock_factory = Mock()
-        mock_validator = Mock()
-        mock_factory.get_validator.return_value = mock_validator
-        mock_factory_class.return_value = mock_factory
+    def test_get_step_type_validator_returns_registry_binding_validator(self):
+        """FZ 31e1d3g3 Phase D3: Level-4 is now the single step-type-AGNOSTIC B3
+        RegistryBindingValidator (replacing the per-step-type source-scanning validators that
+        reported every shell FAILED). The ruleset validator_class string is ignored."""
+        from cursus.validation.alignment.validators.registry_binding_validator import (
+            RegistryBindingValidator,
+        )
 
         validator = self.level_validators._get_step_type_validator(
             "ProcessingStepBuilderValidator"
         )
+        assert isinstance(validator, RegistryBindingValidator)
 
-        # Verify factory was instantiated with workspace_dirs
-        mock_factory_class.assert_called_once_with(self.workspace_dirs)
-
-        # Verify get_validator was called with correct class name
-        mock_factory.get_validator.assert_called_once_with(
-            "ProcessingStepBuilderValidator"
+    def test_get_step_type_validator_ignores_validator_class_name(self):
+        """Any ruleset validator_class string yields the same B3 validator (type-agnostic)."""
+        from cursus.validation.alignment.validators.registry_binding_validator import (
+            RegistryBindingValidator,
         )
 
-        # Verify validator was returned
-        assert validator == mock_validator
+        for name in ("TrainingStepBuilderValidator", "InvalidValidator", ""):
+            assert isinstance(
+                self.level_validators._get_step_type_validator(name),
+                RegistryBindingValidator,
+            )
 
-    @patch("cursus.validation.alignment.validators.validator_factory.ValidatorFactory")
-    def test_get_step_type_validator_failure(self, mock_factory_class):
-        """Test step-type validator retrieval failure."""
-        # Mock validator factory to return None
-        mock_factory = Mock()
-        mock_factory.get_validator.return_value = None
-        mock_factory_class.return_value = mock_factory
-
-        validator = self.level_validators._get_step_type_validator("InvalidValidator")
-
-        # Should return None for invalid validator
-        assert validator is None
-
-    @patch("cursus.validation.alignment.validators.validator_factory.ValidatorFactory")
-    def test_get_step_type_validator_exception_handling(self, mock_factory_class):
-        """Test step-type validator retrieval with exception."""
-        # Mock validator factory to raise exception
-        mock_factory_class.side_effect = Exception("Factory initialization failed")
+    @patch(
+        "cursus.validation.alignment.validators.registry_binding_validator.RegistryBindingValidator"
+    )
+    def test_get_step_type_validator_exception_handling(self, mock_b3):
+        """If B3 construction raises, _get_step_type_validator returns None (graceful)."""
+        mock_b3.side_effect = Exception("B3 init failed")
 
         validator = self.level_validators._get_step_type_validator(
             "ProcessingStepBuilderValidator"
         )
-
-        # Should return None when exception occurs
         assert validator is None
 
     def test_integration_with_all_levels(self):
         """Test integration workflow with all validation levels."""
         step_name = "test_integration_step"
 
-        # Mock all alignment classes
+        # Mock the surviving alignment levels (Level 2 / CONTRACT_SPEC removed — FZ 31e1d3h/D5).
         with (
             patch(
                 "cursus.validation.alignment.core.script_contract_alignment.ScriptContractAlignmentTester"
             ) as mock_level1,
-            patch(
-                "cursus.validation.alignment.core.contract_spec_alignment.ContractSpecificationAlignmentTester"
-            ) as mock_level2,
             patch(
                 "cursus.validation.alignment.core.spec_dependency_alignment.SpecificationDependencyAlignmentTester"
             ) as mock_level3,
@@ -246,31 +203,23 @@ class TestLevelValidators:
                 "passed": True,
                 "level": 1,
             }
-            mock_level2.return_value.validate_contract.return_value = {
-                "passed": True,
-                "level": 2,
-            }
             mock_level3.return_value.validate_specification.return_value = {
                 "passed": True,
                 "level": 3,
             }
 
-            # Run all levels
+            # Run the surviving levels
             result1 = self.level_validators.run_level_1_validation(step_name)
-            result2 = self.level_validators.run_level_2_validation(step_name)
             result3 = self.level_validators.run_level_3_validation(step_name)
 
-            # Verify all levels ran successfully - check the wrapped result structure
+            # Verify levels ran successfully - check the wrapped result structure
             assert result1["status"] == "COMPLETED" and result1["level"] == 1
-            assert result2["status"] == "COMPLETED" and result2["level"] == 2
             assert result3["status"] == "COMPLETED" and result3["level"] == 3
             assert result1["result"]["passed"] is True
-            assert result2["result"]["passed"] is True
             assert result3["result"]["passed"] is True
 
-            # Verify all alignment classes were instantiated with correct workspace_dirs
+            # Verify alignment classes were instantiated with correct workspace_dirs
             mock_level1.assert_called_once_with(workspace_dirs=self.workspace_dirs)
-            mock_level2.assert_called_once_with(workspace_dirs=self.workspace_dirs)
             mock_level3.assert_called_once_with(workspace_dirs=self.workspace_dirs)
 
     def test_error_handling_in_validation_levels(self):
@@ -287,15 +236,7 @@ class TestLevelValidators:
             assert result["status"] == "ERROR"
             assert "Level 1 validation failed" in result["error"]
 
-        # Test Level 2 error handling
-        with patch(
-            "cursus.validation.alignment.core.contract_spec_alignment.ContractSpecificationAlignmentTester"
-        ) as mock_level2:
-            mock_level2.side_effect = Exception("Level 2 validation failed")
-
-            result = self.level_validators.run_level_2_validation(step_name)
-            assert result["status"] == "ERROR"
-            assert "Level 2 validation failed" in result["error"]
+        # (Level 2 / CONTRACT_SPEC removed — FZ 31e1d3h/D5; no run_level_2_validation to test.)
 
         # Test Level 3 error handling
         with patch(
@@ -320,13 +261,7 @@ class TestLevelValidators:
             custom_level_validators.run_level_1_validation("test_step")
             mock_level1.assert_called_once_with(workspace_dirs=custom_workspace_dirs)
 
-        # Test Level 2
-        with patch(
-            "cursus.validation.alignment.core.contract_spec_alignment.ContractSpecificationAlignmentTester"
-        ) as mock_level2:
-            mock_level2.return_value.validate_contract.return_value = {"passed": True}
-            custom_level_validators.run_level_2_validation("test_step")
-            mock_level2.assert_called_once_with(workspace_dirs=custom_workspace_dirs)
+        # (Level 2 / CONTRACT_SPEC removed — FZ 31e1d3h/D5.)
 
         # Test Level 3
         with patch(
@@ -338,26 +273,23 @@ class TestLevelValidators:
             custom_level_validators.run_level_3_validation("test_step")
             mock_level3.assert_called_once_with(workspace_dirs=custom_workspace_dirs)
 
-        # Test Level 4 (ValidatorFactory)
+        # Test Level 4 (the B3 RegistryBindingValidator — FZ 31e1d3g3 Phase D3)
         with patch(
-            "cursus.validation.alignment.validators.validator_factory.ValidatorFactory"
-        ) as mock_factory:
-            mock_factory.return_value.get_validator.return_value = Mock()
+            "cursus.validation.alignment.validators.registry_binding_validator.RegistryBindingValidator"
+        ) as mock_b3:
+            mock_b3.return_value = Mock()
             custom_level_validators._get_step_type_validator("TestValidator")
-            mock_factory.assert_called_once_with(custom_workspace_dirs)
+            mock_b3.assert_called_once_with(custom_workspace_dirs)
 
     def test_validation_result_structure(self):
         """Test that validation results have consistent structure across levels."""
         step_name = "test_structure_step"
 
-        # Mock all levels to return structured results
+        # Mock the surviving levels to return structured results (Level 2 / CONTRACT_SPEC removed).
         with (
             patch(
                 "cursus.validation.alignment.core.script_contract_alignment.ScriptContractAlignmentTester"
             ) as mock_level1,
-            patch(
-                "cursus.validation.alignment.core.contract_spec_alignment.ContractSpecificationAlignmentTester"
-            ) as mock_level2,
             patch(
                 "cursus.validation.alignment.core.spec_dependency_alignment.SpecificationDependencyAlignmentTester"
             ) as mock_level3,
@@ -370,13 +302,6 @@ class TestLevelValidators:
                 "validation_type": "script_contract",
                 "step_name": step_name,
             }
-            level2_result = {
-                "passed": False,
-                "issues": [{"severity": "ERROR", "message": "Test error"}],
-                "level": 2,
-                "validation_type": "contract_spec",
-                "step_name": step_name,
-            }
             level3_result = {
                 "passed": True,
                 "issues": [],
@@ -386,16 +311,14 @@ class TestLevelValidators:
             }
 
             mock_level1.return_value.validate_script.return_value = level1_result
-            mock_level2.return_value.validate_contract.return_value = level2_result
             mock_level3.return_value.validate_specification.return_value = level3_result
 
             # Run validations
             result1 = self.level_validators.run_level_1_validation(step_name)
-            result2 = self.level_validators.run_level_2_validation(step_name)
             result3 = self.level_validators.run_level_3_validation(step_name)
 
             # Verify result structures - these are wrapped in the level validator result structure
-            for result in [result1, result2, result3]:
+            for result in [result1, result3]:
                 assert "status" in result
                 assert "level" in result
                 assert "validation_type" in result
@@ -408,5 +331,4 @@ class TestLevelValidators:
 
             # Verify specific values from inner results
             assert result1["result"]["passed"] is True and result1["level"] == 1
-            assert result2["result"]["passed"] is False and result2["level"] == 2
             assert result3["result"]["passed"] is True and result3["level"] == 3

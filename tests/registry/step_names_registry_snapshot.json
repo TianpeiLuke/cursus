@@ -1,0 +1,338 @@
+{
+  "ActiveSampleSelection": {
+    "builder_step_name": "ActiveSampleSelectionStepBuilder",
+    "config_class": "ActiveSampleSelectionConfig",
+    "description": "Active sample selection step that intelligently selects high-value samples from model predictions for Semi-Supervised Learning (SSL) or Active Learning workflows using confidence-based, uncertainty-based, diversity-based, or hybrid strategies",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "ActiveSampleSelection"
+  },
+  "Base": {
+    "builder_step_name": "StepBuilderBase",
+    "config_class": "BasePipelineConfig",
+    "description": "Base pipeline configuration",
+    "sagemaker_step_type": "Base",
+    "spec_type": "Base"
+  },
+  "BatchTransform": {
+    "builder_step_name": "BatchTransformStepBuilder",
+    "config_class": "BatchTransformStepConfig",
+    "description": "Batch transform step",
+    "sagemaker_step_type": "Transform",
+    "spec_type": "BatchTransform"
+  },
+  "BedrockBatchProcessing": {
+    "builder_step_name": "BedrockBatchProcessingStepBuilder",
+    "config_class": "BedrockBatchProcessingConfig",
+    "description": "Bedrock batch processing step that provides AWS Bedrock batch inference capabilities with automatic fallback to real-time processing for cost-efficient large dataset processing",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "BedrockBatchProcessing"
+  },
+  "BedrockProcessing": {
+    "builder_step_name": "BedrockProcessingStepBuilder",
+    "config_class": "BedrockProcessingConfig",
+    "description": "Bedrock processing step that processes input data through AWS Bedrock models using generated prompt templates and validation schemas",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "BedrockProcessing"
+  },
+  "BedrockPromptTemplateGeneration": {
+    "builder_step_name": "BedrockPromptTemplateGenerationStepBuilder",
+    "config_class": "BedrockPromptTemplateGenerationConfig",
+    "description": "Bedrock prompt template generation step that creates structured prompt templates for classification tasks using the 5-component architecture pattern",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "BedrockPromptTemplateGeneration"
+  },
+  "CradleDataLoading": {
+    "builder_step_name": "CradleDataLoadingStepBuilder",
+    "config_class": "CradleDataLoadingConfig",
+    "description": "Cradle data loading step",
+    "sagemaker_step_type": "CradleDataLoading",
+    "spec_type": "CradleDataLoading"
+  },
+  "CurrencyConversion": {
+    "builder_step_name": "CurrencyConversionStepBuilder",
+    "config_class": "CurrencyConversionConfig",
+    "description": "Currency conversion processing step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "CurrencyConversion"
+  },
+  "DataUploading": {
+    "builder_step_name": "DataUploadingStepBuilder",
+    "config_class": "DataUploadingConfig",
+    "description": "Upload processed data to BDT (EDX/Andes) via SAIS SDK delegation",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "DataUploading"
+  },
+  "DummyDataLoading": {
+    "builder_step_name": "DummyDataLoadingStepBuilder",
+    "config_class": "DummyDataLoadingConfig",
+    "description": "Dummy data loading step that processes user-provided data instead of calling Cradle services",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "DummyDataLoading"
+  },
+  "DummyTraining": {
+    "builder_step_name": "DummyTrainingStepBuilder",
+    "config_class": "DummyTrainingConfig",
+    "description": "Training step that uses a pretrained model",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "DummyTraining"
+  },
+  "EdxUploading": {
+    "builder_step_name": "EdxUploadingStepBuilder",
+    "config_class": "EdxUploadingConfig",
+    "description": "Upload S3 data to EDX via EdxDataLoader (SINK node, no Kale required)",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "EdxUploading"
+  },
+  "FeatureSelection": {
+    "builder_step_name": "FeatureSelectionStepBuilder",
+    "config_class": "FeatureSelectionConfig",
+    "description": "Feature selection step using multiple statistical and ML-based methods with ensemble combination strategies",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "FeatureSelection"
+  },
+  "HyperparameterPrep": {
+    "builder_step_name": "HyperparameterPrepStepBuilder",
+    "config_class": "HyperparameterPrepConfig",
+    "description": "Hyperparameter preparation step",
+    "sagemaker_step_type": "Lambda",
+    "spec_type": "HyperparameterPrep"
+  },
+  "LabelRulesetExecution": {
+    "builder_step_name": "LabelRulesetExecutionStepBuilder",
+    "config_class": "LabelRulesetExecutionConfig",
+    "description": "Label ruleset execution step that applies validated rulesets to processed data to generate classification labels using priority-based rule evaluation with execution-time field validation",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "LabelRulesetExecution"
+  },
+  "LabelRulesetGeneration": {
+    "builder_step_name": "LabelRulesetGenerationStepBuilder",
+    "config_class": "LabelRulesetGenerationConfig",
+    "description": "Label ruleset generation step that validates and optimizes user-defined classification rules for transparent, maintainable rule-based label mapping in ML training pipelines",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "LabelRulesetGeneration"
+  },
+  "LightGBMMTModelEval": {
+    "builder_step_name": "LightGBMMTModelEvalStepBuilder",
+    "config_class": "LightGBMMTModelEvalConfig",
+    "description": "LightGBM multi-task model evaluation step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "LightGBMMTModelEval"
+  },
+  "LightGBMMTModelInference": {
+    "builder_step_name": "LightGBMMTModelInferenceStepBuilder",
+    "config_class": "LightGBMMTModelInferenceConfig",
+    "description": "LightGBM multi-task model inference step for prediction generation without metrics",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "LightGBMMTModelInference"
+  },
+  "LightGBMMTTraining": {
+    "builder_step_name": "LightGBMMTTrainingStepBuilder",
+    "config_class": "LightGBMMTTrainingConfig",
+    "description": "LightGBM multi-task training with adaptive weighting and knowledge distillation",
+    "sagemaker_step_type": "Training",
+    "spec_type": "LightGBMMTTraining"
+  },
+  "LightGBMModelEval": {
+    "builder_step_name": "LightGBMModelEvalStepBuilder",
+    "config_class": "LightGBMModelEvalConfig",
+    "description": "LightGBM model evaluation step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "LightGBMModelEval"
+  },
+  "LightGBMModelInference": {
+    "builder_step_name": "LightGBMModelInferenceStepBuilder",
+    "config_class": "LightGBMModelInferenceConfig",
+    "description": "LightGBM model inference step for prediction generation without metrics",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "LightGBMModelInference"
+  },
+  "LightGBMTraining": {
+    "builder_step_name": "LightGBMTrainingStepBuilder",
+    "config_class": "LightGBMTrainingConfig",
+    "description": "LightGBM model training step using built-in algorithm",
+    "sagemaker_step_type": "Training",
+    "spec_type": "LightGBMTraining"
+  },
+  "MissingValueImputation": {
+    "builder_step_name": "MissingValueImputationStepBuilder",
+    "config_class": "MissingValueImputationConfig",
+    "description": "Missing value imputation step using statistical methods (mean, median, mode, constant) with pandas-safe values",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "MissingValueImputation"
+  },
+  "ModelCalibration": {
+    "builder_step_name": "ModelCalibrationStepBuilder",
+    "config_class": "ModelCalibrationConfig",
+    "description": "Calibrates model prediction scores to accurate probabilities",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "ModelCalibration"
+  },
+  "ModelMetricsComputation": {
+    "builder_step_name": "ModelMetricsComputationStepBuilder",
+    "config_class": "ModelMetricsComputationConfig",
+    "description": "Model metrics computation step for comprehensive performance evaluation",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "ModelMetricsComputation"
+  },
+  "ModelWikiGenerator": {
+    "builder_step_name": "ModelWikiGeneratorStepBuilder",
+    "config_class": "ModelWikiGeneratorConfig",
+    "description": "Model wiki generator step for automated documentation creation",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "ModelWikiGenerator"
+  },
+  "Package": {
+    "builder_step_name": "PackageStepBuilder",
+    "config_class": "PackageConfig",
+    "description": "Model packaging step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "Package"
+  },
+  "Payload": {
+    "builder_step_name": "PayloadStepBuilder",
+    "config_class": "PayloadConfig",
+    "description": "Payload testing step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "Payload"
+  },
+  "PercentileModelCalibration": {
+    "builder_step_name": "PercentileModelCalibrationStepBuilder",
+    "config_class": "PercentileModelCalibrationConfig",
+    "description": "Creates percentile mapping from model scores using ROC curve analysis for consistent risk interpretation",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "PercentileModelCalibration"
+  },
+  "Processing": {
+    "builder_step_name": "ProcessingStepBuilder",
+    "config_class": "ProcessingStepConfigBase",
+    "description": "Base processing step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "Processing"
+  },
+  "PseudoLabelMerge": {
+    "builder_step_name": "PseudoLabelMergeStepBuilder",
+    "config_class": "PseudoLabelMergeConfig",
+    "description": "Pseudo label merge step that intelligently combines labeled base data with pseudo-labeled or augmented samples for Semi-Supervised Learning (SSL) and Active Learning workflows with split-aware merge, auto-inferred split ratios, and provenance tracking",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "PseudoLabelMerge"
+  },
+  "PyTorchModel": {
+    "builder_step_name": "PyTorchModelStepBuilder",
+    "config_class": "PyTorchModelStepConfig",
+    "description": "PyTorch model creation step",
+    "sagemaker_step_type": "CreateModel",
+    "spec_type": "PyTorchModel"
+  },
+  "PyTorchModelEval": {
+    "builder_step_name": "PyTorchModelEvalStepBuilder",
+    "config_class": "PyTorchModelEvalConfig",
+    "description": "PyTorch model evaluation step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "PyTorchModelEval"
+  },
+  "PyTorchModelInference": {
+    "builder_step_name": "PyTorchModelInferenceStepBuilder",
+    "config_class": "PyTorchModelInferenceConfig",
+    "description": "PyTorch model inference step for prediction generation without metrics",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "PyTorchModelInference"
+  },
+  "PyTorchTraining": {
+    "builder_step_name": "PyTorchTrainingStepBuilder",
+    "config_class": "PyTorchTrainingConfig",
+    "description": "PyTorch model training step",
+    "sagemaker_step_type": "Training",
+    "spec_type": "PyTorchTraining"
+  },
+  "RedshiftDataLoading": {
+    "builder_step_name": "RedshiftDataLoadingStepBuilder",
+    "config_class": "RedshiftDataLoadingConfig",
+    "description": "Redshift SQL data loading step (source node with optional EDX upload)",
+    "sagemaker_step_type": "RedshiftDataLoading",
+    "spec_type": "RedshiftDataLoading"
+  },
+  "Registration": {
+    "builder_step_name": "RegistrationStepBuilder",
+    "config_class": "RegistrationConfig",
+    "description": "Model registration step",
+    "sagemaker_step_type": "MimsModelRegistrationProcessing",
+    "spec_type": "Registration"
+  },
+  "RiskTableMapping": {
+    "builder_step_name": "RiskTableMappingStepBuilder",
+    "config_class": "RiskTableMappingConfig",
+    "description": "Risk table mapping step for categorical features",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "RiskTableMapping"
+  },
+  "StratifiedSampling": {
+    "builder_step_name": "StratifiedSamplingStepBuilder",
+    "config_class": "StratifiedSamplingConfig",
+    "description": "Stratified sampling step with multiple allocation strategies for class imbalance, causal analysis, and variance optimization",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "StratifiedSampling"
+  },
+  "TabularPreprocessing": {
+    "builder_step_name": "TabularPreprocessingStepBuilder",
+    "config_class": "TabularPreprocessingConfig",
+    "description": "Tabular data preprocessing step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TabularPreprocessing"
+  },
+  "TemporalFeatureEngineering": {
+    "builder_step_name": "TemporalFeatureEngineeringStepBuilder",
+    "config_class": "TemporalFeatureEngineeringConfig",
+    "description": "Temporal feature engineering step that extracts comprehensive temporal features from normalized sequences for machine learning models",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TemporalFeatureEngineering"
+  },
+  "TemporalSequenceNormalization": {
+    "builder_step_name": "TemporalSequenceNormalizationStepBuilder",
+    "config_class": "TemporalSequenceNormalizationConfig",
+    "description": "Temporal sequence normalization step for machine learning models with configurable sequence operations",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TemporalSequenceNormalization"
+  },
+  "TemporalSplitPreprocessing": {
+    "builder_step_name": "TemporalSplitPreprocessingStepBuilder",
+    "config_class": "TemporalSplitPreprocessingConfig",
+    "description": "Temporal split preprocessing step with customer-level splitting and OOT validation",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TemporalSplitPreprocessing"
+  },
+  "TokenizerTraining": {
+    "builder_step_name": "TokenizerTrainingStepBuilder",
+    "config_class": "TokenizerTrainingConfig",
+    "description": "BPE tokenizer training step for customer name data with automatic vocabulary size tuning",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TokenizerTraining"
+  },
+  "XGBoostModel": {
+    "builder_step_name": "XGBoostModelStepBuilder",
+    "config_class": "XGBoostModelStepConfig",
+    "description": "XGBoost model creation step",
+    "sagemaker_step_type": "CreateModel",
+    "spec_type": "XGBoostModel"
+  },
+  "XGBoostModelEval": {
+    "builder_step_name": "XGBoostModelEvalStepBuilder",
+    "config_class": "XGBoostModelEvalConfig",
+    "description": "XGBoost model evaluation step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "XGBoostModelEval"
+  },
+  "XGBoostModelInference": {
+    "builder_step_name": "XGBoostModelInferenceStepBuilder",
+    "config_class": "XGBoostModelInferenceConfig",
+    "description": "XGBoost model inference step for prediction generation without metrics",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "XGBoostModelInference"
+  },
+  "XGBoostTraining": {
+    "builder_step_name": "XGBoostTrainingStepBuilder",
+    "config_class": "XGBoostTrainingConfig",
+    "description": "XGBoost model training step",
+    "sagemaker_step_type": "Training",
+    "spec_type": "XGBoostTraining"
+  }
+}

@@ -678,8 +678,10 @@ class TestMainFunction:
             Path(output_paths["calibrated_data"]) / "calibrated_data.csv"
         )
         df_calibrated = pd.read_csv(calibrated_data_path)
-        assert "task_0_prob_percentile" in df_calibrated.columns
-        assert "task_1_prob_percentile" in df_calibrated.columns
+        # The script writes calibrated_<score_field> columns (df_calibrated[f"calibrated_{score_field}"]),
+        # the same naming model_calibration uses — not a *_percentile suffix.
+        assert "calibrated_task_0_prob" in df_calibrated.columns
+        assert "calibrated_task_1_prob" in df_calibrated.columns
 
     def test_main_format_preservation_tsv(self, setup_integration_test):
         """Test that TSV format is not auto-discovered by find_first_data_file.
@@ -785,9 +787,10 @@ class TestMainFunction:
             Path(output_paths["calibrated_data"]) / "calibrated_data.csv"
         )
         df_calibrated = pd.read_csv(calibrated_data_path)
-        assert "prob_class_1_percentile" in df_calibrated.columns
+        # Output column is calibrated_<score_field> (not a *_percentile suffix).
+        assert "calibrated_prob_class_1" in df_calibrated.columns
         # First 11 rows should have NaN in calibrated column
-        assert df_calibrated["prob_class_1_percentile"].iloc[0:11].isna().all()
+        assert df_calibrated["calibrated_prob_class_1"].iloc[0:11].isna().all()
 
 
 class TestEdgeCases:

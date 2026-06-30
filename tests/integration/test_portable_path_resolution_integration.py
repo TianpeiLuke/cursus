@@ -38,14 +38,10 @@ from cursus.core.base.config_base import BasePipelineConfig
 from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
 # Import step builders
-from cursus.steps.builders.builder_tabular_preprocessing_step import (
+from cursus.steps.builders import (
     TabularPreprocessingStepBuilder,
-)
-from cursus.steps.builders.builder_xgboost_model_eval_step import (
     XGBoostModelEvalStepBuilder,
-)
-from cursus.steps.builders.builder_dummy_training_step import DummyTrainingStepBuilder
-from cursus.steps.builders.builder_risk_table_mapping_step import (
+    DummyTrainingStepBuilder,
     RiskTableMappingStepBuilder,
 )
 

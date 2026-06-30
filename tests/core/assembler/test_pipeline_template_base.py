@@ -880,9 +880,10 @@ class TestPipelineTemplateBase:
     def test_abstract_methods_integration(
         self, temp_config_file, mock_registry_manager, mock_dependency_resolver
     ):
-        """Test that all abstract methods are properly integrated in generate_pipeline.
+        """Test the abstract methods generate_pipeline integrates.
 
-        Based on source: generate_pipeline calls all abstract methods.
+        Based on source: generate_pipeline calls _create_pipeline_dag and _create_config_map,
+        but NOT _create_step_builder_map (the assembler self-discovers builders).
         Following pytest guide: Test abstract method integration.
         """
         with (
@@ -932,10 +933,13 @@ class TestPipelineTemplateBase:
                 # Call generate_pipeline
                 result = template.generate_pipeline()
 
-                # Verify all abstract methods were called
+                # generate_pipeline builds the DAG + config_map; it no longer builds the
+                # step-builder map here (the PipelineAssembler self-discovers builders via
+                # the StepCatalog and takes no step_builder_map arg). _create_step_builder_map
+                # remains used by the validation paths, just not in generate_pipeline.
                 mock_dag.assert_called_once()
                 mock_config_map.assert_called_once()
-                mock_builder_map.assert_called_once()
+                mock_builder_map.assert_not_called()
                 assert result == mock_pipeline
 
     def test_error_handling_in_generate_pipeline(

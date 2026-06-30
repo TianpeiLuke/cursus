@@ -41,7 +41,8 @@ class TestExecutionDocumentGenerator:
         assert generator.sagemaker_session is None
         assert generator.role is None
         assert len(generator.configs) == 1
-        assert len(generator.helpers) == 2  # cradle_helper and registration_helper
+        # 4 helpers: cradle, registration, data_uploading, redshift_data_loading
+        assert len(generator.helpers) == 4
 
     @patch("cursus.steps.configs.utils.load_configs")
     def test_init_with_optional_params(self, mock_load_configs):

@@ -33,9 +33,9 @@ class TestValidationRulesetConfiguration:
     def test_validation_level_enum(self):
         """Test ValidationLevel enum values."""
         assert ValidationLevel.SCRIPT_CONTRACT.value == 1
-        assert ValidationLevel.CONTRACT_SPEC.value == 2
         assert ValidationLevel.SPEC_DEPENDENCY.value == 3
         assert ValidationLevel.BUILDER_CONFIG.value == 4
+        assert not hasattr(ValidationLevel, "CONTRACT_SPEC")  # removed (FZ 31e1d3h/D5)
 
     def test_step_type_category_enum(self):
         """Test StepTypeCategory enum values."""
@@ -52,7 +52,7 @@ class TestValidationRulesetConfiguration:
             category=StepTypeCategory.SCRIPT_BASED,
             enabled_levels={
                 ValidationLevel.SCRIPT_CONTRACT,
-                ValidationLevel.CONTRACT_SPEC,
+                ValidationLevel.SPEC_DEPENDENCY,
             },
             level_4_validator_class="ProcessingStepBuilderValidator",
             skip_reason=None,
@@ -63,7 +63,7 @@ class TestValidationRulesetConfiguration:
         assert ruleset.category == StepTypeCategory.SCRIPT_BASED
         assert len(ruleset.enabled_levels) == 2
         assert ValidationLevel.SCRIPT_CONTRACT in ruleset.enabled_levels
-        assert ValidationLevel.CONTRACT_SPEC in ruleset.enabled_levels
+        assert ValidationLevel.SPEC_DEPENDENCY in ruleset.enabled_levels
         assert ruleset.level_4_validator_class == "ProcessingStepBuilderValidator"
         assert ruleset.skip_reason is None
         assert "processing_script.py" in ruleset.examples
@@ -96,9 +96,8 @@ class TestValidationRulesetConfiguration:
         for step_type in script_based_types:
             ruleset = VALIDATION_RULESETS[step_type]
             assert ruleset.category == StepTypeCategory.SCRIPT_BASED
-            assert len(ruleset.enabled_levels) == 4  # All levels enabled
+            assert len(ruleset.enabled_levels) == 3  # 3 boundaries (CONTRACT_SPEC removed; D5)
             assert ValidationLevel.SCRIPT_CONTRACT in ruleset.enabled_levels
-            assert ValidationLevel.CONTRACT_SPEC in ruleset.enabled_levels
             assert ValidationLevel.SPEC_DEPENDENCY in ruleset.enabled_levels
             assert ValidationLevel.BUILDER_CONFIG in ruleset.enabled_levels
             assert ruleset.level_4_validator_class is not None
@@ -111,7 +110,6 @@ class TestValidationRulesetConfiguration:
             ruleset = VALIDATION_RULESETS[step_type]
             assert ruleset.category == StepTypeCategory.NON_SCRIPT
             assert ValidationLevel.SCRIPT_CONTRACT not in ruleset.enabled_levels
-            assert ValidationLevel.CONTRACT_SPEC not in ruleset.enabled_levels
             assert (
                 ValidationLevel.SPEC_DEPENDENCY in ruleset.enabled_levels
             )  # Universal
@@ -163,15 +161,14 @@ class TestConfigurationAPI:
 
     def test_get_enabled_validation_levels(self):
         """Test getting enabled validation levels for step type."""
-        # Test script-based step type
+        # Test script-based step type — all 3 boundaries enabled (CONTRACT_SPEC removed; D5)
         levels = get_enabled_validation_levels("Processing")
-        assert len(levels) == 4
+        assert len(levels) == 3
         assert all(level in levels for level in ValidationLevel)
 
         # Test non-script step type
         levels = get_enabled_validation_levels("CreateModel")
         assert ValidationLevel.SCRIPT_CONTRACT not in levels
-        assert ValidationLevel.CONTRACT_SPEC not in levels
         assert ValidationLevel.SPEC_DEPENDENCY in levels
         assert ValidationLevel.BUILDER_CONFIG in levels
 
@@ -304,12 +301,10 @@ class TestConfigurationIntegration:
                 if level not in ruleset.enabled_levels:
                     level_skip_counts[level] += 1
 
-        # Verify that some step types skip expensive levels
+        # Verify that some step types skip expensive levels (Level 1 / SCRIPT_CONTRACT — non-script
+        # types skip it). CONTRACT_SPEC was removed (FZ 31e1d3h/D5), so there is no Level-2 to skip.
         assert level_skip_counts[ValidationLevel.SCRIPT_CONTRACT] > 0, (
             "No step types skip Level 1 - missing optimization opportunity"
-        )
-        assert level_skip_counts[ValidationLevel.CONTRACT_SPEC] > 0, (
-            "No step types skip Level 2 - missing optimization opportunity"
         )
 
         # Level 3 should be universal (only excluded types skip it)

@@ -409,6 +409,9 @@ class TestRegistrationHelper:
         mock_config.expected_tps = 100
         mock_config.max_latency_in_millisecond = 1000
         mock_config.max_acceptable_error_rate = 0.01
+        # The helper now passes load_test_instance_type_list through to instance_type_list; set it
+        # to a real value so the assertion sees a list rather than an auto-Mock.
+        mock_config.load_test_instance_type_list = ["ml.m5.large"]
         return mock_config
 
     def _create_mock_package_config(self):

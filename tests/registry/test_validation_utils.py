@@ -21,7 +21,6 @@ from cursus.registry.validation_utils import (
     get_validation_errors_with_suggestions,
     register_step_with_validation,
     PASCAL_CASE_PATTERN,
-    VALID_SAGEMAKER_TYPES,
 )
 
 
@@ -528,24 +527,28 @@ class TestValidationPatterns:
             )
 
     def test_valid_sagemaker_types(self):
-        """Test valid SageMaker step types."""
-        expected_types = {
+        """The valid SageMaker-type set is now a single source (FZ 31e1d3g3 C3): the LIVE types from
+        every .step.yaml unioned with a framework floor — not a hand-maintained literal. It must
+        contain the framework floor, the core types, and (the original #12 fix) RedshiftDataLoading,
+        and reject unknown types."""
+        from cursus.registry.step_names import get_valid_sagemaker_step_types
+
+        valid = get_valid_sagemaker_step_types()
+
+        # Framework floor (always present, even if no live step uses them).
+        for floor_type in ("Base", "Utility", "RegisterModel", "Lambda"):
+            assert floor_type in valid
+
+        # Core + SAIS live types — RedshiftDataLoading was omitted by the old hardcoded set (#12).
+        for live_type in (
             "Processing",
             "Training",
             "Transform",
             "CreateModel",
-            "RegisterModel",
-            "Base",
-            "Utility",
-            "Lambda",
             "CradleDataLoading",
+            "RedshiftDataLoading",
             "MimsModelRegistrationProcessing",
-        }
+        ):
+            assert live_type in valid, f"{live_type} missing from the valid set"
 
-        assert VALID_SAGEMAKER_TYPES == expected_types
-
-        # Test some specific types
-        assert "Processing" in VALID_SAGEMAKER_TYPES
-        assert "Training" in VALID_SAGEMAKER_TYPES
-        assert "CradleDataLoading" in VALID_SAGEMAKER_TYPES
-        assert "InvalidType" not in VALID_SAGEMAKER_TYPES
+        assert "InvalidType" not in valid

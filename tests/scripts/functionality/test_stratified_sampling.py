@@ -218,7 +218,8 @@ class TestStratifiedSampler:
         assert "balanced" in sampler.strategies
         assert "proportional_min" in sampler.strategies
         assert "optimal" in sampler.strategies
-        assert len(sampler.strategies) == 3
+        assert "external_proportional" in sampler.strategies
+        assert len(sampler.strategies) == 4
 
     def test_sample_balanced_strategy(self, sampler, sample_data):
         """Test balanced allocation strategy."""
@@ -377,19 +378,19 @@ class TestStratifiedSampler:
         assert len(result) == 5
 
     def test_sample_empty_dataframe(self, sampler):
-        """Test sampling with empty DataFrame."""
+        """Sampling an empty DataFrame returns an empty result gracefully (no ZeroDivisionError) —
+        the sampler now handles the no-strata case instead of crashing."""
         df = pd.DataFrame({"label": []})
 
-        # Based on source code analysis, _balanced_allocation has division by zero when no strata exist
-        # This should raise ZeroDivisionError as per the actual implementation
-        with pytest.raises(ZeroDivisionError):
-            sampler.sample(
-                df=df,
-                strata_column="label",
-                target_size=100,
-                strategy="balanced",
-                min_samples_per_stratum=10,
-            )
+        result = sampler.sample(
+            df=df,
+            strata_column="label",
+            target_size=100,
+            strategy="balanced",
+            min_samples_per_stratum=10,
+        )
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
 
     def test_sample_reproducibility(self, sampler, sample_data):
         """Test that sampling is reproducible with same random_state."""
@@ -428,14 +429,13 @@ class TestStratifiedSampler:
         assert 1 in strata_info
         assert 2 in strata_info
 
-        # Check each stratum info
+        # Check each stratum info. The info dict carries summary stats only (size/variance/std) —
+        # it no longer holds the per-stratum 'data' frame (kept lean; the sampler re-slices as needed).
         for stratum, info in strata_info.items():
             assert "size" in info
-            assert "data" in info
             assert "variance" in info
             assert "std" in info
             assert info["size"] > 0
-            assert isinstance(info["data"], pd.DataFrame)
 
     def test_get_strata_info_without_variance_column(self, sampler, sample_data):
         """Test _get_strata_info without variance column."""

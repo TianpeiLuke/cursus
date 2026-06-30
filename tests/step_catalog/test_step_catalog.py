@@ -1385,3 +1385,69 @@ class TestIntegrationScenarios:
                     assert "custom_step" in all_steps
                     assert "core_step" in core_steps
                     assert "custom_step" in workspace_steps
+
+
+class TestHasBuilderProvider:
+    """FZ 31e1d3g3 Phase D4 — has_builder_provider: routability-as-fact, not file presence."""
+
+    def test_routable_steps_are_true(self):
+        catalog = StepCatalog()
+        for step in ("XGBoostTraining", "TabularPreprocessing", "XGBoostModel", "BatchTransform"):
+            assert catalog.has_builder_provider(step) is True, step
+
+    def test_sdk_step_is_true_even_offline(self):
+        """SDK-bound steps route (to SDKDelegationHandler) regardless of whether their builder module
+        can import — has_builder_provider must not import the builder, so it stays True offline."""
+        catalog = StepCatalog()
+        assert catalog.has_builder_provider("CradleDataLoading") is True
+
+    def test_job_type_variant_strips_to_base(self):
+        catalog = StepCatalog()
+        assert catalog.has_builder_provider("XGBoostTraining_training") is True
+
+    def test_nonexistent_and_no_builder_rows_are_false(self):
+        catalog = StepCatalog()
+        assert catalog.has_builder_provider("DefinitelyNotAStep") is False
+        assert catalog.has_builder_provider("Base") is False
+
+
+class TestGetSdkOutputLocation:
+    """FZ 31e1d3i — get_sdk_output_location: generic duck-typed accessor for the MODS SDK step family.
+
+    Replaces cradle's per-step get_output_location/get_step_outputs helpers (cradle is now a pure
+    shell). Reads get_output_locations off an ALREADY-BUILT step, so no SAIS import is needed offline.
+    """
+
+    def test_cradle_like_step_all_and_typed(self):
+        catalog = StepCatalog()
+
+        class CradleLike:
+            def get_output_locations(self, output_type=None):
+                d = {"DATA": "s3://d", "SIGNATURE": "s3://s", "METADATA": "s3://m"}
+                return d.get(output_type) if output_type else d
+
+        step = CradleLike()
+        assert catalog.get_sdk_output_location(step) == {
+            "DATA": "s3://d",
+            "SIGNATURE": "s3://s",
+            "METADATA": "s3://m",
+        }
+        assert catalog.get_sdk_output_location(step, "DATA") == "s3://d"
+
+    def test_sink_step_returns_none(self):
+        catalog = StepCatalog()
+
+        class UploadLike:  # SINK — output goes to Andes/EDX
+            def get_output_locations(self):
+                return None
+
+        assert catalog.get_sdk_output_location(UploadLike()) is None
+
+    def test_step_without_accessor_returns_none(self):
+        catalog = StepCatalog()
+
+        class RedshiftLike:  # no get_output_locations method
+            pass
+
+        assert catalog.get_sdk_output_location(RedshiftLike()) is None
+        assert catalog.get_sdk_output_location(object()) is None

@@ -117,10 +117,13 @@ class TestTabularPreprocessHelpers:
             temp_path, "part-00000.csv", [{"col1": 1, "col2": 2}]
         )
 
-        # Test the wrapper function
+        # The wrapper returns an error-isolated result dict {status, df, path} (not a raw DataFrame)
+        # so one bad shard can't crash a parallel read.
         args = (shard_path, None, 0, 1)
-        result_df = _read_shard_wrapper(args)
+        result = _read_shard_wrapper(args)
 
+        assert result["status"] == "success"
+        result_df = result["df"]
         assert isinstance(result_df, pd.DataFrame)
         assert len(result_df) == 1
         assert "col1" in result_df.columns
@@ -138,21 +141,25 @@ class TestTabularPreprocessHelpers:
         # Test with signature columns
         signature_columns = ["feature1", "feature2"]
         args = (shard_path, signature_columns, 0, 1)
-        result_df = _read_shard_wrapper(args)
+        result = _read_shard_wrapper(args)
 
-        assert isinstance(result_df, pd.DataFrame)
-        assert list(result_df.columns) == signature_columns
+        assert result["status"] == "success"
+        assert list(result["df"].columns) == signature_columns
 
     def test_read_shard_wrapper_error_handling(self, temp_dir):
         """Test _read_shard_wrapper error handling for invalid shard."""
         temp_dir_path, temp_path = temp_dir
 
-        # Create path to non-existent shard
+        # Create path to non-existent shard. The wrapper ISOLATES errors (returns a status="error"
+        # result dict) rather than raising, so a single bad shard doesn't abort the parallel read.
         invalid_path = temp_path / "nonexistent.csv"
 
         args = (invalid_path, None, 0, 1)
-        with pytest.raises(RuntimeError, match="Failed to read shard"):
-            _read_shard_wrapper(args)
+        result = _read_shard_wrapper(args)
+
+        assert result["status"] == "error"
+        assert "error" in result
+        assert result["path"] == str(invalid_path)
 
     def test_batch_concat_dataframes_single_df(self):
         """Test _batch_concat_dataframes with single DataFrame."""

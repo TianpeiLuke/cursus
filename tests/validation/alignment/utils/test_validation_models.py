@@ -23,17 +23,18 @@ class TestValidationEnums:
     """Test validation enum classes."""
 
     def test_validation_level_enum(self):
-        """Test ValidationLevel enum values."""
+        """ValidationLevel is now 3 boundaries (FZ 31e1d3h/D5): CONTRACT_SPEC (=2) removed as a
+        construction-time invariant. Values 1/3/4 kept non-contiguous so coercion stays stable."""
         assert ValidationLevel.SCRIPT_CONTRACT.value == 1
-        assert ValidationLevel.CONTRACT_SPEC.value == 2
         assert ValidationLevel.SPEC_DEPENDENCY.value == 3
         assert ValidationLevel.BUILDER_CONFIG.value == 4
+        assert not hasattr(ValidationLevel, "CONTRACT_SPEC")
 
-        # Test enum ordering
+        # Three boundaries, value 2 intentionally gone.
         levels = list(ValidationLevel)
-        assert len(levels) == 4
-        assert levels[0] == ValidationLevel.SCRIPT_CONTRACT
-        assert levels[3] == ValidationLevel.BUILDER_CONFIG
+        assert len(levels) == 3
+        assert ValidationLevel.SCRIPT_CONTRACT in levels
+        assert ValidationLevel.BUILDER_CONFIG in levels
 
     def test_validation_status_enum(self):
         """Test ValidationStatus enum values."""
@@ -201,7 +202,7 @@ class TestValidationSummary:
             ),
             ValidationResult(
                 step_name="step2",
-                validation_level=ValidationLevel.CONTRACT_SPEC,
+                validation_level=ValidationLevel.SPEC_DEPENDENCY,
                 status=ValidationStatus.FAILED,
                 issues=[ValidationIssue(level=IssueLevel.ERROR, message="Error")],
             ),

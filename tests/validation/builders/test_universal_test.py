@@ -396,56 +396,40 @@ class TestUniversalStepBuilderTestStepInstantiation:
         assert "_get_inputs" in result["found_methods"]
         assert "_get_outputs" not in result["found_methods"]
 
-    @patch("cursus.validation.builders.universal_test.get_sagemaker_step_type")
-    def test_check_sagemaker_methods_training_step(self, mock_get_step_type):
-        """Test SageMaker methods check for Training step."""
+    def test_check_sagemaker_methods_real_training_shell(self):
+        """FZ 31e1d3g3 Phase D5: the check is now 'can the step produce its compute' (shell-aware),
+        not 'hasattr(_create_estimator)'. A real Training shell passes via its declared compute.kind."""
         tester = UniversalStepBuilderTest()
+        from cursus.step_catalog import StepCatalog
 
-        mock_get_step_type.return_value = "Training"
-
-        mock_builder = Mock()
-        mock_builder.__name__ = "XGBoostTrainingStepBuilder"
-        mock_builder._create_estimator = Mock()
-
-        result = tester._check_sagemaker_methods(mock_builder)
-
+        cls = StepCatalog().load_builder_class("XGBoostTraining")
+        result = tester._check_sagemaker_methods(cls, step_name="XGBoostTraining")
         assert result["passed"] is True
         assert result["step_type"] == "Training"
-        assert "_create_estimator" in result["found_methods"]
+        assert "resolved_via" in result
 
-    @patch("cursus.validation.builders.universal_test.get_sagemaker_step_type")
-    def test_check_sagemaker_methods_processing_step(self, mock_get_step_type):
-        """Test SageMaker methods check for Processing step."""
+    def test_check_sagemaker_methods_real_processing_shell(self):
+        """A real Processing shell passes via compute.kind (no _create_processor on the shell)."""
         tester = UniversalStepBuilderTest()
+        from cursus.step_catalog import StepCatalog
 
-        mock_get_step_type.return_value = "Processing"
-
-        mock_builder = Mock()
-        mock_builder.__name__ = "TabularPreprocessingStepBuilder"
-        mock_builder._create_processor = Mock()
-
-        result = tester._check_sagemaker_methods(mock_builder)
-
+        cls = StepCatalog().load_builder_class("TabularPreprocessing")
+        result = tester._check_sagemaker_methods(cls, step_name="TabularPreprocessing")
         assert result["passed"] is True
         assert result["step_type"] == "Processing"
-        assert "_create_processor" in result["found_methods"]
 
     @patch("cursus.validation.builders.universal_test.get_sagemaker_step_type")
-    def test_check_sagemaker_methods_missing_required_method(self, mock_get_step_type):
-        """Test SageMaker methods check when required method is missing."""
+    def test_check_sagemaker_methods_unroutable_fails(self, mock_get_step_type):
+        """A step that neither overrides _create_*, nor declares compute.kind, nor routes to a
+        handler cannot produce its compute → passed False (the teeth: it is not a blanket pass)."""
         tester = UniversalStepBuilderTest()
+        mock_get_step_type.return_value = "NoSuchSageMakerType"
 
-        mock_get_step_type.return_value = "Training"
+        mock_builder = Mock(spec=[])  # no _create_* methods, no STEP_NAME
+        mock_builder.__name__ = "NoSuchThingStepBuilder"
 
-        mock_builder = Mock(spec=[])  # Empty spec means no methods available
-        mock_builder.__name__ = "XGBoostTrainingStepBuilder"
-        # No _create_estimator method
-
-        result = tester._check_sagemaker_methods(mock_builder)
-
+        result = tester._check_sagemaker_methods(mock_builder, step_name="NoSuchThing")
         assert result["passed"] is False
-        assert result["step_type"] == "Training"
-        assert result["found_methods"] == []
 
 
 class TestUniversalStepBuilderTestStepCreation:
@@ -566,55 +550,51 @@ class TestUniversalStepBuilderTestStepCreation:
 class TestUniversalStepBuilderTestStepTypeValidation:
     """Test step type specific validation methods."""
 
-    @patch("cursus.validation.builders.universal_test.get_sagemaker_step_type")
-    def test_run_step_type_specific_validation_processing(self, mock_get_step_type):
-        """Test step type validation for Processing steps."""
+    def test_run_step_type_specific_validation_real_processing_shell(self):
+        """FZ 31e1d3g3 Phase D5: type-agnostic compute-producibility check. A real Processing shell
+        passes via its declared compute.kind (the processor factory is in the bound handler)."""
         tester = UniversalStepBuilderTest()
-        mock_get_step_type.return_value = "Processing"
+        from cursus.step_catalog import StepCatalog
 
-        mock_builder = Mock()
-        mock_builder._create_processor = Mock()
-        mock_builder._get_inputs = Mock()
-        mock_builder._get_outputs = Mock()
-
-        result = tester._run_step_type_specific_validation("TestStep", mock_builder)
+        cls = StepCatalog().load_builder_class("TabularPreprocessing")
+        result = tester._run_step_type_specific_validation("TabularPreprocessing", cls)
 
         assert result["status"] == "COMPLETED"
         assert result["results"]["step_type"] == "Processing"
         assert (
-            result["results"]["step_type_tests"]["processor_methods"]["passed"] is True
+            result["results"]["step_type_tests"]["compute_producible"]["passed"] is True
         )
 
-    @patch("cursus.validation.builders.universal_test.get_sagemaker_step_type")
-    def test_run_step_type_specific_validation_training(self, mock_get_step_type):
-        """Test step type validation for Training steps."""
+    def test_run_step_type_specific_validation_real_training_shell(self):
+        """A real Training shell passes the compute-producibility check via compute.kind."""
         tester = UniversalStepBuilderTest()
-        mock_get_step_type.return_value = "Training"
+        from cursus.step_catalog import StepCatalog
 
-        mock_builder = Mock()
-        mock_builder._create_estimator = Mock()
-
-        result = tester._run_step_type_specific_validation("TestStep", mock_builder)
+        cls = StepCatalog().load_builder_class("XGBoostTraining")
+        result = tester._run_step_type_specific_validation("XGBoostTraining", cls)
 
         assert result["status"] == "COMPLETED"
         assert result["results"]["step_type"] == "Training"
         assert (
-            result["results"]["step_type_tests"]["estimator_methods"]["passed"] is True
+            result["results"]["step_type_tests"]["compute_producible"]["passed"] is True
         )
 
     @patch("cursus.validation.builders.universal_test.get_sagemaker_step_type")
-    def test_run_step_type_specific_validation_unknown_type(self, mock_get_step_type):
-        """Test step type validation for unknown step types."""
+    def test_run_step_type_specific_validation_builder_override(self, mock_get_step_type):
+        """A builder that DEFINES its own _create_* override passes via the override branch (the
+        smooth-transition path: a step may keep a deviating factory method)."""
         tester = UniversalStepBuilderTest()
-        mock_get_step_type.return_value = "UnknownType"
+        mock_get_step_type.return_value = "Processing"
 
         mock_builder = Mock()
+        mock_builder._create_processor = Mock()  # a per-step override
 
         result = tester._run_step_type_specific_validation("TestStep", mock_builder)
 
         assert result["status"] == "COMPLETED"
-        assert result["results"]["step_type"] == "UnknownType"
-        assert "No specific tests" in result["results"]["step_type_tests"]["note"]
+        tests = result["results"]["step_type_tests"]["compute_producible"]
+        assert tests["passed"] is True
+        assert "override" in tests["resolved_via"]
 
 
 class TestUniversalStepBuilderTestDiscovery:
@@ -881,10 +861,10 @@ class TestUniversalStepBuilderTestErrorHandling:
 
             result = tester._check_sagemaker_methods(mock_builder)
 
-            # Should pass gracefully even with exception
-            assert result["passed"] is True
-            # FIXED: Category 14 - Match actual string content from implementation
-            assert "Unknown step method validation" in result["note"]
+            # Should resolve gracefully even when step-type lookup raises (the compute-producibility
+            # check degrades to the builder-override / handler branches; FZ 31e1d3g3 Phase D5).
+            assert "passed" in result
+            assert "can produce its compute" in result["note"]
 
 
 class TestUniversalStepBuilderTestBackwardCompatibility:

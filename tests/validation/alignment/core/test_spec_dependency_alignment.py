@@ -145,9 +145,12 @@ class TestSpecDependencyAlignment:
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
 
-            # Verify results
+            # Verify results. (FZ 31e1d3g3 D2 folded the SageMaker property-path check into this
+            # method; for an unknown mock step_type it appends only WARNING/INFO, so count the
+            # dependency-resolution ERRORs this test is actually about — not the total list.)
             assert result["passed"] is True
-            assert len(result["issues"]) == 0
+            dep_errors = [i for i in result["issues"] if i["severity"] in ("CRITICAL", "ERROR")]
+            assert len(dep_errors) == 0
             assert result["specification"] == sample_specification
 
             # Verify StepCatalog methods were called correctly
@@ -240,10 +243,11 @@ class TestSpecDependencyAlignment:
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
 
-            # Verify results
+            # Verify results (count the dependency-resolution ERRORs; D2 property-path adds only
+            # WARNING/INFO for the unknown mock step_type).
             assert result["passed"] is False
-            assert len(result["issues"]) == 2
-            assert all(issue["severity"] == "ERROR" for issue in result["issues"])
+            dep_errors = [i for i in result["issues"] if i["severity"] == "ERROR"]
+            assert len(dep_errors) == 2
             assert result["specification"] == sample_specification
 
     def test_validate_specification_with_circular_dependencies(
@@ -313,11 +317,12 @@ class TestSpecDependencyAlignment:
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
 
-            # Verify results
+            # Verify results (filter to the circular-dependency issue; D2 property-path adds only
+            # WARNING/INFO for the unknown mock step_type).
             assert result["passed"] is False
-            assert len(result["issues"]) == 1
-            assert result["issues"][0]["severity"] == "CRITICAL"
-            assert result["issues"][0]["category"] == "circular_dependency"
+            circular = [i for i in result["issues"] if i["category"] == "circular_dependency"]
+            assert len(circular) == 1
+            assert circular[0]["severity"] == "CRITICAL"
 
     def test_validate_specification_with_missing_specification(
         self, spec_dependency_alignment
@@ -381,9 +386,11 @@ class TestSpecDependencyAlignment:
             # Execute validation
             result = spec_dependency_alignment.validate_specification(spec_name)
 
-            # Verify validator handles malformed data gracefully
-            assert result["passed"] is True  # No validation issues found
-            assert len(result["issues"]) == 0
+            # Verify validator handles malformed data gracefully (no dependency-resolution ERRORs;
+            # D2 property-path adds only WARNING/INFO for the unknown mock step_type).
+            assert result["passed"] is True  # No validation errors found
+            dep_errors = [i for i in result["issues"] if i["severity"] in ("CRITICAL", "ERROR")]
+            assert len(dep_errors) == 0
             assert result["specification"] == malformed_spec
 
     def test_validate_specification_error_handling(self, spec_dependency_alignment):

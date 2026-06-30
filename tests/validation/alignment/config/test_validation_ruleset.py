@@ -74,10 +74,6 @@ class TestValidationRuleset:
             is True
         )
         assert (
-            is_validation_level_enabled("Processing", ValidationLevel.CONTRACT_SPEC)
-            is True
-        )
-        assert (
             is_validation_level_enabled("Processing", ValidationLevel.SPEC_DEPENDENCY)
             is True
         )
@@ -89,10 +85,6 @@ class TestValidationRuleset:
         # Test non-script step types (should skip script/contract levels)
         assert (
             is_validation_level_enabled("CreateModel", ValidationLevel.SCRIPT_CONTRACT)
-            is False
-        )
-        assert (
-            is_validation_level_enabled("CreateModel", ValidationLevel.CONTRACT_SPEC)
             is False
         )
         assert (
@@ -128,7 +120,6 @@ class TestValidationRuleset:
         processing_levels = get_enabled_validation_levels("Processing")
         assert isinstance(processing_levels, set)
         assert ValidationLevel.SCRIPT_CONTRACT in processing_levels
-        assert ValidationLevel.CONTRACT_SPEC in processing_levels
         assert ValidationLevel.SPEC_DEPENDENCY in processing_levels
         assert ValidationLevel.BUILDER_CONFIG in processing_levels
 
@@ -136,7 +127,6 @@ class TestValidationRuleset:
         createmodel_levels = get_enabled_validation_levels("CreateModel")
         assert isinstance(createmodel_levels, set)
         assert ValidationLevel.SCRIPT_CONTRACT not in createmodel_levels
-        assert ValidationLevel.CONTRACT_SPEC not in createmodel_levels
         assert ValidationLevel.SPEC_DEPENDENCY in createmodel_levels
         assert ValidationLevel.BUILDER_CONFIG in createmodel_levels
 
@@ -209,16 +199,11 @@ class TestValidationRuleset:
         assert "Utility" in excluded_types
 
     def test_get_level_4_validator_class(self):
-        """Test get_level_4_validator_class function."""
-        # Test step types with Level 4 validators
-        processing_validator = get_level_4_validator_class("Processing")
-        assert processing_validator == "ProcessingStepBuilderValidator"
-
-        training_validator = get_level_4_validator_class("Training")
-        assert training_validator == "TrainingStepBuilderValidator"
-
-        createmodel_validator = get_level_4_validator_class("CreateModel")
-        assert createmodel_validator == "CreateModelStepBuilderValidator"
+        """Level 4 is now the single step-type-AGNOSTIC B3 RegistryBindingValidator (FZ 31e1d3g3
+        Phase D3): every step type with Level-4 enabled names the same validator class."""
+        assert get_level_4_validator_class("Processing") == "RegistryBindingValidator"
+        assert get_level_4_validator_class("Training") == "RegistryBindingValidator"
+        assert get_level_4_validator_class("CreateModel") == "RegistryBindingValidator"
 
         # Test excluded step type
         base_validator = get_level_4_validator_class("Base")
@@ -252,9 +237,9 @@ class TestValidationRuleset:
     def test_validation_level_enum_values(self):
         """Test ValidationLevel enum values."""
         assert ValidationLevel.SCRIPT_CONTRACT.value == 1
-        assert ValidationLevel.CONTRACT_SPEC.value == 2
         assert ValidationLevel.SPEC_DEPENDENCY.value == 3
         assert ValidationLevel.BUILDER_CONFIG.value == 4
+        assert not hasattr(ValidationLevel, "CONTRACT_SPEC")  # removed (FZ 31e1d3h/D5)
 
     def test_step_type_category_enum_values(self):
         """Test StepTypeCategory enum values."""
@@ -272,7 +257,7 @@ class TestValidationRuleset:
             category=StepTypeCategory.SCRIPT_BASED,
             enabled_levels={
                 ValidationLevel.SCRIPT_CONTRACT,
-                ValidationLevel.CONTRACT_SPEC,
+                ValidationLevel.SPEC_DEPENDENCY,
             },
             level_4_validator_class="TestValidator",
             skip_reason=None,
@@ -282,7 +267,7 @@ class TestValidationRuleset:
         assert ruleset.step_type == "TestStep"
         assert ruleset.category == StepTypeCategory.SCRIPT_BASED
         assert ValidationLevel.SCRIPT_CONTRACT in ruleset.enabled_levels
-        assert ValidationLevel.CONTRACT_SPEC in ruleset.enabled_levels
+        assert ValidationLevel.SPEC_DEPENDENCY in ruleset.enabled_levels
         assert ruleset.level_4_validator_class == "TestValidator"
         assert ruleset.examples == ["TestExample"]
 

@@ -11,8 +11,18 @@ import numpy as np
 import pickle as pkl
 import sys
 
-# Mock torch before any imports that might need it
-sys.modules["torch"] = MagicMock()
+# Mock torch before any imports that might need it — but ONLY if torch isn't really installed, and
+# with a Mock that won't poison OTHER libraries' type detection. scipy's array_api_compat probes
+# `issubclass(cls, sys.modules["torch"].Tensor)`; a bare MagicMock makes `.Tensor` a Mock (not a
+# class), raising "issubclass() arg 2 must be a class" in unrelated tests run after this module is
+# collected (the sys.modules entry leaks process-wide). Giving the fake module real class attributes
+# for the names array-API libs probe keeps issubclass valid. (FZ 31e1d3g3 Phase E test hardening —
+# fixes cross-test pollution surfaced by the full-suite run.)
+if "torch" not in sys.modules:
+    _torch_mock = MagicMock()
+    _torch_mock.Tensor = type("Tensor", (), {})
+    _torch_mock.bool = bool
+    sys.modules["torch"] = _torch_mock
 
 # CRITICAL: Set USE_SECURE_PYPI=false AND mock subprocess.check_call BEFORE importing
 # The xgboost_training script calls install_packages() at module level (line 179)

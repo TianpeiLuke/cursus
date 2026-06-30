@@ -1,15 +1,14 @@
 """
-Tests for the YAML-backed step-name registry (step_names_base loads step_names.yaml).
+Tests for the interface-derived step-name registry (``step_names_base.STEP_NAMES``).
 
-Guards the migration that moved the STEP_NAMES table out of Python and into
-step_names.yaml: the loaded data must stay well-formed, the derived mappings must stay
-consistent, and the YAML must ship with the package.
+As of the FZ 31e1/31e1f Final Phase the standalone ``step_names.yaml`` was DELETED — the
+registry is built from the per-step ``.step.yaml`` ``registry:`` blocks (+ a 3-row ``_EXTRAS``
+map) by ``build_registry_from_interfaces()``. These tests guard that the built ``STEP_NAMES``
+table stays well-formed and the derived mappings stay consistent. (The drift/golden-snapshot
+gate lives in ``test_registry_interface_parity.py``.)
 """
 
-from pathlib import Path
-
 import pytest
-import yaml
 
 from cursus.registry import step_names_base as sno
 
@@ -64,28 +63,34 @@ def test_config_classes_are_unique():
     )
 
 
-def test_yaml_file_exists_and_parses():
+def test_step_names_yaml_is_gone():
+    """The standalone table file was deleted — the .step.yaml registry: blocks are the sole source."""
+    from pathlib import Path
+
     yaml_path = Path(sno.__file__).resolve().parent / "step_names.yaml"
-    assert yaml_path.exists(), "step_names.yaml must sit next to step_names_base.py"
-    data = yaml.safe_load(yaml_path.read_text())
-    assert "step_names" in data
-    # The module's loaded dict must equal what the YAML parses to.
-    assert sno.STEP_NAMES == data["step_names"]
+    assert not yaml_path.exists(), (
+        "step_names.yaml was removed (FZ 31e1f Final Phase); the registry derives from the "
+        ".step.yaml registry: blocks. If it reappeared, the source-of-truth split has regressed."
+    )
 
 
-def test_loader_rejects_missing_field(tmp_path, monkeypatch):
-    # A malformed YAML (entry missing a required field) must raise a clear ValueError.
-    bad = tmp_path / "bad.yaml"
-    bad.write_text(
-        "step_names:\n  Foo:\n    config_class: FooConfig\n"
-    )  # missing 4 fields
-    monkeypatch.setattr(sno, "_STEP_NAMES_YAML", bad)
-    with pytest.raises(ValueError, match="missing required field"):
-        sno._load_step_names()
+def test_loader_raises_clearly_when_a_step_lacks_sagemaker_step_type():
+    """With no fallback table, a .step.yaml missing its registry.sagemaker_step_type must fail
+    LOUDLY at build (not silently drop the step)."""
+    from cursus.registry.interface_registry_loader import build_registry_from_interfaces
+
+    # Pass an explicit empty fallback against a temp dir containing one block-less interface.
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as d:
+        (Path(d) / "foo.step.yaml").write_text("step_type: Foo\ncontract:\n  entry_point: f.py\n")
+        with pytest.raises(ValueError, match="sagemaker_step_type"):
+            build_registry_from_interfaces(interfaces_dir=Path(d), fallback=None)
 
 
 def test_known_steps_present():
-    # Spot-check a few canonical steps survived the migration with correct mappings.
+    # Spot-check a few canonical steps survived with correct mappings.
     assert sno.STEP_NAMES["XGBoostTraining"]["config_class"] == "XGBoostTrainingConfig"
     assert (
         sno.STEP_NAMES["Registration"]["sagemaker_step_type"]

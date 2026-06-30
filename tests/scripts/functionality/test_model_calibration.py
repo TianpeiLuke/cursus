@@ -493,10 +493,15 @@ class TestCalibrationTraining:
         assert lookup_table[0][0] == pytest.approx(0.0)
         assert lookup_table[-1][0] == pytest.approx(1.0)
 
+    # pygam is an OPTIONAL dependency imported in a top-level try/except, so when it is absent
+    # (the offline/CI case) the module-level names LogisticGAM and s do not exist. Patch them with
+    # create=True so the test can simulate "pygam available" regardless of install state — and patch
+    # `s` too, since train_gam_calibration calls LogisticGAM(s(...)).
     @patch("cursus.steps.scripts.model_calibration.HAS_PYGAM", True)
-    @patch("cursus.steps.scripts.model_calibration.LogisticGAM")
+    @patch("cursus.steps.scripts.model_calibration.s", create=True)
+    @patch("cursus.steps.scripts.model_calibration.LogisticGAM", create=True)
     def test_train_gam_calibration_with_pygam(
-        self, mock_gam_class, binary_calibration_data, sample_config
+        self, mock_gam_class, mock_s, binary_calibration_data, sample_config
     ):
         """Test GAM calibration training when pygam is available."""
         scores, labels = binary_calibration_data
@@ -785,11 +790,15 @@ class TestMainFunction:
         """Test successful multi-task calibration via main function."""
         temp_dir, input_paths, output_paths, environ_vars = setup_integration_test
 
-        # Add multiple score fields to data
+        # Add multiple score fields to data, plus the matching per-task label columns the script
+        # requires: parse_task_label_fields derives task<N>_score -> task<N>_label (_score->_label),
+        # and main validates each derived label field exists in the data.
         input_dir = Path(input_paths["evaluation_data"])
         df = pd.read_csv(input_dir / "predictions.csv")
         df["task1_score"] = np.random.uniform(0, 1, len(df))
         df["task2_score"] = np.random.uniform(0, 1, len(df))
+        df["task1_label"] = np.random.randint(0, 2, len(df))
+        df["task2_label"] = np.random.randint(0, 2, len(df))
         df.to_csv(input_dir / "predictions.csv", index=False)
 
         # Update environment for multi-task

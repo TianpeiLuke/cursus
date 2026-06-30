@@ -188,6 +188,27 @@ class TestStepBuilderBase:
         step_name = builder._get_step_name(include_job_type=True)
         assert step_name == "Concrete-Training"  # Current format uses dash separator
 
+    def test_get_step_name_prefers_STEP_NAME_over_class_name(self, config):
+        """FZ 31e1d3g3 Phase C1: when STEP_NAME is declared it is the authoritative canonical name,
+        regardless of the class name — required for the factory end-state where the per-step shell
+        classes are deleted and the class name collapses to TemplateStepBuilder / a synthesized name."""
+
+        # A builder whose CLASS NAME would resolve to "Misleading" but declares a different STEP_NAME.
+        class MisleadingStepBuilder(ConcreteStepBuilder):
+            STEP_NAME = "XGBoostTraining"
+
+        builder = MisleadingStepBuilder(config=config)
+        assert builder._get_step_name(include_job_type=False) == "XGBoostTraining"
+
+        # Simulate a synthesized fileless shell (the materializer's type(...) output): the class name
+        # is irrelevant; STEP_NAME drives the canonical key.
+        synthesized = type(
+            "TabularPreprocessingStepBuilder",
+            (ConcreteStepBuilder,),
+            {"STEP_NAME": "TabularPreprocessing"},
+        )
+        assert synthesized(config=config)._get_step_name(include_job_type=False) == "TabularPreprocessing"
+
     def test_generate_job_name(self, config):
         """Test job name generation."""
         builder = ConcreteStepBuilder(config=config)
@@ -298,21 +319,36 @@ class TestStepBuilderBase:
         args = builder._get_job_arguments()
         assert args is None
 
-    def test_get_job_arguments_with_contract(self, config):
-        """Test job arguments with contract."""
-        # Mock contract
-        mock_contract = Mock()
-        mock_contract.expected_arguments = {
-            "input-path": "/test/input",
-            "output-path": "/test/output",
-        }
+    def test_get_job_arguments_from_config(self):
+        """Job arguments come from config.get_job_arguments() — config is the single source
+        (FZ 31e1d3h). The builder base delegates to it; the legacy contract.expected_arguments
+        path was removed."""
 
-        builder = ConcreteStepBuilder(config=config)
-        builder.contract = mock_contract
+        class _ArgConfig(MockConfig):
+            def get_job_arguments(self):
+                return ["--input-path", "/test/input", "--output-path", "/test/output"]
 
-        args = builder._get_job_arguments()
-        expected = ["--input-path", "/test/input", "--output-path", "/test/output"]
-        assert args == expected
+        builder = ConcreteStepBuilder(config=_ArgConfig())
+        assert builder._get_job_arguments() == [
+            "--input-path",
+            "/test/input",
+            "--output-path",
+            "/test/output",
+        ]
+
+    def test_get_job_arguments_config_none_returns_none(self):
+        """A config whose get_job_arguments() returns None/[] yields None (the no-args contract)."""
+
+        class _NoneConfig(MockConfig):
+            def get_job_arguments(self):
+                return None
+
+        class _EmptyConfig(MockConfig):
+            def get_job_arguments(self):
+                return []
+
+        assert ConcreteStepBuilder(config=_NoneConfig())._get_job_arguments() is None
+        assert ConcreteStepBuilder(config=_EmptyConfig())._get_job_arguments() is None
 
     def test_get_required_dependencies(self, config, mock_spec):
         """Test getting required dependencies."""
@@ -1045,54 +1081,40 @@ class TestStepBuilderBaseAdvanced:
             assert "OPTIONAL_VAR" in mock_log_debug.call_args[0][0]
             assert "default_value" in mock_log_debug.call_args[0][0]
 
-    def test_get_job_arguments_with_contract_but_no_expected_arguments(self, config):
-        """Test _get_job_arguments returns None when contract has no expected_arguments.
-
-        Based on source: if not hasattr(self.contract, "expected_arguments") or not self.contract.expected_arguments: return None
-        """
-        mock_contract = Mock()
-        # Contract exists but has no expected_arguments
-        mock_contract.expected_arguments = None
-
+    def test_get_job_arguments_default_config_returns_none(self, config):
+        """The base config's get_job_arguments() returns None (no CLI args by default), so a
+        builder over a plain config yields None (FZ 31e1d3h). The legacy contract.expected_arguments
+        path no longer drives job arguments."""
         builder = ConcreteStepBuilder(config=config)
-        builder.contract = mock_contract
+        # Base BasePipelineConfig.get_job_arguments() -> None.
+        assert builder._get_job_arguments() is None
 
-        args = builder._get_job_arguments()
-        assert args is None
+    def test_get_job_arguments_job_type_helper(self):
+        """The common pattern: a config opts into the --job_type arg via _job_type_arg(). When
+        job_type is set, the builder emits ['--job_type', <value>]; the helper omits it when unset."""
 
-    def test_get_job_arguments_with_empty_expected_arguments(self, config):
-        """Test _get_job_arguments returns None when expected_arguments is empty.
+        class _JobTypeConfig(MockConfig):
+            def get_job_arguments(self):
+                return self._job_type_arg()
 
-        Based on source: if not self.contract.expected_arguments: return None
-        """
-        mock_contract = Mock()
-        mock_contract.expected_arguments = {}  # Empty dict
+        cfg = _JobTypeConfig()
+        cfg.job_type = "training"  # extra="allow" on the config
+        assert ConcreteStepBuilder(config=cfg)._get_job_arguments() == [
+            "--job_type",
+            "training",
+        ]
+        # No job_type set and no default -> the conditional skip -> None.
+        assert ConcreteStepBuilder(config=_JobTypeConfig())._get_job_arguments() is None
 
-        builder = ConcreteStepBuilder(config=config)
-        builder.contract = mock_contract
-
-        args = builder._get_job_arguments()
-        assert args is None
-
-    def test_get_job_arguments_logs_generated_arguments(self, config):
-        """Test _get_job_arguments logs generated arguments.
-
-        Based on source: self.log_info("Generated job arguments from contract: %s", args)
-        """
+    def test_get_job_arguments_ignores_contract_expected_arguments(self, config):
+        """Regression guard: the contract.expected_arguments map no longer affects job arguments —
+        config is the single source (FZ 31e1d3h)."""
         mock_contract = Mock()
         mock_contract.expected_arguments = {"input-path": "/test/input"}
-
         builder = ConcreteStepBuilder(config=config)
         builder.contract = mock_contract
-
-        with patch.object(builder, "log_info") as mock_log_info:
-            args = builder._get_job_arguments()
-
-            # Should log the generated arguments
-            mock_log_info.assert_called_once()
-            assert (
-                "Generated job arguments from contract" in mock_log_info.call_args[0][0]
-            )
+        # config (base) provides no args -> None, regardless of the contract map.
+        assert builder._get_job_arguments() is None
 
     def test_set_execution_prefix_logs_debug_message(self, config):
         """Test set_execution_prefix logs debug message.
