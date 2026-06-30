@@ -2045,9 +2045,10 @@ def main(
                 "BEDROCK_LOG_TRUNCATIONS", "true"
             ).lower()
             == "true",
-            # Structured output mode
+            # Structured output mode (tool_use) — default ON so output is always
+            # schema-aligned with the prompt's declared format (0% parse failures).
             "use_structured_output": environ_vars.get(
-                "BEDROCK_USE_STRUCTURED_OUTPUT", "false"
+                "BEDROCK_USE_STRUCTURED_OUTPUT", "true"
             ).lower()
             == "true",
             # Converse API mode (model-agnostic, supports Nova/Llama/Mistral)

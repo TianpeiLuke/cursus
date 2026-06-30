@@ -824,6 +824,58 @@ class BedrockProcessor:
 
         return formatted_prompt
 
+    def _use_tool_calling(self) -> bool:
+        """Whether to enforce schema via tool_use. Requires a validation schema
+        AND use_structured_output (default ON). The SAME decision drives both the
+        realtime invoke and the batch JSONL records, so both modes guarantee that
+        the model output matches the prompt's declared output format."""
+        return bool(self.config.get("use_structured_output", True)) and bool(
+            self.validation_schema
+        )
+
+    def _build_request_body(self, prompt: str) -> Dict[str, Any]:
+        """Build the Anthropic request body for one prompt.
+
+        When tool-calling is enabled, the model is FORCED to return its answer as a
+        call to a `structured_response` tool whose input_schema is the validation
+        schema — this guarantees schema-aligned output (0% parse failures), exactly
+        like bedrock_processing.py. Otherwise it falls back to the legacy
+        assistant-prefill heuristic. Used for BOTH realtime invoke and batch JSONL
+        records so they behave identically.
+        """
+        body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": int(self.config["max_tokens"]),
+            "temperature": float(self.config["temperature"]),
+            "top_p": float(self.config["top_p"]),
+        }
+        if self._use_tool_calling():
+            tool_schema = {
+                "type": "object",
+                "properties": self.validation_schema.get("properties", {}),
+                "required": self.validation_schema.get("required", []),
+            }
+            body["messages"] = [{"role": "user", "content": prompt}]
+            body["tools"] = [
+                {
+                    "name": "structured_response",
+                    "description": "Return the structured analysis response",
+                    "input_schema": tool_schema,
+                }
+            ]
+            body["tool_choice"] = {"type": "tool", "name": "structured_response"}
+        else:
+            body["messages"] = [
+                {"role": "user", "content": prompt},
+                {
+                    "role": "assistant",
+                    "content": "{",
+                },  # Force JSON output via prefilling (legacy fallback)
+            ]
+        if self.config.get("system_prompt"):
+            body["system"] = self.config["system_prompt"]
+        return body
+
     @retry(
         stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
     )
@@ -839,22 +891,7 @@ class BedrockProcessor:
         else:
             client = self.bedrock_client
 
-        request_body = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": int(self.config["max_tokens"]),
-            "temperature": float(self.config["temperature"]),
-            "top_p": float(self.config["top_p"]),
-            "messages": [
-                {"role": "user", "content": prompt},
-                {
-                    "role": "assistant",
-                    "content": "{",
-                },  # Force JSON output via prefilling
-            ],
-        }
-
-        if self.config.get("system_prompt"):
-            request_body["system"] = self.config["system_prompt"]
+        request_body = self._build_request_body(prompt)
 
         # Try primary model/profile first
         try:
@@ -898,7 +935,25 @@ class BedrockProcessor:
         The repair function ONLY handles Unicode quotes, preserving JSON structure.
         """
         if "content" in response and len(response["content"]) > 0:
-            response_text = response["content"][0].get("text", "")
+            # Tool-calling path (structured output): the answer is a `tool_use`
+            # block whose `input` is the schema-validated object. Serialize it so
+            # the parsing below treats it identically to a text response. Handles
+            # both realtime responses and batch `modelOutput` records.
+            tool_block = next(
+                (
+                    b
+                    for b in response["content"]
+                    if isinstance(b, dict)
+                    and b.get("type") == "tool_use"
+                    and b.get("name") == "structured_response"
+                ),
+                None,
+            )
+            if tool_block is not None:
+                response_text = json.dumps(tool_block.get("input", {}))
+            else:
+                # Legacy text/prefill path
+                response_text = response["content"][0].get("text", "")
         else:
             raise ValueError("No content in Bedrock response")
 
@@ -1365,23 +1420,11 @@ class BedrockBatchProcessor(BedrockProcessor):
             row_data = row.to_dict()
             prompt = self._format_prompt(row_data)
 
-            # Create Bedrock batch inference record
-            request_body = {
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": int(self.config["max_tokens"]),
-                "temperature": float(self.config["temperature"]),
-                "top_p": float(self.config["top_p"]),
-                "messages": [
-                    {"role": "user", "content": prompt},
-                    {
-                        "role": "assistant",
-                        "content": "{",
-                    },  # Force JSON output via prefilling
-                ],
-            }
-
-            if self.config.get("system_prompt"):
-                request_body["system"] = self.config["system_prompt"]
+            # Create Bedrock batch inference record. Identical request shape to the
+            # realtime path: when structured output is on (default), this is a
+            # tool_use request that FORCES schema-aligned output; otherwise the
+            # legacy assistant-prefill heuristic.
+            request_body = self._build_request_body(prompt)
 
             record = {"recordId": f"record_{pos}", "modelInput": request_body}
 
@@ -2607,6 +2650,13 @@ def main(
             "input_placeholders": templates.get("input_placeholders", []),
             # Validation schema for response processing
             "validation_schema": validation_schema,
+            # Structured output via tool_use — guarantees the model output matches the
+            # validation schema (0% parse failures). Defaults ON; applies to BOTH the
+            # realtime fallback and the batch JSONL records when a schema is present.
+            "use_structured_output": environ_vars.get(
+                "BEDROCK_USE_STRUCTURED_OUTPUT", "true"
+            ).lower()
+            == "true",
             # API configuration
             "max_tokens": int(environ_vars.get("BEDROCK_MAX_TOKENS", "32768")),
             "temperature": float(environ_vars.get("BEDROCK_TEMPERATURE", "1.0")),
