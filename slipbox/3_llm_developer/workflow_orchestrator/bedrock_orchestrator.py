@@ -589,7 +589,6 @@ Do not include any text before or after the JSON object. Only return valid JSON.
             and self.workflow_state.metadata["iteration_count"]
             < self.config["max_iterations"]
         ):
-
             # Execute current step
             step_result = await self.execute_workflow_step(context)
             workflow_results.append(step_result)

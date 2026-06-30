@@ -5,7 +5,6 @@ This example demonstrates both simple and advanced usage patterns.
 """
 
 import logging
-from pathlib import Path
 
 # Configure logging to see API operations
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +20,6 @@ def simple_example():
     print("=" * 60)
 
     from src.pipeline_dag.base_dag import PipelineDAG
-    from src.pipeline_api import dag_to_pipeline_template
 
     # Create a simple DAG
     dag = PipelineDAG()
@@ -74,8 +72,8 @@ def advanced_example():
     print("ADVANCED EXAMPLE: Full control with validation")
     print("=" * 60)
 
-    from src.pipeline_dag.base_dag import PipelineDAG
     from src.pipeline_api import PipelineDAGConverter
+    from src.pipeline_dag.base_dag import PipelineDAG
 
     # Create a more complex DAG
     dag = PipelineDAG()
@@ -177,14 +175,14 @@ def error_handling_example():
     print("ERROR HANDLING EXAMPLE")
     print("=" * 60)
 
-    from src.pipeline_dag.base_dag import PipelineDAG
     from src.pipeline_api import (
-        dag_to_pipeline_template,
         ConfigurationError,
+        PipelineAPIError,
         RegistryError,
         ValidationError,
-        PipelineAPIError,
+        dag_to_pipeline_template,
     )
+    from src.pipeline_dag.base_dag import PipelineDAG
 
     # Create DAG with potentially problematic nodes
     dag = PipelineDAG()
@@ -242,7 +240,6 @@ def customization_example():
     from src.pipeline_api import (
         PipelineDAGConverter,
         StepConfigResolver,
-        register_global_builder,
         list_global_step_types,
     )
 
