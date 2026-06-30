@@ -288,7 +288,7 @@ class PipelineTemplateBase(ABC):
         Generate the SageMaker Pipeline.
 
         This method coordinates the pipeline generation process:
-        1. Create the DAG, config_map, and step_builder_map
+        1. Create the DAG and config_map (the assembler self-discovers builders)
         2. Create the PipelineAssembler
         3. Generate the pipeline
         4. Store pipeline metadata
@@ -299,10 +299,12 @@ class PipelineTemplateBase(ABC):
         pipeline_name = self._get_pipeline_name()
         logger.info(f"Generating pipeline: {pipeline_name}")
 
-        # Create the DAG, config_map, and step builder map
+        # Create the DAG and config_map. (The step-builder map is NOT built here: the
+        # PipelineAssembler self-discovers builders via the StepCatalog and takes no
+        # step_builder_map argument. _create_step_builder_map stays used by the validation
+        # paths in DynamicPipelineTemplate / PipelineDAGCompiler — it is only redundant here.)
         dag = self._create_pipeline_dag()
         config_map = self._create_config_map()
-        step_builder_map = self._create_step_builder_map()
 
         # Create the assembler with StepCatalog integration
         # Use provided step_catalog or create a new one

@@ -14,6 +14,23 @@ Enhanced Features:
 
 from .exceptions import RegistryError
 
+# Strategy registry — the single source for the builder strategy library (axis -> handler).
+from .strategy_registry import (
+    KnobSpec,
+    StrategyInfo,
+    NoBuilderError,
+    register_strategy,
+    register_no_builder,
+    resolve_strategy,
+    list_strategies,
+    knobs_for,
+    axes,
+    axis_name_for_step_type,
+    find_strategies,
+    strategy_to_dict,
+    knob_to_dict,
+)
+
 # StepBuilderRegistry has been removed - use StepCatalog instead
 # from .builder_registry import (
 #     StepBuilderRegistry,
@@ -100,6 +117,20 @@ except ImportError:
 __all__ = [
     # Exceptions
     "RegistryError",
+    # Strategy registry (builder strategy library — single source for axis -> handler)
+    "KnobSpec",
+    "StrategyInfo",
+    "NoBuilderError",
+    "register_strategy",
+    "register_no_builder",
+    "resolve_strategy",
+    "list_strategies",
+    "knobs_for",
+    "axes",
+    "axis_name_for_step_type",
+    "find_strategies",
+    "strategy_to_dict",
+    "knob_to_dict",
     # Builder registry - REMOVED: Use StepCatalog instead
     # "StepBuilderRegistry",
     # "get_global_registry",

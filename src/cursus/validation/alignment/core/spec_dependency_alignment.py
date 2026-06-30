@@ -56,6 +56,14 @@ class SpecificationDependencyAlignmentTester:
         self.step_catalog = StepCatalog(workspace_dirs=workspace_dirs)
         self.dependency_validator = DependencyValidator(self.config)
 
+        # SageMaker property-path validator (FZ 31e1d3g3 Phase D2): folded in from the former Level-2.
+        # It is the one old-L2 check with no construction-time equivalent (each spec output's
+        # property_path must be a valid SageMaker path for the step type) and it is per-spec, so it
+        # belongs on the B2 (Spec<->Dependency) boundary, not in a separate contract<->spec module.
+        from ..validators.property_path_validator import SageMakerPropertyPathValidator
+
+        self.property_path_validator = SageMakerPropertyPathValidator()
+
         # Initialize dependency resolver components
         self.pipeline_components = create_pipeline_components("level3_validation")
         self.dependency_resolver = self.pipeline_components["resolver"]
@@ -229,6 +237,16 @@ class SpecificationDependencyAlignmentTester:
             specification, all_specs, spec_name or "unknown"
         )
         issues.extend(type_issues)
+
+        # SageMaker property-path correctness for spec outputs (FZ 31e1d3g3 Phase D2 — folded in from
+        # the former Level-2; the serialized spec already carries step_type/node_type/outputs[
+        # property_path], the exact shape the validator reads).
+        property_path_issues = (
+            self.property_path_validator.validate_specification_property_paths(
+                specification, spec_name or "unknown"
+            )
+        )
+        issues.extend(property_path_issues)
 
         # Determine overall pass/fail status
         has_critical_or_error = any(

@@ -6,7 +6,7 @@ using the three-tier design pattern for optimal user experience and maintainabil
 """
 
 from pydantic import Field, PrivateAttr, model_validator, field_validator
-from typing import Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
@@ -137,7 +137,7 @@ class LabelRulesetExecutionConfig(ProcessingStepConfigBase):
         """Validate job_type is one of the allowed values."""
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -304,3 +304,7 @@ class LabelRulesetExecutionConfig(ProcessingStepConfigBase):
                 "default_label_fallback": True,
             },
         }
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg(flag="--job-type")

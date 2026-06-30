@@ -1,8 +1,17 @@
 step_type: EdxUploading
 node_type: sink
+registry:
+  sagemaker_step_type: Processing
+  description: Upload S3 data to EDX via EdxDataLoader (SINK node, no Kale required)
 
+compute:
+  kind: script
+  kms_network: true
+  requires: mods_workflow_core  # compute: ScriptProcessor lazily imports KMS_ENCRYPTION_KEY_PARAM + PROCESSING_JOB_SHARED_NETWORK_CONFIG (build-time, no fallback on this path)
 contract:
+  sink: true
   entry_point: edx_uploading.py
+  runtime_requires: [secure_ai_sandbox_python_lib]  # runtime: script imports secure_ai_sandbox_python_lib.session.Session (in-container only, NOT a build-time dep)
   inputs:
     input_data:
       path: /opt/ml/processing/input/data

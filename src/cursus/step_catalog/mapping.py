@@ -15,6 +15,8 @@ import logging
 import re
 from typing import Dict, List, Optional, Type, Any
 
+from .models import BuilderProvider  # the dual-mode class-or-factory return contract (FZ 31e1d3g1)
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,19 +51,21 @@ class StepCatalogMapper:
         # Cache for registry functions to avoid repeated imports
         self._registry_functions = {}
 
-    def get_builder_for_config(self, config, node_name: str = None) -> Optional[Type]:
+    def get_builder_for_config(self, config, node_name: str = None) -> Optional["BuilderProvider"]:
         """
-        Map config instance directly to builder class.
+        Map a config instance to a builder PROVIDER (callable with the assembler's 5 kwargs).
 
-        This method replaces StepBuilderRegistry.get_builder_for_config() functionality
-        while using the registry system as Single Source of Truth.
+        Resolution is name-keyed (type(config).__name__ → registry canonical name); the value is
+        currently the builder CLASS returned by ``load_builder_class`` (a class IS a provider, so
+        behavior is unchanged — FZ 31e1d3g1 Phase 1). The annotation is provider-based so the
+        classless end-state can return a factory without changing this contract.
 
         Args:
             config: Configuration instance (BasePipelineConfig)
             node_name: Optional DAG node name for context
 
         Returns:
-            Builder class type or None if not found
+            A builder provider (currently a builder class) or None if not found.
         """
         try:
             config_class_name = type(config).__name__
@@ -81,11 +85,12 @@ class StepCatalogMapper:
             )
             return None
 
-    def get_builder_for_step_type(self, step_type: str) -> Optional[Type]:
+    def get_builder_for_step_type(self, step_type: str) -> Optional["BuilderProvider"]:
         """
-        Get builder class for step type with legacy alias support and job type variant fallback.
+        Get the builder PROVIDER for a step type, with legacy alias + job-type variant fallback.
 
-        This method replaces StepBuilderRegistry.get_builder_for_step_type() functionality.
+        Returns a ``BuilderProvider`` (currently the builder class; FZ 31e1d3g1 Phase 1). Resolution
+        is string-only (alias/variant on the step_type), unaffected by the class→provider change.
 
         Args:
             step_type: Step type name (may be legacy alias or compound name with job type)

@@ -1,6 +1,16 @@
 step_type: BedrockPromptTemplateGeneration
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Bedrock prompt template generation step that creates structured prompt templates for classification tasks using the 5-component architecture pattern
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
+  framework_version_default: 1.2-1
 contract:
+  input_source_overrides:
+    prompt_configs: resolved_prompt_configs_path
+  include_job_type_in_path: false
   entry_point: bedrock_prompt_template_generation.py
   inputs:
     prompt_configs:
@@ -17,6 +27,13 @@ contract:
     include-examples: boolean flag to include examples in template
     generate-validation-schema: boolean flag to generate validation schema
     template-version: template version identifier
+  job_arguments:
+  - flag: --include-examples
+    source: include_examples
+  - flag: --generate-validation-schema
+    source: generate_validation_schema
+  - flag: --template-version
+    source: template_version
   env_vars:
     required: []
     optional:

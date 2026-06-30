@@ -1,5 +1,13 @@
 step_type: TemporalFeatureEngineering
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Temporal feature engineering step that extracts comprehensive temporal features from normalized sequences for machine learning models
+patterns:
+  direct_input_keys: [normalized_sequences]
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
 contract:
   entry_point: temporal_feature_engineering.py
   inputs:
@@ -10,6 +18,9 @@ contract:
     temporal_feature_tensors:
       path: /opt/ml/processing/output
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - SEQUENCE_GROUPING_FIELD

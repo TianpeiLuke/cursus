@@ -1,11 +1,24 @@
 step_type: LightGBMMTTraining
 node_type: internal
+registry:
+  sagemaker_step_type: Training
+  description: LightGBM multi-task training with adaptive weighting and knowledge distillation
+patterns:
+  direct_input_keys: [input_path]
+compute:
+  kind: estimator
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
+  retrieve_image: true
+  lock_training_region: true
 contract:
   entry_point: lightgbmmt_training.py
   inputs:
     input_path:
       path: /opt/ml/input/data
       required: true
+      channels: [train, val, test]
     hyperparameters_s3_uri:
       path: /opt/ml/code/hyperparams/hyperparameters.json
       required: false
@@ -18,6 +31,9 @@ contract:
     evaluation_output:
       path: /opt/ml/output/data
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required: []
     optional:
@@ -25,7 +41,9 @@ contract:
       USE_PRECOMPUTED_IMPUTATION: 'false'
       USE_PRECOMPUTED_RISK_TABLES: 'false'
       USE_PRECOMPUTED_FEATURES: 'false'
+      USE_NATIVE_CATEGORICAL: 'true'
       REGION: NA
+      CA_REPOSITORY_ARN: arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi
   framework_requirements:
     lightgbm: '>=3.3.0'
     scikit-learn: '>=0.23.2,<1.0.0'

@@ -604,3 +604,10 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
             "rate_limit": self.bedrock_rate_limit_per_second,
             "production_ready": self.is_production_ready(),
         }
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h). job_type + batch/retry overrides."""
+        args = ["--job_type", self.job_type]
+        args.extend(["--batch-size", str(self.bedrock_batch_size)])
+        args.extend(["--max-retries", str(self.bedrock_max_retries)])
+        return args

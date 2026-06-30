@@ -1,7 +1,20 @@
 step_type: PercentileModelCalibration
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Creates percentile mapping from model scores using ROC curve analysis for consistent risk interpretation
+patterns:
+  step_assembly: step_args
+compute:
+  kind: framework
+  sdk_class: SKLearn
+  framework_version_field: processing_framework_version
+  framework_version_default: 1.2-1
 contract:
+  skip_inputs:
+  - calibration_config
   entry_point: percentile_model_calibration.py
+  source_dir: true
   inputs:
     evaluation_data:
       path: /opt/ml/processing/input/eval_data
@@ -17,6 +30,9 @@ contract:
     calibrated_data:
       path: /opt/ml/processing/output/calibrated_data
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required: []
     optional:

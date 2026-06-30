@@ -8,7 +8,18 @@ simple and focused, avoiding over-engineering while supporting all US1-US5 requi
 from pydantic import BaseModel, Field
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable
+
+
+# A "builder provider" is anything the assembler can call with the fixed 5-kwarg signature
+# (config, sagemaker_session, role, registry_manager, dependency_resolver) to get a StepBuilderBase
+# instance. A per-step builder CLASS is already such a callable, so today the catalog returns classes
+# and this alias is satisfied trivially (dual-mode). It exists so the catalog's resolution methods can
+# later return non-class factories (the classless Design-B end-state, FZ 31e1d3g1) WITHOUT changing
+# the caller contract: callers must treat the result as a provider callable, never assume a class.
+# (Loose Callable[..., Any] rather than a Protocol — the assembler invokes it as a constructor and
+# duck-types the result; there is intentionally no isinstance gate, see pipeline_assembler.py:190.)
+BuilderProvider = Callable[..., Any]
 
 
 class FileMetadata(BaseModel):

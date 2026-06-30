@@ -1,7 +1,17 @@
 step_type: DummyTraining
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Training step that uses a pretrained model
+patterns:
+  step_assembly: step_args
+compute:
+  kind: framework                    # FrameworkProcessor(estimator_cls=SKLearn) — source_dir support
+  sdk_class: SKLearn
+  framework_version_field: processing_framework_version
 contract:
   entry_point: dummy_training.py
+  source_dir: true
   inputs:
     model_artifacts_input:
       path: /opt/ml/processing/input/model_artifacts_input

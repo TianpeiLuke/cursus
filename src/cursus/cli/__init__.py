@@ -22,6 +22,8 @@ from .mcp_cli import mcp_cli
 from .pipeline_catalog_cli import pipeline_catalog_cli
 from .project_cli import projects_cli
 from .registry_cli import registry_cli
+from .steps_cli import steps_cli
+from .strategies_cli import strategies_cli
 from .validate_cli import validate_cli
 
 __all__ = ["cli", "main"]
@@ -46,6 +48,8 @@ cli.add_command(mcp_cli, name="mcp")
 cli.add_command(pipeline_catalog_cli, name="pipeline-catalog")
 cli.add_command(projects_cli, name="projects")
 cli.add_command(registry_cli, name="registry")
+cli.add_command(steps_cli, name="steps")
+cli.add_command(strategies_cli, name="strategies")
 cli.add_command(validate_cli, name="validate")
 
 # Backward-compat shim: `from cursus.cli import main` and `python -m cursus.cli` keep

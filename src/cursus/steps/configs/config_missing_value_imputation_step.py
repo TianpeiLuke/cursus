@@ -253,7 +253,7 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         """
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -469,3 +469,7 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
         data["effective_exclude_columns"] = self.effective_exclude_columns
 
         return data
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

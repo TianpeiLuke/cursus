@@ -1,5 +1,17 @@
 step_type: XGBoostModel
 node_type: internal
+registry:
+  sagemaker_step_type: CreateModel
+  config_class: XGBoostModelStepConfig  # breaks the <Name>Config convention (real class is *StepConfig);
+                                        # declared so CONFIG_STEP_REGISTRY maps the real config -> this step
+  description: XGBoost model creation step
+compute:
+  kind: model
+  sdk_class: XGBoostModel
+  framework_name: xgboost            # inference image framework for image_uris.retrieve
+  framework_version_field: framework_version
+  py_version_field: py_version
+  lock_training_region: true         # SAIS: inference image forced to us-east-1 (toggleable)
 contract:
   entry_point: null
   inputs:

@@ -1,5 +1,13 @@
 step_type: FeatureSelection
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Feature selection step using multiple statistical and ML-based methods with ensemble combination strategies
+patterns:
+  direct_input_keys: [processed_data, selected_features]
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
 contract:
   entry_point: feature_selection.py
   inputs:
@@ -15,12 +23,15 @@ contract:
     model_artifacts_output:
       path: /opt/ml/processing/output/model_artifacts
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - LABEL_FIELD
     optional:
-      SELECTION_METHODS: '["variance_threshold", "mutual_info", "chi2"]'
-      TOP_K_FEATURES: '50'
+      FEATURE_SELECTION_METHODS: '["variance_threshold", "mutual_info", "chi2"]'
+      N_FEATURES_TO_SELECT: '50'
       VARIANCE_THRESHOLD: '0.01'
   framework_requirements:
     pandas: '>=1.3.0'

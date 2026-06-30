@@ -1,5 +1,14 @@
 step_type: PseudoLabelMerge
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Pseudo label merge step that intelligently combines labeled base data with pseudo-labeled or augmented samples for Semi-Supervised Learning (SSL) and Active Learning workflows with split-aware merge, auto-inferred split ratios, and provenance tracking
+patterns:
+  step_assembly: step_args
+  include_job_type_in_path: false
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
 contract:
   entry_point: pseudo_label_merge.py
   inputs:
@@ -13,6 +22,9 @@ contract:
     merged_data:
       path: /opt/ml/processing/output/merged_data
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - LABEL_FIELD

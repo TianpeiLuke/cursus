@@ -71,46 +71,6 @@ class LevelValidators:
                 "error": str(e),
             }
 
-    def run_level_2_validation(self, step_name: str) -> Dict[str, Any]:
-        """
-        Level 2: Contract ↔ Specification validation.
-
-        Args:
-            step_name: Name of the step to validate
-
-        Returns:
-            Dictionary containing validation results
-        """
-        logger.info(f"Running Level 2 validation for step: {step_name}")
-
-        try:
-            # Use existing contract_spec_alignment logic
-            from .contract_spec_alignment import ContractSpecificationAlignmentTester
-
-            alignment = ContractSpecificationAlignmentTester(
-                workspace_dirs=self.workspace_dirs
-            )
-            result = alignment.validate_contract(step_name)
-
-            logger.info(f"Level 2 validation completed for {step_name}")
-            return {
-                "level": 2,
-                "step_name": step_name,
-                "validation_type": "contract_spec",
-                "status": "COMPLETED",
-                "result": result,
-            }
-
-        except Exception as e:
-            logger.error(f"Level 2 validation failed for {step_name}: {str(e)}")
-            return {
-                "level": 2,
-                "step_name": step_name,
-                "validation_type": "contract_spec",
-                "status": "ERROR",
-                "error": str(e),
-            }
-
     def run_level_3_validation(self, step_name: str) -> Dict[str, Any]:
         """
         Level 3: Specification ↔ Dependencies validation (Universal).
@@ -228,26 +188,27 @@ class LevelValidators:
 
     def _get_step_type_validator(self, validator_class: str):
         """
-        Get step-type-specific validator instance.
+        Get the Level-4 validator instance.
+
+        FZ 31e1d3g3 Phase D3: Level 4 is now the single, step-type-AGNOSTIC B3
+        ``RegistryBindingValidator`` — it validates that the step is realizable from its registry
+        row + ``.step.yaml`` + config (handler binds, builder loads, config covers), replacing the
+        per-step-type source-scanning validators that reported every declarative shell as FAILED.
+        The ``validator_class`` arg (the ruleset's ``level_4_validator_class`` string) is ignored;
+        every routable step uses B3. Returns ``None`` only if B3 itself can't be constructed.
 
         Args:
-            validator_class: Name of the validator class
+            validator_class: Legacy ruleset validator-class name (ignored; kept for signature compat)
 
         Returns:
-            Validator instance or None if not found
+            The B3 RegistryBindingValidator instance, or None on construction failure
         """
         try:
-            # Import validator factory
-            from ..validators.validator_factory import ValidatorFactory
+            from ..validators.registry_binding_validator import RegistryBindingValidator
 
-            # Create validator factory
-            factory = ValidatorFactory(self.workspace_dirs)
-
-            # Get validator instance
-            return factory.get_validator(validator_class)
-
+            return RegistryBindingValidator(self.workspace_dirs)
         except Exception as e:
-            logger.error(f"Failed to create validator {validator_class}: {str(e)}")
+            logger.error(f"Failed to create RegistryBindingValidator: {str(e)}")
             return None
 
     def validate_level_configuration(self, level: ValidationLevel) -> List[str]:
@@ -260,42 +221,33 @@ class LevelValidators:
         Returns:
             List of validation issues (empty if valid)
         """
+        import importlib.util
+
         issues = []
 
-        if level == ValidationLevel.SCRIPT_CONTRACT:
-            # Check if script_contract_alignment module is available
-            try:
-                from .script_contract_alignment import ScriptContractAlignment
-            except ImportError:
+        # Probe the backing module for each level via find_spec (no import side effects, no
+        # unused-import). FZ 31e1d3g3 Phase D5: Level 4 is the B3 registry_binding_validator
+        # (the per-step-type ValidatorFactory + source-scanning validators were removed in D3).
+        _module_for_level = {
+            ValidationLevel.SCRIPT_CONTRACT: (
+                ".script_contract_alignment",
+                "Level 1",
+            ),
+            ValidationLevel.SPEC_DEPENDENCY: (
+                ".spec_dependency_alignment",
+                "Level 3",
+            ),
+            ValidationLevel.BUILDER_CONFIG: (
+                "..validators.registry_binding_validator",
+                "Level 4",
+            ),
+        }
+        entry = _module_for_level.get(level)
+        if entry is not None:
+            rel_module, level_label = entry
+            if importlib.util.find_spec(rel_module, package=__package__) is None:
                 issues.append(
-                    "script_contract_alignment module not available for Level 1 validation"
-                )
-
-        elif level == ValidationLevel.CONTRACT_SPEC:
-            # Check if contract_spec_alignment module is available
-            try:
-                from .contract_spec_alignment import ContractSpecAlignment
-            except ImportError:
-                issues.append(
-                    "contract_spec_alignment module not available for Level 2 validation"
-                )
-
-        elif level == ValidationLevel.SPEC_DEPENDENCY:
-            # Check if spec_dependency_alignment module is available
-            try:
-                from .spec_dependency_alignment import SpecDependencyAlignment
-            except ImportError:
-                issues.append(
-                    "spec_dependency_alignment module not available for Level 3 validation"
-                )
-
-        elif level == ValidationLevel.BUILDER_CONFIG:
-            # Check if validator factory is available
-            try:
-                from ..validators.validator_factory import ValidatorFactory
-            except ImportError:
-                issues.append(
-                    "validator_factory module not available for Level 4 validation"
+                    f"{rel_module} module not available for {level_label} validation"
                 )
 
         return issues

@@ -155,6 +155,16 @@ class StepBuilderBase(ABC):
         "FE": "us-west-2",
     }
 
+    #: The canonical registry step name for THIS builder (singular), e.g. "XGBoostTraining".
+    #: This is the authoritative identity slot ``_get_step_name`` reads (FZ 31e1d3g3 Phase C1):
+    #: every routed shell + ``TemplateStepBuilder`` sets it, the materializer stamps it on synthesized
+    #: fileless builders, and once the per-step shell classes are deleted it is the ONLY reliable
+    #: canonical key (the class name collapses to ``TemplateStepBuilder``). Declared here on the root
+    #: so the base method that reads it owns the slot, and so it is not confused with ``STEP_NAMES``
+    #: (PLURAL — the whole registry dict, below). ``None`` on a hand-written builder, which falls back
+    #: to the legacy ``<Name>StepBuilder`` class-name convention.
+    STEP_NAME: Optional[str] = None
+
     @property
     def STEP_NAMES(self) -> Dict[str, Any]:
         """
@@ -344,13 +354,17 @@ class StepBuilderBase(ABC):
 
     def _get_step_name(self, include_job_type: bool = True) -> str:
         """
-        Get standard step name from builder class name, optionally including job_type.
+        Get standard step name, optionally including job_type.
 
-        Builder class names follow the pattern: RegistryKey + "StepBuilder"
-        (e.g., XGBoostTrainingStepBuilder)
-
-        This method extracts the registry key by removing the "StepBuilder" suffix
-        and optionally appends the job_type from the config.
+        Resolution order (FZ 31e1d3g3 Phase C1):
+        1. The ``STEP_NAME`` class/instance attribute, when set — the AUTHORITATIVE source. Every
+           routed shell (and the synthesized fileless builders) declares it, and ``TemplateStepBuilder``
+           defines it. This is required for the factory end-state: once the 45 per-step shell classes
+           are deleted, ``self.__class__.__name__`` collapses to ``TemplateStepBuilder`` (or the
+           synthesized ``<Name>StepBuilder``), so the class name is no longer a reliable canonical key.
+        2. Otherwise, fall back to the legacy convention: strip the ``StepBuilder`` suffix off the
+           class name (``XGBoostTrainingStepBuilder`` -> ``XGBoostTraining``). For every hand-written
+           builder this equals its ``STEP_NAME``, so the change is a behavior-preserving no-op today.
 
         Args:
             include_job_type: Whether to include job_type suffix if available in config
@@ -358,17 +372,20 @@ class StepBuilderBase(ABC):
         Returns:
             The canonical step name, optionally with job_type suffix
         """
-        class_name = self.__class__.__name__
-
-        # If class name follows the standard pattern, extract the registry key
-        if class_name.endswith("StepBuilder"):
-            canonical_name = class_name[:-11]  # Remove "StepBuilder" suffix
-        else:
-            # Fallback for non-standard class names
-            self.log_warning(
-                f"Class name '{class_name}' doesn't follow the convention. Using as is."
-            )
-            canonical_name = class_name
+        # Prefer the declared STEP_NAME (set on every shell + TemplateStepBuilder) — robust to the
+        # class-name collapse once the per-step shells are deleted.
+        canonical_name = getattr(self, "STEP_NAME", None)
+        if not canonical_name:
+            class_name = self.__class__.__name__
+            # If class name follows the standard pattern, extract the registry key
+            if class_name.endswith("StepBuilder"):
+                canonical_name = class_name[:-11]  # Remove "StepBuilder" suffix
+            else:
+                # Fallback for non-standard class names
+                self.log_warning(
+                    f"Class name '{class_name}' doesn't follow the convention. Using as is."
+                )
+                canonical_name = class_name
 
         # Validate that the extracted name exists in the registry
         if canonical_name not in self.STEP_NAMES:
@@ -542,100 +559,411 @@ class StepBuilderBase(ABC):
 
     def _get_environment_variables(self) -> Dict[str, str]:
         """
-        Create environment variables for the processing job based on the script contract.
+        Build the container environment variables — config is the single source (FZ 31e1d3g).
 
-        This base implementation:
-        1. Uses required_env_vars from the script contract
-        2. Gets values from the config object
-        3. Adds optional variables with defaults from the contract
-        4. Can be overridden by child classes to add custom logic
+        The step interface (``.step.yaml`` ``env_vars``) DECLARES which env vars the step uses; the
+        config INSTANCE supplies the VALUES via ``config.get_environment_variables(declared_names)``.
+        Composition (the one template, per the env single-source plan):
+          1. ``config.get_environment_variables(<declared names>)`` — interface-declared names resolved
+             against config (convention ``NAME`` -> ``self.name``, else the config's ``_env_overrides``).
+             A config with a bespoke collector may ignore the names and return its full dict.
+          2. interface defaults for any declared-optional var the config did not produce (so an
+             unset optional still gets its ``.step.yaml`` default).
+          3. ``config.env`` explicit overrides last.
 
-        Returns:
-            Dict[str, str]: Environment variables for the processing job
+        Per-step ``_get_environment_variables`` overrides are being retired in favor of this one
+        method + the config collector. Steps not yet migrated keep their override (it wins via MRO).
         """
-        env_vars: Dict[str, str] = {}
+        import inspect as _inspect
 
-        if not hasattr(self, "contract") or self.contract is None:
-            self.log_warning(
-                "No script contract available for environment variable definition"
+        declared_required: List[str] = []
+        declared_optional: Dict[str, str] = {}
+        if getattr(self, "contract", None) is not None:
+            declared_required = list(
+                getattr(self.contract, "required_env_vars", []) or []
             )
-            return env_vars
+            declared_optional = dict(
+                getattr(self.contract, "optional_env_vars", {}) or {}
+            )
+        declared_names = declared_required + list(declared_optional)
 
-        # Process required environment variables
-        for env_var in self.contract.required_env_vars:
-            # Convert from ENV_VAR_NAME format to config attribute style (env_var_name)
-            config_attr = env_var.lower()
+        env_vars: Dict[str, str] = {}
+        cfg_type = type(self.config)
 
-            # Try to get from config (direct attribute)
-            if hasattr(self.config, config_attr):
-                env_vars[env_var] = str(getattr(self.config, config_attr))
-            # Try to get from config.hyperparameters
-            elif hasattr(self.config, "hyperparameters") and hasattr(
-                self.config.hyperparameters, config_attr
-            ):
-                env_vars[env_var] = str(
-                    getattr(self.config.hyperparameters, config_attr)
+        # A config exposes its env values through ONE of three collector shapes, in priority order:
+        #   1. a BESPOKE ``get_environment_variables`` method defined on the config's own class
+        #      (computed values, e.g. JSON/Join) — call it; pass declared names if it accepts them.
+        #   2. a bespoke ``environment_variables`` PROPERTY defined on the config's own class.
+        #   3. the inherited generic names-driven resolver on BasePipelineConfig (NAME -> self.name).
+        # We prefer a config-OWNED collector over the inherited resolver so a config's bespoke env
+        # logic is never silently bypassed.
+        def _own(attr):
+            # True only if a class STRICTLY BELOW BasePipelineConfig defines `attr` — i.e. a
+            # config-specific collector, not the generic resolver that now lives on the base.
+            for klass in cfg_type.__mro__:
+                if klass.__name__ in ("BasePipelineConfig", "BaseModel", "object"):
+                    break
+                if attr in klass.__dict__:
+                    return True
+            return False
+
+        produced = None
+        if _own("get_environment_variables"):
+            collector = self.config.get_environment_variables
+            try:
+                accepts_arg = any(
+                    p.kind
+                    in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD, p.VAR_POSITIONAL)
+                    for p in _inspect.signature(collector).parameters.values()
                 )
-            else:
+            except (ValueError, TypeError):
+                accepts_arg = False
+            produced = collector(declared_names) if accepts_arg else collector()
+        elif _own("environment_variables"):
+            produced = getattr(self.config, "environment_variables", None)
+        else:
+            # Inherited BasePipelineConfig resolver — interface names drive the keys.
+            collector = getattr(self.config, "get_environment_variables", None)
+            if callable(collector):
+                produced = collector(declared_names)
+        if isinstance(produced, dict):
+            env_vars.update(produced)
+
+        # Diagnostics: a declared-required var the config did not supply is a likely misconfig.
+        for env_var in declared_required:
+            if env_var not in env_vars:
                 self.log_warning(
                     f"Required environment variable '{env_var}' not found in config"
                 )
 
-        # Add optional environment variables with defaults
-        for env_var, default_value in self.contract.optional_env_vars.items():
-            # Convert from ENV_VAR_NAME format to config attribute style (env_var_name)
-            config_attr = env_var.lower()
-
-            # Try to get from config, fall back to default
-            if hasattr(self.config, config_attr):
-                env_vars[env_var] = str(getattr(self.config, config_attr))
-            # Try to get from config.hyperparameters
-            elif hasattr(self.config, "hyperparameters") and hasattr(
-                self.config.hyperparameters, config_attr
-            ):
-                env_vars[env_var] = str(
-                    getattr(self.config.hyperparameters, config_attr)
-                )
-            else:
+        # Interface defaults for declared-optional vars the config did not supply.
+        for env_var, default_value in declared_optional.items():
+            if env_var not in env_vars:
                 env_vars[env_var] = default_value
                 self.log_debug(
                     f"Using default value for optional environment variable '{env_var}': {default_value}"
                 )
 
+        # COMPUTED-S3-ENV pattern (FZ 31e1d3g3 Phase A3): env vars whose value is an S3 sub-path under
+        # the pipeline execution prefix (base_output_path), declared in contract.computed_env_paths as
+        # {ENV_VAR: [segment, ...]}. Set ENV_VAR = Join(base_output_path, *segments). This is the
+        # declarative replacement for hand-written _get_environment_variables overrides that built
+        # runtime S3 paths (e.g. Bedrock's BEDROCK_BATCH_INPUT/OUTPUT_S3_PATH).
+        computed_env_paths = {}
+        if getattr(self, "contract", None) is not None:
+            raw = getattr(self.contract, "computed_env_paths", None)
+            if isinstance(raw, dict):
+                computed_env_paths = raw
+        if computed_env_paths:
+            from sagemaker.workflow.functions import Join
+
+            base_output_path = self._get_base_output_path()
+            for env_var, segments in computed_env_paths.items():
+                env_vars[env_var] = Join(
+                    on="/", values=[base_output_path, *list(segments)]
+                )
+                self.log_debug(
+                    f"Computed S3-path env var '{env_var}' from base_output_path + {segments}"
+                )
+
+        # Explicit per-config overrides win last.
+        explicit = getattr(self.config, "env", None)
+        if isinstance(explicit, dict) and explicit:
+            env_vars.update(explicit)
+
         return env_vars
 
     def _get_job_arguments(self) -> Optional[List[str]]:
         """
-        Constructs command-line arguments for the script based on script contract.
-        If no arguments are defined in the contract, returns None (not an empty list).
+        Build the script's CLI arguments — config is the single source (FZ 31e1d3h).
 
-        Returns:
-            List of string arguments to pass to the script, or None if no arguments
+        Delegates entirely to ``config.get_job_arguments()``: the base config returns ``None`` (no
+        args), and a step-config that passes args to its script overrides it (the common
+        ``--job_type`` case via ``self._job_type_arg()``; bespoke configs build their own list).
+        This mirrors the env single-source model — config owns the VALUES.
+
+        Per-step ``_get_job_arguments`` overrides are being retired in favor of config-side
+        ``get_job_arguments()``; a step not yet migrated keeps its override (it wins via MRO).
+        Returns ``None`` (not ``[]``) when there are no args — the contract the SDK expects.
         """
-        if not hasattr(self, "contract") or not self.contract:
-            self.log_warning("No contract available for argument generation")
+        getter = getattr(self.config, "get_job_arguments", None)
+        if not callable(getter):
             return None
+        produced = getter()
+        return list(produced) if produced else None
 
-        # If contract has no expected arguments, return None
-        if (
-            not hasattr(self.contract, "expected_arguments")
-            or not self.contract.expected_arguments
-        ):
-            return None
+    def _processing_instance_type(self, spec) -> str:
+        """Resolve the processing instance type per the compute descriptor's ``instance_size_mode``.
 
-        args = []
+        ``large_or_small`` (the near-universal pattern) picks large vs small by
+        ``use_large_processing_instance``; otherwise a single fixed field.
+        """
+        if spec.instance_size_mode == "large_or_small":
+            return (
+                self.config.processing_instance_type_large
+                if self.config.use_large_processing_instance
+                else self.config.processing_instance_type_small
+            )
+        return self.config.processing_instance_type
 
-        # Add each expected argument with its value
-        for arg_name, arg_value in self.contract.expected_arguments.items():
-            args.extend([f"--{arg_name}", arg_value])
+    def _create_compute(
+        self,
+        output_path: Optional[str] = None,
+        *,
+        model_data: Optional[Any] = None,
+        model_name: Optional[Any] = None,
+    ) -> Any:
+        """Build the step's compute object (processor / estimator / model / transformer) from the
+        declarative ``contract.compute`` descriptor + config (FZ 31e1d3k).
 
-        # If we have arguments to return
-        if args:
-            self.log_info("Generated job arguments from contract: %s", args)
-            return args
+        Every value is a config field; the descriptor only says WHICH SDK class and WHICH fields.
+        This is the single template factory that replaces the near-identical per-step
+        ``_create_processor`` / ``_create_estimator`` / ``_create_model`` / ``_create_transformer``
+        overrides. A step keeps its own factory only if it does NOT declare ``compute.kind`` (then the
+        handler uses the legacy hook).
 
-        # If we end up with an empty list, return None instead
-        return None
+        Extra runtime args are threaded per verb: ``output_path`` (estimator/transformer),
+        ``model_data`` (model — from ModelCreationHandler), ``model_name`` (transformer — from
+        TransformHandler). Each handler passes only what its verb produces.
+        """
+        spec = getattr(self.contract, "compute", None)
+        kind = getattr(spec, "kind", None)
+        if not kind:
+            raise NotImplementedError(
+                "No compute descriptor (contract.compute.kind) and no _create_processor/"
+                "_create_estimator override for this step."
+            )
+        cfg = self.config
+        if spec.framework_version_field:
+            # getattr-with-default: several steps fall back to a per-step framework default when the
+            # config lacks the field (e.g. processing_framework_version -> "1.0-1"/"1.2-1").
+            if spec.framework_version_default is not None:
+                fw = getattr(
+                    cfg, spec.framework_version_field, spec.framework_version_default
+                )
+            else:
+                fw = getattr(cfg, spec.framework_version_field)
+        else:
+            fw = None
+        py = getattr(cfg, spec.py_version_field) if spec.py_version_field else None
+        job_name = self._generate_job_name()
+        env = self._get_environment_variables()
+
+        if kind in ("sklearn", "xgboost", "framework", "script"):
+            instance_type = self._processing_instance_type(spec)
+            common = dict(
+                role=self.role,
+                instance_type=instance_type,
+                instance_count=cfg.processing_instance_count,
+                volume_size_in_gb=cfg.processing_volume_size,
+                base_job_name=job_name,
+                sagemaker_session=self.session,
+                env=env,
+            )
+            if kind == "sklearn":
+                from sagemaker.sklearn import SKLearnProcessor
+
+                return SKLearnProcessor(framework_version=fw, **common)
+            if kind == "xgboost":
+                from sagemaker.xgboost import XGBoostProcessor
+
+                return XGBoostProcessor(framework_version=fw, **common)
+            if kind == "framework":
+                from sagemaker.processing import FrameworkProcessor
+
+                est = self._resolve_sdk_class(spec.sdk_class)
+                fw_kwargs = dict(estimator_cls=est, framework_version=fw, **common)
+                # Only pass py_version when declared — some factories (the SKLearn-backed framework
+                # processors) omit it and rely on the SDK default; passing py_version=None errors.
+                if py is not None:
+                    fw_kwargs["py_version"] = py
+                return FrameworkProcessor(**fw_kwargs)
+            if kind == "script":
+                # ScriptProcessor with the SAIS ECR-from-role image + KMS/network (EdxUploading).
+                from sagemaker.processing import ScriptProcessor
+
+                image_uri = (
+                    f"{self.role.split(':')[4]}.dkr.ecr."
+                    f"{cfg.aws_region or 'us-east-1'}.amazonaws.com/"
+                    f"sais_python_lib_docker_image"
+                )
+                # STANDARDIZED: the old edx factory omitted base_job_name (the ONLY processor that
+                # did — it let the SDK auto-name); the script kind now sets base_job_name=job_name
+                # like every other processor, so edx's job naming matches the fleet.
+                kwargs = dict(
+                    image_uri=image_uri,
+                    role=self.role,
+                    instance_count=cfg.processing_instance_count,
+                    instance_type=instance_type,
+                    volume_size_in_gb=cfg.processing_volume_size,
+                    command=["python3"],
+                    sagemaker_session=self.session,
+                    base_job_name=job_name,
+                    env=env,
+                )
+                if spec.kms_network:
+                    from mods_workflow_core.utils.constants import (
+                        KMS_ENCRYPTION_KEY_PARAM,
+                        PROCESSING_JOB_SHARED_NETWORK_CONFIG,
+                    )
+
+                    kwargs["volume_kms_key"] = KMS_ENCRYPTION_KEY_PARAM
+                    kwargs["network_config"] = PROCESSING_JOB_SHARED_NETWORK_CONFIG
+                return ScriptProcessor(**kwargs)
+
+        if kind == "estimator":
+            est_cls = self._resolve_sdk_class(spec.sdk_class)
+            source_dir = cfg.effective_source_dir
+            est_kwargs = dict(
+                entry_point=cfg.training_entry_point,
+                source_dir=source_dir,
+                framework_version=fw,
+                py_version=py,
+                role=self.role,
+                instance_type=cfg.training_instance_type,
+                instance_count=cfg.training_instance_count,
+                volume_size=cfg.training_volume_size,
+                base_job_name=job_name,
+                sagemaker_session=self.session,
+                output_path=output_path,
+                environment=env,
+            )
+            if spec.retrieve_image:
+                from sagemaker import image_uris
+
+                # Region locking is a TOGGLEABLE pattern (FZ 31e1d3k): when lock_training_region is
+                # set (the SAIS platform restriction), pin to the locked region; otherwise use the
+                # config's normal region (standard mode) — switchable via .step.yaml/config, no code.
+                region = (
+                    spec.locked_region
+                    if spec.lock_training_region
+                    else (cfg.aws_region or "us-east-1")
+                )
+                est_kwargs["image_uri"] = image_uris.retrieve(
+                    framework="pytorch",
+                    region=region,
+                    version=fw,
+                    py_version=py,
+                    instance_type=cfg.training_instance_type,
+                    image_scope="training",
+                )
+            return est_cls(**est_kwargs)
+
+        if kind == "model":
+            # CreateModel: a *Model (PyTorchModel/XGBoostModel) with an auto-retrieved INFERENCE
+            # image. The ModelCreationHandler threads `model_data` in LAST.
+            from sagemaker import image_uris
+
+            model_cls = self._resolve_sdk_class(spec.sdk_class)
+            # region locking is the SAME toggleable pattern as the estimator (the model image was
+            # historically forced to us-east-1 — now an opt-in lock_training_region flag).
+            region = (
+                spec.locked_region
+                if spec.lock_training_region
+                else (cfg.aws_region or "us-east-1")
+            )
+            image_uri = image_uris.retrieve(
+                framework=spec.framework_name,
+                region=region,
+                version=fw,
+                py_version=py,
+                instance_type=cfg.instance_type,
+                image_scope="inference",
+            )
+            return model_cls(
+                model_data=model_data,
+                role=self.role,
+                entry_point=cfg.entry_point,
+                source_dir=cfg.effective_source_dir,
+                framework_version=fw,
+                py_version=py,
+                image_uri=image_uri,
+                sagemaker_session=self.session,
+                env=env,
+            )
+
+        if kind == "transformer":
+            # Batch Transform: a Transformer. The TransformHandler threads `model_name` + `output_path`
+            # in LAST. No image, no role, no framework — a distinct, image-less compute shape.
+            from sagemaker.transformer import Transformer
+
+            return Transformer(
+                model_name=model_name,
+                instance_type=cfg.transform_instance_type,
+                instance_count=cfg.transform_instance_count,
+                output_path=output_path,  # SageMaker auto-assigns when None
+                accept=cfg.accept,
+                assemble_with=cfg.assemble_with,
+                sagemaker_session=self.session,
+            )
+
+        raise ValueError(f"compute.kind {kind!r} not built by _create_compute")
+
+    @staticmethod
+    def _resolve_sdk_class(name: Optional[str]):
+        """Map a compute ``sdk_class`` NAME (e.g. 'PyTorch') to the SDK class object (lazy import)."""
+        if name == "PyTorch":
+            from sagemaker.pytorch import PyTorch
+
+            return PyTorch
+        if name == "SKLearn":
+            from sagemaker.sklearn import SKLearn
+
+            return SKLearn
+        if name == "XGBoost":
+            from sagemaker.xgboost import XGBoost
+
+            return XGBoost
+        if name == "PyTorchModel":
+            from sagemaker.pytorch import PyTorchModel
+
+            return PyTorchModel
+        if name == "XGBoostModel":
+            from sagemaker.xgboost import XGBoostModel
+
+            return XGBoostModel
+        raise ValueError(f"unknown compute sdk_class {name!r}")
+
+    def _is_pipeline_variable(self, value: Any) -> bool:
+        """True if ``value`` is a SageMaker PipelineVariable (or quacks like one).
+
+        Shared input-safety helper (FZ 31e1d3i) used by ``_detect_circular_references`` and the
+        ProcessingHandler's ``circular_ref_check`` knob. Lazy import keeps builder_base free of a
+        hard sagemaker.workflow dependency at module load.
+        """
+        try:
+            from sagemaker.workflow.entities import PipelineVariable
+        except Exception:
+            PipelineVariable = ()  # type: ignore
+        return isinstance(value, PipelineVariable) or (
+            hasattr(value, "expr") and callable(getattr(value, "expr", None))
+        )
+
+    def _detect_circular_references(
+        self, var: Any, visited: Optional[set] = None
+    ) -> bool:
+        """Detect circular references in PipelineVariable objects (FZ 31e1d3i).
+
+        Re-homed from the 3 model eval/wiki builders (byte-identical there) so a step's input check
+        is a base capability the ProcessingHandler can invoke via the ``circular_ref_check`` knob —
+        no per-builder copy. Guards against infinite recursion / unresolvable wiring at build time.
+        """
+        if visited is None:
+            visited = set()
+        if id(var) in visited:
+            return True
+        if self._is_pipeline_variable(var):
+            visited.add(id(var))
+            for dep in getattr(var, "_dependencies", []):
+                if self._detect_circular_references(dep, visited):
+                    return True
+        elif isinstance(var, dict):
+            for key, value in var.items():
+                if key == "Get":  # Skip Get references
+                    continue
+                if self._detect_circular_references(value, visited.copy()):
+                    return True
+        return False
 
     def set_execution_prefix(
         self, execution_prefix: Optional[Union[str, Any]] = None
@@ -684,15 +1012,19 @@ class StepBuilderBase(ABC):
         )
         return base_path
 
-    @abstractmethod
     def validate_configuration(self) -> None:
         """
-        Validate configuration requirements.
+        Validate builder-context configuration requirements (optional hook).
 
-        Raises:
-            ValueError: If configuration is invalid
+        No-op by default. The Pydantic config class is the authority for config validation —
+        required fields, ``@field_validator`` / ``@model_validator`` constraints, and defaults are
+        all enforced at config construction, BEFORE the builder runs. A config that constructs is
+        valid by definition, so most builders need no override here (FZ 31e1d3e). Override ONLY to
+        assert an invariant the config genuinely cannot express — one involving builder context
+        (``self.role`` / ``self.session`` / ``self.spec`` / resolved dependencies) or a cross-field
+        rule not yet on the config model.
         """
-        pass
+        return None
 
     def get_required_dependencies(self) -> List[str]:
         """

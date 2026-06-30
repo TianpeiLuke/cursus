@@ -251,11 +251,15 @@ class StreamlinedBuilderTestReporter:
         step_info = STEP_NAMES.get(step_name, {})
         sagemaker_step_type = step_info.get("sagemaker_step_type", "Unknown")
 
-        print(f"Testing {step_name} ({builder_class.__name__})...")
+        # getattr-guard: builder_class is a class today; under Design-B it may be a provider
+        # callable (FZ 31e1d3g1 Phase 0). The report keys on step_name (registry-sourced), so the
+        # builder display name is incidental — degrade to repr rather than read a missing __name__.
+        builder_display = getattr(builder_class, "__name__", str(builder_class))
+        print(f"Testing {step_name} ({builder_display})...")
 
         # Create streamlined report
         report = StreamlinedBuilderTestReport(
-            step_name, builder_class.__name__, sagemaker_step_type
+            step_name, builder_display, sagemaker_step_type
         )
 
         try:
@@ -351,8 +355,14 @@ class StreamlinedBuilderTestReporter:
             return {}  # Graceful fallback
 
     def _infer_step_name(self, builder_class: Type[StepBuilderBase]) -> str:
-        """Infer step name from builder class name."""
-        class_name = builder_class.__name__
+        """Infer step name from builder class name.
+
+        NOTE: callers should pass an explicit step_name (the batch path does); this __name__-based
+        inference is the no-step_name fallback only. getattr-guarded so a future provider callable
+        (Design-B, FZ 31e1d3g1) degrades to its repr rather than raising — though under Design-B the
+        step_name should always be supplied by the registry-walk caller.
+        """
+        class_name = getattr(builder_class, "__name__", str(builder_class))
 
         # Remove "StepBuilder" suffix
         if class_name.endswith("StepBuilder"):

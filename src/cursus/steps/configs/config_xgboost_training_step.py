@@ -9,11 +9,8 @@ Fields are organized into three tiers:
 3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
 """
 
-from pydantic import BaseModel, Field, model_validator, field_validator, PrivateAttr
-from typing import List, Optional, Dict, Any, ClassVar
-from pathlib import Path
-import json
-from datetime import datetime
+from pydantic import Field, model_validator, field_validator, PrivateAttr
+from typing import List, Optional, Dict, Any
 
 from ...core.base.config_base import BasePipelineConfig
 
@@ -270,3 +267,7 @@ class XGBoostTrainingConfig(BasePipelineConfig):
         init_fields = {**base_fields, **training_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

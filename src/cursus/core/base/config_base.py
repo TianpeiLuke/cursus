@@ -11,7 +11,6 @@ from pydantic import (
     Field,
     model_validator,
     field_validator,
-    ValidationInfo,
     PrivateAttr,
     ConfigDict,
 )
@@ -21,7 +20,7 @@ import json
 from datetime import datetime
 import logging
 import inspect
-from abc import ABC, abstractmethod
+from abc import ABC
 
 # Import for type hints only. The legacy ScriptContract/StepContract data classes
 # were removed; a step's contract is now the ContractSection of the unified
@@ -518,6 +517,94 @@ class BasePipelineConfig(BaseModel, ABC):
         """
         # Default implementation returns None since not all step types need scripts
         return default_path
+
+    @staticmethod
+    def _format_env_value(value: Any) -> str:
+        """Format a config field value as an environment-variable string.
+
+        Mirrors the per-step conventions the hand-written collectors used: bool -> lowercase
+        ('true'/'false'), list/tuple -> comma-joined, dict -> JSON, else str(). This is the generic
+        type-formatting half of the env single-source resolver (FZ 31e1d3g).
+        """
+
+        if isinstance(value, bool):
+            return str(value).lower()
+        if isinstance(value, (list, tuple)):
+            return ",".join(str(v) for v in value)
+        if isinstance(value, dict):
+            return json.dumps(value)
+        return str(value)
+
+    def _env_overrides(self) -> Dict[str, str]:
+        """Per-config map of env-var NAME -> computed/aliased value, for the cases the generic
+        convention resolver cannot derive (a field under a different name, or a computed value).
+
+        Base returns ``{}`` — most configs resolve every declared env var by convention
+        (``NAME`` -> ``self.name``). Only configs whose env values are computed (JSON, Join,
+        aliased field names like ``ID_FIELD`` <- ``self.id_name``) override this. A value of
+        ``None`` in the map means "omit this env var" (matches the old conditional-add behavior).
+        """
+        return {}
+
+    def get_environment_variables(
+        self, declared_env_vars: Optional[List[str]] = None
+    ) -> Dict[str, str]:
+        """Resolve the env-var VALUES for the names the step interface DECLARES (FZ 31e1d3g).
+
+        The interface (``.step.yaml`` ``env_vars``) declares WHICH env vars a step uses; this config
+        supplies the VALUES. The single-source rule: the interface drives the key set, config resolves
+        each one — by ``_env_overrides()`` first (computed/aliased), else convention
+        (``NAME`` -> ``self.name``, type-formatted). Names that resolve to nothing are omitted, so a
+        declared-but-absent optional falls back to its interface default in the builder.
+
+        Subclasses with a bespoke collector may override this entirely (and ignore
+        ``declared_env_vars``) to return their full env dict — that path is preserved for back-compat.
+        """
+        env: Dict[str, str] = {}
+        overrides = self._env_overrides()
+        hyper = getattr(self, "hyperparameters", None)
+        for name in declared_env_vars or []:
+            if name in overrides:
+                val = overrides[name]
+                if val is not None:
+                    env[name] = val
+                continue
+            attr = name.lower()
+            # Resolve NAME -> self.name, else self.hyperparameters.name (the historical fallback).
+            if hasattr(self, attr):
+                value = getattr(self, attr)
+                if value is not None:
+                    env[name] = self._format_env_value(value)
+            elif hyper is not None and hasattr(hyper, attr):
+                value = getattr(hyper, attr)
+                if value is not None:
+                    env[name] = self._format_env_value(value)
+        return env
+
+    def get_job_arguments(self) -> "Optional[List[str]]":
+        """Build the script's CLI arguments — config is the single source (FZ 31e1d3h).
+
+        Base default: no CLI arguments (``None``). The builder's ``_get_job_arguments`` calls this;
+        a step-config that passes arguments to its script OVERRIDES this method. The common
+        ``--job_type`` case has a ready helper, ``_job_type_arg()`` — a config opts in with
+        ``return self._job_type_arg()``. ``None`` (not ``[]``) is the "no args" contract the SDK
+        ProcessingStep / processor.run expect.
+        """
+        return None
+
+    def _job_type_arg(self, flag: str = "--job_type", default: "Optional[str]" = None) -> "Optional[List[str]]":
+        """Helper for the dominant pattern: ``[flag, config.job_type]``.
+
+        Returns ``None`` when ``job_type`` is missing/None and no ``default`` is given (the
+        conditional "skip when unset" behavior used by the training steps); otherwise the flag list.
+        ``flag`` lets a step emit the hyphenated ``--job-type`` variant.
+        """
+        value = getattr(self, "job_type", None)
+        if value is None:
+            value = default
+        if value is None:
+            return None
+        return [flag, str(value)]
 
     def resolve_hybrid_path(self, relative_path: str) -> Optional[str]:
         """

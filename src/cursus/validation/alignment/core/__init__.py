@@ -20,19 +20,17 @@ Components:
 # Level 1: Script ↔ Contract Alignment
 from .script_contract_alignment import ScriptContractAlignmentTester
 
-# Level 2: Contract ↔ Specification Alignment
-from .contract_spec_alignment import ContractSpecificationAlignmentTester
+# Level 2 (CONTRACT_SPEC) removed — alignment is a construction-time invariant now (FZ 31e1d3h/D5).
+# The one surviving check (SageMaker property-path) was folded into the Level-3 (B2) tester.
 
-# Level 3: Specification ↔ Dependencies Alignment
+# Level 3: Specification ↔ Dependencies Alignment (B2)
 from .spec_dependency_alignment import SpecificationDependencyAlignmentTester
 
-# Level 4: Builder ↔ Configuration Alignment
+# Level 4: Builder ↔ Configuration Alignment (B3) — see validators/registry_binding_validator.py
 
 __all__ = [
     # Level 1
     "ScriptContractAlignmentTester",
-    # Level 2
-    "ContractSpecificationAlignmentTester",
     # Level 3
     "SpecificationDependencyAlignmentTester",
 ]

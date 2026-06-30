@@ -1,6 +1,14 @@
 step_type: ModelCalibration
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Calibrates model prediction scores to accurate probabilities
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
+  framework_version_default: 1.0-1
 contract:
+  circular_ref_check: true
   entry_point: model_calibration.py
   inputs:
     evaluation_data:
@@ -14,6 +22,9 @@ contract:
     calibrated_data:
       path: /opt/ml/processing/output/calibrated_data
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - CALIBRATION_METHOD
@@ -30,7 +41,7 @@ contract:
       SCORE_FIELD_PREFIX: prob_class_
       MULTICLASS_CATEGORIES: '[0, 1]'
       CALIBRATION_SAMPLE_POINTS: '1000'
-      USE_SECURE_PYPI: 'false'
+      USE_SECURE_PYPI: 'true'
   framework_requirements:
     scikit-learn: '>=0.23.2,<1.0.0'
     pandas: '>=1.2.0,<2.0.0'

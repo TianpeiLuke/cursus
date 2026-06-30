@@ -1289,7 +1289,7 @@ def internal_main(
     input_dir: str,
     output_dir: str,
     hyperparams: Dict[str, Any],
-    environ_vars: Dict[str, str],
+    environ_vars: Optional[Dict[str, str]] = None,
     model_artifacts_input_dir: Optional[str] = None,
     model_artifacts_output_dir: Optional[str] = None,
     load_data_func: Callable = load_split_data,
@@ -1314,6 +1314,11 @@ def internal_main(
         - Dictionary of transformed dataframes
         - OfflineBinning instance with fitted risk tables
     """
+    # environ_vars is optional: when omitted (e.g. a local/test call), fall back to hyperparameter
+    # defaults. Normalizing to {} keeps the env-priority `.get()` reads below working.
+    if environ_vars is None:
+        environ_vars = {}
+
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 

@@ -1,6 +1,15 @@
 step_type: ActiveSampleSelection
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Active sample selection step that intelligently selects high-value samples from model predictions for Semi-Supervised Learning (SSL) or Active Learning workflows using confidence-based, uncertainty-based, diversity-based, or hybrid strategies
+patterns:
+  step_assembly: step_args
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
 contract:
+  include_job_type_in_path: false
   entry_point: active_sample_selection.py
   inputs:
     evaluation_data:
@@ -12,13 +21,16 @@ contract:
     selection_metadata:
       path: /opt/ml/processing/output/selection_metadata
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - SELECTION_STRATEGY
     - USE_CASE
     optional:
       CONFIDENCE_THRESHOLD: '0.9'
-      UNCERTAINTY_THRESHOLD: '0.4'
+      UNCERTAINTY_MODE: margin
       MAX_SAMPLES: '10000'
   framework_requirements:
     pandas: '>=1.3.0'

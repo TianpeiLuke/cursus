@@ -81,6 +81,8 @@ def _collect_tooldefs() -> List[ToolDef]:
         "validate",
         "execdoc",
         "pipeline_catalog",
+        "strategies",
+        "steps",
         "info",
     ]
     defs: List[ToolDef] = []

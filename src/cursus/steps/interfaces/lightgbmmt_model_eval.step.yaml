@@ -1,7 +1,19 @@
 step_type: LightGBMMTModelEval
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: LightGBM multi-task model evaluation step
+patterns:
+  step_assembly: step_args
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
 contract:
+  include_job_type_in_path: false
   entry_point: lightgbmmt_model_eval.py
+  source_dir: true
   inputs:
     model_input:
       path: /opt/ml/processing/input/model
@@ -14,7 +26,12 @@ contract:
       path: /opt/ml/processing/output/eval
     metrics_output:
       path: /opt/ml/processing/output/metrics
+    plots_output:
+      path: /opt/ml/processing/output/plots
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - ID_FIELD
@@ -99,4 +116,16 @@ spec:
       aliases:
       - multi_task_metrics
       - multitask_metrics
+      data_type: S3Uri
+    plots_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['plots_output'].S3Output.S3Uri
+      semantic_keywords:
+      - plots
+      - visualizations
+      - charts
+      aliases:
+      - visualizations
+      - plot_output
+      - eval_plots
       data_type: S3Uri

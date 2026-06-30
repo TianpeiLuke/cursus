@@ -162,6 +162,14 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
 
         return self._full_script_path
 
+    def get_environment_variables(
+        self, declared_env_vars: "Optional[List[str]]" = None
+    ) -> Dict[str, str]:
+        """Temporal-split env vars (the single env source; FZ 31e1d3g). Delegates to the
+        ``temporal_split_environment_variables`` property; ``declared_env_vars`` is accepted for the
+        builder's names-driven contract but ignored (the property already produces the full set)."""
+        return dict(self.temporal_split_environment_variables)
+
     @property
     def temporal_split_environment_variables(self) -> Dict[str, str]:
         """
@@ -231,7 +239,7 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
         """
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -433,3 +441,7 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
         )
 
         return data
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

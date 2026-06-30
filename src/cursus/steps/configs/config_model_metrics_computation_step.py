@@ -477,3 +477,7 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
         init_fields = {**base_fields, **metrics_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

@@ -10,7 +10,7 @@ Fields are organized into three tiers:
 """
 
 from pydantic import Field, field_validator, model_validator
-from typing import Literal, Dict, Any, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
@@ -200,7 +200,7 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
         """Validate job type is one of the allowed values."""
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -372,3 +372,7 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
         init_fields = {**base_fields, **merge_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

@@ -1,5 +1,16 @@
 step_type: BedrockBatchProcessing
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Bedrock batch processing step that provides AWS Bedrock batch inference capabilities with automatic fallback to real-time processing for cost-efficient large dataset processing
+patterns:
+  step_assembly: step_args
+  include_job_type_in_path: false
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
 contract:
   entry_point: bedrock_batch_processing.py
   inputs:
@@ -20,6 +31,13 @@ contract:
   arguments:
     batch-size: 'batch size for processing (default: 10)'
     max-retries: 'maximum retries for Bedrock calls (default: 3)'
+  job_arguments:
+  - flag: --job_type
+    source: job_type
+  - flag: --batch-size
+    source: bedrock_batch_size
+  - flag: --max-retries
+    source: bedrock_max_retries
   env_vars:
     required:
     - BEDROCK_PRIMARY_MODEL_ID
@@ -28,6 +46,13 @@ contract:
       BEDROCK_MAX_TOKENS: '32768'
       BEDROCK_BATCH_SIZE: '10'
       BEDROCK_CONCURRENCY_MODE: sequential
+  # COMPUTED-S3-ENV pattern (FZ 31e1d3g3 A3): the script reads/writes batch JSONL via S3 paths whose
+  # value is derived from the pipeline execution prefix (base_output_path), not a config field. The
+  # base _get_environment_variables sets each to Join(base_output_path, *segments) — replacing the
+  # former hand-written _get_environment_variables override.
+  computed_env_paths:
+    BEDROCK_BATCH_INPUT_S3_PATH: [bedrock-batch, input]
+    BEDROCK_BATCH_OUTPUT_S3_PATH: [bedrock-batch, output]
   framework_requirements:
     pandas: '>=1.2.0'
     boto3: '>=1.26.0'

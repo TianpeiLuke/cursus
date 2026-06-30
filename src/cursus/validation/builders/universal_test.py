@@ -495,60 +495,46 @@ class UniversalStepBuilderTest:
         except Exception as e:
             return {"passed": False, "error": f"I/O methods check failed: {str(e)}"}
 
-    def _check_sagemaker_methods(self, builder_class: Type) -> Dict[str, Any]:
-        """Check SageMaker-specific methods based on step type."""
+    def _check_sagemaker_methods(
+        self, builder_class: Type, step_name: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Check the step can produce its compute (FZ 31e1d3g3 Phase D5 — shell-aware).
+
+        Was: ``hasattr(builder_class, "_create_estimator")`` etc., which failed every declarative
+        shell (the compute factory lives in the bound handler). Now delegates to the type-agnostic
+        ``_can_produce_compute`` predicate. Prefers the authoritative ``step_name`` (threaded from the
+        caller / the builder's ``STEP_NAME``) over the ``__name__`` strip, which collapses to
+        "Template" once the per-step shell classes are deleted.
+        """
         try:
-            # Extract step name and get step type
-            class_name = builder_class.__name__
-            step_name = (
-                class_name[:-11] if class_name.endswith("StepBuilder") else class_name
-            )
+            if step_name is None:
+                step_name = getattr(builder_class, "STEP_NAME", None)
+            if not step_name:
+                class_name = getattr(builder_class, "__name__", "")
+                step_name = (
+                    class_name[:-11]
+                    if class_name.endswith("StepBuilder")
+                    else class_name
+                )
 
             try:
                 step_type = get_sagemaker_step_type(step_name)
             except Exception as e:
-                # Non-critical: an unknown step type degrades the sagemaker-method check to
-                # a no-op pass. Log it so the degradation is visible instead of a bare swallow.
                 self.logger.debug(
                     f"Could not resolve SageMaker step type for '{step_name}': {e}"
                 )
                 step_type = "Unknown"
 
-            expected_methods = []
-            found_methods = []
-
-            # Define expected methods based on step type
-            if step_type == "Processing":
-                expected_methods = ["_create_processor"]
-            elif step_type == "Training":
-                expected_methods = ["_create_estimator"]
-            elif step_type == "Transform":
-                expected_methods = ["_create_transformer"]
-            elif step_type == "CreateModel":
-                expected_methods = ["_create_model"]
-            elif step_type == "RegisterModel":
-                expected_methods = []  # Optional methods
-
-            # Check which methods are present
-            for method in expected_methods:
-                if hasattr(builder_class, method):
-                    found_methods.append(method)
-
-            # Pass if all expected methods are found, or if no methods are expected
-            passed = len(expected_methods) == 0 or len(found_methods) == len(
-                expected_methods
-            )
-
+            can_produce, how = self._can_produce_compute(step_name, builder_class)
             return {
-                "passed": passed,
+                "passed": can_produce,
                 "step_type": step_type,
-                "expected_methods": expected_methods,
-                "found_methods": found_methods,
-                "note": f"SageMaker {step_type} step method validation",
+                "resolved_via": how,
+                "note": f"SageMaker {step_type} step can produce its compute (shell+handler or override)",
             }
         except Exception as e:
             return {
-                "passed": True,  # Don't fail on SageMaker method check errors
+                "passed": True,  # Don't fail on compute-producibility check errors
                 "error": f"SageMaker methods check failed: {str(e)}",
                 "note": "SageMaker method check is non-critical",
             }
@@ -737,129 +723,85 @@ class UniversalStepBuilderTest:
     def _run_step_type_specific_validation(
         self, step_name: str, builder_class: Type
     ) -> Dict[str, Any]:
-        """Run step type specific validation."""
+        """Validate the step can PRODUCE its compute — type-agnostic (FZ 31e1d3g3 Phase D5).
+
+        Replaces the per-step-type ``hasattr(builder_class, "_create_estimator")`` checks that
+        reported every declarative shell as failed (the compute factory lives in the bound
+        PatternHandler / make_compute, not on the shell). The single question now is "can a valid
+        step be ASSEMBLED": the builder overrides ``_create_<x>`` OR the ``.step.yaml`` declares a
+        ``compute.kind`` OR the bound handler supplies the compute (mirrors builder_templates.py's
+        own disjunction). No Training/Processing/Transform/CreateModel branch.
+        """
         try:
-            # Get step type
             sagemaker_step_type = get_sagemaker_step_type(step_name)
-
-            results = {"step_type": sagemaker_step_type, "step_type_tests": {}}
-
-            # Run step type specific tests
-            if sagemaker_step_type == "Processing":
-                results["step_type_tests"] = self._run_processing_tests(builder_class)
-            elif sagemaker_step_type == "Training":
-                results["step_type_tests"] = self._run_training_tests(builder_class)
-            elif sagemaker_step_type == "Transform":
-                results["step_type_tests"] = self._run_transform_tests(builder_class)
-            elif sagemaker_step_type == "CreateModel":
-                results["step_type_tests"] = self._run_create_model_tests(builder_class)
-            elif sagemaker_step_type == "RegisterModel":
-                results["step_type_tests"] = self._run_register_model_tests(
-                    builder_class
-                )
-            else:
-                results["step_type_tests"] = {
-                    "note": f"No specific tests for step type: {sagemaker_step_type}"
-                }
-
-            return {"status": "COMPLETED", "results": results}
-
+            can_produce, how = self._can_produce_compute(step_name, builder_class)
+            return {
+                "status": "COMPLETED",
+                "results": {
+                    "step_type": sagemaker_step_type,
+                    "step_type_tests": {
+                        "compute_producible": {
+                            "passed": can_produce,
+                            "resolved_via": how,
+                            "note": "Step can produce its compute (shell+handler or override)",
+                        }
+                    },
+                },
+            }
         except Exception as e:
             return {
                 "status": "ERROR",
                 "error": f"Step type validation failed: {str(e)}",
             }
 
-    def _run_processing_tests(self, builder_class: Type) -> Dict[str, Any]:
-        """Run Processing-specific tests."""
-        results = {}
+    def _can_produce_compute(self, step_name: str, builder_class: Type) -> tuple:
+        """(can_produce, how): can this step yield its compute object at build time?
 
-        # Test processor creation methods
-        processor_methods = ["_create_processor", "_get_processor"]
-        found_methods = [m for m in processor_methods if hasattr(builder_class, m)]
+        True when ANY of: the builder defines its own ``_create_<verb>`` override; the step's
+        ``.step.yaml`` declares ``compute.kind``; or the bound PatternHandler exposes a ``make_compute``
+        knob / the step routes at all (a routable shell builds via the handler). This is the
+        shell-aware replacement for the old method-presence check.
+        """
+        # 1) A per-step override on the builder class itself.
+        create_verbs = (
+            "_create_processor",
+            "_create_estimator",
+            "_create_transformer",
+            "_create_model",
+        )
+        for verb in create_verbs:
+            attr = getattr(builder_class, verb, None)
+            base_attr = getattr(StepBuilderBase, verb, None)
+            if attr is not None and attr is not base_attr:
+                return True, f"builder override {verb}"
 
-        results["processor_methods"] = {
-            "passed": len(found_methods) > 0,
-            "found_methods": found_methods,
-            "expected_methods": processor_methods,
-        }
+        # 2) The interface declares a compute kind (the shell builds via the handler from it).
+        try:
+            from ...steps.interfaces import load_interface
 
-        # Test input/output methods
-        io_methods = ["_get_inputs", "_get_outputs"]
-        found_io_methods = [m for m in io_methods if hasattr(builder_class, m)]
+            iface = load_interface(step_name)
+            compute = getattr(iface, "compute", None)
+            if getattr(compute, "kind", None):
+                return True, f"compute.kind={compute.kind}"
+        except Exception:
+            pass
 
-        results["io_methods"] = {
-            "passed": len(found_io_methods) >= 1,  # At least one should be present
-            "found_methods": found_io_methods,
-            "expected_methods": io_methods,
-        }
+        # 3) The step routes to a handler at all (SDK-delegation / no-compute verbs still assemble).
+        try:
+            from ...registry.step_names import get_sagemaker_step_type as _gsst
+            from ...core.base.builder_templates import resolve_handler, NoBuilderError
 
-        return results
-
-    def _run_training_tests(self, builder_class: Type) -> Dict[str, Any]:
-        """Run Training-specific tests."""
-        results = {}
-
-        # Test estimator creation methods
-        estimator_methods = ["_create_estimator", "_get_estimator"]
-        found_methods = [m for m in estimator_methods if hasattr(builder_class, m)]
-
-        results["estimator_methods"] = {
-            "passed": len(found_methods) > 0,
-            "found_methods": found_methods,
-            "expected_methods": estimator_methods,
-        }
-
-        return results
-
-    def _run_transform_tests(self, builder_class: Type) -> Dict[str, Any]:
-        """Run Transform-specific tests."""
-        results = {}
-
-        # Test transformer creation methods
-        transformer_methods = ["_create_transformer", "_get_transformer"]
-        found_methods = [m for m in transformer_methods if hasattr(builder_class, m)]
-
-        results["transformer_methods"] = {
-            "passed": len(found_methods) > 0,
-            "found_methods": found_methods,
-            "expected_methods": transformer_methods,
-        }
-
-        return results
-
-    def _run_create_model_tests(self, builder_class: Type) -> Dict[str, Any]:
-        """Run CreateModel-specific tests."""
-        results = {}
-
-        # Test model creation methods
-        model_methods = ["_create_model", "_get_model"]
-        found_methods = [m for m in model_methods if hasattr(builder_class, m)]
-
-        results["model_methods"] = {
-            "passed": len(found_methods) > 0,
-            "found_methods": found_methods,
-            "expected_methods": model_methods,
-        }
-
-        return results
-
-    def _run_register_model_tests(self, builder_class: Type) -> Dict[str, Any]:
-        """Run RegisterModel-specific tests."""
-        results = {}
-
-        # Test model package methods (optional)
-        package_methods = ["_create_model_package", "_get_model_package_args"]
-        found_methods = [m for m in package_methods if hasattr(builder_class, m)]
-
-        results["model_package_methods"] = {
-            "passed": True,  # These are optional
-            "found_methods": found_methods,
-            "expected_methods": package_methods,
-            "note": "Model package methods are optional",
-        }
-
-        return results
+            sm_type = _gsst(step_name)
+            step_assembly = getattr(
+                getattr(iface, "patterns", None), "step_assembly", None
+            )
+            try:
+                resolve_handler(sm_type, step_assembly)
+                return True, "routable handler"
+            except NoBuilderError:
+                return False, "no routable handler"
+        except Exception as e:
+            return False, f"unresolved: {e}"
 
     def run_full_validation(self) -> Dict[str, Any]:
         """

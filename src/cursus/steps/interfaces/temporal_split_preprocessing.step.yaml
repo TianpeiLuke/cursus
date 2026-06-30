@@ -1,6 +1,15 @@
 step_type: TemporalSplitPreprocessing
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Temporal split preprocessing step with customer-level splitting and OOT validation
+patterns:
+  direct_input_keys: [DATA, SIGNATURE]
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
 contract:
+  include_job_type_in_path: false
   entry_point: temporal_split_preprocessing.py
   inputs:
     DATA:
@@ -15,6 +24,9 @@ contract:
     oot_data:
       path: /opt/ml/processing/output/oot_data
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - DATE_COLUMN

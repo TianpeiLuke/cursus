@@ -9,10 +9,47 @@ both package and workspace builder discovery.
 import ast
 import logging
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Type, Any
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class _BuilderDescriptor:
+    """A discovered builder, found by the AST scan but NOT yet imported (FZ 31e1d3g/Phase 2).
+
+    The scan resolves ``step_name`` + the file/class WITHOUT importing the module; the class is
+    materialized lazily by ``get_class()`` (cached) only when a builder is actually loaded. This
+    decouples discovery (cheap, import-free) from importlib I/O — so an offline scan of an SDK-bound
+    builder records its descriptor instead of failing mid-scan, and the import cost is paid once, on
+    demand, at instantiation time. ``get_class()`` returns None if the import fails (e.g. the SAIS SDK
+    is absent) — callers preserve today's "unloadable builder is skipped" behavior by filtering None.
+    """
+
+    step_name: str
+    file_path: Path
+    class_name: str
+    _loader: Any  # callable(file_path, class_name) -> Optional[Type]; the discovery's _load_class_from_file
+    _cached: Optional[Type] = None
+    _attempted: bool = False
+
+    def get_class(self) -> Optional[Type]:
+        if not self._attempted:
+            self._cached = self._loader(self.file_path, self.class_name)
+            self._attempted = True
+        return self._cached
+
+
+# Closed set of framework base-class names that mark a class as a step builder during
+# the pure-AST discovery scan (which matches written base names, not the runtime MRO).
+# - "StepBuilderBase": the abstract root every builder ultimately derives from.
+# - "TemplateStepBuilder": the routed-builder facade; its 2-line shell subclasses
+#   (`class XStepBuilder(TemplateStepBuilder)`) must be discovered just like the legacy
+#   `class XStepBuilder(StepBuilderBase)` form. TemplateStepBuilder is itself a
+#   StepBuilderBase subclass, so adding it keeps this a strict superset.
+STEP_BUILDER_BASE_NAMES = {"StepBuilderBase", "TemplateStepBuilder"}
 
 
 class BuilderAutoDiscovery:
@@ -54,15 +91,26 @@ class BuilderAutoDiscovery:
         self.logger.info("✅ BuilderAutoDiscovery basic initialization complete")
 
         # Caches for performance
-        self._builder_cache: Dict[str, Type] = {}
+        self._builder_cache: Dict[
+            str, Type
+        ] = {}  # step_name -> materialized class (load cache)
         self._builder_paths: Dict[str, Path] = {}
         self._discovery_complete = False
 
-        # Discovery results
-        self._package_builders: Dict[str, Type] = {}
+        # Registry-walk materializer cache (FZ 31e1d3g3 Phase A): step_name -> synthesized
+        # TemplateStepBuilder subclass for a step that has a .step.yaml interface but NO physical
+        # builder_*.py file. Keyed by step_name so a step always maps to the SAME class object
+        # within a process (identity stability — pickling / class-keyed caches; OQ 31e1d3g3a).
+        # While the 45 shells still exist, this fallback never fires (file-descriptor-first), so
+        # it is pure enabling infra with zero behavior change until the shells are deleted (Phase E).
+        self._synthesized_builders: Dict[str, Type] = {}
+
+        # Discovery results — DESCRIPTORS, not yet-imported classes (FZ 31e1d3g Phase 2). The scan
+        # records (step_name, file, class) without importing; classes materialize lazily on load.
+        self._package_builders: Dict[str, _BuilderDescriptor] = {}
         self._workspace_builders: Dict[
-            str, Dict[str, Type]
-        ] = {}  # workspace_id -> builders
+            str, Dict[str, _BuilderDescriptor]
+        ] = {}  # workspace_id -> {step_name -> descriptor}
 
         # Registry integration
         self._registry_info: Dict[str, Dict[str, Any]] = {}
@@ -162,19 +210,35 @@ class BuilderAutoDiscovery:
         if not self._discovery_complete:
             self._run_discovery()
 
-        # Combine package and workspace builders
-        all_builders = {}
-
-        # Add package builders
-        all_builders.update(self._package_builders)
-
-        # Add workspace builders (workspace overrides package)
+        # Combine package + workspace DESCRIPTORS (workspace overrides package), then materialize.
+        descriptors: Dict[str, _BuilderDescriptor] = {}
+        descriptors.update(self._package_builders)
         if project_id and project_id in self._workspace_builders:
-            all_builders.update(self._workspace_builders[project_id])
+            descriptors.update(self._workspace_builders[project_id])
         else:
-            # Add all workspace builders if no specific project
             for workspace_builders in self._workspace_builders.values():
-                all_builders.update(workspace_builders)
+                descriptors.update(workspace_builders)
+
+        # Materialize to live classes; EXCLUDE any that fail to import (e.g. SDK builders offline) —
+        # this preserves the legacy contract that this map contains only loadable classes (the eager
+        # scan used to drop unimportable files at scan time; we now drop them at materialize time).
+        all_builders: Dict[str, Type] = {}
+        for step_name, descriptor in descriptors.items():
+            cls = descriptor.get_class()
+            if cls is not None:
+                all_builders[step_name] = cls
+
+        # Registry-walk fill (FZ 31e1d3g3 Phase A): for any registry step NOT covered by a physical
+        # builder file, synthesize its declarative shell. While the 45 files exist this adds nothing
+        # (every registry row already has a descriptor); once Phase E deletes them, this keeps the
+        # discovered set complete. Workspace-specific discovery (project_id) is left file-only — the
+        # registry walk is package scope, matching the Risk-2 permanent-hybrid decision.
+        if project_id is None:
+            for step_name in self._registry_info:
+                if step_name not in all_builders:
+                    synthesized = self._synthesize_builder(step_name)
+                    if synthesized is not None:
+                        all_builders[step_name] = synthesized
 
         self.logger.info(f"Discovered {len(all_builders)} builder classes")
         return all_builders
@@ -189,34 +253,159 @@ class BuilderAutoDiscovery:
         Returns:
             Builder class type or None if not found
         """
-        # Check cache first
+        # Check the materialized-class cache first
         if step_name in self._builder_cache:
             return self._builder_cache[step_name]
 
-        # Ensure discovery is complete
+        # Ensure discovery is complete (populates descriptors, no imports)
         if not self._discovery_complete:
             self._run_discovery()
 
-        # Try workspace builders first (higher priority)
+        # Try workspace builders first (higher priority), then package — materialize lazily from the
+        # descriptor (the import happens HERE, on demand, and may return None if it fails, e.g. the
+        # SAIS SDK is absent — preserving today's "unloadable builder is skipped" behavior).
         for workspace_id, workspace_builders in self._workspace_builders.items():
             if step_name in workspace_builders:
-                builder_class = workspace_builders[step_name]
+                builder_class = workspace_builders[step_name].get_class()
+                if builder_class is not None:
+                    self._builder_cache[step_name] = builder_class
+                    self.logger.debug(
+                        f"Loaded builder for {step_name} from workspace {workspace_id}"
+                    )
+                    return builder_class
+
+        if step_name in self._package_builders:
+            builder_class = self._package_builders[step_name].get_class()
+            if builder_class is not None:
                 self._builder_cache[step_name] = builder_class
-                self.logger.debug(
-                    f"Loaded builder for {step_name} from workspace {workspace_id}"
-                )
+                self.logger.debug(f"Loaded builder for {step_name} from package")
                 return builder_class
 
-        # Try package builders
-        if step_name in self._package_builders:
-            builder_class = self._package_builders[step_name]
-            self._builder_cache[step_name] = builder_class
-            self.logger.debug(f"Loaded builder for {step_name} from package")
-            return builder_class
+        # No physical builder file — try the registry-walk materializer (FZ 31e1d3g3 Phase A):
+        # synthesize a TemplateStepBuilder subclass for a step that has a .step.yaml interface and
+        # routes. Returns None for steps that don't (abstract rows, SDK-delegation offline, unknown).
+        synthesized = self._synthesize_builder(step_name)
+        if synthesized is not None:
+            self._builder_cache[step_name] = synthesized
+            self.logger.debug(
+                f"Synthesized builder for {step_name} from registry interface"
+            )
+            return synthesized
 
-        # Not found - this is expected during discovery for many step variants
+        # Not found / not loadable - expected for many step variants + offline SDK builders.
         self.logger.debug(f"No builder class found for step: {step_name}")
         return None
+
+    def _synthesize_builder(self, step_name: str) -> Optional[Type]:
+        """Synthesize a per-step builder class for a fileless, interface-having, routable step.
+
+        FZ 31e1d3g3 Phase A — the deletion mechanism for the 45 shells. A shell is nothing but
+        ``class XStepBuilder(TemplateStepBuilder): STEP_NAME = "X"``; this fabricates exactly that
+        at runtime so a step needs no physical ``builder_*.py``. It is consulted ONLY as a fallback
+        after file-descriptor lookup (``load_builder_class`` / ``discover_builder_classes``), so while
+        the 45 files still exist this never fires — it is pure enabling infra until Phase E deletes
+        the shells.
+
+        Returns None (so the caller keeps today's "no builder" behavior) when the step:
+        - has no ``.step.yaml`` interface (e.g. the abstract ``Base``/``Processing``/``HyperparameterPrep``
+          registry rows), or
+        - does not route — its ``sagemaker_step_type`` (+ ``patterns.step_assembly``) is not a routable
+          construction strategy (``resolve_handler`` raises ``NoBuilderError`` for ``Base``/``Lambda``/
+          unknown), or
+        - is an SDK-delegation step that cannot be materialized here (the ``sdk_step_class`` knob is a
+          live SAIS class reference, injected by the Phase-A2 ``sdk_bindings`` path, not this generic
+          synthesizer).
+
+        The synthesized class is cached per ``step_name`` so identity is stable within a process.
+        """
+        if step_name in self._synthesized_builders:
+            return self._synthesized_builders[step_name]
+
+        # 1) Must have a .step.yaml interface. Use the registry's sagemaker_step_type as the route key.
+        info = self._registry_info.get(step_name)
+        if not info:
+            return None
+        sagemaker_step_type = info.get("sagemaker_step_type")
+        if not sagemaker_step_type:
+            return None
+
+        try:
+            from ..steps.interfaces import load_interface
+            from ..core.base.builder_templates import (
+                TemplateStepBuilder,
+                resolve_handler,
+                NoBuilderError,
+            )
+        except Exception as e:  # pragma: no cover - import wiring
+            self.logger.debug(f"Synthesizer imports unavailable for {step_name}: {e}")
+            return None
+
+        # 2) Must have a loadable interface (raises FileNotFoundError for fileless registry rows).
+        try:
+            iface = load_interface(step_name)
+        except Exception as e:
+            self.logger.debug(f"No loadable interface for {step_name}: {e}")
+            return None
+
+        # 3) SDK-delegation steps need a live SAIS *Step class injected as the sdk_step_class knob
+        #    (genuine code, not serializable to YAML). The carve-out is authored data — registry.requires
+        #    names the build-time 3rd-party dep — NOT a hardcoded step list, so it tracks the .step.yaml.
+        #    All 4 (Cradle/Redshift/Registration/DataUploading) declare requires=...sdk. Materialize the
+        #    SAIS class via the lazy sdk_bindings thunk; OFFLINE the import fails → return None, keeping
+        #    them undiscoverable (matching the closure gate's _SDK_DELEGATION_STEPS carve-out).
+        registry_section = getattr(iface, "registry", None)
+        requires = (
+            getattr(registry_section, "requires", "none")
+            if registry_section
+            else "none"
+        )
+        extra_attrs: Dict[str, Any] = {}
+        if requires == "secure_ai_sandbox_workflow_python_sdk":
+            from .sdk_bindings import is_sdk_delegation_step, resolve_sdk_step_class
+
+            if not is_sdk_delegation_step(step_name):
+                self.logger.debug(
+                    f"{step_name} requires the SAIS SDK but has no sdk_bindings entry; not synthesizing"
+                )
+                return None
+            try:
+                sdk_step_class = resolve_sdk_step_class(step_name)
+            except Exception as e:
+                # SAIS SDK absent (offline) — preserve "undiscoverable offline" behavior.
+                self.logger.debug(
+                    f"SAIS SDK unavailable for {step_name}; not synthesizing: {e}"
+                )
+                return None
+            # Mirror the hand-written SDK shells' HANDLER_KNOBS so _auto_bind_handler injects the class.
+            extra_attrs["HANDLER_KNOBS"] = {"sdk_step_class": sdk_step_class}
+
+        # 4) Must route. resolve_handler raises NoBuilderError for non-routable rows (Base/Lambda).
+        patterns = getattr(iface, "patterns", None)
+        step_assembly = getattr(patterns, "step_assembly", None) if patterns else None
+        try:
+            resolve_handler(sagemaker_step_type, step_assembly)
+        except NoBuilderError:
+            self.logger.debug(
+                f"Step {step_name} ({sagemaker_step_type}/{step_assembly}) is not routable; not synthesizing"
+            )
+            return None
+        except Exception as e:
+            self.logger.debug(f"Handler resolution failed for {step_name}: {e}")
+            return None
+
+        # All checks pass — fabricate the 2-line shell as a real subclass. A subclass (not a partial)
+        # preserves .__name__, satisfies issubclass/__mro__, and lets __init__ read self.STEP_NAME.
+        synthesized = type(
+            f"{step_name}StepBuilder",
+            (TemplateStepBuilder,),
+            {
+                "STEP_NAME": step_name,
+                "__doc__": f"Synthesized declarative shell for {step_name}.",
+                **extra_attrs,
+            },
+        )
+        self._synthesized_builders[step_name] = synthesized
+        return synthesized
 
     def _run_discovery(self):
         """Run the complete discovery process."""
@@ -287,18 +476,18 @@ class BuilderAutoDiscovery:
 
     def _scan_builder_directory(
         self, builders_dir: Path, workspace_id: str
-    ) -> Dict[str, Type]:
+    ) -> Dict[str, "_BuilderDescriptor"]:
         """
-        Scan directory for builder files using AST analysis.
+        Scan directory for builder files using AST analysis (import-free, Phase 2).
 
         Args:
             builders_dir: Directory containing builder files
             workspace_id: ID of the workspace (for logging)
 
         Returns:
-            Dictionary mapping step names to builder classes
+            Dictionary mapping step names to lazy _BuilderDescriptors (classes not yet imported).
         """
-        builders = {}
+        builders: Dict[str, _BuilderDescriptor] = {}
 
         if not builders_dir.exists():
             return builders
@@ -309,12 +498,11 @@ class BuilderAutoDiscovery:
                     continue
 
                 try:
-                    # Extract builder info using AST
-                    builder_info = self._extract_builder_from_ast(py_file)
-                    if builder_info:
-                        step_name, builder_class = builder_info
-                        builders[step_name] = builder_class
-                        self._builder_paths[step_name] = py_file
+                    # Extract a lazy descriptor using AST (no import at scan time)
+                    descriptor = self._extract_builder_from_ast(py_file)
+                    if descriptor:
+                        builders[descriptor.step_name] = descriptor
+                        self._builder_paths[descriptor.step_name] = py_file
 
                 except Exception as e:
                     self.logger.warning(f"Error processing builder file {py_file}: {e}")
@@ -325,15 +513,22 @@ class BuilderAutoDiscovery:
 
         return builders
 
-    def _extract_builder_from_ast(self, file_path: Path) -> Optional[tuple]:
+    def _extract_builder_from_ast(
+        self, file_path: Path
+    ) -> Optional["_BuilderDescriptor"]:
         """
-        Extract builder class from Python file using AST analysis.
+        Extract a builder DESCRIPTOR from a Python file using AST analysis — WITHOUT importing it.
+
+        Phase 2 (FZ 31e1d3g): the scan resolves (step_name, class_name) by AST + registry only; the
+        class is materialized lazily by the descriptor's get_class() at load time. This is why the
+        scan no longer fails on an SDK-bound builder offline — it records the descriptor; the import
+        only happens (and may fail) when the builder is actually loaded.
 
         Args:
             file_path: Path to the Python file
 
         Returns:
-            Tuple of (step_name, builder_class) or None if not found
+            A _BuilderDescriptor (step_name + file + class, lazy loader) or None if no builder class.
         """
         try:
             # Read and parse the file
@@ -347,17 +542,18 @@ class BuilderAutoDiscovery:
                 if isinstance(node, ast.ClassDef):
                     # Check if class inherits from StepBuilderBase
                     if self._inherits_from_step_builder_base(node):
-                        # Extract step name from file name or class name
+                        # Extract step name from file name or class name (registry-keyed)
                         step_name = self._extract_step_name_from_builder_file(
                             file_path, node.name
                         )
                         if step_name:
-                            # Load the actual class
-                            builder_class = self._load_class_from_file(
-                                file_path, node.name
+                            # Record a lazy descriptor — NO import here (Phase 2).
+                            return _BuilderDescriptor(
+                                step_name=step_name,
+                                file_path=file_path,
+                                class_name=node.name,
+                                _loader=self._load_class_from_file,
                             )
-                            if builder_class:
-                                return (step_name, builder_class)
 
             return None
 
@@ -367,20 +563,29 @@ class BuilderAutoDiscovery:
 
     def _inherits_from_step_builder_base(self, class_node: ast.ClassDef) -> bool:
         """
-        Check if a class inherits from StepBuilderBase.
+        Check if a class is a step builder by its (direct) base class name.
+
+        Discovery is intentionally a pure single-file AST scan — it does not import the
+        module to walk the runtime MRO. So it recognizes a builder by matching the
+        *written* base-class name against a closed set of framework base names.
+        ``TemplateStepBuilder`` is included so that the routed-builder shells
+        (``class XStepBuilder(TemplateStepBuilder)``) are discovered identically to the
+        legacy ``class XStepBuilder(StepBuilderBase)`` form. ``TemplateStepBuilder`` is
+        itself a ``StepBuilderBase`` subclass, so this stays a strict superset of the old
+        behavior (every existing builder still matches).
 
         Args:
             class_node: AST class definition node
 
         Returns:
-            True if class inherits from StepBuilderBase
+            True if a direct base is one of STEP_BUILDER_BASE_NAMES
         """
         for base in class_node.bases:
-            if isinstance(base, ast.Name) and base.id == "StepBuilderBase":
+            if isinstance(base, ast.Name) and base.id in STEP_BUILDER_BASE_NAMES:
                 return True
             elif isinstance(base, ast.Attribute):
                 # Handle qualified names like module.StepBuilderBase
-                if base.attr == "StepBuilderBase":
+                if base.attr in STEP_BUILDER_BASE_NAMES:
                     return True
         return False
 

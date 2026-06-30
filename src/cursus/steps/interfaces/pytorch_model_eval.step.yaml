@@ -1,7 +1,19 @@
 step_type: PyTorchModelEval
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: PyTorch model evaluation step
+patterns:
+  step_assembly: step_args
+  include_job_type_in_path: false
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
 contract:
   entry_point: pytorch_model_eval.py
+  source_dir: true
   inputs:
     model_input:
       path: /opt/ml/processing/input/model
@@ -15,6 +27,9 @@ contract:
     metrics_output:
       path: /opt/ml/processing/output/metrics
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - ID_FIELD

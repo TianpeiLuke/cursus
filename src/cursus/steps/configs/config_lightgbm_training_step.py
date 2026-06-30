@@ -9,11 +9,8 @@ Fields are organized into three tiers:
 3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
 """
 
-from pydantic import BaseModel, Field, model_validator, field_validator, PrivateAttr
-from typing import List, Optional, Dict, Any, ClassVar
-from pathlib import Path
-import json
-from datetime import datetime
+from pydantic import Field, model_validator, field_validator, PrivateAttr
+from typing import List, Optional, Dict, Any
 
 from ...core.base.config_base import BasePipelineConfig
 
@@ -215,6 +212,11 @@ class LightGBMTrainingConfig(BasePipelineConfig):
             }
         )
 
+        # Training containers (unlike Processing) support CA_REPOSITORY_ARN — emit it when
+        # secure PyPI is enabled (moved here from the builder so config is the single env source).
+        if self.use_secure_pypi:
+            env_vars["CA_REPOSITORY_ARN"] = self.ca_repository_arn
+
         return env_vars
 
     @field_validator("training_instance_type")
@@ -287,3 +289,7 @@ class LightGBMTrainingConfig(BasePipelineConfig):
         init_fields = {**base_fields, **training_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

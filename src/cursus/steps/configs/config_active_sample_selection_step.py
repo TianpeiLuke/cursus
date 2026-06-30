@@ -10,7 +10,7 @@ Fields are organized into three tiers:
 """
 
 from pydantic import Field, field_validator, model_validator
-from typing import Literal, Dict, Any, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
@@ -344,3 +344,7 @@ class ActiveSampleSelectionConfig(ProcessingStepConfigBase):
         init_fields = {**base_fields, **selection_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg(default="ssl_selection")

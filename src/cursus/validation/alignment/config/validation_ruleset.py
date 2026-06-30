@@ -11,12 +11,25 @@ from dataclasses import dataclass
 
 
 class ValidationLevel(Enum):
-    """Validation levels in the alignment tester."""
+    """The 3 validation BOUNDARIES — what construction can't self-check (FZ 31e1d3h / Phase D5).
 
-    SCRIPT_CONTRACT = 1  # Level 1: Script ↔ Contract
-    CONTRACT_SPEC = 2  # Level 2: Contract ↔ Specification
-    SPEC_DEPENDENCY = 3  # Level 3: Specification ↔ Dependencies (Universal)
-    BUILDER_CONFIG = 4  # Level 4: Builder ↔ Configuration
+    The unified ``.step.yaml`` made Contract<->Spec alignment a construction-time Pydantic invariant
+    (``StepInterface._sync_and_align``), so the former Level-2 (CONTRACT_SPEC=2) validated a tautology
+    and has been removed. The three surviving levels are renamed in SEMANTICS to the 3 boundaries —
+    SCRIPT_CONTRACT is the Script<->Interface fidelity boundary (B1), SPEC_DEPENDENCY is the cross-step
+    DAG-resolvability boundary (B2, which now also owns the SageMaker property-path check folded in
+    from the old L2), and BUILDER_CONFIG is the registry<->handler<->config binding boundary (B3). The
+    member NAMES + integer VALUES are kept (1/3/4, non-contiguous) so ``ValidationLevel(1/3/4)``
+    coercion and every existing reference keep working; only ``CONTRACT_SPEC`` (value 2) is gone.
+    """
+
+    SCRIPT_CONTRACT = 1  # B1 — Script <-> Interface (contract) fidelity
+    SPEC_DEPENDENCY = (
+        3  # B2 — Spec <-> Dependencies (+ SageMaker property-path), cross-step
+    )
+    BUILDER_CONFIG = (
+        4  # B3 — Registry <-> handler <-> config binding (RegistryBindingValidator)
+    )
 
 
 class StepTypeCategory(Enum):
@@ -56,11 +69,10 @@ VALIDATION_RULESETS: Dict[str, ValidationRuleset] = {
         category=StepTypeCategory.SCRIPT_BASED,
         enabled_levels={
             ValidationLevel.SCRIPT_CONTRACT,
-            ValidationLevel.CONTRACT_SPEC,
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         },
-        level_4_validator_class="ProcessingStepBuilderValidator",
+        level_4_validator_class="RegistryBindingValidator",
         examples=[
             "TabularPreprocessing",
             "StratifiedSampling",
@@ -83,11 +95,10 @@ VALIDATION_RULESETS: Dict[str, ValidationRuleset] = {
         category=StepTypeCategory.SCRIPT_BASED,
         enabled_levels={
             ValidationLevel.SCRIPT_CONTRACT,
-            ValidationLevel.CONTRACT_SPEC,
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         },
-        level_4_validator_class="TrainingStepBuilderValidator",
+        level_4_validator_class="RegistryBindingValidator",
         examples=["XGBoostTraining", "PyTorchTraining"],
     ),
     # ========================================================================
@@ -97,11 +108,10 @@ VALIDATION_RULESETS: Dict[str, ValidationRuleset] = {
         step_type="CradleDataLoading",
         category=StepTypeCategory.CONTRACT_BASED,
         enabled_levels={
-            ValidationLevel.CONTRACT_SPEC,
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         },
-        level_4_validator_class="ProcessingStepBuilderValidator",  # Uses processing validator
+        level_4_validator_class="RegistryBindingValidator",  # Uses processing validator
         skip_reason="No script in cursus/steps/scripts",
         examples=["CradleDataLoading"],
     ),
@@ -109,11 +119,10 @@ VALIDATION_RULESETS: Dict[str, ValidationRuleset] = {
         step_type="MimsModelRegistrationProcessing",
         category=StepTypeCategory.CONTRACT_BASED,
         enabled_levels={
-            ValidationLevel.CONTRACT_SPEC,
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         },
-        level_4_validator_class="ProcessingStepBuilderValidator",  # Uses processing validator
+        level_4_validator_class="RegistryBindingValidator",  # Uses processing validator
         skip_reason="No script in cursus/steps/scripts",
         examples=["Registration"],
     ),
@@ -127,7 +136,7 @@ VALIDATION_RULESETS: Dict[str, ValidationRuleset] = {
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         },
-        level_4_validator_class="CreateModelStepBuilderValidator",
+        level_4_validator_class="RegistryBindingValidator",
         skip_reason="No script or contract - SageMaker model creation",
         examples=["XGBoostModel", "PyTorchModel"],
     ),
@@ -138,7 +147,7 @@ VALIDATION_RULESETS: Dict[str, ValidationRuleset] = {
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         },
-        level_4_validator_class="TransformStepBuilderValidator",
+        level_4_validator_class="RegistryBindingValidator",
         skip_reason="Uses existing model - no custom script",
         examples=["BatchTransform"],
     ),
@@ -149,7 +158,7 @@ VALIDATION_RULESETS: Dict[str, ValidationRuleset] = {
             ValidationLevel.SPEC_DEPENDENCY,
             ValidationLevel.BUILDER_CONFIG,
         },
-        level_4_validator_class="RegisterModelStepBuilderValidator",
+        level_4_validator_class="RegistryBindingValidator",
         skip_reason="SageMaker service operation - no custom code",
         examples=["Registration"],
     ),
@@ -163,7 +172,7 @@ VALIDATION_RULESETS: Dict[str, ValidationRuleset] = {
             ValidationLevel.SPEC_DEPENDENCY,  # Universal Level 3 requirement
             ValidationLevel.BUILDER_CONFIG,
         },
-        level_4_validator_class="LambdaStepBuilderValidator",
+        level_4_validator_class="RegistryBindingValidator",
         skip_reason="Lambda function - different execution model, but still needs dependency validation",
         examples=["HyperparameterPrep"],
     ),
@@ -281,7 +290,7 @@ def get_validation_ruleset_for_step_name(
 
         sagemaker_step_type = get_sagemaker_step_type(step_name, workspace_id)
         return get_validation_ruleset(sagemaker_step_type)
-    except (ImportError, ValueError) as e:
+    except (ImportError, ValueError):
         # Fallback to default Processing validation if registry lookup fails
         return get_validation_ruleset("Processing")
 

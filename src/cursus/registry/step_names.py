@@ -369,22 +369,27 @@ def get_all_sagemaker_step_types(workspace_id: str = None) -> List[str]:
     return list(set(info["sagemaker_step_type"] for info in step_names.values()))
 
 
-def validate_sagemaker_step_type(sagemaker_type: str) -> bool:
-    """Validate SageMaker step type."""
-    valid_types = {
-        "Processing",
-        "Training",
-        "Transform",
-        "CreateModel",
-        "RegisterModel",
-        "Base",
-        "Utility",
-        "Lambda",
-        "CradleDataLoading",
-        "RedshiftDataLoading",
-        "MimsModelRegistrationProcessing",
-    }
-    return sagemaker_type in valid_types
+# Framework-structural SageMaker step types that are valid but may not be used by any LIVE step's
+# .step.yaml (so they don't appear in get_all_sagemaker_step_types). The floor prevents
+# under-accepting a new step's own type during its own registration. FZ 31e1d3g3 Phase C3 (#12):
+# this is the ONLY hardcoded set — the single source below unions it with the live types, replacing
+# the two previously-divergent hand-maintained sets (this one + validation_utils.VALID_SAGEMAKER_TYPES).
+_SAGEMAKER_STEP_TYPE_FLOOR = {"Base", "Utility", "RegisterModel", "Lambda"}
+
+
+def get_valid_sagemaker_step_types(workspace_id: str = None) -> set:
+    """The authoritative set of valid SageMaker step types — single source of truth (FZ 31e1d3g3 C3).
+
+    Union of the LIVE types declared across every step's ``.step.yaml`` (robust to shell deletion,
+    since it reads the interface-derived registry) and a small static floor of framework-structural
+    types that may not be attached to a live step. Replaces the two divergent hardcoded sets.
+    """
+    return set(get_all_sagemaker_step_types(workspace_id)) | _SAGEMAKER_STEP_TYPE_FLOOR
+
+
+def validate_sagemaker_step_type(sagemaker_type: str, workspace_id: str = None) -> bool:
+    """Validate SageMaker step type against the single-source valid set."""
+    return sagemaker_type in get_valid_sagemaker_step_types(workspace_id)
 
 
 def get_sagemaker_step_type_mapping(workspace_id: str = None) -> Dict[str, List[str]]:

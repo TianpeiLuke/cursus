@@ -6,7 +6,7 @@ which trains a BPE tokenizer optimized for customer name data with automatic voc
 size tuning to achieve target compression ratio.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, List, Optional
 from pydantic import Field, model_validator, field_validator, PrivateAttr
 import logging
 
@@ -152,3 +152,7 @@ class TokenizerTrainingConfig(ProcessingStepConfigBase):
             )
 
         return self
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

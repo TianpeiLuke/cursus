@@ -794,7 +794,7 @@ class LabelRulesetGenerationConfig(ProcessingStepConfigBase):
                 f"Bundle contains {len(generated_files)} JSON configuration files: {', '.join(generated_files)}"
             )
         else:
-            logger.warning(f"No configuration files generated - all configs are None")
+            logger.warning("No configuration files generated - all configs are None")
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs) -> Dict[str, Any]:

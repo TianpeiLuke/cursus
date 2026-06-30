@@ -10,7 +10,7 @@ is properly categorized according to the three-tier design:
 """
 
 from pydantic import Field, field_validator, model_validator
-from typing import Dict, Optional, Any, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from pathlib import Path
 import logging
 
@@ -238,3 +238,7 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         init_fields = {**base_fields, **sampling_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

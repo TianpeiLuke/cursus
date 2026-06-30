@@ -11,4 +11,7 @@ module-level ``TOOLS: List[ToolDef]`` that the registry collects. Namespaces:
 - ``validate``         — alignment + dependency + script-execution checks (validation, core.deps).
 - ``execdoc``          — MODS execution-document generation (mods.exe_doc).
 - ``pipeline_catalog`` — recommend/select/load pre-built shared DAGs (pipeline_catalog).
+- ``strategies``       — inspect the builder strategy library (registry.strategy_registry).
+- ``steps``            — per-step connection/I-O view: container paths, property refs, channels.
+- ``info``             — meta/discovery over the tool registry itself (tools.by_phase, …).
 """

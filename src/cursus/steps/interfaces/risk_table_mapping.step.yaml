@@ -1,7 +1,18 @@
 step_type: RiskTableMapping
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Risk table mapping step for categorical features
+patterns:
+  step_assembly: step_args
+  direct_input_keys: [data_input, config_input, risk_tables]
+compute:
+  kind: framework
+  sdk_class: SKLearn
+  framework_version_field: processing_framework_version
 contract:
   entry_point: risk_table_mapping.py
+  source_dir: true
   inputs:
     input_data:
       path: /opt/ml/processing/input/data
@@ -18,11 +29,12 @@ contract:
     model_artifacts_output:
       path: /opt/ml/processing/output/model_artifacts
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
-    required:
-    - LABEL_FIELD
-    optional:
-      USE_PRECOMPUTED_RISK_TABLES: 'false'
+    required: []
+    optional: {}
   framework_requirements:
     pandas: '>=1.3.0'
     numpy: '>=1.21.0'

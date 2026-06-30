@@ -1,11 +1,24 @@
 step_type: PyTorchTraining
 node_type: internal
+registry:
+  sagemaker_step_type: Training
+  description: PyTorch model training step
+patterns:
+  direct_input_keys: [input_path]
+compute:
+  kind: estimator
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
+  retrieve_image: true
+  lock_training_region: true
 contract:
   entry_point: pytorch_training.py
   inputs:
     input_path:
       path: /opt/ml/input/data
       required: true
+      channels: [train, val, test]
     hyperparameters_s3_uri:
       path: /opt/ml/code/hyperparams/hyperparameters.json
       required: false
@@ -18,18 +31,20 @@ contract:
     evaluation_output:
       path: /opt/ml/output/data
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required: []
     optional:
-      SM_CHECKPOINT_DIR: /opt/ml/checkpoints
       USE_SECURE_PYPI: 'true'
       USE_PRECOMPUTED_IMPUTATION: 'false'
       USE_PRECOMPUTED_RISK_TABLES: 'false'
       USE_PRECOMPUTED_FEATURES: 'false'
       ENABLE_TRUE_STREAMING: 'false'
-      NUM_WORKERS_PER_RANK: '0'
-      PREFETCH_FACTOR: None
-      USE_PERSISTENT_WORKERS: 'false'
+      NUM_WORKERS_PER_RANK: '4'
+      PREFETCH_FACTOR: '2'
+      USE_PERSISTENT_WORKERS: 'true'
       REGION: NA
   framework_requirements:
     torch: ==2.1.2

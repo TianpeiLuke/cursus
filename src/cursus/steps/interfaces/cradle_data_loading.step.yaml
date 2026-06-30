@@ -1,5 +1,9 @@
 step_type: CradleDataLoading
 node_type: source
+registry:
+  sagemaker_step_type: CradleDataLoading
+  requires: secure_ai_sandbox_workflow_python_sdk  # create_step: builder imports CradleDataLoadingStep at module level (hard, fatal-on-load if SDK absent)
+  description: Cradle data loading step
 contract:
   entry_point: scripts.py
   inputs: {}

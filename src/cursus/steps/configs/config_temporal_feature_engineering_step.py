@@ -322,7 +322,7 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
         """Ensure job_type is one of the allowed values."""
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -448,3 +448,7 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
         data["environment_variables"] = self.environment_variables
 
         return data
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

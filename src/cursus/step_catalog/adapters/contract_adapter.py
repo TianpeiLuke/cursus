@@ -64,7 +64,9 @@ class ContractDiscoveryEngineAdapter:
         """
         MODERNIZED: Use step catalog's built-in method.
 
-        This is the primary method used by ContractSpecificationAlignmentTester.
+        Historically the primary contract-discovery entry for the Level-2 alignment tester (now
+        removed — contract<->spec alignment is a construction-time invariant; FZ 31e1d3h/D5); the
+        method stays as a general script-backed-contract discovery helper.
         """
         try:
             if self.catalog is None:

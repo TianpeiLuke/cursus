@@ -1,6 +1,15 @@
 step_type: ModelMetricsComputation
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Model metrics computation step for comprehensive performance evaluation
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
+  framework_version_default: 1.2-1
 contract:
+  circular_ref_check: true
+  include_job_type_in_path: false
   entry_point: model_metrics_computation.py
   inputs:
     eval_output:
@@ -12,6 +21,9 @@ contract:
     plots_output:
       path: /opt/ml/processing/output/plots
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - ID_FIELD

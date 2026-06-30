@@ -5,166 +5,103 @@ This module contains step builder classes that create SageMaker pipeline steps
 using the specification-driven architecture. Each builder is responsible for
 creating a specific type of step (processing, training, etc.) and integrates
 with step specifications and script contracts.
+
+FZ 31e1d3g3 Phase B — IMPORT SURFACE. The per-step ``<Name>StepBuilder`` names are served
+LAZILY via a PEP-562 module ``__getattr__`` instead of ~37 eager ``from .builder_x import X``
+statements. ``__getattr__`` routes through the SAME source the runtime uses —
+``StepCatalog.load_builder_class`` — which returns the physical ``builder_*.py`` class when the
+file exists and the synthesized declarative shell (FZ 31e1d3g3 Phase A) when it does not. So:
+- ``import cursus.steps.builders`` no longer eager-imports every builder (and no longer fails when
+  an SDK-bound builder's module can't import offline — that step's name simply isn't served offline,
+  exactly as the eager ``try/except`` used to leave it ``None``);
+- this module names ZERO builder submodules statically, so the 45 ``builder_*.py`` files can be
+  deleted (Phase E) without editing this file;
+- the import surface and the discovery layer share one synthesis source, so they cannot drift.
+
+Only the framework base class and the S3 utility are imported eagerly (they are not per-step
+builders and have no ``.step.yaml`` row).
 """
 
 import logging
+from typing import List
 
 logger = logging.getLogger(__name__)
 
 from ...core.base.builder_base import StepBuilderBase
-from .builder_active_sample_selection_step import ActiveSampleSelectionStepBuilder
-from .builder_batch_transform_step import BatchTransformStepBuilder
-from .builder_bedrock_batch_processing_step import BedrockBatchProcessingStepBuilder
-from .builder_bedrock_processing_step import BedrockProcessingStepBuilder
-from .builder_bedrock_prompt_template_generation_step import (
-    BedrockPromptTemplateGenerationStepBuilder,
-)
-
-# Import CradleDataLoadingStepBuilder with exception handling
-# This builder depends on secure_ai_sandbox_workflow_python_sdk which may not be available
-try:
-    from .builder_cradle_data_loading_step import CradleDataLoadingStepBuilder
-
-    CRADLE_DATA_LOADING_AVAILABLE = True
-except ImportError as e:
-    logger.warning(
-        "CradleDataLoadingStepBuilder not available. "
-        "This requires secure_ai_sandbox_workflow_python_sdk package. "
-        f"Import error: {e}"
-    )
-    CradleDataLoadingStepBuilder = None
-    CRADLE_DATA_LOADING_AVAILABLE = False
-
-# Import DataUploadingStepBuilder with exception handling
-# This builder depends on secure_ai_sandbox_workflow_python_sdk which may not be available
-try:
-    from .builder_data_uploading_step import DataUploadingStepBuilder
-
-    DATA_UPLOADING_AVAILABLE = True
-except ImportError as e:
-    logger.warning(
-        "DataUploadingStepBuilder not available. "
-        "This requires secure_ai_sandbox_workflow_python_sdk package. "
-        f"Import error: {e}"
-    )
-    DataUploadingStepBuilder = None
-    DATA_UPLOADING_AVAILABLE = False
-
-# Import EdxUploadingStepBuilder
-try:
-    from .builder_edx_uploading_step import EdxUploadingStepBuilder
-
-    EDX_UPLOADING_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"EdxUploadingStepBuilder not available: {e}")
-    EdxUploadingStepBuilder = None
-    EDX_UPLOADING_AVAILABLE = False
-
-from .builder_currency_conversion_step import CurrencyConversionStepBuilder
-from .builder_dummy_data_loading_step import DummyDataLoadingStepBuilder
-from .builder_dummy_training_step import DummyTrainingStepBuilder
-from .builder_feature_selection_step import FeatureSelectionStepBuilder
-from .builder_label_ruleset_execution_step import LabelRulesetExecutionStepBuilder
-from .builder_label_ruleset_generation_step import LabelRulesetGenerationStepBuilder
-from .builder_lightgbm_model_eval_step import LightGBMModelEvalStepBuilder
-from .builder_lightgbm_model_inference_step import LightGBMModelInferenceStepBuilder
-from .builder_lightgbm_training_step import LightGBMTrainingStepBuilder
-from .builder_lightgbmmt_training_step import LightGBMMTTrainingStepBuilder
-from .builder_missing_value_imputation_step import MissingValueImputationStepBuilder
-from .builder_model_calibration_step import ModelCalibrationStepBuilder
-from .builder_model_metrics_computation_step import ModelMetricsComputationStepBuilder
-from .builder_model_wiki_generator_step import ModelWikiGeneratorStepBuilder
-from .builder_percentile_model_calibration_step import (
-    PercentileModelCalibrationStepBuilder,
-)
-from .builder_pytorch_model_eval_step import PyTorchModelEvalStepBuilder
-from .builder_pytorch_model_inference_step import PyTorchModelInferenceStepBuilder
-from .builder_stratified_sampling_step import StratifiedSamplingStepBuilder
-from .builder_xgboost_model_eval_step import XGBoostModelEvalStepBuilder
-from .builder_pytorch_model_step import PyTorchModelStepBuilder
-from .builder_xgboost_model_step import XGBoostModelStepBuilder
-from .builder_package_step import PackageStepBuilder
-from .builder_payload_step import PayloadStepBuilder
-
-# Import RegistrationStepBuilder with exception handling
-# This builder depends on secure_ai_sandbox_workflow_python_sdk which may not be available
-try:
-    from .builder_registration_step import RegistrationStepBuilder
-
-    REGISTRATION_AVAILABLE = True
-except ImportError as e:
-    logger.warning(
-        "RegistrationStepBuilder not available. "
-        "This requires secure_ai_sandbox_workflow_python_sdk package. "
-        f"Import error: {e}"
-    )
-    RegistrationStepBuilder = None
-    REGISTRATION_AVAILABLE = False
-
-from .builder_risk_table_mapping_step import RiskTableMappingStepBuilder
-from .builder_tabular_preprocessing_step import TabularPreprocessingStepBuilder
-from .builder_temporal_sequence_normalization_step import (
-    TemporalSequenceNormalizationStepBuilder,
-)
-from .builder_temporal_feature_engineering_step import (
-    TemporalFeatureEngineeringStepBuilder,
-)
-from .builder_pytorch_training_step import PyTorchTrainingStepBuilder
-from .builder_xgboost_training_step import XGBoostTrainingStepBuilder
 from .s3_utils import S3PathHandler
 
-# Build __all__ list dynamically based on available imports
-__all__ = [
-    # Base class
-    "StepBuilderBase",
-    # Step builders
-    "ActiveSampleSelectionStepBuilder",
-    "BatchTransformStepBuilder",
-    "BedrockBatchProcessingStepBuilder",
-    "BedrockProcessingStepBuilder",
-    "BedrockPromptTemplateGenerationStepBuilder",
-    "CurrencyConversionStepBuilder",
-    "DummyDataLoadingStepBuilder",
-    "DummyTrainingStepBuilder",
-    "FeatureSelectionStepBuilder",
-    "LabelRulesetExecutionStepBuilder",
-    "LabelRulesetGenerationStepBuilder",
-    "LightGBMModelEvalStepBuilder",
-    "LightGBMModelInferenceStepBuilder",
-    "LightGBMTrainingStepBuilder",
-    "LightGBMMTTrainingStepBuilder",
-    "MissingValueImputationStepBuilder",
-    "ModelCalibrationStepBuilder",
-    "ModelMetricsComputationStepBuilder",
-    "ModelWikiGeneratorStepBuilder",
-    "PercentileModelCalibrationStepBuilder",
-    "PyTorchModelEvalStepBuilder",
-    "PyTorchModelInferenceStepBuilder",
-    "StratifiedSamplingStepBuilder",
-    "XGBoostModelEvalStepBuilder",
-    "PyTorchModelStepBuilder",
-    "XGBoostModelStepBuilder",
-    "PackageStepBuilder",
-    "PayloadStepBuilder",
-    "RiskTableMappingStepBuilder",
-    "TabularPreprocessingStepBuilder",
-    "TemporalSequenceNormalizationStepBuilder",
-    "TemporalFeatureEngineeringStepBuilder",
-    "PyTorchTrainingStepBuilder",
-    "XGBoostTrainingStepBuilder",
-    # Utilities
-    "S3PathHandler",
-]
 
-# Add optional builders to __all__ if available
-if CRADLE_DATA_LOADING_AVAILABLE:
-    __all__.append("CradleDataLoadingStepBuilder")
+def _builder_name_to_step_name() -> dict:
+    """Map each registry row's ``builder_step_name`` (``<Name>StepBuilder``) to its canonical step
+    name. The single authority for what builder names this package exposes — derived from the
+    interface-derived registry, so it tracks the ``.step.yaml`` files (and survives their deletion).
+    """
+    from ...registry.step_names import get_step_names
 
-if REGISTRATION_AVAILABLE:
-    __all__.append("RegistrationStepBuilder")
+    mapping = {}
+    for step_name, info in get_step_names().items():
+        builder_step_name = info.get("builder_step_name")
+        if builder_step_name:
+            mapping[builder_step_name] = step_name
+    return mapping
 
-if DATA_UPLOADING_AVAILABLE:
-    __all__.append("DataUploadingStepBuilder")
 
-if EDX_UPLOADING_AVAILABLE:
-    __all__.append("EdxUploadingStepBuilder")
+def __getattr__(name: str):
+    """PEP-562 lazy attribute access: resolve a ``<Name>StepBuilder`` to its class on demand.
+
+    Routes through ``StepCatalog.load_builder_class`` (the same path the assembler uses), so it
+    returns the physical builder class when ``builder_*.py`` exists and the synthesized declarative
+    shell when it does not. Raises ``AttributeError`` for unknown names (the contract Python expects
+    from a module ``__getattr__``) and for a builder that legitimately can't be loaded here (e.g. an
+    SDK-bound builder offline) — mirroring the old eager ``try/except`` that left such names ``None``
+    in ``__all__`` rather than importable.
+    """
+    builder_to_step = _builder_name_to_step_name()
+    step_name = builder_to_step.get(name)
+    if step_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    from ...step_catalog.step_catalog import StepCatalog
+
+    builder_cls = StepCatalog().load_builder_class(step_name)
+    if builder_cls is None:
+        # Loadable name, but not available in this environment (e.g. SDK-bound builder offline).
+        raise AttributeError(
+            f"{name!r} maps to step {step_name!r} but its builder could not be loaded in this "
+            f"environment (e.g. the SAIS SDK is absent)."
+        )
+    return builder_cls
+
+
+def __dir__() -> List[str]:
+    """Advertise ALL known builder names in ``dir()`` / autocomplete (no resolution forced)."""
+    return sorted(list(globals().keys()) + list(_builder_name_to_step_name().keys()))
+
+
+def _resolvable_builder_names() -> List[str]:
+    """Builder names whose class actually loads in THIS environment — the correct ``__all__`` set.
+
+    Mirrors the legacy behavior exactly: the old ``__init__`` left SDK-bound builder names OUT of
+    ``__all__`` when their module couldn't import (so ``from . import *`` skipped them). We reproduce
+    that by including only names ``StepCatalog.load_builder_class`` resolves (the physical class when
+    the file exists, the synthesized shell otherwise), which is the 41 native steps offline and all
+    45 in the SAIS env. One cached discovery pass at import — the same work the old eager imports did.
+    """
+    from ...step_catalog.step_catalog import StepCatalog
+
+    catalog = StepCatalog()
+    resolvable = []
+    for builder_name, step_name in _builder_name_to_step_name().items():
+        try:
+            if catalog.load_builder_class(step_name) is not None:
+                resolvable.append(builder_name)
+        except Exception:
+            continue
+    return sorted(resolvable)
+
+
+# __all__ is derived from the registry + actual loadability so ``from cursus.steps.builders import *``
+# and tooling that reads __all__ keep working AND never trip over an unavailable (e.g. offline-SDK)
+# builder — exactly the legacy conditional-__all__ behavior, now data-driven. The names are still
+# resolved lazily by __getattr__; this just bounds the star-import / introspection surface.
+__all__ = ["StepBuilderBase", "S3PathHandler"] + _resolvable_builder_names()

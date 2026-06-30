@@ -121,6 +121,15 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
     # ===== System Fields with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
 
+    # job_type is REQUIRED by the script (currency_conversion.py argparse `--job_type required=True`,
+    # choices training|validation|testing|calibration). Added (FZ 31e1d3f1b follow-up) so
+    # get_job_arguments() actually emits --job_type — without this field the step failed at container
+    # argparse. Defaulted (like RiskTableMappingConfig) so no existing caller breaks.
+    job_type: str = Field(
+        default="training",
+        description="Type of job to perform. One of 'training', 'validation', 'testing', 'calibration'",
+    )
+
     processing_entry_point: str = Field(
         default="currency_conversion.py",
         description="Entry point script for currency conversion",
@@ -157,8 +166,19 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
         Returns:
             Dictionary of environment variables
         """
+        return self.get_environment_variables()
+
+    def get_environment_variables(
+        self, declared_env_vars: Optional[List[str]] = None
+    ) -> Dict[str, str]:
+        """Generate the currency-conversion env vars (the single env source; FZ 31e1d3g).
+
+        ``declared_env_vars`` is accepted for the builder's names-driven contract but ignored —
+        these values are all computed (JSON-encoded conversion vars/dict), so this config returns
+        its full computed env dict regardless of the declared name set.
+        """
         if self._environment_variables is None:
-            env_vars = {
+            self._environment_variables = {
                 "CURRENCY_CONVERSION_VARS": json.dumps(self.currency_conversion_vars),
                 "CURRENCY_CONVERSION_DICT": json.dumps(
                     self.currency_conversion_dict.model_dump()
@@ -168,8 +188,6 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
                 "DEFAULT_CURRENCY": self.default_currency,
                 "N_WORKERS": str(self.n_workers),
             }
-            self._environment_variables = env_vars
-
         return self._environment_variables
 
     # ===== Validators =====
@@ -186,6 +204,17 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
             dup = [x for x in v if v.count(x) > 1]
             raise ValueError(f"Duplicate vars in currency_conversion_vars: {dup}")
         return v
+
+    @field_validator("job_type")
+    @classmethod
+    def validate_job_type(cls, v: str) -> str:
+        """Validate job_type is lowercase alphanumeric (with underscores) — matches the peers'
+        validator (RiskTableMapping/Tabular) and the script's choices."""
+        if not v.replace("_", "").isalnum() or v != v.lower():
+            raise ValueError(
+                f"job_type must be lowercase alphanumeric (with underscores), got {v}"
+            )
+        return v.lower()
 
     @field_validator("processing_entry_point")
     @classmethod
@@ -263,3 +292,7 @@ class CurrencyConversionConfig(ProcessingStepConfigBase):
         data["environment_variables"] = self.environment_variables
 
         return data
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

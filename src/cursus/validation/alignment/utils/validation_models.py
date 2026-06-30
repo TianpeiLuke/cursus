@@ -348,15 +348,15 @@ def group_issues_by_method(
 def format_validation_summary(summary: ValidationSummary) -> str:
     """Format validation summary as a readable string."""
     lines = [
-        f"Validation Summary:",
+        "Validation Summary:",
         f"  Total Steps: {summary.total_steps}",
         f"  Passed: {summary.passed_steps}",
         f"  Failed: {summary.failed_steps}",
         f"  Excluded: {summary.excluded_steps}",
         f"  Errors: {summary.error_steps}",
         f"  Success Rate: {summary.success_rate:.1%}",
-        f"",
-        f"Issues:",
+        "",
+        "Issues:",
         f"  Total: {summary.total_issues}",
         f"  Errors: {summary.total_errors}",
         f"  Warnings: {summary.total_warnings}",

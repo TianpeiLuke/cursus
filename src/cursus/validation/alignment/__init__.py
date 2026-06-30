@@ -21,9 +21,8 @@ Consolidated Structure (Post Phase 4):
 # Main orchestrator
 from .unified_alignment_tester import UnifiedAlignmentTester
 
-# Core alignment testers
+# Core alignment testers (Level-2 contract<->spec removed — construction invariant; FZ 31e1d3h/D5)
 from .core.script_contract_alignment import ScriptContractAlignmentTester
-from .core.contract_spec_alignment import ContractSpecificationAlignmentTester
 from .core.spec_dependency_alignment import SpecificationDependencyAlignmentTester
 
 # Remaining validators
@@ -58,7 +57,6 @@ __all__ = [
     "UnifiedAlignmentTester",
     # Core alignment testers
     "ScriptContractAlignmentTester",
-    "ContractSpecificationAlignmentTester",
     "SpecificationDependencyAlignmentTester",
     # Remaining validators
     "DependencyValidator",

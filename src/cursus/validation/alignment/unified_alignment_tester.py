@@ -20,9 +20,7 @@ from pathlib import Path
 from .config import (
     ValidationLevel,
     get_validation_ruleset,
-    get_enabled_validation_levels,
     is_step_type_excluded,
-    is_validation_level_enabled,
     validate_step_type_configuration,
 )
 from .core.level_validators import LevelValidators
@@ -208,8 +206,6 @@ class UnifiedAlignmentTester:
         try:
             if level == ValidationLevel.SCRIPT_CONTRACT:
                 return self.level_validators.run_level_1_validation(step_name)
-            elif level == ValidationLevel.CONTRACT_SPEC:
-                return self.level_validators.run_level_2_validation(step_name)
             elif level == ValidationLevel.SPEC_DEPENDENCY:
                 return self.level_validators.run_level_3_validation(
                     step_name
@@ -443,7 +439,7 @@ class UnifiedAlignmentTester:
             report_content = json.dumps(summary, indent=2, default=str)
         else:
             # Enhanced text format with step type breakdown
-            report_content = f"Enhanced Validation Summary:\n"
+            report_content = "Enhanced Validation Summary:\n"
             report_content += f"Total Steps: {summary['total_steps']}\n"
             report_content += f"Passed: {summary['passed_steps']}\n"
             report_content += f"Failed: {summary['failed_steps']}\n"

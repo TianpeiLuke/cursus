@@ -1,6 +1,24 @@
 step_type: DummyDataLoading
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Dummy data loading step that processes user-provided data instead of calling Cradle services
+patterns:
+  include_job_type_in_path: false   # FZ 31e1d3f1b: the script never reads --job_type and there are no
+                                    # variants, so the job_type path segment was unused noise. The path
+                                    # move (.../dummy_data_loading/<job_type>/<name> → .../<name>) is
+                                    # SAFE — VERIFIED 2026-06-28: every downstream consumer wires via the
+                                    # runtime Properties ref (ProcessingOutputConfig.Outputs[*].S3Output
+                                    # .S3Uri), which auto-follows the producer's destination; zero
+                                    # hardcoded literal-path consumers in-repo; the script writes to fixed
+                                    # /opt/ml/processing/output/* container paths; edge-graph snapshot green.
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
+  framework_version_default: 1.2-1
 contract:
+  input_source_overrides:
+    INPUT_DATA: get_data_source_uri
   entry_point: dummy_data_loading.py
   inputs:
     INPUT_DATA:

@@ -10,7 +10,7 @@ Fields are organized into three tiers:
 """
 
 from pydantic import Field, model_validator
-from typing import Dict, List, Any, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
@@ -313,3 +313,7 @@ class LightGBMMTModelEvalConfig(ProcessingStepConfigBase):
         init_fields = {**base_fields, **eval_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

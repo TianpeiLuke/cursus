@@ -1,6 +1,12 @@
 step_type: DataUploading
 node_type: sink
+registry:
+  sagemaker_step_type: Processing
+  requires: secure_ai_sandbox_workflow_python_sdk  # create_step: builder imports DataUploadingStep at module level (hard, fatal-on-load if SDK absent)
+  description: Upload processed data to BDT (EDX/Andes) via SAIS SDK delegation
 
+patterns:
+  step_assembly: delegation  # routes to SDKDelegationHandler (the blueprint axis)
 contract:
   entry_point: scripts.py
   inputs:

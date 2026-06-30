@@ -1,5 +1,12 @@
 step_type: BatchTransform
 node_type: internal
+registry:
+  sagemaker_step_type: Transform
+  config_class: BatchTransformStepConfig  # breaks the <Name>Config convention; declared here so the
+  # registry derivation needs no Python override (FZ 31e1d3g3 C3, #25 — mirrors pytorch_model/xgboost_model)
+  description: Batch transform step
+compute:
+  kind: transformer                  # image-less Transformer (model_name + output_path threaded in)
 contract:
   entry_point: null
   inputs:
@@ -25,8 +32,8 @@ spec:
       type: custom_property
       required: true
       compatible_sources:
-      - PytorchModel
-      - XgboostModel
+      - PyTorchModel
+      - XGBoostModel
       semantic_keywords:
       - model
       - name

@@ -1,5 +1,16 @@
 step_type: LightGBMModelInference
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: LightGBM model inference step for prediction generation without metrics
+patterns:
+  step_assembly: step_args
+  include_job_type_in_path: false
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
 contract:
   entry_point: lightgbm_model_inference.py
   inputs:
@@ -13,6 +24,9 @@ contract:
     eval_output:
       path: /opt/ml/processing/output/eval
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - ID_FIELD

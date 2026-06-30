@@ -10,17 +10,14 @@ the optimized implementation in src.config_field_manager while maintaining
 backward compatibility with existing code.
 """
 
-from typing import List, Dict, Any, Type, Set, Optional, Tuple, Union
+from typing import List, Dict, Any, Type, Optional
 import logging
 import os
 import json
-from datetime import datetime
-from pathlib import Path
 from enum import Enum
 from pydantic import BaseModel
 from collections import defaultdict
 
-from ...core.base.config_base import BasePipelineConfig
 from .config_processing_step_base import ProcessingStepConfigBase
 
 # Import from the advanced implementation
@@ -29,10 +26,7 @@ from .config_processing_step_base import ProcessingStepConfigBase
 from ...core.config_fields import (
     merge_and_save_configs as new_merge_and_save_configs,
     load_configs as new_load_configs,
-    serialize_config as new_serialize_config,
-    deserialize_config as new_deserialize_config,
     ConfigClassStore,
-    register_config_class,
 )
 
 # Import the config class detector for efficient class detection
@@ -53,7 +47,7 @@ except ImportError:
 
 
 # Constants for the simplified categorization model
-from enum import Enum, auto
+from enum import auto
 
 
 class CategoryType(Enum):
@@ -63,7 +57,6 @@ class CategoryType(Enum):
 
 from ...core.config_fields.type_aware_config_serializer import (
     serialize_config as new_serialize_config,
-    deserialize_config,
     TypeAwareConfigSerializer,
 )
 

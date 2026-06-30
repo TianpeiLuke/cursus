@@ -159,3 +159,26 @@ class EdxUploadingConfig(ProcessingStepConfigBase):
             f"arn:amazon:edx:iad::manifest/"
             f"{self.edx_provider}/{self.edx_subject}/{self.edx_dataset}"
         )
+
+    def get_environment_variables(
+        self, declared_env_vars: Optional[List[str]] = None
+    ) -> Dict[str, str]:
+        """EDX-upload env vars (the single env source; moved here from the builder, FZ 31e1d3g).
+
+        Bespoke values (constant regional-endpoint flag, computed edx_arn_base, JSON-encoded
+        manifest-key-parts / output-columns), so this returns the full env dict; ``declared_env_vars``
+        is accepted for the builder's names-driven contract but ignored.
+        """
+        import json
+
+        env_vars: Dict[str, str] = {
+            "AWS_STS_REGIONAL_ENDPOINTS": "regional",
+            "AWS_DEFAULT_REGION": self.aws_region or "us-east-1",
+            "EDX_DATASET_ARN": self.edx_arn_base,
+            "EDX_MANIFEST_KEY": self.edx_manifest_key,
+        }
+        if self.edx_manifest_key_parts:
+            env_vars["EDX_MANIFEST_KEY_PARTS"] = json.dumps(self.edx_manifest_key_parts)
+        if self.edx_output_columns:
+            env_vars["EDX_OUTPUT_COLUMNS"] = json.dumps(self.edx_output_columns)
+        return env_vars

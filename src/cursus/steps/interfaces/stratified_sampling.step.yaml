@@ -1,5 +1,13 @@
 step_type: StratifiedSampling
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Stratified sampling step with multiple allocation strategies for class imbalance, causal analysis, and variance optimization
+patterns:
+  direct_input_keys: [processed_data, DATA, METADATA, SIGNATURE]
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
 contract:
   entry_point: stratified_sampling.py
   inputs:
@@ -10,6 +18,9 @@ contract:
     processed_data:
       path: /opt/ml/processing/output
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - STRATA_COLUMN

@@ -435,7 +435,11 @@ class PipelineDAGCompiler:
                             config_type
                         )
                         if builder_class:
-                            config_builder_map[config_type] = builder_class.__name__
+                            # getattr-guard: under Design-B a provider callable may lack __name__
+                            # (FZ 31e1d3g1 Phase 0). A class still has it → identical output today.
+                            config_builder_map[config_type] = getattr(
+                                builder_class, "__name__", str(builder_class)
+                            )
                         else:
                             config_builder_map[config_type] = "UNKNOWN"
                     except Exception:

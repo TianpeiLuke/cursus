@@ -30,18 +30,22 @@ _validation_stats = {
 
 # Essential validation patterns (simplified)
 PASCAL_CASE_PATTERN = re.compile(r"^[A-Z][a-zA-Z0-9]*$")
-VALID_SAGEMAKER_TYPES = {
-    "Processing",
-    "Training",
-    "Transform",
-    "CreateModel",
-    "RegisterModel",
-    "Base",
-    "Utility",
-    "Lambda",
-    "CradleDataLoading",
-    "MimsModelRegistrationProcessing",
-}
+
+
+def _valid_sagemaker_types() -> set:
+    """The valid SageMaker step types — single source (FZ 31e1d3g3 Phase C3, #12).
+
+    Lazily imported from ``step_names`` (which imports THIS module at load, so the dependency must
+    not be module-level) so there is ONE definition: live types from every ``.step.yaml`` unioned
+    with the framework floor. Replaces the formerly-divergent hardcoded ``VALID_SAGEMAKER_TYPES``.
+    Falls back to the floor alone if the registry can't be imported (defensive; should not happen).
+    """
+    try:
+        from .step_names import get_valid_sagemaker_step_types
+
+        return get_valid_sagemaker_step_types()
+    except Exception:
+        return {"Base", "Utility", "RegisterModel", "Lambda"}
 
 
 def validate_new_step_definition(step_data: Dict[str, Any]) -> List[str]:
@@ -105,8 +109,9 @@ def validate_new_step_definition(step_data: Dict[str, Any]) -> List[str]:
 
     # Validate SageMaker step type
     sagemaker_type = step_data.get("sagemaker_step_type", "")
-    if sagemaker_type and sagemaker_type not in VALID_SAGEMAKER_TYPES:
-        valid_types_str = ", ".join(sorted(VALID_SAGEMAKER_TYPES))
+    valid_sagemaker_types = _valid_sagemaker_types()
+    if sagemaker_type and sagemaker_type not in valid_sagemaker_types:
+        valid_types_str = ", ".join(sorted(valid_sagemaker_types))
         errors.append(
             f"SageMaker step type '{sagemaker_type}' is invalid. "
             f"Valid types: {valid_types_str}"

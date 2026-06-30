@@ -1,5 +1,11 @@
 step_type: LabelRulesetExecution
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Label ruleset execution step that applies validated rulesets to processed data to generate classification labels using priority-based rule evaluation with execution-time field validation
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
 contract:
   entry_point: label_ruleset_execution.py
   inputs:
@@ -15,6 +21,9 @@ contract:
     execution_report:
       path: /opt/ml/processing/output/execution_report
   arguments: {}
+  job_arguments:
+  - flag: --job-type
+    source: job_type
   env_vars:
     required: []
     optional:

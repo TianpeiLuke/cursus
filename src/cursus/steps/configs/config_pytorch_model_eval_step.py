@@ -187,8 +187,8 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
         # Warn if streaming enabled but no workers
         if self.enable_true_streaming and self.num_workers_per_rank == 0:
             logger.warning(
-                f"⚠️  WARNING: enable_true_streaming=True but num_workers_per_rank=0. "
-                f"Consider increasing for better parallel I/O performance."
+                "⚠️  WARNING: enable_true_streaming=True but num_workers_per_rank=0. "
+                "Consider increasing for better parallel I/O performance."
             )
 
         # Warn about high prefetch factor (only check if not None)
@@ -346,3 +346,7 @@ class PyTorchModelEvalConfig(ProcessingStepConfigBase):
         init_fields = {**base_fields, **eval_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

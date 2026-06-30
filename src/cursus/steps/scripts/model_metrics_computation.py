@@ -494,11 +494,17 @@ def validate_prediction_columns(
         validation_report["errors"].append(f"Missing label fields: {missing_labels}")
         validation_report["is_valid"] = False
 
-    # Generate data summary for multi-task
+    # Generate data summary for multi-task. Include prediction_columns + has_amount_data so the
+    # shape matches the single-task summary (validate_prediction_data) — the report-writer
+    # (generate_text_summary) reads data_summary['prediction_columns'] unconditionally, so the
+    # multi-task path must populate it too (its analog is the score columns; multi-task carries no
+    # amount field, so has_amount_data is False).
     validation_report["data_summary"] = {
         "total_records": len(df),
         "score_columns": score_fields,
         "label_columns": label_fields,
+        "prediction_columns": score_fields,
+        "has_amount_data": False,
     }
 
     # Log results
@@ -1508,7 +1514,11 @@ def plot_score_distributions(
     box_labels = ["Prev (Neg)", "New (Neg)", "Prev (Pos)", "New (Pos)"]
     box_colors = ["lightcoral", "lightcoral", "lightblue", "lightblue"]
 
-    bp = axes[1, 1].boxplot(box_data, labels=box_labels, patch_artist=True)
+    # Set tick labels AFTER plotting rather than via a boxplot kwarg: matplotlib renamed the
+    # `labels` kwarg to `tick_labels` in 3.9 and removed `labels` in 3.11, so passing it raises
+    # TypeError. set_xticklabels is stable across versions.
+    bp = axes[1, 1].boxplot(box_data, patch_artist=True)
+    axes[1, 1].set_xticklabels(box_labels)
     for patch, color in zip(bp["boxes"], box_colors):
         patch.set_facecolor(color)
         patch.set_alpha(0.7)
@@ -1535,15 +1545,16 @@ def generate_text_summary(json_report: Dict[str, Any]) -> str:
     summary.append(f"Generated: {json_report['timestamp']}")
     summary.append("")
 
-    # Data summary
+    # Data summary. Use .get() defaults so the report never crashes on a summary variant that omits
+    # a key (the single-task and multi-task validators build slightly different shapes).
     data_summary = json_report["data_summary"]
     summary.append("DATA SUMMARY")
     summary.append("-" * 20)
-    summary.append(f"Total Records: {data_summary['total_records']}")
+    summary.append(f"Total Records: {data_summary.get('total_records', 'N/A')}")
     summary.append(
-        f"Prediction Columns: {', '.join(data_summary['prediction_columns'])}"
+        f"Prediction Columns: {', '.join(data_summary.get('prediction_columns', []))}"
     )
-    summary.append(f"Has Amount Data: {data_summary['has_amount_data']}")
+    summary.append(f"Has Amount Data: {data_summary.get('has_amount_data', False)}")
     summary.append("")
 
     # Standard metrics

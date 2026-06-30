@@ -1,7 +1,19 @@
 step_type: TokenizerTraining
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: BPE tokenizer training step for customer name data with automatic vocabulary size tuning
+patterns:
+  step_assembly: step_args
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
 contract:
+  include_job_type_in_path: false
   entry_point: tokenizer_training.py
+  source_dir: true
   inputs:
     input_data:
       path: /opt/ml/processing/input
@@ -10,6 +22,9 @@ contract:
     model_artifacts_output:
       path: /opt/ml/processing/output
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - TEXT_FIELD

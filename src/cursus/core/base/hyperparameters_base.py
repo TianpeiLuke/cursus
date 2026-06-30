@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, model_validator, PrivateAttr, ConfigDict
-from typing import List, Union, Dict, Any, Optional, ClassVar
+from typing import List, Union, Dict, Any, Optional
 import json
 from io import StringIO
 

@@ -257,7 +257,10 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                             config, node_name=node
                         )
                         if builder_class:
-                            self.logger.debug(f"  {node} → {builder_class.__name__}")
+                            # getattr-guard for a future provider callable (FZ 31e1d3g1 Phase 0)
+                            self.logger.debug(
+                                f"  {node} → {getattr(builder_class, '__name__', builder_class)}"
+                            )
                         else:
                             missing_builders.append(f"{node} ({type(config).__name__})")
                     except Exception as e:

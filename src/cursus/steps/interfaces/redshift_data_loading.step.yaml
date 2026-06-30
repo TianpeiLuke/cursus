@@ -1,7 +1,12 @@
 step_type: RedshiftDataLoading
 node_type: source
+registry:
+  sagemaker_step_type: RedshiftDataLoading
+  requires: secure_ai_sandbox_workflow_python_sdk  # create_step: builder imports RedshiftDataLoadingStep at module level (hard, fatal-on-load if SDK absent)
+  description: Redshift SQL data loading step (source node with optional EDX upload)
 contract:
   entry_point: redshift_data_loading.py
+  runtime_requires: [secure_ai_sandbox_python_lib]  # runtime: script imports secure_ai_sandbox_python_lib.session.Session (in-container only, NOT a build-time dep)
   inputs: {}
   outputs:
     output:
@@ -9,9 +14,7 @@ contract:
   arguments: {}
   env_vars:
     required: []
-    optional:
-      AWS_DEFAULT_REGION: us-east-1
-      AWS_STS_REGIONAL_ENDPOINTS: regional
+    optional: {}
   framework_requirements:
     boto3: '>=1.26.0'
     pandas: '>=1.2.0'

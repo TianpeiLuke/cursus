@@ -536,11 +536,13 @@ class PipelineDAGResolver:
                 # Check component availability
                 missing_components = []
 
-                # Check builder availability
-                if not step_info.file_components.get("builder"):
-                    builder_class = self.step_catalog.load_builder_class(step_name)
-                    if not builder_class:
-                        missing_components.append("builder")
+                # Check builder availability as a registry/interface FACT, not a file fact (FZ
+                # 31e1d3g3 D4): a step is buildable iff its registry row routes to a handler. Using
+                # has_builder_provider (import-free) instead of file presence / load_builder_class
+                # keeps fileless-but-routable steps (the factory-shell end-state) and SDK-bound steps
+                # (offline) reported as available, while still flagging genuinely-absent rows.
+                if not self.step_catalog.has_builder_provider(step_name):
+                    missing_components.append("builder")
 
                 # Check contract availability
                 if not step_info.file_components.get("contract"):

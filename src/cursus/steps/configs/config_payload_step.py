@@ -182,6 +182,27 @@ class PayloadConfig(ProcessingStepConfigBase):
         # No additional derived fields to initialize for PayloadConfig
         return self
 
+    def _env_overrides(self) -> Dict[str, Optional[str]]:
+        """Computed env values for the payload script (FZ 31e1d3g) — these declared env vars are
+        not plain field passthroughs: CONTENT_TYPES is comma-joined, FIELD_DEFAULTS is JSON. The
+        base resolver consumes this map for the names the interface declares; ``None`` omits a key
+        (matches the builder's original conditional-add for an empty field_defaults)."""
+        import json
+
+        overrides: Dict[str, Optional[str]] = {
+            "CONTENT_TYPES": ",".join(self.source_model_inference_content_types),
+            "DEFAULT_NUMERIC_VALUE": str(self.default_numeric_value),
+            "DEFAULT_TEXT_VALUE": str(self.default_text_value),
+            "FIELD_DEFAULTS": json.dumps(self.field_defaults) if self.field_defaults else None,
+        }
+        return overrides
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h). Custom passthrough or None."""
+        if getattr(self, "processing_script_arguments", None):
+            return list(self.processing_script_arguments)
+        return None
+
     # Removed validate_special_fields validator since it referenced the removed variable list fields
     # Special field validation is no longer needed since the script gets variables from hyperparameters
     # and special_field_values is optional with proper defaults

@@ -8,7 +8,7 @@ After Phase 6 refactor: Hyperparameters are now embedded in the source directory
 eliminating the need for S3 upload logic and hyperparameters_s3_uri field.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 from pydantic import Field, model_validator, field_validator, PrivateAttr
 import logging
 
@@ -162,3 +162,7 @@ class RiskTableMappingConfig(ProcessingStepConfigBase):
             raise ValueError("count_threshold must be non-negative")
 
         return self
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

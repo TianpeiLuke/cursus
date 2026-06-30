@@ -1,11 +1,22 @@
 step_type: XGBoostTraining
 node_type: internal
+registry:
+  sagemaker_step_type: Training
+  description: XGBoost model training step
+patterns:
+  direct_input_keys: [input_path]
+compute:
+  kind: estimator
+  sdk_class: XGBoost
+  framework_version_field: framework_version
+  py_version_field: py_version
 contract:
   entry_point: xgboost_training.py
   inputs:
     input_path:
       path: /opt/ml/input/data
       required: true
+      channels: [train, val, test]
     hyperparameters_s3_uri:
       path: /opt/ml/code/hyperparams/hyperparameters.json
       required: false
@@ -18,6 +29,9 @@ contract:
     evaluation_output:
       path: /opt/ml/output/data
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required: []
     optional:

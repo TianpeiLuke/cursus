@@ -1001,6 +1001,16 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
 
         return init_fields
 
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h). Boolean flags + template version."""
+        args: List[str] = []
+        if self.include_examples:
+            args.append("--include-examples")
+        if self.generate_validation_schema:
+            args.append("--generate-validation-schema")
+        args.extend(["--template-version", self.template_version])
+        return args or None
+
 
 def load_categories_from_json(json_data: str) -> CategoryDefinitionList:
     """

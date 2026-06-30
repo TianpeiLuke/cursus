@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Type, Any, Union
 
-from .models import StepInfo, FileMetadata, StepSearchResult
+from .models import StepInfo, FileMetadata, StepSearchResult, BuilderProvider
 from .mapping import StepCatalogMapper, PipelineConstructionInterface
 
 # Type hints for discovery components - all handled symmetrically
@@ -565,7 +565,8 @@ class StepCatalog:
 
                 if builder_class:
                     self.logger.debug(
-                        f"Successfully loaded builder class for {step_name}: {builder_class.__name__}"
+                        f"Successfully loaded builder class for {step_name}: "
+                        f"{getattr(builder_class, '__name__', builder_class)}"
                     )
                     return builder_class
 
@@ -583,7 +584,8 @@ class StepCatalog:
 
                     if builder_class:
                         self.logger.info(
-                            f"Successfully loaded builder class using base name '{base_step_name}' for '{step_name}': {builder_class.__name__}"
+                            f"Successfully loaded builder class using base name '{base_step_name}' "
+                            f"for '{step_name}': {getattr(builder_class, '__name__', builder_class)}"
                         )
                         return builder_class
 
@@ -598,6 +600,85 @@ class StepCatalog:
         except Exception as e:
             self.logger.error(f"Error loading builder class for {step_name}: {e}")
             return None
+
+    def has_builder_provider(self, step_name: str) -> bool:
+        """Whether a step has a buildable builder, WITHOUT importing/instantiating it (FZ 31e1d3g3 D4).
+
+        This is a ROUTABILITY check answered from declarative data — the registry's
+        ``sagemaker_step_type`` (+ the ``.step.yaml`` ``patterns.step_assembly``) must resolve to a
+        real ``PatternHandler``. It does NOT call ``load_builder_class`` (which would import the
+        builder module — and fail for an SDK-bound builder offline even though the step is perfectly
+        routable). So it stays True for a fileless-but-routable step (the factory-shell end-state) and
+        for the SDK steps offline, and False only for genuinely-absent or non-routable rows
+        (Base/Lambda/unknown). Used by the DAG resolver's component-availability check, which must not
+        encode the deleted-``builder_*.py``-file assumption.
+
+        Args:
+            step_name: Canonical step name (job-type variants strip to the base name).
+
+        Returns:
+            True iff the step's registry row routes to a construction handler.
+        """
+        base_step_name = step_name.rsplit("_", 1)[0] if "_" in step_name else step_name
+        try:
+            from ..registry.step_names import get_sagemaker_step_type
+            from ..core.base.builder_templates import resolve_handler, NoBuilderError
+            from ..steps.interfaces import load_interface
+
+            sm_type = get_sagemaker_step_type(base_step_name)
+            if not sm_type:
+                return False
+            step_assembly = None
+            try:
+                iface = load_interface(base_step_name)
+                step_assembly = getattr(
+                    getattr(iface, "patterns", None), "step_assembly", None
+                )
+            except Exception:
+                pass  # no interface → rely on sm_type alone (resolve_handler still decides)
+
+            try:
+                resolve_handler(sm_type, step_assembly)
+                return True
+            except NoBuilderError:
+                return False
+        except Exception as e:
+            self.logger.debug(
+                f"has_builder_provider({step_name}) could not resolve: {e}"
+            )
+            return False
+
+    def get_sdk_output_location(
+        self, built_step: Any, output_type: Optional[str] = None
+    ) -> Any:
+        """Read the output S3 location(s) off a BUILT SDK-delegation step (FZ 31e1d3i).
+
+        A generic, DUCK-TYPED accessor for the MODSPredefinedProcessingStep family: any built SDK
+        step that exposes ``get_output_locations`` (the SAIS contract) is supported — CradleDataLoadingStep
+        returns a ``{DATA, SIGNATURE, METADATA}`` dict (or one entry when ``output_type`` is given),
+        DataUploadingStep returns ``None`` (a SINK — output goes to Andes/EDX), and a step lacking the
+        method (e.g. RedshiftDataLoadingStep) returns ``None``. This REPLACES the per-step
+        ``get_output_location`` / ``get_step_outputs`` helpers the cradle builder used to carry (so that
+        builder becomes a pure shell). It reads a method off an ALREADY-CONSTRUCTED step instance, so it
+        introduces NO offline SAIS import — the SAIS class was necessarily importable to build the step.
+
+        Args:
+            built_step: A step object produced by an SDK-delegation builder's ``create_step``.
+            output_type: Optional SAIS output type (e.g. ``"DATA"``); ``None`` returns all locations.
+
+        Returns:
+            The step's output location(s) as the SDK reports them, or ``None`` if the step does not
+            expose ``get_output_locations``.
+        """
+        getter = getattr(built_step, "get_output_locations", None)
+        if not callable(getter):
+            self.logger.debug(
+                f"{type(built_step).__name__} exposes no get_output_locations; returning None"
+            )
+            return None
+        # The SAIS get_output_locations validates output_type itself (raises ValueError on an unknown
+        # type for cradle); pass it through only when provided so the SDK owns its own contract.
+        return getter(output_type) if output_type is not None else getter()
 
     def load_contract_class(self, step_name: str) -> Optional[Any]:
         """
@@ -1501,33 +1582,39 @@ class StepCatalog:
         return None
 
     # PHASE 1 ENHANCEMENT: Config-to-Builder Resolution (delegated to mapping module)
-    def get_builder_for_config(self, config, node_name: str = None) -> Optional[Type]:
+    def get_builder_for_config(
+        self, config, node_name: str = None
+    ) -> Optional[BuilderProvider]:
         """
-        Map config instance directly to builder class.
+        Map a config instance to a builder PROVIDER (the thing the assembler calls with its
+        5-kwarg signature to get a StepBuilderBase).
 
-        This method replaces StepBuilderRegistry.get_builder_for_config() functionality
-        while using the registry system as Single Source of Truth.
+        Returns a ``BuilderProvider`` (FZ 31e1d3g1 Phase 1): TODAY this is the per-step builder
+        CLASS (a class is already such a callable), so behavior is unchanged. The annotation is
+        provider-based so the classless Design-B end-state can return a non-class factory here
+        without breaking the contract — callers must invoke the result, never assume it is a class.
 
         Args:
             config: Configuration instance (BasePipelineConfig)
             node_name: Optional DAG node name for context
 
         Returns:
-            Builder class type or None if not found
+            A builder provider (currently a builder class) or None if not found.
         """
         return self.mapper.get_builder_for_config(config, node_name)
 
-    def get_builder_for_step_type(self, step_type: str) -> Optional[Type]:
+    def get_builder_for_step_type(self, step_type: str) -> Optional[BuilderProvider]:
         """
-        Get builder class for step type with legacy alias support.
+        Get the builder PROVIDER for a step type, with legacy alias support.
 
-        This method replaces StepBuilderRegistry.get_builder_for_step_type() functionality.
+        Returns a ``BuilderProvider`` (FZ 31e1d3g1 Phase 1) — currently the builder class; see
+        ``get_builder_for_config`` for the dual-mode contract.
 
         Args:
             step_type: Step type name (may be legacy alias)
 
         Returns:
-            Builder class type or None if not found
+            A builder provider (currently a builder class) or None if not found.
         """
         return self.mapper.get_builder_for_step_type(step_type)
 

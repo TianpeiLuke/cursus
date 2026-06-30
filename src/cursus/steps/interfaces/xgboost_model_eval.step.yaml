@@ -1,6 +1,15 @@
 step_type: XGBoostModelEval
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: XGBoost model evaluation step
+patterns:
+  step_assembly: step_args
+compute:
+  kind: xgboost
+  framework_version_field: xgboost_framework_version
 contract:
+  include_job_type_in_path: false
   entry_point: xgboost_model_eval.py
   inputs:
     model_input:
@@ -15,6 +24,9 @@ contract:
     metrics_output:
       path: /opt/ml/processing/output/metrics
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - ID_FIELD

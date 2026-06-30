@@ -1,5 +1,14 @@
 step_type: Payload
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Payload testing step
+patterns:
+  include_job_type_in_path: false
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
+  framework_version_default: 1.0-1
 contract:
   entry_point: payload.py
   inputs:

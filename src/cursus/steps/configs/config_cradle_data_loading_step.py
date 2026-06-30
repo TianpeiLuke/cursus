@@ -3,7 +3,6 @@
 from typing import List, Optional, Dict, Any, Set
 import re
 from datetime import datetime
-from pathlib import Path
 from pydantic import (
     BaseModel,
     Field,
@@ -784,7 +783,7 @@ class OutputSpecificationConfig(BaseCradleComponentConfig):
     def validate_job_type(cls, v: str) -> str:
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -909,7 +908,7 @@ class CradleDataLoadingConfig(BasePipelineConfig):
     def validate_job_type(cls, v: str) -> str:
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 

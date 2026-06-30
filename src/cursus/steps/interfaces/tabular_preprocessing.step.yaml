@@ -1,5 +1,13 @@
 step_type: TabularPreprocessing
 node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Tabular data preprocessing step
+patterns:
+  direct_input_keys: [DATA, METADATA, SIGNATURE]
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
 contract:
   entry_point: tabular_preprocessing.py
   inputs:
@@ -16,6 +24,9 @@ contract:
     processed_data:
       path: /opt/ml/processing/output
   arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
   env_vars:
     required:
     - TRAIN_RATIO

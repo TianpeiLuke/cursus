@@ -10,7 +10,7 @@ Fields are organized into three tiers:
 """
 
 from pydantic import Field, model_validator, field_validator, PrivateAttr
-from typing import Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
 from ...core.base.config_base import BasePipelineConfig
 
@@ -228,6 +228,11 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
             }
         )
 
+        # Training containers (unlike Processing) support CA_REPOSITORY_ARN — emit it when
+        # secure PyPI is enabled (moved here from the builder so config is the single env source).
+        if self.use_secure_pypi:
+            env_vars["CA_REPOSITORY_ARN"] = self.ca_repository_arn
+
         return env_vars
 
     @field_validator("training_instance_type")
@@ -313,3 +318,7 @@ class LightGBMMTTrainingConfig(BasePipelineConfig):
         init_fields = {**base_fields, **training_fields}
 
         return init_fields
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

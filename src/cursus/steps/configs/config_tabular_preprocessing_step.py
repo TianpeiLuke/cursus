@@ -10,7 +10,7 @@ is properly categorized according to the three-tier design:
 """
 
 from pydantic import Field, field_validator, model_validator, PrivateAttr
-from typing import Dict, Optional, Any, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from pathlib import Path
 import logging
 
@@ -205,7 +205,7 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
         """
         if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be lowercase alphanumeric (with underscores), got '{{v}}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 
@@ -292,3 +292,7 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
             data["full_script_path"] = self.full_script_path
 
         return data
+
+    def get_job_arguments(self) -> Optional[List[str]]:
+        """CLI args — config is the single source (FZ 31e1d3h)."""
+        return self._job_type_arg()

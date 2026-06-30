@@ -35,7 +35,7 @@ declare them as ``null`` in YAML.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import ClassVar, Dict, List, Optional, TYPE_CHECKING
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Shared enums are the single source of truth (they include SINGULAR and the
@@ -94,6 +94,12 @@ class InputPort(BaseModel):
 
     path: Optional[str] = None
     required: bool = True
+    #: Optional SageMaker training sub-channels this single input fans out into (e.g.
+    #: ``[train, val, test]``). When set, the TrainingHandler creates one ``TrainingInput`` per
+    #: sub-channel under ``<path>/<channel>/`` instead of a single channel. This is per-step DATA
+    #: (the channel layout the script expects), so it lives in the ``.step.yaml`` — not hardcoded
+    #: in the handler. Empty/None ⇒ the input maps to a single channel (see TrainingHandler).
+    channels: List[str] = Field(default_factory=list)
 
     @field_validator("path")
     @classmethod
@@ -132,6 +138,249 @@ class EnvVars(BaseModel):
     optional: Dict[str, str] = Field(default_factory=dict)
 
 
+class ComputeSpec(BaseModel):
+    """Declarative spec for the step's COMPUTE object — the processor/estimator/model/transformer
+    the builder constructs (FZ 31e1d3k).
+
+    Every VALUE is a config field, so the compute object is fully constructable from config + this
+    descriptor — which says WHICH SDK class and WHICH config fields. Lives in the ``.step.yaml`` so
+    it is surfaced to users (the ``steps patterns`` view) and lets the builder template build the
+    compute generically, replacing the near-identical per-step ``_create_processor`` /
+    ``_create_estimator`` factories. Empty (``kind=None``) ⇒ the step keeps its own factory.
+    """
+
+    #: sklearn | xgboost | framework | script (processors) · estimator · model · transformer · None.
+    kind: Optional[str] = None
+    #: The config attr holding the framework version (e.g. ``processing_framework_version``).
+    framework_version_field: Optional[str] = None
+    #: Default framework version when the field is absent on the config — several steps used
+    #: ``getattr(config, "processing_framework_version", "<default>")`` (defaults vary per step,
+    #: e.g. ``1.0-1`` / ``1.2-1``). ``None`` ⇒ the field must be present.
+    framework_version_default: Optional[str] = None
+    #: The config attr holding the py version (framework processors / estimators).
+    py_version_field: Optional[str] = None
+    #: For ``framework`` processors / estimators / models: the SDK class NAME to use as the
+    #: estimator_cls / model class (e.g. ``PyTorch``, ``SKLearn``, ``XGBoost``, ``PyTorchModel``).
+    sdk_class: Optional[str] = None
+    #: How the processing instance type is chosen: ``large_or_small`` (the
+    #: ``use_large_processing_instance`` ternary) or ``fixed`` (a single field).
+    instance_size_mode: str = "large_or_small"
+    #: ``script`` kind only (EdxUploading): set the KMS volume key + shared network config + the
+    #: ECR-from-role image. A genuinely special, declared-once deviation.
+    kms_network: bool = False
+    #: ``estimator`` kind only: explicitly retrieve the training image_uri (PyTorch-for-LightGBM).
+    retrieve_image: bool = False
+    #: ``model`` kind: the framework NAME passed to ``image_uris.retrieve`` for the INFERENCE image
+    #: (``xgboost`` / ``pytorch``). Distinct from ``sdk_class`` (the model CLASS, e.g. ``XGBoostModel``):
+    #: the class instantiates the model, this names the container image to retrieve.
+    framework_name: Optional[str] = None
+    #: ``estimator`` image-retrieval region locking. SAIS RESTRICTION: training images/jobs are
+    #: forced to a fixed region (``us-east-1``) — an explicit platform constraint, NOT a bug. This is
+    #: a TOGGLEABLE pattern: a step opts into locking (``lock_training_region: true``); to run in
+    #: standard (unlocked) mode it sets ``lock_training_region: false`` here (or via config) — no
+    #: code change. When False, the region comes from ``config.aws_region`` (the normal region).
+    lock_training_region: bool = False
+    #: The region used when ``lock_training_region`` is True (the SAIS-locked region).
+    locked_region: str = "us-east-1"
+    #: DEPENDENCY AXIS — the 3rd-party package this COMPUTE pattern needs at BUILD time (FZ 31e1d3l).
+    #: ``none`` for the sagemaker-only kinds (sklearn/xgboost/framework/estimator/model/transformer);
+    #: ``mods_workflow_core`` ONLY for the ``script`` kind with ``kms_network`` (the EdxUploading
+    #: ScriptProcessor, which lazily imports ``KMS_ENCRYPTION_KEY_PARAM`` /
+    #: ``PROCESSING_JOB_SHARED_NETWORK_CONFIG`` in ``builder_base._create_compute``). This is a
+    #: CONSEQUENCE of ``kms_network`` — the validator keeps it consistent so it can't drift, and it is
+    #: declared in the ``.step.yaml`` so the mods-vs-native split is visible (``steps patterns``).
+    requires: str = "none"
+
+    # Valid values, pinned to the SageMaker SDK surface (sagemaker 2.251.x). ``kms_network`` maps to
+    # ScriptProcessor's volume_kms_key + network_config; ``framework``/``estimator``/``model`` need an
+    # sdk_class; processors take a framework_version_field.
+    _KINDS: ClassVar = (
+        "sklearn",
+        "xgboost",
+        "framework",
+        "script",
+        "estimator",
+        "model",
+        "transformer",
+    )
+    _SDK_CLASSES: ClassVar = (
+        "PyTorch",
+        "SKLearn",
+        "XGBoost",
+        "PyTorchModel",
+        "XGBoostModel",
+    )
+    #: The only 3rd-party package a compute pattern can require (the script/kms_network path).
+    _REQUIRES: ClassVar = ("none", "mods_workflow_core")
+
+    @model_validator(mode="after")
+    def _validate_compute(self) -> "ComputeSpec":
+        if self.kind is None:
+            # empty descriptor — step keeps its own factory. A bare descriptor must not claim a dep.
+            if self.requires != "none":
+                raise ValueError("compute.requires must be 'none' when kind is unset")
+            return self
+        if self.kind not in self._KINDS:
+            raise ValueError(f"compute.kind {self.kind!r} not in {self._KINDS}")
+        if self.sdk_class is not None and self.sdk_class not in self._SDK_CLASSES:
+            raise ValueError(
+                f"compute.sdk_class {self.sdk_class!r} not in {self._SDK_CLASSES}"
+            )
+        # framework processors + estimators + models must name an sdk_class; the others must NOT.
+        if self.kind in ("framework", "estimator", "model"):
+            if not self.sdk_class:
+                raise ValueError(f"compute.kind={self.kind!r} requires sdk_class")
+        elif self.sdk_class:
+            raise ValueError(f"compute.sdk_class invalid for kind={self.kind!r}")
+        # processors + estimators + models take a framework version field
+        if (
+            self.kind in ("sklearn", "xgboost", "framework", "estimator", "model")
+            and not self.framework_version_field
+        ):
+            raise ValueError(
+                f"compute.kind={self.kind!r} requires framework_version_field"
+            )
+        # py_version only meaningful for framework processors + estimators + models
+        if self.py_version_field and self.kind not in (
+            "framework",
+            "estimator",
+            "model",
+        ):
+            raise ValueError(f"compute.py_version_field invalid for kind={self.kind!r}")
+        # framework_name (the inference-image framework) is a model-only knob
+        if self.framework_name and self.kind != "model":
+            raise ValueError("compute.framework_name is only valid for kind='model'")
+        if self.kind == "model" and not self.framework_name:
+            raise ValueError(
+                "compute.kind='model' requires framework_name (the inference-image framework)"
+            )
+        # kms_network is a ScriptProcessor-only knob
+        if self.kms_network and self.kind != "script":
+            raise ValueError("compute.kms_network is only valid for kind='script'")
+        if self.instance_size_mode not in ("large_or_small", "fixed"):
+            raise ValueError(
+                f"compute.instance_size_mode {self.instance_size_mode!r} invalid"
+            )
+        # --- dependency axis: requires is a CONSEQUENCE of kms_network, kept consistent so it can't
+        # drift from the actual lazy mods_workflow_core import in builder_base._create_compute. ---
+        if self.requires not in self._REQUIRES:
+            raise ValueError(
+                f"compute.requires {self.requires!r} not in {self._REQUIRES}"
+            )
+        derived = "mods_workflow_core" if self.kms_network else "none"
+        if self.requires != "none" and self.requires != derived:
+            raise ValueError(
+                f"compute.requires={self.requires!r} inconsistent with kms_network={self.kms_network} "
+                f"(expected {derived!r})"
+            )
+        # auto-derive when omitted so the dep is always correct even if the .step.yaml leaves it blank
+        self.requires = derived
+        return self
+
+
+class JobArgDecl(BaseModel):
+    """DECLARATIVE record of one CLI argument the step's script accepts (FZ 31e1d3h).
+
+    Documentation / alignment / introspection only — the TRUE argument list is built at runtime by
+    ``config.get_job_arguments()`` (config is the single source). This just makes the script's
+    argument surface visible in the ``.step.yaml`` (the analog of ``env_vars`` declaring names).
+    """
+
+    #: The ``--flag`` the script reads (e.g. ``--job_type``, ``--batch-size``).
+    flag: str
+    #: The config attribute the value comes from (e.g. ``job_type``). Empty for a bare boolean flag.
+    source: str = ""
+
+
+class RegistrySection(BaseModel):
+    """The 'registry' section of a .step.yaml — the construction binding + its 3rd-party footprint.
+
+    Previously this YAML block was silently dropped (StepInterface had no field for it), so the
+    ``step_assembly`` and the create-step dependency had no declaration home. It is now a real
+    section: ``sagemaker_step_type`` + ``step_assembly`` select the PatternHandler, and ``requires``
+    declares the create_step axis's BUILD-time 3rd-party dependency.
+    """
+
+    #: The SageMaker verb that selects the PatternHandler (Processing / Training / CreateModel /
+    #: Transform / the SAIS verbs). Mirrors the registry's ``sagemaker_step_type``.
+    sagemaker_step_type: Optional[str] = None
+    #: DEPRECATED — moved to ``patterns.step_assembly`` (FZ 31e1d3f1). Kept only as a back-compat
+    #: read for any not-yet-migrated YAML; ``_auto_bind_handler`` + ``io_view`` prefer
+    #: ``patterns.step_assembly``. No .step.yaml in this package declares it here anymore.
+    step_assembly: Optional[str] = None
+    #: DEPENDENCY AXIS — the 3rd-party package the CREATE_STEP pattern needs at BUILD time (FZ 31e1d3l).
+    #: ``none`` for the native (sagemaker-only) handlers; ``secure_ai_sandbox_workflow_python_sdk`` for
+    #: the SDKDelegation steps whose builder module imports a SAIS Step class at module level
+    #: (Registration / CradleDataLoading / DataUploading / RedshiftDataLoading — fatal-on-load if the
+    #: SDK is absent). Declared here so the mods/SAIS-vs-native split is authored data in the
+    #: ``.step.yaml`` and visible in ``steps patterns``; a conformance gate keeps it equal to the
+    #: builders' actual module-level SAIS imports.
+    requires: str = "none"
+    description: str = ""
+
+    _REQUIRES: ClassVar = ("none", "secure_ai_sandbox_workflow_python_sdk")
+
+    @model_validator(mode="after")
+    def _validate_registry(self) -> "RegistrySection":
+        if self.requires not in self._REQUIRES:
+            raise ValueError(
+                f"registry.requires {self.requires!r} not in {self._REQUIRES}"
+            )
+        return self
+
+
+class PatternsSection(BaseModel):
+    """The 'patterns' section of a .step.yaml — the per-axis STRATEGY-SELECTION knobs (FZ 31e1d3f1).
+
+    This is the BLUEPRINT that guides how the handlers combine/inject behavior per axis, so a step's
+    implementation is NOT hard-wired in its builder shell. Distinct from ``contract`` (script-shaped
+    I/O data), ``compute`` (the SDK compute object), ``registry`` (discovery + 3rd-party deps), and
+    ``spec`` (DAG wiring). ``_auto_bind_handler`` reads these into the bound handler's knobs so
+    editing the YAML steers the build with no Python change.
+
+    ``use_step_args`` is intentionally NOT a field here: it is DERIVED from ``step_assembly`` (the
+    ``step_args`` strategy preset sets ``use_step_args: True``, ``code`` sets False) — so it can never
+    disagree with the routing verb.
+    """
+
+    #: Processing sub-verb that joins ``registry.sagemaker_step_type`` to pick the handler:
+    #: ``code`` (2A, ``ProcessingStep(code=...)``) | ``step_args`` (2B, ``processor.run()``) |
+    #: ``delegation`` (SDKDelegation). ``None`` ⇒ the handler's default (``code`` for Processing).
+    step_assembly: Optional[str] = None
+    #: NOTE: ``output_path_token`` was REMOVED (FZ 31e1d3f1b). The output-destination S3 prefix is
+    #: DERIVED from the step name — ``canonical_to_snake(step_type)`` — not a declarable field: it
+    #: corresponds to the step name by convention, and the historical deviations were non-standard.
+    #: Whether ``config.job_type`` is a segment of the synthesized output destination.
+    include_job_type_in_path: bool = True
+    #: Logical input names passed straight through to the processor (not spec×contract joined) —
+    #: the template-provided direct input allowlist.
+    direct_input_keys: List[str] = Field(default_factory=list)
+
+    _ASSEMBLIES: ClassVar = ("code", "step_args", "delegation")
+
+    @model_validator(mode="after")
+    def _validate_patterns(self) -> "PatternsSection":
+        if (
+            self.step_assembly is not None
+            and self.step_assembly not in self._ASSEMBLIES
+        ):
+            raise ValueError(
+                f"patterns.step_assembly {self.step_assembly!r} not in {self._ASSEMBLIES}"
+            )
+        return self
+
+    def as_knobs(self) -> Dict[str, object]:
+        """The HANDLER_KNOBS the bound handler reads — only NON-DEFAULT entries, so an unset field
+        falls through to the strategy preset/contract default exactly as the old class-attr knobs did.
+        ``step_assembly`` is routing (passed separately to ``resolve_handler``), not a knob."""
+        knobs: Dict[str, object] = {}
+        if not self.include_job_type_in_path:  # default True; only emit when deviating
+            knobs["include_job_type_in_path"] = False
+        if self.direct_input_keys:
+            knobs["direct_input_keys"] = list(self.direct_input_keys)
+        return knobs
+
+
 class ContractSection(BaseModel):
     """
     The 'contract' section of a .step.yaml — script execution requirements.
@@ -142,11 +391,64 @@ class ContractSection(BaseModel):
     """
 
     entry_point: Optional[str] = None
+    #: Whether this step's script needs its whole directory uploaded (sibling modules) — i.e.
+    #: ``processor.run(code=entry_point, source_dir=<dir>)`` — vs a self-contained single script
+    #: ``processor.run(code=<full_script_path>)``. This is per-step DATA (a script-packaging fact),
+    #: so it lives in the ``.step.yaml`` rather than being inferred from the processor class. The
+    #: ProcessingHandler reads it as the ``split_source_dir`` switch. Default False (self-contained).
+    #: NOTE: a True value requires a FrameworkProcessor (``ScriptProcessor.run`` has no ``source_dir``).
+    source_dir: bool = False
+    #: NOTE: ``output_path_token`` was REMOVED (FZ 31e1d3f1b) — the output-destination S3 prefix is
+    #: DERIVED from the step name (``canonical_to_snake(step_type)``), not declarable per step.
+    #: Whether ``config.job_type`` is a segment of the synthesized output destination. The other
+    #: ``_get_outputs`` axis: some steps put job_type in the path, some don't. Default True. The
+    #: ProcessingHandler reads this as the ``include_job_type_in_path`` knob.
+    include_job_type_in_path: bool = True
     inputs: Dict[str, InputPort] = Field(default_factory=dict)
     outputs: Dict[str, OutputPort] = Field(default_factory=dict)
+    #: Per-step input-resolution deviations from the standard spec×contract loop (FZ 31e1d3i),
+    #: read by ProcessingHandler.get_inputs so the step needs no _get_inputs override:
+    #:   circular_ref_check — run the PipelineVariable circular-reference guard before mapping.
+    #:   skip_inputs — declared dependencies the script loads internally (not mounted as inputs).
+    #:   input_source_overrides {logical_name: config_attr} — take the input SOURCE from a config
+    #:     attr/method (config is the value source) instead of the resolved dependency value.
+    circular_ref_check: bool = False
+    skip_inputs: List[str] = Field(default_factory=list)
+    input_source_overrides: Dict[str, str] = Field(default_factory=dict)
+    #: A SINK step produces no outputs — ProcessingHandler.get_outputs returns ``[]`` (FZ 31e1d3i),
+    #: so a sink step (e.g. an uploader) needs no _get_outputs override.
+    sink: bool = False
+    #: BACK-COMPAT MIRROR of the top-level ``StepInterface.compute`` (FZ 31e1d3k). The compute
+    #: descriptor was promoted to a top-level ``.step.yaml`` section (peer of ``contract``/``spec``)
+    #: because it describes the BUILDER's compute object, not the script contract — script-less steps
+    #: (CreateModel/Transform) have a near-empty contract but a full compute. This field is kept and
+    #: kept in sync by ``StepInterface._sync_and_align`` so existing ``b.contract.compute`` read sites
+    #: still work; authors declare ``compute:`` at the top level now.
+    compute: "ComputeSpec" = Field(default_factory=lambda: ComputeSpec())
     arguments: Dict[str, str] = Field(default_factory=dict)
+    #: DECLARATIVE record of the CLI arguments the step's script accepts (FZ 31e1d3h) — each entry
+    #: is ``{flag, source}`` (the ``--flag`` emitted and the config attribute it comes from). This is
+    #: documentation / alignment / introspection ONLY: the TRUE values are produced at build time by
+    #: ``config.get_job_arguments()`` (config is the single source). Mirrors how ``env_vars`` declares
+    #: names while the config supplies values. Not used to drive ``_get_job_arguments``.
+    job_arguments: List["JobArgDecl"] = Field(default_factory=list)
     env_vars: EnvVars = Field(default_factory=EnvVars)
+    #: COMPUTED-S3-ENV pattern (FZ 31e1d3g3 Phase A3): env vars whose VALUE is an S3 sub-path under the
+    #: pipeline's execution prefix (``base_output_path``), not a config field — e.g. a script that
+    #: reads/writes an extra staging location. Maps ``ENV_VAR -> [segment, ...]``; the base
+    #: ``_get_environment_variables`` sets ``ENV_VAR = Join(base_output_path, *segments)``. This is the
+    #: declarative form of the formerly-hand-written ``_get_environment_variables`` overrides (e.g.
+    #: BedrockBatchProcessing's BEDROCK_BATCH_INPUT/OUTPUT_S3_PATH) — the env analog of the
+    #: output-destination token, so a step needs no Python to compute a runtime S3 env path.
+    computed_env_paths: Dict[str, List[str]] = Field(default_factory=dict)
     framework_requirements: Dict[str, str] = Field(default_factory=dict)
+    #: DEPENDENCY AXIS (runtime) — 3rd-party packages the step's SCRIPT imports at CONTAINER runtime
+    #: (FZ 31e1d3l). This is ORTHOGONAL to build-time deps (``compute.requires`` / ``registry.requires``):
+    #: these imports live in ``steps/scripts/<entry_point>`` and execute inside the SAIS Docker image,
+    #: NOT during pipeline construction — they never affect offline import of cursus/builders. Kept on a
+    #: separate descriptor so build-time vs runtime deps are never conflated. E.g. EdxUploading +
+    #: RedshiftDataLoading scripts import ``secure_ai_sandbox_python_lib`` (a runtime, not build, dep).
+    runtime_requires: List[str] = Field(default_factory=list)
     description: str = ""
 
     @field_validator("entry_point")
@@ -175,6 +477,20 @@ class ContractSection(BaseModel):
             name: port.path
             for name, port in self.outputs.items()
             if port.path is not None
+        }
+
+    @property
+    def input_channels(self) -> Dict[str, List[str]]:
+        """Per-input declared training sub-channels (``logical_name -> [channel, ...]``).
+
+        Only inputs that declare a non-empty ``channels`` list appear. The TrainingHandler reads
+        this to fan a single input into ``<path>/<channel>/`` sub-channels — the channel layout is
+        per-step DATA in the ``.step.yaml``, not a handler constant.
+        """
+        return {
+            name: list(port.channels)
+            for name, port in self.inputs.items()
+            if port.channels
         }
 
     @property
@@ -365,9 +681,29 @@ class StepInterface(BaseModel):
 
     step_type: str
     node_type: NodeType = NodeType.INTERNAL
+    registry: RegistrySection = Field(default_factory=RegistrySection)
+    #: Declarative COMPUTE descriptor (FZ 31e1d3k) — a TOP-LEVEL section (peer of contract/spec)
+    #: because it describes the BUILDER's compute object (processor/estimator/model/transformer), not
+    #: the script contract: script-less steps (CreateModel/Transform) carry a near-empty contract but
+    #: a full compute. ``_sync_and_align`` mirrors it onto ``contract.compute`` for back-compat. Empty
+    #: (``kind=None``) ⇒ the step keeps its own factory.
+    compute: ComputeSpec = Field(default_factory=lambda: ComputeSpec())
+    #: Per-axis STRATEGY-SELECTION knobs (FZ 31e1d3f1) — the blueprint that wires pattern injection
+    #: (step_assembly / include_job_type_in_path / direct_input_keys), read into
+    #: the bound handler by ``_auto_bind_handler`` so the YAML steers the build, not a builder shell.
+    patterns: PatternsSection = Field(default_factory=PatternsSection)
     contract: ContractSection
     spec: SpecSection = Field(default_factory=SpecSection)
     variants: Dict[str, VariantDecl] = Field(default_factory=dict)
+
+    @field_validator("registry", "patterns", "spec", mode="before")
+    @classmethod
+    def _coerce_empty_section(cls, v: object) -> object:
+        # A bare ``patterns:`` / ``registry:`` / ``spec:`` YAML key parses to None — treat an empty
+        # section as the default (so dropping a section's last field doesn't break the load).
+        if v is None:
+            return {}
+        return v
 
     @field_validator("node_type", mode="before")
     @classmethod
@@ -405,6 +741,10 @@ class StepInterface(BaseModel):
                 data["contract"] = _deep_merge(
                     data.get("contract") or {}, variant["contract"]
                 )
+            if variant.get("patterns"):
+                data["patterns"] = _deep_merge(
+                    data.get("patterns") or {}, variant["patterns"]
+                )
         return cls(**data)
 
     @model_validator(mode="after")
@@ -414,6 +754,24 @@ class StepInterface(BaseModel):
         if not self.spec.step_type:
             self.spec.step_type = self.step_type
         self.spec.node_type = self.node_type
+
+        # Reconcile the promoted top-level `compute` with the back-compat `contract.compute` mirror
+        # (FZ 31e1d3k). Authors declare `compute:` at the top level; the contract mirror keeps the
+        # `b.contract.compute` read sites working. Exactly one side should be populated in a .step.yaml;
+        # if both are (mid-migration), they must agree. Whichever is set becomes both.
+        top = self.compute if self.compute.kind is not None else None
+        contract_c = (
+            self.contract.compute if self.contract.compute.kind is not None else None
+        )
+        if top is not None and contract_c is not None and top != contract_c:
+            raise ValueError(
+                "compute declared in BOTH the top-level section and contract.compute with different "
+                "values; declare it once at the top level"
+            )
+        resolved = top or contract_c
+        if resolved is not None:
+            self.compute = resolved
+            self.contract.compute = resolved
 
         # Contract inputs must each have a matching spec dependency.
         missing_deps = set(self.contract.inputs.keys()) - set(

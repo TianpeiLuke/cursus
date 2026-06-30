@@ -1,5 +1,5 @@
 from pydantic import Field, model_validator
-from typing import TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -60,6 +60,47 @@ class PackageConfig(ProcessingStepConfigBase):
             )
 
         return self
+
+    def get_environment_variables(
+        self, declared_env_vars: Optional[List[str]] = None
+    ) -> Dict[str, str]:
+        """Packaging env vars (the single env source; moved here from the builder, FZ 31e1d3g).
+
+        ``declared_env_vars`` accepted for the builder's names-driven contract but ignored — these
+        are config-derived names (PIPELINE_NAME, REGION, …) emitted only when the underlying field
+        is present, preserving the builder's original conditional-add behavior.
+        """
+        env_vars: Dict[str, str] = {}
+        if getattr(self, "pipeline_name", None) is not None:
+            env_vars["PIPELINE_NAME"] = self.pipeline_name
+        if getattr(self, "region", None) is not None:
+            env_vars["REGION"] = self.region
+        for attr, env_key in [
+            ("model_type", "MODEL_TYPE"),
+            ("bucket", "BUCKET_NAME"),
+            ("pipeline_version", "PIPELINE_VERSION"),
+            ("model_objective", "MODEL_OBJECTIVE"),
+        ]:
+            value = getattr(self, attr, None)
+            if value is not None:
+                env_vars[env_key] = str(value)
+        return env_vars
+
+    def inference_scripts_source(self) -> str:
+        """Local source for the packaging step's ``inference_scripts_input`` (FZ 31e1d3i).
+
+        The packaging step always mounts inference scripts from a LOCAL path (overriding any
+        dependency-resolved value). Delegates to ``effective_source_dir`` — the single comprehensive
+        source-dir resolver (hybrid ``processing_source_dir`` → hybrid ``source_dir`` → legacy
+        values) on ProcessingStepConfigBase — falling back to the literal ``"inference"`` only when
+        no source dir is configured.
+
+        NOTE: the original builder used ``resolved_source_dir or source_dir or "inference"``, which
+        reimplemented a PARTIAL version of this resolution and silently IGNORED
+        ``processing_source_dir`` (falling through to ``"inference"`` when only that was set — a
+        latent bug). Using ``effective_source_dir`` fixes that and removes the duplicated chain.
+        """
+        return self.effective_source_dir or "inference"
 
     # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
     # which includes hybrid resolution and comprehensive fallbacks

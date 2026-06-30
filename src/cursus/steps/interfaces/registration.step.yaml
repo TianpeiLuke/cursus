@@ -1,5 +1,9 @@
 step_type: Registration
 node_type: sink
+registry:
+  sagemaker_step_type: MimsModelRegistrationProcessing
+  requires: secure_ai_sandbox_workflow_python_sdk  # create_step: builder imports MimsModelRegistrationProcessingStep at module level (hard, fatal-on-load if SDK absent)
+  description: Model registration step
 
 contract:
   entry_point: script.py
