@@ -153,6 +153,11 @@ include = ["cursus*"]
 # load-bearing at runtime and live in nested sub-packages, so a top-level-only
 # "cursus" glob would silently drop them.
 "*" = ["py.typed", "*.yaml", "*.yml", "*.json"]
+# The shipped agent-authoring orchestrators live under mcp/workflows/ as reference/
+# runnable artifacts (Claude Code dynamic-workflow scripts + README), NOT importable
+# Python — so they need explicit package-data on the parent cursus.mcp package (the
+# workflows dir has no __init__.py, so the "*" glob above never reaches it).
+"cursus.mcp" = ["workflows/*.js", "workflows/*.md"]
 
 # Black configuration
 [tool.black]

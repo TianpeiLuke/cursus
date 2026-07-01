@@ -11,6 +11,10 @@ recursive-include src/cursus *.py
 # the YAML step registry, and the declarative pipeline catalog (*.dag.json + index)
 recursive-include src/cursus *.yaml *.yml *.json py.typed
 
+# Include the shipped agent-authoring workflow orchestrators (reference/runnable
+# Claude Code dynamic-workflow scripts + README under mcp/workflows/, not importable Python)
+recursive-include src/cursus/mcp/workflows *.js *.md
+
 # Exclude development and build files
 exclude .gitignore
 exclude requirements.txt
