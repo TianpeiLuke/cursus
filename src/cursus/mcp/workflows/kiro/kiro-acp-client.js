@@ -97,6 +97,14 @@ class KiroAcpClient {
     if (this.model) args.push('--model', this.model);
     // `--effort` is 2.10.0-era; skip it on old builds to avoid an "unexpected argument" hard-fail.
     if (this.effort && this.allowNewFlags) args.push('--effort', this.effort);
+    else if (this.effort && !this.allowNewFlags) {
+      // The ACP session's effort is dropped on the 2.5.0-safe path, so every turn runs at the build
+      // default — strong-model steps (e.g. Resolve, requested at effort='high') may fail schema turns.
+      this.onLog(
+        `⚠ effort='${this.effort}' dropped (kiro-cli 2.5.0 has no --effort); ACP turns run at the ` +
+          `build default and may fail strict-JSON turns — use kiro-cli >= 2.10.0 for a fair run`
+      );
+    }
     return { bin, args };
   }
 

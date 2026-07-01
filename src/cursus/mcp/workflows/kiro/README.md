@@ -113,6 +113,13 @@ snapshot** that is not updated. Older builds differ, so on 2.5.0:
   them to 2.5.0 hard-fails with "unexpected argument". `--trust-all-tools`, `--agent`, `--model`, and
   `--no-interactive` are present on 2.5.0 (confirmed by the internal headless pattern, SAGE 2054738:
   `--no-interactive --trust-all-tools --agent`). **Fix:** pass `--legacy-kiro` to emit only the safe set.
+  **CAVEAT — this is a capability gap, not just syntax.** Dropping `--effort` means a step that requested
+  `effort: 'high'` (e.g. the `cursus-author-step` **Resolve** phase, which asks a weaker model for a
+  15-field `PLAN_SCHEMA` JSON off a ~40K-token prompt) runs at the build's default/Auto model and often
+  returns prose instead of JSON — the schema turn then fails all re-prompts and the pipeline item drops
+  to `null`. The runtime warns once when this happens. **For a fair authoring run — and any run with
+  strict-schema high-effort steps — use `kiro-cli >= 2.10.0` (with `--effort`), not the 2.5.0 snapshot.**
+  Simple/low-schema workflows still run fine on 2.5.0 with `--legacy-kiro`.
 - **The ACP entry point differs.** 2.10.0 exposes the `kiro-cli acp` subcommand; the 2.5.0 snapshot
   ships a separate **`kiro-cli-chat`** binary that is itself the ACP server (per the vault
   `repo_kiro_cli` note). **Fix:** `--transport acp --acp-entry chat-binary --kiro-chat-bin kiro-cli-chat`.

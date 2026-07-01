@@ -283,6 +283,18 @@ class KiroWorkflowRuntime {
       if (model) args.push('--model', model);
       const effort = opts.effort || this.defaultEffort;
       if (effort && this.allowNewFlags) args.push('--effort', effort);
+      else if (effort && !this.allowNewFlags && !this._warnedEffortDropped) {
+        // A step explicitly asked for a reasoning effort (e.g. Resolve requests 'high'), but the
+        // 2.5.0-safe flag set drops --effort, so this turn runs at the build's default/Auto model —
+        // the strong-model steps are silently under-powered. Warn ONCE; this is the likeliest cause
+        // of a schema turn that returns prose instead of JSON on the frozen build.
+        this._warnedEffortDropped = true;
+        this._emit(
+          `  ⚠ a step requested effort='${effort}' but --legacy-kiro drops --effort (kiro-cli 2.5.0 ` +
+            `has no --effort flag) — that step runs at the build default and may fail strict-JSON/` +
+            `schema turns. For a fair run, use kiro-cli >= 2.10.0 without --legacy-kiro.`
+        );
+      }
       args.push(prompt); // INPUT positional — kiro does not read the prompt from stdin
 
       const child = spawn(this.kiroBin, args, {
