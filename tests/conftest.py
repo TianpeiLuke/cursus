@@ -26,11 +26,31 @@ attributes for the names array-API libraries probe keeps ``issubclass`` valid.
 """
 
 import sys
+import importlib.util
 from unittest.mock import MagicMock
 
 
+def _real_module_available(name: str) -> bool:
+    """True if a genuine (non-stub) ``name`` is importable.
+
+    The guard must distinguish "already imported" from "installed": at conftest load
+    time a real, installed lib usually is NOT yet in ``sys.modules``, so a bare
+    ``"torch" in sys.modules`` check would stub over a real install (the stub then
+    shadows it and breaks e.g. ``transformers``' ``importlib.util.find_spec("torch")``
+    with ``ValueError: torch.__spec__ is not set``). Check real importability instead,
+    treating an existing ``MagicMock`` entry (our own stub) as not-real.
+    """
+    mod = sys.modules.get(name)
+    if mod is not None:
+        return not isinstance(mod, MagicMock)
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
+
+
 def _install_torch_stub() -> None:
-    if "torch" in sys.modules:
+    if _real_module_available("torch"):
         return
     stub = MagicMock()
     # Real class/attr objects for the names scipy / array-API libs introspect, so a
@@ -57,7 +77,7 @@ def _install_torch_stub() -> None:
 
 
 def _install_xgboost_stub() -> None:
-    if "xgboost" in sys.modules:
+    if _real_module_available("xgboost"):
         return
     # A plain MagicMock: xgb.Booster / xgb.DMatrix must be CALLABLE with arbitrary args
     # (some tests construct them without patching, e.g. xgb.DMatrix(X, label=y)). Unlike

@@ -5,9 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.2.0] - 2026-06-30
 
-The **agent-authoring surface** tranche (synced from AmazonCursus): the tooling and orchestration that let an agent *create* a step and *configure* a pipeline by tool-calling, plus the framework hardening those flows exposed. Design B made a step small enough (one `.step.yaml` + one config + one script, builder synthesized at runtime) that authoring becomes a guided, gateable loop rather than a multi-file ritual; this tranche ships that loop. Predominantly additive (new `author.*` MCP namespace, two shipped dynamic-workflow scripts, enriched validators) with a handful of validator-hardening changes called out under Changed. No public pipeline-authoring API change.
+The **agent-authoring surface** tranche: the tooling and orchestration that let an agent *create* a step and *configure* a pipeline by tool-calling, plus the framework hardening those flows exposed. Design B made a step small enough (one `.step.yaml` + one config + one script, builder synthesized at runtime) that authoring becomes a guided, gateable loop rather than a multi-file ritual; this tranche ships that loop. Predominantly additive (new `author.*` MCP namespace, two shipped dynamic-workflow scripts, enriched validators) with a handful of validator-hardening changes called out under Changed. No public pipeline-authoring API change.
 
 ### Added
 
