@@ -117,9 +117,13 @@ snapshot** that is not updated. Older builds differ, so on 2.5.0:
   `effort: 'high'` (e.g. the `cursus-author-step` **Resolve** phase, which asks a weaker model for a
   15-field `PLAN_SCHEMA` JSON off a ~40K-token prompt) runs at the build's default/Auto model and often
   returns prose instead of JSON — the schema turn then fails all re-prompts and the pipeline item drops
-  to `null`. The runtime warns once when this happens. **For a fair authoring run — and any run with
-  strict-schema high-effort steps — use `kiro-cli >= 2.10.0` (with `--effort`), not the 2.5.0 snapshot.**
-  Simple/low-schema workflows still run fine on 2.5.0 with `--legacy-kiro`.
+  to `null` (empirically confirmed on the SAIS 2.5.0 snapshot). The runtime warns once when this happens.
+  **On a Cloud Desktop you can `kiro-cli >= 2.10.0` (with `--effort`) for a fair run — but you CANNOT
+  upgrade inside SAIS**, which is a Red-certified VPC with no internet egress (fixed VPC endpoints; the
+  SAIS install procedure pins 2.5.0). Inside SAIS the fix must be kiro-version-independent: pin a capable
+  model with `--model <id>` (from `kiro-cli chat --list-models`), and/or reduce what one turn demands
+  (trim the prompt, split a big schema into smaller sequential turns). Simple/low-schema workflows (e.g.
+  `cursus-configure-pipeline`, smaller per-node schemas) still run on 2.5.0 with `--legacy-kiro`.
 - **The ACP entry point differs.** 2.10.0 exposes the `kiro-cli acp` subcommand; the 2.5.0 snapshot
   ships a separate **`kiro-cli-chat`** binary that is itself the ACP server (per the vault
   `repo_kiro_cli` note). **Fix:** `--transport acp --acp-entry chat-binary --kiro-chat-bin kiro-cli-chat`.
