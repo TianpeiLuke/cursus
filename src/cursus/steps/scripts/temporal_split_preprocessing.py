@@ -617,8 +617,7 @@ def process_batch_mode_temporal_split(
 
     # Save outputs
     training_output_dir = output_paths.get(
-        "training_data",
-        output_paths.get("processed_data", "/opt/ml/processing/output/training_data"),
+        "training_data", "/opt/ml/processing/output/training_data"
     )
     training_output_path = Path(training_output_dir)
     training_output_path.mkdir(parents=True, exist_ok=True)
@@ -649,10 +648,7 @@ def process_batch_mode_temporal_split(
         log_func(f"[BATCH] Saved {proc_path} (shape={split_df.shape})")
 
     # Save OOT data separately
-    oot_output_dir = output_paths.get(
-        "oot_data",
-        output_paths.get("processed_data", "/opt/ml/processing/output/oot_data"),
-    )
+    oot_output_dir = output_paths.get("oot_data", "/opt/ml/processing/output/oot_data")
     oot_output_path = Path(oot_output_dir)
     oot_output_path.mkdir(parents=True, exist_ok=True)
 
@@ -1200,11 +1196,8 @@ def main(
         # New dual output format
         output_dir = None  # Will be handled separately for each output
     else:
-        # Legacy single output format
-        output_dir = output_paths.get(
-            "processed_data",
-            output_paths.get("training_data", list(output_paths.values())[0]),
-        )
+        # Single output format — prefer the canonical training_data, fall back to any output.
+        output_dir = output_paths.get("training_data", list(output_paths.values())[0])
 
     # Use print function if no logger is provided
     log = logger or print
@@ -1278,10 +1271,7 @@ def main(
 
         # PASS 2: Process shards in parallel
         training_output_dir = output_paths.get(
-            "training_data",
-            output_paths.get(
-                "processed_data", "/opt/ml/processing/output/training_data"
-            ),
+            "training_data", "/opt/ml/processing/output/training_data"
         )
         training_output_path = Path(training_output_dir)
         training_output_path.mkdir(parents=True, exist_ok=True)
@@ -1327,8 +1317,7 @@ def main(
 
         # Save OOT data separately
         oot_output_dir = output_paths.get(
-            "oot_data",
-            output_paths.get("processed_data", "/opt/ml/processing/output/oot_data"),
+            "oot_data", "/opt/ml/processing/output/oot_data"
         )
         oot_output_path = Path(oot_output_dir)
         oot_output_path.mkdir(parents=True, exist_ok=True)
@@ -1464,8 +1453,7 @@ def main(
 
     # Save training data to training_data output path
     training_output_dir = output_paths.get(
-        "training_data",
-        output_paths.get("processed_data", "/opt/ml/processing/output/training_data"),
+        "training_data", "/opt/ml/processing/output/training_data"
     )
     training_output_path = Path(training_output_dir)
     training_output_path.mkdir(parents=True, exist_ok=True)
@@ -1507,10 +1495,7 @@ def main(
             )
 
     # Save OOT data to oot_data output path
-    oot_output_dir = output_paths.get(
-        "oot_data",
-        output_paths.get("processed_data", "/opt/ml/processing/output/oot_data"),
-    )
+    oot_output_dir = output_paths.get("oot_data", "/opt/ml/processing/output/oot_data")
     oot_output_path = Path(oot_output_dir)
     oot_output_path.mkdir(parents=True, exist_ok=True)
 

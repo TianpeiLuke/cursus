@@ -250,13 +250,22 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
         if not v:
             raise ValueError("feature_types must be a non-empty list")
 
+        # Matching is case-insensitive and each value is normalized to its
+        # canonical-cased allowed value (the script compares feature types as
+        # plain Python strings).
         allowed_types = {"statistical", "temporal", "behavioral"}
+        normalized: List[str] = []
         for feature_type in v:
-            if feature_type not in allowed_types:
+            match = next(
+                (a for a in allowed_types if a.lower() == feature_type.lower()), None
+            )
+            if match is None:
                 raise ValueError(
-                    f"feature_type must be one of {allowed_types}, got '{feature_type}'"
+                    f"feature_type must be one of {sorted(allowed_types)} (case-insensitive), "
+                    f"got '{feature_type}'"
                 )
-        return v
+            normalized.append(match)
+        return normalized
 
     @field_validator("categorical_fields")
     @classmethod
@@ -285,13 +294,23 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
         if not v:
             raise ValueError("aggregation_functions must be a non-empty list")
 
+        # Matching is case-insensitive and each value is normalized to its
+        # canonical (lowercase) allowed value. The script compares agg_func
+        # case-sensitively against lowercase literals (agg_func == "mean", ...),
+        # so normalizing here keeps the downstream comparison correct.
         allowed_functions = {"mean", "sum", "std", "min", "max", "count", "median"}
+        normalized: List[str] = []
         for func in v:
-            if func not in allowed_functions:
+            match = next(
+                (a for a in allowed_functions if a.lower() == func.lower()), None
+            )
+            if match is None:
                 raise ValueError(
-                    f"aggregation_function must be one of {allowed_functions}, got '{func}'"
+                    f"aggregation_function must be one of {sorted(allowed_functions)} "
+                    f"(case-insensitive), got '{func}'"
                 )
-        return v
+            normalized.append(match)
+        return normalized
 
     @field_validator("lag_features")
     @classmethod
@@ -329,20 +348,36 @@ class TemporalFeatureEngineeringConfig(ProcessingStepConfigBase):
     @field_validator("time_unit")
     @classmethod
     def validate_time_unit(cls, v: str) -> str:
-        """Ensure time_unit is valid."""
+        """
+        Ensure time_unit is valid (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {"days", "hours"}
-        if v not in allowed:
-            raise ValueError(f"time_unit must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"time_unit must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("input_format", "output_format")
     @classmethod
     def validate_formats(cls, v: str) -> str:
-        """Ensure input/output formats are valid."""
+        """
+        Ensure input/output formats are valid (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {"numpy", "parquet", "csv"}
-        if v not in allowed:
-            raise ValueError(f"format must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"format must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("max_workers")
     @classmethod

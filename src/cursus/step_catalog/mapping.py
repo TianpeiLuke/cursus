@@ -15,7 +15,9 @@ import logging
 import re
 from typing import Dict, List, Optional, Type, Any
 
-from .models import BuilderProvider  # the dual-mode class-or-factory return contract (FZ 31e1d3g1)
+from .models import (
+    BuilderProvider,
+)  # the dual-mode class-or-factory return contract (FZ 31e1d3g1)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,9 @@ class StepCatalogMapper:
         # Cache for registry functions to avoid repeated imports
         self._registry_functions = {}
 
-    def get_builder_for_config(self, config, node_name: str = None) -> Optional["BuilderProvider"]:
+    def get_builder_for_config(
+        self, config, node_name: str = None
+    ) -> Optional["BuilderProvider"]:
         """
         Map a config instance to a builder PROVIDER (callable with the assembler's 5 kwargs).
 

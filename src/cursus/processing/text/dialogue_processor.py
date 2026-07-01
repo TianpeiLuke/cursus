@@ -117,9 +117,7 @@ class DialogueChunkerProcessor(Processor):
                 # round-trip-stable, so the post-truncation msg may tokenize to a
                 # DIFFERENT count than max_tokens. Assuming max_tokens here would
                 # desync token_count from the msg actually used downstream.
-                token_count = len(
-                    self.tokenizer.encode(msg, add_special_tokens=False)
-                )
+                token_count = len(self.tokenizer.encode(msg, add_special_tokens=False))
 
             # If adding this message would exceed limit, save current chunk and start a new one.
             if current_tokens + token_count > self.max_tokens:

@@ -154,7 +154,12 @@ class ActiveSampleSelectionConfig(ProcessingStepConfigBase):
     @field_validator("selection_strategy")
     @classmethod
     def validate_strategy(cls, v: str) -> str:
-        """Validate selection strategy is one of the allowed values."""
+        """
+        Validate selection strategy is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {
             "confidence_threshold",
             "top_k_per_class",
@@ -162,27 +167,46 @@ class ActiveSampleSelectionConfig(ProcessingStepConfigBase):
             "diversity",
             "badge",
         }
-        if v not in allowed:
-            raise ValueError(f"selection_strategy must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"selection_strategy must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("use_case")
     @classmethod
     def validate_use_case(cls, v: str) -> str:
-        """Validate use case is one of the allowed values."""
+        """
+        Validate use case is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {"ssl", "active_learning", "auto"}
-        if v not in allowed:
-            raise ValueError(f"use_case must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"use_case must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("output_format")
     @classmethod
     def validate_output_format(cls, v: str) -> str:
-        """Validate output format."""
+        """
+        Validate output format (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {"csv", "parquet"}
-        if v not in allowed:
-            raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"output_format must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @model_validator(mode="after")
     def validate_strategy_use_case_compatibility(self) -> "ActiveSampleSelectionConfig":

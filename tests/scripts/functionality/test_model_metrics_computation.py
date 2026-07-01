@@ -1008,7 +1008,7 @@ class TestMainFunction:
         df.to_csv(input_dir / "predictions.csv", index=False)
 
         # Set up paths
-        input_paths = {"processed_data": str(input_dir)}
+        input_paths = {"eval_output": str(input_dir)}
         output_paths = {
             "metrics_output": str(temp_dir / "metrics"),
             "plots_output": str(temp_dir / "plots"),
@@ -1056,7 +1056,7 @@ class TestMainFunction:
         temp_dir, input_paths, output_paths, environ_vars = setup_integration_test
 
         # Add previous score field to data
-        input_dir = Path(input_paths["processed_data"])
+        input_dir = Path(input_paths["eval_output"])
         df = pd.read_csv(input_dir / "predictions.csv")
         df["prev_score"] = df["prob_class_1"] + np.random.normal(0, 0.1, len(df))
         df["prev_score"] = df["prev_score"].clip(0, 1)
@@ -1094,7 +1094,7 @@ class TestMainFunction:
         temp_dir, input_paths, output_paths, environ_vars = setup_integration_test
 
         # Create multiclass data
-        input_dir = Path(input_paths["processed_data"])
+        input_dir = Path(input_paths["eval_output"])
         np.random.seed(42)
         n_samples = 100
         n_classes = 3
@@ -1215,7 +1215,7 @@ class TestEdgeCases:
         )
         df.to_csv(input_dir / "predictions.csv", index=False)
 
-        input_paths = {"processed_data": str(input_dir)}
+        input_paths = {"eval_output": str(input_dir)}
         output_paths = {
             "metrics_output": str(temp_dir / "metrics"),
             "plots_output": str(temp_dir / "plots"),

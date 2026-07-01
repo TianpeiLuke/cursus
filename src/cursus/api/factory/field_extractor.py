@@ -14,7 +14,10 @@ Key Functions:
 
 from typing import Any, Dict, List, Type, Optional
 from pydantic import BaseModel
+import ast
 import inspect
+import re
+import typing
 
 
 def extract_field_requirements(config_class: Type[BaseModel]) -> List[Dict[str, Any]]:
@@ -87,15 +90,21 @@ def extract_field_requirements(config_class: Type[BaseModel]) -> List[Dict[str, 
                 # Get field annotation
                 annotation = getattr(field_info, "annotation", None)
 
-                requirements.append(
-                    {
-                        "name": field_name,
-                        "type": get_field_type_string(annotation),
-                        "description": description,
-                        "required": is_required,
-                        "default": default_value,
-                    }
-                )
+                req = {
+                    "name": field_name,
+                    "type": get_field_type_string(annotation),
+                    "description": description,
+                    "required": is_required,
+                    "default": default_value,
+                }
+                # Attach the closed-value constraint (Literal/Enum or validator allowed-set)
+                # so a config author SEES the legal values, not just the type — the Cat1/Cat3
+                # bug class (wrong enum case / invalid enum) came from type-only field listings.
+                constraint = extract_field_constraints(config_class, field_name)
+                if constraint is not None:
+                    req["allowed_values"] = constraint["allowed_values"]
+                    req["case_sensitive"] = constraint["case_sensitive"]
+                requirements.append(req)
         else:
             # Fallback for non-Pydantic classes or future compatibility
             raise AttributeError("model_fields not available")
@@ -124,6 +133,117 @@ def extract_field_requirements(config_class: Type[BaseModel]) -> List[Dict[str, 
             pass
 
     return requirements
+
+
+def _literal_or_enum_values(annotation: Any) -> Optional[List[Any]]:
+    """Return the allowed values if the annotation is a Literal[...] or an Enum (incl. inside
+    Optional[...]), else None. This is the DRIFT-PROOF source — read straight off the type."""
+    if annotation is None:
+        return None
+    # Unwrap Optional/Union to find a Literal or Enum arm.
+    args = typing.get_args(annotation)
+    origin = typing.get_origin(annotation)
+    if origin is typing.Literal:
+        return list(args)
+    if args:  # Union/Optional — recurse into each arm
+        for arm in args:
+            vals = _literal_or_enum_values(arm)
+            if vals is not None:
+                return vals
+    # Enum class
+    try:
+        import enum
+
+        if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
+            return [e.value for e in annotation]
+    except Exception:
+        pass
+    return None
+
+
+def _allowed_set_from_validator_source(
+    config_class: Type[BaseModel], field_name: str
+) -> Optional[Dict[str, Any]]:
+    """Scrape the `allowed = {...}` set + case-handling from a field's @field_validator source.
+
+    Fallback for fields constrained by a validator rather than a Literal/Enum type (the common
+    cursus pattern). Returns {allowed_values, case_sensitive} or None. Best-effort + safe: any
+    parse failure returns None (callers treat 'no declared constraint' as unconstrained).
+    """
+    fields = getattr(config_class, "model_fields", None) or {}
+    if field_name not in fields:
+        return None
+    # Find a validator method whose source mentions this field and an `allowed` set literal.
+    for attr_name in dir(config_class):
+        if not attr_name.startswith("validate"):
+            continue
+        try:
+            fn = getattr(config_class, attr_name)
+            src = inspect.getsource(fn)
+        except (OSError, TypeError):
+            continue
+        # The validator must target this field (decorator arg) and declare an allowed set.
+        if f'"{field_name}"' not in src and f"'{field_name}'" not in src:
+            continue
+        try:
+            # dedent: inspect.getsource returns the method at its class indentation, which
+            # ast.parse rejects as 'unexpected indent' — dedent normalizes it to column 0.
+            import textwrap
+
+            tree = ast.parse(textwrap.dedent(src))
+        except SyntaxError:
+            continue
+        allowed_vals: Optional[List[Any]] = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id.startswith("allowed")
+                for t in node.targets
+            ):
+                coll = node.value
+                if isinstance(coll, (ast.Set, ast.List, ast.Tuple)):
+                    try:
+                        vals = [
+                            el.value for el in coll.elts if isinstance(el, ast.Constant)
+                        ]
+                        if vals:
+                            allowed_vals = vals
+                            break
+                    except Exception:
+                        pass
+        if allowed_vals is not None:
+            # case-insensitive if the validator lowercases/uppercases before matching.
+            case_sensitive = not re.search(r"\.lower\(\)|\.upper\(\)", src)
+            return {
+                "allowed_values": allowed_vals,
+                "case_sensitive": case_sensitive,
+            }
+    return None
+
+
+def extract_field_constraints(
+    config_class: Type[BaseModel], field_name: str
+) -> Optional[Dict[str, Any]]:
+    """Return the closed-value constraint for one field, or None if unconstrained.
+
+    Prefers the DRIFT-PROOF Literal/Enum annotation; falls back to scraping the
+    ``allowed = {...}`` set from the field's ``@field_validator`` source (the common cursus
+    pattern). Shape: ``{allowed_values: [...], case_sensitive: bool, source: 'literal'|'validator'}``.
+    """
+    fields = getattr(config_class, "model_fields", None) or {}
+    fi = fields.get(field_name)
+    if fi is not None:
+        lit = _literal_or_enum_values(getattr(fi, "annotation", None))
+        if lit is not None:
+            return {
+                "allowed_values": lit,
+                "case_sensitive": True,
+                "source": "literal",
+            }
+    scraped = _allowed_set_from_validator_source(config_class, field_name)
+    if scraped is not None:
+        scraped["source"] = "validator"
+        return scraped
+    return None
 
 
 def extract_non_inherited_fields(

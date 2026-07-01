@@ -144,16 +144,24 @@ class LabelRulesetExecutionConfig(ProcessingStepConfigBase):
     @field_validator("preferred_input_format")
     @classmethod
     def validate_preferred_input_format(cls, v: str) -> str:
-        """Validate preferred_input_format is one of the allowed values."""
+        """
+        Validate preferred_input_format is one of the allowed values.
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value. The consuming script lowercases
+        PREFERRED_INPUT_FORMAT on read, so canonical case is not load-bearing.
+        """
         if v == "":
             return v  # Empty string is valid (auto-detection)
 
         allowed = {"CSV", "TSV", "Parquet"}
-        if v not in allowed:
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
             raise ValueError(
-                f"preferred_input_format must be one of {allowed} or empty string, got '{v}'"
+                f"preferred_input_format must be one of {sorted(allowed)} (case-insensitive) "
+                f"or empty string, got '{v}'"
             )
-        return v
+        return match
 
     # Custom model_dump method to include derived properties
     def model_dump(self, **kwargs) -> Dict[str, Any]:

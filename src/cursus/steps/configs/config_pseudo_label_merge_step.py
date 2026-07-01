@@ -188,11 +188,19 @@ class PseudoLabelMergeConfig(ProcessingStepConfigBase):
     @field_validator("output_format")
     @classmethod
     def validate_output_format(cls, v: str) -> str:
-        """Validate output format."""
+        """
+        Validate output format (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {"csv", "tsv", "parquet"}
-        if v not in allowed:
-            raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"output_format must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("job_type")
     @classmethod

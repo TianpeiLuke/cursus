@@ -109,6 +109,93 @@ def _step(args: Dict[str, Any]) -> ToolResult:
     return ToolResult.success(result)
 
 
+def _step_interface(args: Dict[str, Any]) -> ToolResult:
+    """
+    Validate a step's ``.step.yaml`` interface at AUTHOR time (FZ 31e1d3f2 / 31e1d3f5).
+
+    This is the agent-callable promotion of ``cursus validate step-interface``: it wraps the
+    CLI's ``_validate_one_interface`` / ``list_available_interfaces`` VERBATIM, so the agent
+    gate, the CLI gate, and the CI ``validate step-interface --all`` gate are literally one
+    code path. Each interface is loaded through the production ``StepInterface.from_yaml``
+    path (surfacing Pydantic field errors + the contract↔spec ``_sync_and_align`` check) and
+    run through the incompleteness checks (``compatible_sources`` case-typos).
+
+    Pass ``step_name`` for one step (optionally a ``job_type`` variant), or ``all=true`` to
+    validate every ``.step.yaml`` (the CI mode). Read-only and offline-safe.
+    """
+    # Reuse the CLI helpers verbatim — zero new validation logic (single source of truth).
+    from ...cli.validate_cli import _validate_one_interface
+
+    step_name = args.get("step_name")
+    validate_all = bool(args.get("all", False))
+    job_type = args.get("job_type")
+
+    if not validate_all and (not isinstance(step_name, str) or not step_name.strip()):
+        raise ToolError(
+            "provide 'step_name' (a canonical step name) or set 'all' to true",
+            code="invalid_input",
+        )
+    if job_type is not None and not isinstance(job_type, str):
+        raise ToolError("'job_type' must be a string", code="invalid_input")
+
+    if validate_all:
+        from ...steps.interfaces import list_available_interfaces
+
+        targets = sorted(list_available_interfaces())
+    else:
+        targets = [step_name]
+
+    results = [_validate_one_interface(t, job_type) for t in targets]
+    n_err = sum(1 for r in results if not r["ok"])
+    n_warn = sum(len(r["warnings"]) for r in results)
+
+    data = {
+        "validated": len(results),
+        "errors": n_err,
+        "warnings": n_warn,
+        "results": results,
+    }
+
+    if n_err:
+        # Blocking error(s): point the agent at the read tools that fix the offending
+        # section, mirroring the loop the dev-guide + FZ 31e1d3f5 describe.
+        return ToolResult.failure(
+            f"{n_err} interface(s) failed validation",
+            code="validation_failed",
+            details=data,
+            remedy={
+                "suggested_tools": [
+                    "strategies.for_step_type",
+                    "catalog.config_fields",
+                    "validate.deps_explain",
+                ],
+                "fix_action": (
+                    "Read each failing result's 'errors': a Pydantic/section error means "
+                    "fix that field in the .step.yaml; a contract↔spec mismatch means align "
+                    "the contract.inputs/outputs keys with spec.dependencies/outputs; a "
+                    "compatible_sources warning means correct the case to the exact step "
+                    "name. Re-run validate.step_interface, then author.preflight_step."
+                ),
+            },
+        )
+
+    # Clean: the natural next step in the author->validate->integrate loop.
+    next_steps = [
+        {
+            "tool": "validate.alignment",
+            "when": "the interface is valid and you want the full constructibility proof",
+            "why": "interface validation is the author-time gate; alignment validate-all "
+            "(B1/B2/B3) proves the step is constructible, not merely parseable",
+        }
+    ]
+    warnings = (
+        [f"{n_warn} non-blocking incompleteness warning(s) across interfaces"]
+        if n_warn
+        else None
+    )
+    return ToolResult.success(data, warnings=warnings, next_steps=next_steps)
+
+
 def _deps_resolve(args: Dict[str, Any]) -> ToolResult:
     """
     Resolve declarative dependencies among a set of registered steps.
@@ -383,6 +470,41 @@ TOOLS: List[ToolDef] = [
             "additionalProperties": False,
         },
         handler=_step,
+        tags=("validator",),
+    ),
+    ToolDef(
+        name="validate.step_interface",
+        description=(
+            "Validate a step's .step.yaml interface at AUTHOR time — the agent-callable form "
+            "of `cursus validate step-interface`. Loads the interface through the production "
+            "StepInterface.from_yaml path (Pydantic field errors + contract<->spec alignment) "
+            "and flags compatible_sources case-typos. Pass 'step_name' (optionally 'job_type') "
+            "for one step, or 'all'=true to validate every interface (the CI gate). This is the "
+            "author-time gate before author.preflight_step / validate.alignment."
+        ),
+        schema={
+            "type": "object",
+            "properties": {
+                "step_name": {
+                    "type": "string",
+                    "description": "Canonical step name to validate (e.g. "
+                    "'XGBoostTraining'). Omit when 'all' is true.",
+                },
+                "all": {
+                    "type": "boolean",
+                    "description": "Validate every .step.yaml interface (CI mode). "
+                    "When true, 'step_name' is ignored.",
+                },
+                "job_type": {
+                    "type": "string",
+                    "description": "Optional job_type variant to resolve (e.g. "
+                    "'validation', 'calibration').",
+                },
+            },
+            "required": [],
+            "additionalProperties": False,
+        },
+        handler=_step_interface,
         tags=("validator",),
     ),
     ToolDef(

@@ -223,14 +223,18 @@ class FeatureSelectionConfig(ProcessingStepConfigBase):
     @classmethod
     def validate_combination_strategy(cls, v: str) -> str:
         """
-        Ensure combination_strategy is one of the allowed values.
+        Ensure combination_strategy is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
         """
         allowed = {"voting", "ranking", "scoring"}
-        if v not in allowed:
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
             raise ValueError(
-                f"combination_strategy must be one of {allowed}, got '{v}'"
+                f"combination_strategy must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
             )
-        return v
+        return match
 
     # Initialize derived fields at creation time
     @model_validator(mode="after")

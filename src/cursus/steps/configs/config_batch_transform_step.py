@@ -66,10 +66,16 @@ class BatchTransformStepConfig(BasePipelineConfig):
 
     @field_validator("job_type")
     def _validate_job_type(cls, v: str) -> str:
+        # job_type is used as an output-path subdirectory name and is lowercased
+        # in scripts, so match case-insensitively and store the canonical
+        # (lowercase) value.
         allowed = {"training", "testing", "validation", "calibration"}
-        if v not in allowed:
-            raise ValueError(f"job_type must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"job_type must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     # Note: S3 URI validator removed as batch_input_location and batch_output_location were removed
 

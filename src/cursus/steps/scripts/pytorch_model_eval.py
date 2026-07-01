@@ -1817,14 +1817,10 @@ def main(
         job_args: Command line arguments
     """
     # Extract paths from parameters - using contract-defined logical names
-    model_dir = input_paths.get("model_input", input_paths.get("model_dir"))
-    eval_data_dir = input_paths.get("processed_data", input_paths.get("eval_data_dir"))
-    output_eval_dir = output_paths.get(
-        "eval_output", output_paths.get("output_eval_dir")
-    )
-    output_metrics_dir = output_paths.get(
-        "metrics_output", output_paths.get("output_metrics_dir")
-    )
+    model_dir = input_paths.get("model_input")
+    eval_data_dir = input_paths.get("processed_data")
+    output_eval_dir = output_paths.get("eval_output")
+    output_metrics_dir = output_paths.get("metrics_output")
 
     # Extract environment variables
     id_field = environ_vars.get("ID_FIELD", "order_id")

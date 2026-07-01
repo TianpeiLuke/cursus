@@ -160,12 +160,18 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
     @classmethod
     def validate_sampling_strategy(cls, v: str) -> str:
         """
-        Ensure sampling_strategy is one of the allowed values.
+        Ensure sampling_strategy is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
         """
         allowed = {"balanced", "proportional_min", "optimal", "external_proportional"}
-        if v not in allowed:
-            raise ValueError(f"sampling_strategy must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"sampling_strategy must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("variance_column")
     @classmethod

@@ -592,7 +592,9 @@ class BasePipelineConfig(BaseModel, ABC):
         """
         return None
 
-    def _job_type_arg(self, flag: str = "--job_type", default: "Optional[str]" = None) -> "Optional[List[str]]":
+    def _job_type_arg(
+        self, flag: str = "--job_type", default: "Optional[str]" = None
+    ) -> "Optional[List[str]]":
         """Helper for the dominant pattern: ``[flag, config.job_type]``.
 
         Returns ``None`` when ``job_type`` is missing/None and no ``default`` is given (the

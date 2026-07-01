@@ -22,6 +22,7 @@ A golden snapshot (``tests/registry/step_names_registry_snapshot.json``) gates d
 
 from typing import Dict
 
+
 # --- Build the step registry from the per-step .step.yaml registry: blocks ---
 #
 # The lazy import keeps this module a dependency-free leaf — ``interface_registry_loader``

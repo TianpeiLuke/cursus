@@ -279,11 +279,17 @@ class TemporalSplitPreprocessingConfig(ProcessingStepConfigBase):
     def validate_output_format(cls, v: str) -> str:
         """
         Ensure output_format is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value, so the persisted config never drifts.
         """
         allowed = {"CSV", "TSV", "Parquet"}
-        if v not in allowed:
-            raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"output_format must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("targets")
     @classmethod

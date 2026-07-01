@@ -101,11 +101,11 @@ class NumericalCategoricalProcessor(Processor):
         """Fit binning parameters for numpy array"""
         # Drop NaN before computing edges: np.min/np.max/np.percentile would
         # otherwise return NaN edges and corrupt every downstream bin assignment.
-        clean = data[~np.isnan(data)] if np.issubdtype(data.dtype, np.floating) else data
+        clean = (
+            data[~np.isnan(data)] if np.issubdtype(data.dtype, np.floating) else data
+        )
         if clean.size == 0:
-            raise ValueError(
-                "Cannot fit binning: column has no non-NaN values."
-            )
+            raise ValueError("Cannot fit binning: column has no non-NaN values.")
         if self.binning_strategy == "equal_width":
             data_min = np.nanmin(clean)
             data_max = np.nanmax(clean)

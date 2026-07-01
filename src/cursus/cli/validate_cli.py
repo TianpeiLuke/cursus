@@ -116,14 +116,22 @@ def _validate_one_interface(step_name, job_type=None):
     """
     from ..steps.interfaces import load_interface
 
-    result = {"step": step_name, "job_type": job_type, "ok": True, "errors": [], "warnings": []}
+    result = {
+        "step": step_name,
+        "job_type": job_type,
+        "ok": True,
+        "errors": [],
+        "warnings": [],
+    }
     try:
         iface = load_interface(step_name, job_type=job_type)
     except FileNotFoundError as e:
         result["ok"] = False
         result["errors"].append(f"not found: {e}")
         return result
-    except Exception as e:  # Pydantic ValidationError / _sync_and_align alignment errors
+    except (
+        Exception
+    ) as e:  # Pydantic ValidationError / _sync_and_align alignment errors
         result["ok"] = False
         result["errors"].append(f"{type(e).__name__}: {e}")
         return result
@@ -151,8 +159,15 @@ def _validate_one_interface(step_name, job_type=None):
 
 @validate_cli.command(name="step-interface")
 @click.argument("step_name", required=False)
-@click.option("--job-type", default=None, help="Resolve a job_type variant (e.g. validation).")
-@click.option("--all", "validate_all", is_flag=True, help="Validate every .step.yaml interface (CI).")
+@click.option(
+    "--job-type", default=None, help="Resolve a job_type variant (e.g. validation)."
+)
+@click.option(
+    "--all",
+    "validate_all",
+    is_flag=True,
+    help="Validate every .step.yaml interface (CI).",
+)
 @click.option(
     "--format",
     type=click.Choice(["text", "json"], case_sensitive=False),
@@ -186,20 +201,34 @@ def step_interface(step_name, job_type, validate_all, format):
     n_warn = sum(len(r["warnings"]) for r in results)
 
     if fmt == "json":
-        click.echo(json.dumps(
-            {"validated": len(results), "errors": n_err, "warnings": n_warn, "results": results},
-            indent=2, default=str,
-        ))
+        click.echo(
+            json.dumps(
+                {
+                    "validated": len(results),
+                    "errors": n_err,
+                    "warnings": n_warn,
+                    "results": results,
+                },
+                indent=2,
+                default=str,
+            )
+        )
     else:
         for r in results:
-            mark = "✅" if r["ok"] and not r["warnings"] else ("❌" if not r["ok"] else "⚠️ ")
+            mark = (
+                "✅"
+                if r["ok"] and not r["warnings"]
+                else ("❌" if not r["ok"] else "⚠️ ")
+            )
             jt = f" [{r['job_type']}]" if r["job_type"] else ""
             click.echo(f"{mark} {r['step']}{jt}")
             for e in r["errors"]:
                 click.echo(f"     ERROR: {e}")
             for w in r["warnings"]:
                 click.echo(f"     warn:  {w}")
-        click.echo(f"\nvalidated {len(results)} · {n_err} error(s) · {n_warn} warning(s)")
+        click.echo(
+            f"\nvalidated {len(results)} · {n_err} error(s) · {n_warn} warning(s)"
+        )
 
     if n_err:
         raise SystemExit(1)

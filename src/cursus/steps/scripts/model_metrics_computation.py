@@ -2106,13 +2106,11 @@ def main(
         job_args (argparse.Namespace): Command line arguments
     """
     # Extract paths from parameters - using contract-defined logical names
-    eval_data_dir = input_paths.get("processed_data", input_paths.get("eval_data_dir"))
-    output_metrics_dir = output_paths.get(
-        "metrics_output", output_paths.get("output_metrics_dir")
-    )
-    output_plots_dir = output_paths.get(
-        "plots_output", output_paths.get("output_plots_dir", output_metrics_dir)
-    )
+    eval_data_dir = input_paths.get("eval_output")
+    output_metrics_dir = output_paths.get("metrics_output")
+    # plots_output is an optional contract output; when absent, co-locate plots with the metrics
+    # dir (a literal var default, not an undeclared-alias fallback) so makedirs never sees None.
+    output_plots_dir = output_paths.get("plots_output", output_metrics_dir)
 
     # Extract environment variables
     id_field = environ_vars.get("ID_FIELD", "id")

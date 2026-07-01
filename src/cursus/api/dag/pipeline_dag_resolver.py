@@ -493,6 +493,19 @@ class PipelineDAGResolver:
                     f"Edge references non-existent destination node: {dst}"
                 )
 
+        # Check for undeclared edge endpoints (a node that only an edge introduced — never
+        # add_node'd / passed in nodes=). add_edge auto-creates such endpoints, so the
+        # dangling-dependencies check above cannot see them (they ARE in self.dag.nodes by then);
+        # this is the only detector for an edge-name typo that spawned a phantom, unconfigured node.
+        if hasattr(self.dag, "validate_node_declarations"):
+            undeclared = self.dag.validate_node_declarations()
+            if undeclared:
+                issues["undeclared_edge_nodes"] = [
+                    f"Edge endpoint '{node}' was never declared via add_node (likely a typo or a "
+                    f"forgotten add_node — it became a phantom, unconfigured node)."
+                    for node in undeclared
+                ]
+
         # Check for isolated nodes (nodes with no edges)
         isolated_nodes = []
         for node in self.dag.nodes:

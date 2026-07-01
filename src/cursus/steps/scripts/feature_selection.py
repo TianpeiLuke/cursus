@@ -1499,9 +1499,7 @@ def save_selection_results(
     # Save selection summary report (merged into same directory)
     # Guard against empty combined scores (e.g., all selection methods failed or
     # returned no features) so aggregation statistics below do not crash.
-    combined_scores_list = list(
-        selection_results["combined_result"]["scores"].values()
-    )
+    combined_scores_list = list(selection_results["combined_result"]["scores"].values())
     if not combined_scores_list:
         combined_scores_list = [0.0]
     summary_report = {

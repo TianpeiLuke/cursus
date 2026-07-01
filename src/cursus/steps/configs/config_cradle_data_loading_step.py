@@ -511,10 +511,17 @@ class DataSourceConfig(BaseCradleComponentConfig):
     @field_validator("data_source_type")
     @classmethod
     def validate_type(cls, v: str) -> str:
+        # data_source_type is compared case-sensitively against uppercase
+        # literals downstream (check_properties: t == "MDS"/"EDX"/"ANDES") and is
+        # a SAIS Cradle SDK enum. Accept case-insensitive input but normalize to
+        # the canonical uppercase value so the downstream comparisons stay correct.
         allowed: Set[str] = {"MDS", "EDX", "ANDES"}
-        if v not in allowed:
-            raise ValueError(f"data_source_type must be one of {allowed}, got '{v}'")
-        return v
+        v_upper = v.upper()
+        if v_upper not in allowed:
+            raise ValueError(
+                f"data_source_type must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return v_upper
 
     @model_validator(mode="after")
     @classmethod
@@ -790,18 +797,31 @@ class OutputSpecificationConfig(BaseCradleComponentConfig):
     @field_validator("output_format")
     @classmethod
     def validate_format(cls, v: str) -> str:
+        # These values are passed verbatim to the SAIS Cradle SDK
+        # (com.amazon.secureaisandboxproxyservice.models...) which expects the
+        # canonical UPPERCASE enum. Accept case-insensitive input but normalize
+        # to the canonical uppercase value so the SDK always receives a valid enum.
         allowed = {"CSV", "UNESCAPED_TSV", "JSON", "ION", "PARQUET"}
-        if v not in allowed:
-            raise ValueError(f"output_format must be one of {allowed}")
-        return v
+        v_upper = v.upper()
+        if v_upper not in allowed:
+            raise ValueError(
+                f"output_format must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return v_upper
 
     @field_validator("output_save_mode")
     @classmethod
     def validate_save_mode(cls, v: str) -> str:
+        # Passed verbatim to the SAIS Cradle SDK, which expects the canonical
+        # UPPERCASE enum. Accept case-insensitive input but normalize to the
+        # canonical uppercase value.
         allowed = {"ERRORIFEXISTS", "OVERWRITE", "APPEND", "IGNORE"}
-        if v not in allowed:
-            raise ValueError(f"output_save_mode must be one of {allowed}")
-        return v
+        v_upper = v.upper()
+        if v_upper not in allowed:
+            raise ValueError(
+                f"output_save_mode must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return v_upper
 
 
 class CradleJobSpecificationConfig(BaseCradleComponentConfig):
@@ -842,10 +862,17 @@ class CradleJobSpecificationConfig(BaseCradleComponentConfig):
     @field_validator("cluster_type")
     @classmethod
     def validate_cluster_type(cls, v: str) -> str:
+        # cluster_type is passed verbatim to the SAIS Cradle SDK
+        # (CradleJobSpecification), which expects the canonical UPPERCASE enum.
+        # Accept case-insensitive input but normalize to the canonical uppercase
+        # value so the SDK always receives a valid enum.
         allowed = {"STANDARD", "SMALL", "MEDIUM", "LARGE"}
-        if v not in allowed:
-            raise ValueError(f"cluster_type must be one of {allowed}, got '{v}'")
-        return v
+        v_upper = v.upper()
+        if v_upper not in allowed:
+            raise ValueError(
+                f"cluster_type must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return v_upper
 
 
 class CradleDataLoadingConfig(BasePipelineConfig):

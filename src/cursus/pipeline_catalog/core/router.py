@@ -161,7 +161,9 @@ def recommend_for_agent(
         str
     ] = None,  # "small" (<100K), "medium" (100K-10M), "large" (>10M)
     gpu_available: bool = True,
-    framework: Optional[str] = None,  # "xgboost", "pytorch", "lightgbm", ... (hard filter)
+    framework: Optional[
+        str
+    ] = None,  # "xgboost", "pytorch", "lightgbm", ... (hard filter)
 ) -> List[Dict[str, Any]]:
     """
     Agent-friendly recommendation using semantic constraints.

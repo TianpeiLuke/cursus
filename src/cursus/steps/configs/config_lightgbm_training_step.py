@@ -160,13 +160,15 @@ class LightGBMTrainingConfig(BasePipelineConfig):
             return None  # Standard supervised learning
 
         allowed = {"pretrain", "finetune"}
-        if v not in allowed:
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
             raise ValueError(
-                f"job_type must be None (standard) or one of {allowed}, got '{v}'. "
+                f"job_type must be None (standard) or one of {sorted(allowed)} "
+                f"(case-insensitive), got '{v}'. "
                 f"Use None for standard training, 'pretrain' for SSL pretraining, "
                 f"'finetune' for SSL fine-tuning."
             )
-        return v
+        return match
 
     # Initialize derived fields at creation time to avoid potential validation loops
     @model_validator(mode="after")

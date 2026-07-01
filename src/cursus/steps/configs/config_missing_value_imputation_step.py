@@ -261,40 +261,52 @@ class MissingValueImputationConfig(ProcessingStepConfigBase):
     @classmethod
     def validate_numerical_strategy(cls, v: str) -> str:
         """
-        Ensure default_numerical_strategy is one of the allowed values.
+        Ensure default_numerical_strategy is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
         """
         allowed = {"mean", "median", "constant"}
-        if v not in allowed:
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
             raise ValueError(
-                f"default_numerical_strategy must be one of {allowed}, got '{v}'"
+                f"default_numerical_strategy must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
             )
-        return v
+        return match
 
     @field_validator("default_categorical_strategy")
     @classmethod
     def validate_categorical_strategy(cls, v: str) -> str:
         """
-        Ensure default_categorical_strategy is one of the allowed values.
+        Ensure default_categorical_strategy is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
         """
         allowed = {"mode", "constant"}
-        if v not in allowed:
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
             raise ValueError(
-                f"default_categorical_strategy must be one of {allowed}, got '{v}'"
+                f"default_categorical_strategy must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
             )
-        return v
+        return match
 
     @field_validator("default_text_strategy")
     @classmethod
     def validate_text_strategy(cls, v: str) -> str:
         """
-        Ensure default_text_strategy is one of the allowed values.
+        Ensure default_text_strategy is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
         """
         allowed = {"mode", "constant", "empty"}
-        if v not in allowed:
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
             raise ValueError(
-                f"default_text_strategy must be one of {allowed}, got '{v}'"
+                f"default_text_strategy must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
             )
-        return v
+        return match
 
     @field_validator("categorical_constant_value", "text_constant_value")
     @classmethod

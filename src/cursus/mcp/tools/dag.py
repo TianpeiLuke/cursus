@@ -71,18 +71,11 @@ def _build_dag(args: Dict[str, Any]):
     nodes = _coerce_nodes(args.get("nodes"))
     edges = _coerce_edges(args.get("edges"))
 
-    # Edges may reference nodes not present in the explicit node list; PipelineDAG's
-    # add_edge auto-creates them, but its constructor assumes nodes already exist. To
-    # avoid a KeyError we union edge endpoints into the node list first.
-    node_set = set(nodes)
-    for src, dst in edges:
-        if src not in node_set:
-            nodes.append(src)
-            node_set.add(src)
-        if dst not in node_set:
-            nodes.append(dst)
-            node_set.add(dst)
-
+    # Pass the explicit node list as the DECLARED nodes and the edges as-is. The constructor
+    # tolerates edges whose endpoints are not declared (it uses setdefault, so no KeyError) while
+    # keeping them OUT of the declared set — so validate_node_declarations / dag.validate can flag
+    # an edge endpoint that the caller never listed in `nodes` (a likely typo). Do NOT union edge
+    # endpoints into `nodes`: that would mark every typo as a legitimate node and hide it.
     return PipelineDAG(nodes=nodes, edges=edges)
 
 
@@ -333,9 +326,11 @@ TOOLS: List[ToolDef] = [
     ToolDef(
         name="dag.validate_integrity",
         description=(
-            "Validate a DAG's integrity (cycles, dangling edges, isolated nodes, and — "
-            "when the step catalog is available — missing steps/components). Returns "
-            "{is_valid, issues}. Call before compiling a DAG into a pipeline."
+            "Validate a DAG's integrity (cycles, dangling edges, isolated nodes, "
+            "undeclared_edge_nodes — edge endpoints not in `nodes`, i.e. a likely edge-name "
+            "typo that would become a phantom unconfigured node — and, when the step catalog is "
+            "available, missing steps/components). Returns {is_valid, issues}. Call before "
+            "compiling a DAG into a pipeline."
         ),
         schema={
             "type": "object",

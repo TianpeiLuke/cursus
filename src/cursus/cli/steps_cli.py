@@ -79,7 +79,11 @@ def step_io(step_name: str, job_type: Optional[str], format: str):
         click.echo("  (none)")
     for i in view["inputs"]:
         req = "required" if i["required"] else "optional"
-        path = i["container_path"] if i["container_path"] is not None else "(no container path)"
+        path = (
+            i["container_path"]
+            if i["container_path"] is not None
+            else "(no container path)"
+        )
         click.echo(f"  {i['logical_name']:<26} {str(path):<42} {req}  [{i['type']}]")
         if i.get("channels"):
             click.echo(f"      └─ channels: {' '.join(i['channels'])}")
@@ -92,7 +96,11 @@ def step_io(step_name: str, job_type: Optional[str], format: str):
     if not view["outputs"]:
         click.echo("  (none)")
     for o in view["outputs"]:
-        path = o["container_path"] if o["container_path"] is not None else "(no container path)"
+        path = (
+            o["container_path"]
+            if o["container_path"] is not None
+            else "(no container path)"
+        )
         click.echo(f"  {o['logical_name']:<26} {str(path):<42} [{o['type']}]")
         if o["property_path"]:
             click.echo(f"      ref: {o['property_path']}")
@@ -144,8 +152,10 @@ def step_patterns(step_name: str, job_type: Optional[str], format: str):
     def _mark(axis):
         return "  ⚠ custom override" if p[axis].get("custom_override") else ""
 
-    click.echo(f"create_step   {p['create_step']['handler']}"
-               f"  (assembly={p['create_step']['step_assembly']}){_mark('create_step')}")
+    click.echo(
+        f"create_step   {p['create_step']['handler']}"
+        f"  (assembly={p['create_step']['step_assembly']}){_mark('create_step')}"
+    )
 
     e = p["env_vars"]
     click.echo(f"env_vars      {e['source']}{_mark('env_vars')}")
@@ -169,9 +179,13 @@ def step_patterns(step_name: str, job_type: Optional[str], format: str):
         kind = c.get("kind") or "per-step factory"
         click.echo(f"compute       {kind}{cls}{_mark('compute')}")
         if c.get("framework_version_field"):
-            click.echo(f"                framework_version ← config.{c['framework_version_field']}")
+            click.echo(
+                f"                framework_version ← config.{c['framework_version_field']}"
+            )
         if c.get("lock_training_region"):
-            click.echo("                training image region LOCKED (SAIS restriction)")
+            click.echo(
+                "                training image region LOCKED (SAIS restriction)"
+            )
 
     # --- dependency axis: the mods/SAIS-vs-native 3rd-party footprint (build-time vs runtime) ---
     dep = view.get("dependencies") or {}

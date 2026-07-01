@@ -1085,7 +1085,7 @@ class TestMainFunction:
 
         args = argparse.Namespace()
 
-        input_paths = {"metrics_input": metrics_dir, "plots_input": plots_dir}
+        input_paths = {"metrics_output": metrics_dir, "plots_output": plots_dir}
 
         output_paths = {"wiki_output": output_dir}
 

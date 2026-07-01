@@ -97,7 +97,9 @@ def main(input_data, output_data):
         assert result["signature_valid"] is False
         assert result["actual_params"] == ["input_data", "output_data"]
         assert len(result["issues"]) > 0
-        assert "Expected 4 parameters, got 2" in result["issues"][0]
+        # The signature check now requires the 4 required params as a PREFIX (trailing optional
+        # params like logger=None are allowed), so the "too few" message is phrased "at least 4".
+        assert "Expected at least 4 parameters, got 2" in result["issues"][0]
 
     def test_parameter_usage_extraction(self):
         """Test extraction of parameter usage patterns."""
@@ -339,3 +341,92 @@ def main(input_paths: Dict[str, str], output_paths: Dict[str, str],
 
         issues = analyzer.validate_contract_alignment(contract)
         assert len(issues) == 0  # Should align perfectly
+
+
+class TestReverseAlignment:
+    """The reverse-direction checks (FZ 29d14m Cat 4/5): does the script PARSE the args the builder
+    passes + READ the required env vars the contract declares?"""
+
+    def _mk(self, src):
+        import tempfile, os
+
+        f = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False)
+        f.write(src)
+        f.close()
+        return ScriptAnalyzer(f.name)
+
+    def test_cat4_missing_argparse_is_error_for_processing(self):
+        a = self._mk(
+            "import argparse\n"
+            "def main(input_paths, output_paths, environ_vars, job_args):\n    return job_args.job_type\n"
+            'if __name__ == "__main__":\n    main({}, {}, {}, argparse.Namespace())\n'
+        )
+        iss = a.validate_reverse_alignment(
+            {"job_arguments": [{"flag": "--job_type"}]},
+            sagemaker_step_type="Processing",
+        )
+        cats = [(i["severity"], i["category"]) for i in iss]
+        assert ("ERROR", "unparsed_declared_arg") in cats
+
+    def test_cat4_training_vestigial_arg_is_not_error(self):
+        """Training/Estimator steps declare job_arguments but get args via JSON not argv -> INFO, not ERROR."""
+        a = self._mk(
+            "import argparse\n"
+            "def main(input_paths, output_paths, environ_vars, job_args):\n    return 1\n"
+            'if __name__ == "__main__":\n    main({}, {}, {}, argparse.Namespace())\n'
+        )
+        iss = a.validate_reverse_alignment(
+            {"job_arguments": [{"flag": "--job_type"}]}, sagemaker_step_type="Training"
+        )
+        assert not any(i["severity"] == "ERROR" for i in iss)
+        assert any(
+            i["category"] == "reverse_arg_check_skipped_non_processing" for i in iss
+        )
+
+    def test_cat4_hyphen_underscore_normalization(self):
+        a = self._mk(
+            "import argparse\n"
+            "def main(input_paths, output_paths, environ_vars, job_args):\n    return 1\n"
+            'if __name__ == "__main__":\n    p = argparse.ArgumentParser()\n'
+            '    p.add_argument("--job-type")\n    a = p.parse_args()\n    main({}, {}, {}, a)\n'
+        )
+        iss = a.validate_reverse_alignment(
+            {"job_arguments": [{"flag": "--job_type"}]},
+            sagemaker_step_type="Processing",
+        )
+        assert not any(i["category"] == "unparsed_declared_arg" for i in iss)
+
+    def test_cat5_unread_required_env_is_error(self):
+        """A required env harvested into a __main__ dict but never consumed in main() is flagged."""
+        a = self._mk(
+            "import os, argparse\n"
+            "def main(input_paths, output_paths, environ_vars, job_args):\n    return 1\n"
+            'if __name__ == "__main__":\n'
+            '    environ_vars = {"ID_FIELD": os.environ.get("ID_FIELD")}\n'
+            "    main({}, {}, environ_vars, None)\n"
+        )
+        iss = a.validate_reverse_alignment({"env_vars": {"required": ["ID_FIELD"]}})
+        assert any(i["category"] == "unread_required_env_var" for i in iss)
+
+    def test_cat5_consumed_env_not_flagged(self):
+        a = self._mk(
+            "def main(input_paths, output_paths, environ_vars, job_args):\n"
+            '    x = environ_vars.get("ID_FIELD")\n    return x\n'
+        )
+        iss = a.validate_reverse_alignment({"env_vars": {"required": ["ID_FIELD"]}})
+        assert not any(i["category"] == "unread_required_env_var" for i in iss)
+
+    def test_optional_env_never_flagged(self):
+        a = self._mk(
+            "def main(input_paths, output_paths, environ_vars, job_args):\n    return 1\n"
+        )
+        iss = a.validate_reverse_alignment(
+            {"env_vars": {"required": [], "optional": {"FOO": "bar"}}}
+        )
+        assert not any(i["category"] == "unread_required_env_var" for i in iss)
+
+    def test_optional_logger_param_signature_accepted(self):
+        a = self._mk(
+            "def main(input_paths, output_paths, environ_vars, job_args, logger=None):\n    return 1\n"
+        )
+        assert a.validate_main_function_signature()["signature_valid"] is True

@@ -100,15 +100,15 @@ def list_strategies_cmd(axis: Optional[str], format: str):
     click.echo(f"  {'AXIS':<22} {'NAME':<34} {'VERB':<14} KNOBS")
     for i in rows:
         flag = "" if i.routable else "  (no builder)"
-        click.echo(
-            f"  {i.axis:<22} {i.name:<34} {i.verb:<14} {len(i.knobs)}{flag}"
-        )
+        click.echo(f"  {i.axis:<22} {i.name:<34} {i.verb:<14} {len(i.knobs)}{flag}")
     return 0
 
 
 @strategies_cli.command(name="show")
 @click.argument("name")
-@click.option("--axis", default=None, help="Disambiguate when a name exists on >1 axis.")
+@click.option(
+    "--axis", default=None, help="Disambiguate when a name exists on >1 axis."
+)
 @click.option(
     "--format",
     type=click.Choice(["text", "json"], case_sensitive=False),

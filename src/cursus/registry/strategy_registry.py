@@ -36,7 +36,9 @@ class KnobSpec:
     """Describes one tunable knob a handler accepts."""
 
     name: str
-    type: str = "str"  # "bool" | "str" | "list" | "callable" — a string tag, import-light
+    type: str = (
+        "str"  # "bool" | "str" | "list" | "callable" — a string tag, import-light
+    )
     default: Any = None
     required: bool = False
     doc: str = ""
@@ -48,7 +50,9 @@ class StrategyInfo:
 
     axis: str  # "sagemaker_step_type" | "step_assembly"
     name: str  # the value on that axis that selects this strategy
-    handler: Optional[Callable[..., "PatternHandler"]]  # handler CLASS (None when routable=False)
+    handler: Optional[
+        Callable[..., "PatternHandler"]
+    ]  # handler CLASS (None when routable=False)
     knobs: Tuple[KnobSpec, ...] = ()
     preset_knobs: Dict[str, Any] = field(default_factory=dict)
     routable: bool = True

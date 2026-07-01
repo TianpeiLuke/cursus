@@ -768,9 +768,7 @@ def extract_hyperparameters_from_tarball(
         with open(hyperparams_path, "r") as f:
             hyperparams = json.load(f)
     except json.JSONDecodeError as e:
-        logger.error(
-            f"Failed to parse hyperparameters.json at {hyperparams_path}: {e}"
-        )
+        logger.error(f"Failed to parse hyperparameters.json at {hyperparams_path}: {e}")
         raise ValueError(
             f"Malformed hyperparameters.json at {hyperparams_path}: {e}"
         ) from e

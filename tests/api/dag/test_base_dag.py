@@ -137,5 +137,61 @@ class TestPipelineDAG(unittest.TestCase):
         self.assertLess(order.index("B"), order.index("C"))
 
 
+class TestPipelineDAGNodeDeclarations(unittest.TestCase):
+    """Declared-vs-auto-created node tracking, validate_node_declarations, and strict mode."""
+
+    def test_validate_node_declarations_clean(self):
+        """Every edge endpoint declared -> no undeclared endpoints reported."""
+        dag = PipelineDAG(nodes=["A", "B"], edges=[("A", "B")])
+        self.assertEqual(dag.validate_node_declarations(), [])
+
+    def test_validate_node_declarations_flags_typo(self):
+        """An edge endpoint that was never declared (a typo) is surfaced — and only once."""
+        # 'Bb' is a typo; only 'A' was declared, 'B' is missing from nodes entirely.
+        dag = PipelineDAG(nodes=["A", "B"], edges=[("A", "Bb"), ("A", "Bb")])
+        self.assertEqual(dag.validate_node_declarations(), ["Bb"])
+
+    def test_add_edge_auto_create_is_not_declared(self):
+        """Lenient add_edge auto-creates the node but does NOT mark it declared."""
+        dag = PipelineDAG(nodes=["A"])
+        dag.add_edge("A", "Z")  # Z auto-created
+        self.assertIn("Z", dag.nodes)
+        self.assertEqual(dag.validate_node_declarations(), ["Z"])
+
+    def test_add_node_promotes_auto_created(self):
+        """An explicit add_node after an auto-create promotes the node to declared."""
+        dag = PipelineDAG(nodes=["A"])
+        dag.add_edge("A", "Z")
+        self.assertEqual(dag.validate_node_declarations(), ["Z"])
+        dag.add_node("Z")  # now declared
+        self.assertEqual(dag.validate_node_declarations(), [])
+
+    def test_strict_add_edge_raises_on_undeclared(self):
+        """strict=True: add_edge raises if an endpoint was never declared."""
+        dag = PipelineDAG(nodes=["A"], strict=True)
+        with self.assertRaises(ValueError):
+            dag.add_edge("A", "Z")  # Z not declared
+
+    def test_strict_add_edge_ok_when_declared(self):
+        """strict=True: add_edge succeeds once both endpoints are declared."""
+        dag = PipelineDAG(strict=True)
+        dag.add_node("A")
+        dag.add_node("B")
+        dag.add_edge("A", "B")  # both declared -> fine
+        self.assertIn(("A", "B"), dag.edges)
+
+    def test_strict_constructor_raises_on_undeclared_edge(self):
+        """strict=True at construction: an edge endpoint missing from nodes= raises."""
+        with self.assertRaises(ValueError):
+            PipelineDAG(nodes=["A", "B"], edges=[("A", "Bb")], strict=True)
+
+    def test_lenient_is_default(self):
+        """Default stays lenient: add_edge between non-existent nodes still auto-creates."""
+        dag = PipelineDAG()
+        dag.add_edge("X", "Y")  # no raise
+        self.assertIn("X", dag.nodes)
+        self.assertIn("Y", dag.nodes)
+
+
 if __name__ == "__main__":
     unittest.main()

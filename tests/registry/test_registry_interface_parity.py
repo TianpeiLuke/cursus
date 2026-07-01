@@ -68,8 +68,12 @@ def test_interface_registry_is_self_sufficient_without_fallback():
     derivation needs NO external fallback table. This is what made dropping step_names.yaml safe."""
     derived = build_registry_from_interfaces()  # no fallback
     missing = [n for n, r in derived.items() if not r.get("sagemaker_step_type")]
-    assert not missing, f"rows missing sagemaker_step_type without a fallback: {missing}"
-    assert len(derived) >= 45, f"expected the full registry (~48 rows), got {len(derived)}"
+    assert not missing, (
+        f"rows missing sagemaker_step_type without a fallback: {missing}"
+    )
+    assert len(derived) >= 45, (
+        f"expected the full registry (~48 rows), got {len(derived)}"
+    )
 
 
 def test_every_row_carries_sagemaker_step_type():
@@ -84,6 +88,24 @@ def test_spec_type_equals_step_name_for_all_rows():
     derived = build_registry_from_interfaces()
     mismatches = {n: r["spec_type"] for n, r in derived.items() if r["spec_type"] != n}
     assert not mismatches, f"spec_type != step_name for: {mismatches}"
+
+
+def test_registry_section_sagemaker_step_type_pin_matches_live_valid_set():
+    """The closed set `RegistrySection._SAGEMAKER_STEP_TYPES` (the author-time validator pin) MUST
+    equal the live valid set `get_valid_sagemaker_step_types()`. The Pydantic validator rejects an
+    out-of-set `registry.sagemaker_step_type` at author time (a typo can't silently mis-route); this
+    conformance gate keeps the pinned allowlist from drifting from the registry's actual valid verbs.
+    """
+    from cursus.core.base.step_interface import RegistrySection
+    from cursus.registry.step_names import get_valid_sagemaker_step_types
+
+    assert set(RegistrySection._SAGEMAKER_STEP_TYPES) == set(
+        get_valid_sagemaker_step_types()
+    ), (
+        "RegistrySection._SAGEMAKER_STEP_TYPES drifted from get_valid_sagemaker_step_types(): "
+        f"pin-only={set(RegistrySection._SAGEMAKER_STEP_TYPES) - set(get_valid_sagemaker_step_types())}, "
+        f"live-only={set(get_valid_sagemaker_step_types()) - set(RegistrySection._SAGEMAKER_STEP_TYPES)}"
+    )
 
 
 def test_config_class_convention_breakers_are_the_known_three():

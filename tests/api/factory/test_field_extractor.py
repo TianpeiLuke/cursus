@@ -554,3 +554,99 @@ class TestFixtureUsage:
 
         assert len(required_fields) == 2
         assert len(optional_fields) == 2
+
+
+class TestExtractFieldConstraints:
+    """The closed-value constraint extraction (Literal/Enum type OR @field_validator allowed-set) —
+    surfaces the legal VALUES, not just the type. Closes the Cat1/Cat3 empirical config-bug class."""
+
+    def test_literal_field_constraint(self):
+        from typing import Literal
+        from cursus.api.factory.field_extractor import extract_field_constraints
+
+        class M(BaseModel):
+            mode: Literal["a", "b", "c"] = "a"
+
+        c = extract_field_constraints(M, "mode")
+        assert c is not None
+        assert set(c["allowed_values"]) == {"a", "b", "c"}
+        assert c["source"] == "literal"
+
+    def test_validator_allowed_set_constraint(self):
+        """A real cursus config: output_format's @field_validator declares allowed={CSV,TSV,Parquet}
+        and is now case-INSENSITIVE (normalizing) — the extractor reports both."""
+        from cursus.api.factory.field_extractor import extract_field_constraints
+        from cursus.steps.configs.config_tabular_preprocessing_step import (
+            TabularPreprocessingConfig,
+        )
+
+        c = extract_field_constraints(TabularPreprocessingConfig, "output_format")
+        assert c is not None
+        assert set(c["allowed_values"]) == {"CSV", "TSV", "Parquet"}
+        assert c["case_sensitive"] is False  # normalized validator
+        assert c["source"] == "validator"
+
+    def test_unconstrained_field_returns_none(self):
+        from cursus.api.factory.field_extractor import extract_field_constraints
+        from cursus.steps.configs.config_tabular_preprocessing_step import (
+            TabularPreprocessingConfig,
+        )
+
+        assert (
+            extract_field_constraints(TabularPreprocessingConfig, "label_name") is None
+        )
+
+    def test_requirements_carry_allowed_values(self):
+        from cursus.api.factory.field_extractor import extract_field_requirements
+        from cursus.steps.configs.config_tabular_preprocessing_step import (
+            TabularPreprocessingConfig,
+        )
+
+        of = next(
+            r
+            for r in extract_field_requirements(TabularPreprocessingConfig)
+            if r["name"] == "output_format"
+        )
+        assert set(of["allowed_values"]) == {"CSV", "TSV", "Parquet"}
+
+
+class TestOutputFormatNormalization:
+    """The root-cause fix: output_format is now case-insensitive + normalizes to canonical, so the
+    Munged 'parquet'->'Parquet' friction (3 of the 21 bugs) is gone; an invalid value still raises."""
+
+    def test_lowercase_normalizes_to_canonical(self):
+        from cursus.steps.configs.config_tabular_preprocessing_step import (
+            TabularPreprocessingConfig,
+        )
+
+        cfg = TabularPreprocessingConfig(
+            author="x",
+            bucket="b",
+            role="r",
+            region="NA",
+            service_name="s",
+            pipeline_version="1.0.0",
+            project_root_folder="p",
+            job_type="training",
+            source_dir="dockers",
+            output_format="parquet",
+        )
+        assert cfg.output_format == "Parquet"
+
+    def test_invalid_value_still_rejected(self):
+        from cursus.steps.configs.config_tabular_preprocessing_step import (
+            TabularPreprocessingConfig,
+        )
+
+        with pytest.raises(Exception):
+            TabularPreprocessingConfig(
+                author="x",
+                bucket="b",
+                role="r",
+                region="NA",
+                service_name="s",
+                pipeline_version="1.0.0",
+                project_root_folder="p",
+                job_type="training",
+                output_format="xml",
+            )

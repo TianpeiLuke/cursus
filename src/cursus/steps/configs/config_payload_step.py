@@ -193,7 +193,9 @@ class PayloadConfig(ProcessingStepConfigBase):
             "CONTENT_TYPES": ",".join(self.source_model_inference_content_types),
             "DEFAULT_NUMERIC_VALUE": str(self.default_numeric_value),
             "DEFAULT_TEXT_VALUE": str(self.default_text_value),
-            "FIELD_DEFAULTS": json.dumps(self.field_defaults) if self.field_defaults else None,
+            "FIELD_DEFAULTS": json.dumps(self.field_defaults)
+            if self.field_defaults
+            else None,
         }
         return overrides
 

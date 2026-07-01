@@ -253,7 +253,13 @@ def detect_file_format(file_path: Path) -> str:
         # Try CSV first
         pd.read_csv(file_path, nrows=1)
         return "csv"
-    except (pd.errors.ParserError, pd.errors.EmptyDataError, ValueError, UnicodeDecodeError, OSError) as e:
+    except (
+        pd.errors.ParserError,
+        pd.errors.EmptyDataError,
+        ValueError,
+        UnicodeDecodeError,
+        OSError,
+    ) as e:
         logger.debug(f"CSV detection failed for {file_path}: {e}")
 
     try:

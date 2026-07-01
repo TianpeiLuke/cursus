@@ -142,24 +142,34 @@ class DummyDataLoadingConfig(ProcessingStepConfigBase):
     @classmethod
     def validate_output_format(cls, v: str) -> str:
         """
-        Ensure output_format is one of the allowed values.
+        Ensure output_format is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical uppercase allowed value.
         """
         allowed = {"CSV", "JSON", "PARQUET"}
         v_upper = v.upper()
         if v_upper not in allowed:
-            raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
+            raise ValueError(
+                f"output_format must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
         return v_upper
 
     @field_validator("metadata_format")
     @classmethod
     def validate_metadata_format(cls, v: str) -> str:
         """
-        Ensure metadata_format is one of the allowed values.
+        Ensure metadata_format is one of the allowed values (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical uppercase allowed value.
         """
         allowed = {"JSON", "MODS"}
         v_upper = v.upper()
         if v_upper not in allowed:
-            raise ValueError(f"metadata_format must be one of {allowed}, got '{v}'")
+            raise ValueError(
+                f"metadata_format must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
         return v_upper
 
     @model_validator(mode="after")

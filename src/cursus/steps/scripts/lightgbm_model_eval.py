@@ -630,7 +630,9 @@ def load_model_artifacts(
         model = lgb.Booster(model_file=model_file)
     except (FileNotFoundError, lgb.basic.LightGBMError) as e:
         logger.error(f"Critical artifact missing or invalid: {model_file}")
-        raise ValueError(f"Model artifact not found or invalid: {model_file} ({e})") from e
+        raise ValueError(
+            f"Model artifact not found or invalid: {model_file} ({e})"
+        ) from e
     logger.info(f"Loaded lightgbm_model.txt")
 
     risk_table_file = os.path.join(model_dir, "risk_table_map.pkl")
@@ -639,7 +641,9 @@ def load_model_artifacts(
             risk_tables = pkl.load(f)
     except FileNotFoundError as e:
         logger.error(f"Critical artifact missing: {risk_table_file}")
-        raise ValueError(f"Risk table artifact not found: {risk_table_file} ({e})") from e
+        raise ValueError(
+            f"Risk table artifact not found: {risk_table_file} ({e})"
+        ) from e
     logger.info("Loaded risk_table_map.pkl")
 
     impute_file = os.path.join(model_dir, "impute_dict.pkl")
@@ -668,7 +672,9 @@ def load_model_artifacts(
                     )
     except FileNotFoundError as e:
         logger.error(f"Critical artifact missing: {feature_columns_file}")
-        raise ValueError(f"Feature columns artifact not found: {feature_columns_file} ({e})") from e
+        raise ValueError(
+            f"Feature columns artifact not found: {feature_columns_file} ({e})"
+        ) from e
     logger.info(f"Loaded feature_columns.txt: {feature_columns}")
 
     hyperparams_file = os.path.join(model_dir, "hyperparameters.json")
@@ -677,7 +683,9 @@ def load_model_artifacts(
             hyperparams = json.load(f)
     except FileNotFoundError as e:
         logger.error(f"Critical artifact missing: {hyperparams_file}")
-        raise ValueError(f"Hyperparameters artifact not found: {hyperparams_file} ({e})") from e
+        raise ValueError(
+            f"Hyperparameters artifact not found: {hyperparams_file} ({e})"
+        ) from e
     logger.info("Loaded hyperparameters.json")
 
     return model, risk_tables, impute_dict, feature_columns, hyperparams
@@ -1936,14 +1944,10 @@ def main(
         job_args (argparse.Namespace): Command line arguments
     """
     # Extract paths from parameters - using contract-defined logical names
-    model_dir = input_paths.get("model_input", input_paths.get("model_dir"))
-    eval_data_dir = input_paths.get("processed_data", input_paths.get("eval_data_dir"))
-    output_eval_dir = output_paths.get(
-        "eval_output", output_paths.get("output_eval_dir")
-    )
-    output_metrics_dir = output_paths.get(
-        "metrics_output", output_paths.get("output_metrics_dir")
-    )
+    model_dir = input_paths.get("model_input")
+    eval_data_dir = input_paths.get("processed_data")
+    output_eval_dir = output_paths.get("eval_output")
+    output_metrics_dir = output_paths.get("metrics_output")
 
     # Validate required paths before any directory operations to avoid an
     # opaque TypeError from os.makedirs(None) further down.

@@ -582,7 +582,9 @@ def list_builders(
             if detected_fw:
                 fw_info = f" | Framework: {detected_fw}"
 
-            click.echo(f"{i:3d}. {getattr(builder, '__name__', builder)}{type_info}{fw_info}")
+            click.echo(
+                f"{i:3d}. {getattr(builder, '__name__', builder)}{type_info}{fw_info}"
+            )
 
             if show_path:
                 path = catalog.get_builder_class_path(name)
@@ -987,7 +989,9 @@ def component_info(
         elif component_type == "builder":
             builder_class = catalog.load_builder_class(step_name)
             if builder_class:
-                result["class_name"] = getattr(builder_class, "__name__", str(builder_class))
+                result["class_name"] = getattr(
+                    builder_class, "__name__", str(builder_class)
+                )
 
         elif component_type == "contract":
             contract = catalog.load_contract_class(step_name)

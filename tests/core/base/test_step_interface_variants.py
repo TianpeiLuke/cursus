@@ -133,3 +133,47 @@ def test_every_interface_and_variant_constructs(filename, job_type):
         data = yaml.safe_load(f)
     si = StepInterface.from_yaml(data, job_type=job_type)
     assert si.step_type  # constructed and validated (alignment invariant held)
+
+
+# --- registry.sagemaker_step_type closed-enum validation --------------------------
+
+
+class TestSagemakerStepTypeValidation:
+    """`registry.sagemaker_step_type` is the routing key (selects the PatternHandler). It is a
+    CLOSED set, now enforced by RegistrySection's Pydantic validator at author time, so a typo or
+    wrong value is caught by StepInterface.from_yaml / validate.step_interface / CI — not silently
+    mis-routed at build."""
+
+    from cursus.core.base.step_interface import RegistrySection
+
+    def _make(self, sagemaker_step_type):
+        return StepInterface.from_yaml(
+            {
+                "step_type": "X",
+                "node_type": "internal",
+                "registry": {"sagemaker_step_type": sagemaker_step_type},
+                "contract": {
+                    "entry_point": "x.py",
+                    "inputs": {"d": {"path": "/opt/ml/processing/input"}},
+                },
+                "spec": {"dependencies": {"d": {"type": "processing_output"}}},
+            }
+        )
+
+    @pytest.mark.parametrize(
+        "bad", ["Procesing", "training", "Train", "Foo", "processing"]
+    )
+    def test_invalid_value_rejected(self, bad):
+        with pytest.raises(Exception):
+            self._make(bad)
+
+    @pytest.mark.parametrize("good", list(RegistrySection._SAGEMAKER_STEP_TYPES))
+    def test_every_valid_verb_accepted(self, good):
+        si = self._make(good)
+        assert si.registry.sagemaker_step_type == good
+
+    def test_none_is_allowed(self):
+        from cursus.core.base.step_interface import RegistrySection
+
+        assert RegistrySection().sagemaker_step_type is None
+        assert RegistrySection(sagemaker_step_type=None).sagemaker_step_type is None

@@ -319,12 +319,43 @@ class RegistrySection(BaseModel):
     description: str = ""
 
     _REQUIRES: ClassVar = ("none", "secure_ai_sandbox_workflow_python_sdk")
+    #: The closed set of SageMaker verbs ``sagemaker_step_type`` may take — the routing key that
+    #: selects the PatternHandler at build time (``axis_name_for_step_type`` /
+    #: ``resolve_handler``). Pinned here so a typo (e.g. ``"Procesing"``) or a wrong value is
+    #: caught at AUTHOR time by ``StepInterface.from_yaml`` (hence by ``validate.step_interface`` /
+    #: the CLI / CI) instead of silently mis-routing — or failing to synthesize a builder — later.
+    #: Kept equal to the registry's ``get_valid_sagemaker_step_types()`` by a conformance test so
+    #: this pin can never drift from the live valid set. The five buildable verbs
+    #: (Processing / Training / Transform / CreateModel + the SAIS-delegation verbs
+    #: CradleDataLoading / RedshiftDataLoading / MimsModelRegistrationProcessing) plus the
+    #: no-builder rows (Base / Lambda / RegisterModel / Utility) that exist in the registry.
+    _SAGEMAKER_STEP_TYPES: ClassVar = (
+        "Base",
+        "CradleDataLoading",
+        "CreateModel",
+        "Lambda",
+        "MimsModelRegistrationProcessing",
+        "Processing",
+        "RedshiftDataLoading",
+        "RegisterModel",
+        "Training",
+        "Transform",
+        "Utility",
+    )
 
     @model_validator(mode="after")
     def _validate_registry(self) -> "RegistrySection":
         if self.requires not in self._REQUIRES:
             raise ValueError(
                 f"registry.requires {self.requires!r} not in {self._REQUIRES}"
+            )
+        if (
+            self.sagemaker_step_type is not None
+            and self.sagemaker_step_type not in self._SAGEMAKER_STEP_TYPES
+        ):
+            raise ValueError(
+                f"registry.sagemaker_step_type {self.sagemaker_step_type!r} not in "
+                f"{self._SAGEMAKER_STEP_TYPES}"
             )
         return self
 

@@ -1282,15 +1282,11 @@ def main(
         job_args (argparse.Namespace): Command line arguments
     """
     # Extract paths from parameters - using contract-defined logical names
-    metrics_input_dir = input_paths.get(
-        "metrics_input", input_paths.get("metrics_input_dir")
-    )
-    plots_input_dir = input_paths.get(
-        "plots_input", input_paths.get("plots_input_dir", metrics_input_dir)
-    )
-    output_wiki_dir = output_paths.get(
-        "wiki_output", output_paths.get("output_wiki_dir")
-    )
+    metrics_input_dir = input_paths.get("metrics_output")
+    # plots_output is an optional contract input; when absent, fall back to the metrics dir (a
+    # literal var default, not an undeclared-alias fallback).
+    plots_input_dir = input_paths.get("plots_output", metrics_input_dir)
+    output_wiki_dir = output_paths.get("wiki_output")
 
     # Validate required paths before use to fail fast with a clear error
     # instead of an opaque TypeError deep in os.path.join / os.makedirs.

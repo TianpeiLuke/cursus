@@ -179,8 +179,14 @@ TOOLS: List[ToolDef] = [
         schema={
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Strategy name, e.g. 'Training', 'code'."},
-                "axis": {"type": "string", "description": "Disambiguating axis (optional)."},
+                "name": {
+                    "type": "string",
+                    "description": "Strategy name, e.g. 'Training', 'code'.",
+                },
+                "axis": {
+                    "type": "string",
+                    "description": "Disambiguating axis (optional).",
+                },
             },
             "required": ["name"],
             "additionalProperties": False,
@@ -224,8 +230,14 @@ TOOLS: List[ToolDef] = [
         schema={
             "type": "object",
             "properties": {
-                "axis": {"type": "string", "description": "Routing axis of the strategy."},
-                "name": {"type": "string", "description": "Strategy name on that axis."},
+                "axis": {
+                    "type": "string",
+                    "description": "Routing axis of the strategy.",
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Strategy name on that axis.",
+                },
             },
             "required": ["axis", "name"],
             "additionalProperties": False,

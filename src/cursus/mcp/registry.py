@@ -83,6 +83,7 @@ def _collect_tooldefs() -> List[ToolDef]:
         "pipeline_catalog",
         "strategies",
         "steps",
+        "author",
         "info",
     ]
     defs: List[ToolDef] = []

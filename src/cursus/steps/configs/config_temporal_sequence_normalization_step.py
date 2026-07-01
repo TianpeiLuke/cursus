@@ -244,29 +244,53 @@ class TemporalSequenceNormalizationConfig(ProcessingStepConfigBase):
     @field_validator("padding_strategy", "truncation_strategy")
     @classmethod
     def validate_strategies(cls, v: str) -> str:
-        """Ensure strategies are valid."""
+        """
+        Ensure strategies are valid (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {"pre", "post"}
-        if v not in allowed:
-            raise ValueError(f"Strategy must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"Strategy must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("validation_strategy")
     @classmethod
     def validate_validation_strategy(cls, v: str) -> str:
-        """Ensure validation_strategy is valid."""
+        """
+        Ensure validation_strategy is valid (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {"strict", "lenient"}
-        if v not in allowed:
-            raise ValueError(f"validation_strategy must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"validation_strategy must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("output_format")
     @classmethod
     def validate_output_format(cls, v: str) -> str:
-        """Ensure output_format is valid."""
+        """
+        Ensure output_format is valid (case-insensitive).
+
+        Matching is case-insensitive and the stored value is normalized to the
+        canonical-cased allowed value.
+        """
         allowed = {"numpy", "parquet", "csv"}
-        if v not in allowed:
-            raise ValueError(f"output_format must be one of {allowed}, got '{v}'")
-        return v
+        match = next((a for a in allowed if a.lower() == v.lower()), None)
+        if match is None:
+            raise ValueError(
+                f"output_format must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+            )
+        return match
 
     @field_validator("max_workers")
     @classmethod

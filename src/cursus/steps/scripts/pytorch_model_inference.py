@@ -1406,11 +1406,9 @@ def main(
         job_args: Command line arguments
     """
     # Extract paths from parameters (aligned with XGBoost)
-    model_dir = input_paths.get("model_input", input_paths.get("model_dir"))
-    inference_data_dir = input_paths.get(
-        "processed_data", input_paths.get("eval_data_dir")
-    )
-    output_dir = output_paths.get("eval_output", output_paths.get("output_eval_dir"))
+    model_dir = input_paths.get("model_input")
+    inference_data_dir = input_paths.get("processed_data")
+    output_dir = output_paths.get("eval_output")
 
     # Extract environment variables
     id_field = environ_vars.get("ID_FIELD", "id")
