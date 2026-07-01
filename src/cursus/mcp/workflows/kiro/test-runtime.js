@@ -11,6 +11,7 @@ const { execFileSync } = require('node:child_process');
 const {
   cleanReply,
   extractJsonText,
+  shapeDirective,
   coerceToSchema,
   validateAgainstSchema,
   runPool,
@@ -67,6 +68,25 @@ ok('schema array invalid item -> error', validateAgainstSchema([{ name: 'a', run
   ok('coerce: wraps bare object -> single-element array', c4.coerced === true && Array.isArray(c4.value) && c4.value.length === 1);
   const c5 = coerceToSchema('plain', { type: 'string' }); // no container mismatch
   ok('coerce: leaves a scalar untouched', c5.coerced === false && c5.value === 'plain');
+  // multi-element array of IDENTICAL objects -> unwrap to the first (no data lost); this is the
+  // Opus-4.8-on-2.5.0 "same answer N times in an array" case reported on the small `locate` schema.
+  const dup = { name: 'x', rung: 'new' };
+  const c6 = coerceToSchema([dup, { ...dup }, { ...dup }], schema);
+  ok('coerce: unwraps a multi-element array of IDENTICAL objects', c6.coerced === true && !Array.isArray(c6.value) && c6.value.name === 'x');
+  check('coerce: the unwrapped identical-array value validates clean', validateAgainstSchema(c6.value, schema), []);
+  // multi-element array of DIFFERENT objects -> ambiguous, NOT unwrapped (left for the re-prompt).
+  const c7 = coerceToSchema([{ name: 'a', rung: 'new' }, { name: 'b', rung: 'reuse' }], schema);
+  ok('coerce: does NOT unwrap a multi-element array of DIFFERENT objects', c7.coerced === false && Array.isArray(c7.value));
+}
+
+// ---- shapeDirective: explicit "one object, not an array" instruction (RC#1a) ----
+{
+  const objDir = shapeDirective(schema);
+  ok('shapeDirective(object) says EXACTLY ONE object', /EXACTLY ONE JSON object/.test(objDir));
+  ok('shapeDirective(object) forbids arrays/alternatives', /do NOT return a JSON array/i.test(objDir) && /alternatives/.test(objDir));
+  ok('shapeDirective(object) shows a { } skeleton with the keys', objDir.includes('"name"') && objDir.includes('"rung"') && /\{[\s\S]*\}/.test(objDir));
+  const arrDir = shapeDirective({ type: 'array', items: schema });
+  ok('shapeDirective(array) asks for a JSON array', /JSON array/.test(arrDir) && !/EXACTLY ONE JSON object/.test(arrDir));
 }
 
 // ---- runPool concurrency cap ----
@@ -97,7 +117,8 @@ let reply;
 const lab = (prompt.match(/LABEL=(\\w+)/)||[])[1] || "none";
 if (/Respond AGAIN|was rejected/i.test(prompt)) reply = '{"label":"recovered","ok":true}';
 else if (/FORCE_REPROMPT/.test(prompt)) reply = "prose only, no json";
-else if (/ARRAYWRAP/.test(prompt)) reply = '[{"label":"'+lab+'","ok":true}]';   // Opus-4.8 shape slip: [{...}] for an object schema
+else if (/ARRAYWRAP/.test(prompt)) reply = '[{"label":"'+lab+'","ok":true},{"label":"'+lab+'","ok":true}]';   // Opus-4.8-on-2.5.0: same object repeated in a MULTI-element array -> coercion unwraps
+else if (/MULTIALT/.test(prompt)) reply = '[{"label":"aa","ok":true},{"label":"bb","ok":false}]';   // multi-element DIFFERENT objects -> coercion can't unwrap -> sharper re-prompt recovers
 else if (/SCHEMA/i.test(prompt)) reply = '{"label":"'+lab+'","ok":true}';
 else reply = "plain reply " + prompt.slice(0,10);
 process.stdout.write("\\x1b[38;5;141m> \\x1b[0m"+reply+"\\x1b[0m\\n");
@@ -120,8 +141,9 @@ const piped = await pipeline(names,
   (prev, orig) => agent('SCHEMA LABEL='+orig, { label:'p2:'+orig, schema:S }));
 phase('Reprompt');
 const rec = await agent('SCHEMA FORCE_REPROMPT LABEL=z', { label:'rp', schema:S });
-const wrapped = await agent('SCHEMA ARRAYWRAP LABEL=w', { label:'wrap', schema:S });   // [{...}] coerced -> {...}
-return { fan, piped, rec, wrapped, argsSeen: names, fanOk: fan.filter(Boolean).length };
+const wrapped = await agent('SCHEMA ARRAYWRAP LABEL=w', { label:'wrap', schema:S });   // multi-element identical array coerced -> {...}
+const multialt = await agent('SCHEMA MULTIALT LABEL=m', { label:'malt', schema:S });   // multi-element DIFFERENT array -> re-prompt recovers
+return { fan, piped, rec, wrapped, multialt, argsSeen: names, fanOk: fan.filter(Boolean).length };
 `
   );
 
@@ -151,7 +173,8 @@ return { fan, piped, rec, wrapped, argsSeen: names, fanOk: fan.filter(Boolean).l
     ok('e2e pipeline produced 2', result.piped.filter(Boolean).length === 2);
     ok('e2e last pipeline stage validated', result.piped.every((p) => p && p.ok === true));
     ok('e2e re-prompt recovered from prose', result.rec && result.rec.label === 'recovered');
-    ok('e2e [{...}] array-wrap coerced to object (Opus-4.8 fix)', result.wrapped && !Array.isArray(result.wrapped) && result.wrapped.label === 'w' && result.wrapped.ok === true);
+    ok('e2e multi-element identical array coerced to object (Opus-4.8-on-2.5.0 fix)', result.wrapped && !Array.isArray(result.wrapped) && result.wrapped.label === 'w' && result.wrapped.ok === true);
+    ok('e2e multi-element DIFFERENT array recovers via sharper re-prompt', result.multialt && !Array.isArray(result.multialt) && result.multialt.label === 'recovered');
   }
 
   // ---- ACP transport via run-workflow.js + a mock `kiro-cli acp` server ----

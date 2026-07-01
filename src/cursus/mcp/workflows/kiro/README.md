@@ -148,27 +148,47 @@ workflow (each `agent()` is an independent turn). The offline test suite asserts
 shape (`--legacy-kiro` drops the new flags; `--acp-entry chat-binary` spawns `kiro-cli-chat` with no
 `acp` arg) so this stays correct without a live 2.5.0 binary.
 
-## Schema-output shape (auto-coercion + re-prompt)
+## Schema-output shape (explicit directive + auto-coercion + re-prompt)
 
 Because Kiro can't tool-force structured output (the Claude Code host does), the model must voluntarily
-emit JSON matching the schema. Three failure modes seen in real SAIS runs, and how they are handled:
+emit JSON matching the schema. Three layers defend the shape, applied to EVERY schema-gated turn in
+EVERY workflow (no per-workflow code):
+
+1. **An explicit shape directive on the initial prompt** (`shapeDirective(schema)`). The raw JSON Schema
+   alone does not override some models' bias to wrap the answer in an array — on the frozen kiro-cli
+   2.5.0, Opus 4.8 returned `[{...},{...}]` even for the *small* `locate` sub-schema. So for an object
+   schema the runtime spells it out in words AND shows a `{ "field": ..., ... }` skeleton: "Return
+   EXACTLY ONE JSON object … do NOT return a JSON array … do NOT return a list of candidates or
+   alternatives — pick the single best and return ONLY that one object." This is on the FIRST attempt,
+   not just re-prompts, because the bias shows on attempt 1.
+2. **Auto-coercion before validating** (`coerceToSchema`). A single-element array `[{...}]` is unwrapped
+   to the object; a *multi*-element array whose elements are all IDENTICAL (the model emitted the same
+   answer N times) is unwrapped to the first (no data lost); a bare object is wrapped when the schema
+   wants an array. It never changes field values and won't unwrap a multi-element array of DIFFERENT
+   objects (ambiguous — left for the re-prompt).
+3. **A sharp, specific re-prompt** on any remaining mismatch (`--schema-retries`, default 3). An object
+   schema answered with an N-element array of different objects is named as exactly that ("you returned
+   a JSON ARRAY of N items … this is not a list task … pick the single best answer"), not a generic
+   "expected object, got array" the model ignored last time.
+
+Failure modes seen in real SAIS runs, and how the three layers handle them:
 
 - **Weak/unspecified model returns prose instead of JSON** (kiro-cli 2.5.0 without `--effort`, routed to
   a weak Auto model): no fix except a stronger model — pin one with `--model <id>`, or run on a newer CLI.
-- **Capable model returns the right JSON in the wrong container** — e.g. Opus 4.8 returned `[{...}]` (a
-  single-element array) when the schema wanted an object, and stayed stuck on that shape across generic
-  re-prompts. The runtime now **auto-coerces** this before validating: a single-element array is unwrapped
-  to the object it wants (and a bare object is wrapped when the schema wants an array). It never changes
-  field values, and it won't touch a genuinely-multi-element array. If coercion doesn't apply, the
-  re-prompt now names the container mismatch loudly ("the TOP-LEVEL value must be a JSON object … return
-  it DIRECTLY, not `[{...}]`") instead of a generic "expected object, got array". `--schema-retries`
-  (default 3) bounds the re-prompts.
-- **Capable model returns a MULTI-element array for a large all-at-once schema** — the follow-on failure:
+- **Array bias on ANY schema, even small ones** — Opus 4.8 on 2.5.0 wraps the answer in an array (often
+  the same object repeated) regardless of schema size. Handled by layer 1 (the directive discourages it
+  up front) + layer 2 (identical-element arrays are unwrapped) + layer 3 (a "pick one, not a list"
+  re-prompt). Because these are runtime-level, they cover BOTH workflows at once — `cursus-author-step`'s
+  locate/triage/identity turns AND `cursus-configure-pipeline`'s DagCheck + per-node Validate turns
+  (which showed the same multi-element-array failure) — with no workflow edits.
+- **Capable model returns a MULTI-element array of DIFFERENT objects for a large all-at-once schema** —
   on a later SAIS run Opus 4.8 answered `cursus-author-step`'s 15-field `PLAN_SCHEMA` (which discusses
   producer/NEW/consumer nodes) with `[{...},{...},...]` — one plan object PER NODE — plus a per-turn
-  timeout on the oversized turn. Coercion cannot unwrap a genuinely multi-element array (which object is
-  "the" plan is ambiguous), and re-prompts didn't move it. The real fix is **on the workflow side and
-  harness-conditional**: `run-workflow.js` sets `__workflowHost.toolForcesSchemaOutput = false` on the
+  timeout on the oversized turn. Coercion cannot unwrap a genuinely multi-element array of different
+  objects (which object is "the" plan is ambiguous), and the *generic* re-prompt in use at the time did
+  not move it (the sharper "pick one, not a list" re-prompt of layer 3 came later). The robust fix for
+  the big turn is additionally **on the workflow side and harness-conditional**: `run-workflow.js` sets
+  `__workflowHost.toolForcesSchemaOutput = false` on the
   sandbox, and `cursus-author-step` reads that to **split Resolve into three small single-object turns**
   (locate → triage → identity, merged into the same `PLAN_SCHEMA`-shaped plan) ONLY on Kiro. Each small
   turn has one unambiguous object shape, so no per-node array and a much smaller/faster turn. Under the

@@ -112,21 +112,60 @@ function typeMatches(v, t) {
   });
 }
 
+// Build an explicit natural-language shape directive from a schema's top-level type. Kiro can't
+// tool-force output, and some models (notably Opus 4.8 on the frozen kiro-cli 2.5.0) have a strong
+// bias to wrap even a SMALL object answer in an array — the raw JSON Schema alone does not override
+// it (observed: the little `locate` sub-schema still came back as `[{...},{...}]`). So we spell the
+// container out in words AND show a skeleton of the exact top-level shape; the literal `{ }` braces
+// anchor the model to an object. This is RC#1(a) — "return ONE object, not an array of alternatives" —
+// and because it lives in the runtime it covers EVERY schema-gated turn in EVERY workflow at once
+// (author-step's locate/triage/identity AND configure-pipeline's DagCheck + per-node Validate), with
+// no per-workflow edits and no model change. The Claude Code host tool-forces the shape, so this is
+// Kiro-runtime-specific.
+function shapeDirective(schema) {
+  if (!schema || typeof schema !== 'object') return 'Return a single JSON value and NOTHING else.';
+  const t = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+  if (t === 'object') {
+    const keys = Object.keys(schema.properties || {});
+    const skeleton = keys.length
+      ? '{ ' + keys.map((k) => JSON.stringify(k) + ': ...').join(', ') + ' }'
+      : '{ ... }';
+    return (
+      'Return EXACTLY ONE JSON object and NOTHING else. Your entire reply MUST start with `{` and end ' +
+      'with `}`. Do NOT return a JSON array; do NOT wrap the object in `[ ]`; do NOT return a list of ' +
+      'candidates or alternatives — if you weighed several options, pick the single best and return ONLY ' +
+      'that one object. The top-level shape is exactly:\n' + skeleton
+    );
+  }
+  if (t === 'array') return 'Return a JSON array `[ ... ]` and NOTHING else (no prose, no object wrapper).';
+  return 'Return a single JSON value and NOTHING else.';
+}
+
 // Coerce common LLM shape mismatches toward the schema's top-level type BEFORE validating. Models
 // (even strong ones like Opus 4.8) sometimes wrap a single object in a one-element array (`[{...}]`)
 // when the schema wants an object, or return a bare object when the schema wants an array — and they
-// can stay stuck on that shape across re-prompts. This normalizes those two cases only; it never
-// changes field values. Returns { value, coerced (bool), note }. The Claude Code host tool-forces the
-// exact shape, so this path is Kiro-runtime-specific.
+// can stay stuck on that shape across re-prompts. This normalizes those cases only; it never changes
+// field values. Returns { value, coerced (bool), note }. The Claude Code host tool-forces the exact
+// shape, so this path is Kiro-runtime-specific.
 function coerceToSchema(value, schema) {
   if (!schema || typeof schema !== 'object' || !schema.type) return { value, coerced: false };
   const want = Array.isArray(schema.type) ? schema.type : [schema.type];
   const actual = typeOf(value);
-  // object wanted, got a single-element array holding an object -> unwrap
+  // object wanted, got an array of object(s)
   if (want.includes('object') && !want.includes('array') && actual === 'array') {
     const objs = value.filter((v) => typeOf(v) === 'object');
+    // single-element array holding an object -> unwrap
     if (value.length === 1 && objs.length === 1) {
       return { value: value[0], coerced: true, note: 'unwrapped single-element array -> object' };
+    }
+    // multi-element array of IDENTICAL objects (the model emitted the same answer N times) -> unwrap
+    // to the first; no data is lost because the elements are deep-equal. Genuinely DIFFERENT elements
+    // are ambiguous (which one is "the" answer?), so leave those for the re-prompt rather than guess.
+    if (value.length > 1 && objs.length === value.length) {
+      const first = JSON.stringify(value[0]);
+      if (value.every((v) => JSON.stringify(v) === first)) {
+        return { value: value[0], coerced: true, note: `unwrapped ${value.length}-element array of identical objects -> object` };
+      }
     }
   }
   // array wanted, got a bare object -> wrap
@@ -387,10 +426,13 @@ class KiroWorkflowRuntime {
     const schema = opts.schema || null;
     let finalPrompt = prompt;
     if (schema) {
+      // Lead with the explicit shape directive (words + skeleton), THEN the schema. The directive is
+      // on the initial prompt — not just re-prompts — because the array-wrap bias shows on attempt 1.
       finalPrompt =
         prompt +
-        '\n\n---\nRESPOND WITH A SINGLE JSON VALUE AND NOTHING ELSE. No prose, no explanation, ' +
-        'no markdown code fence. The JSON must conform to this JSON Schema:\n' +
+        '\n\n---\n' +
+        shapeDirective(schema) +
+        '\nNo prose, no explanation, no markdown code fence. The JSON must conform to this JSON Schema:\n' +
         JSON.stringify(schema);
     }
 
@@ -424,12 +466,14 @@ class KiroWorkflowRuntime {
       }
 
       // Build a corrective re-prompt (used by every failure branch so the retry is not identical).
+      // Re-state the full shape directive (words + skeleton) each time, not a generic "single value".
       const reprompt = (reasonLines) =>
         prompt +
         '\n\n---\nYour previous reply was rejected: ' +
         reasonLines +
-        '\nRespond AGAIN with a SINGLE valid JSON value and NOTHING else — no prose, no markdown ' +
-        'fence — conforming to this JSON Schema:\n' +
+        '\n' +
+        shapeDirective(schema) +
+        '\nNo prose, no markdown fence. Conform to this JSON Schema:\n' +
         JSON.stringify(schema);
 
       const jsonText = extractJsonText(turn.text);
@@ -448,16 +492,22 @@ class KiroWorkflowRuntime {
           }
           if (sAttempt < this.maxSchemaRetries) {
             // If the top-level container is wrong, say so LOUDLY and concretely — a generic
-            // "expected object, got array" is what the model ignored last time.
+            // "expected object, got array" is what the model ignored last time. Name the exact case:
+            // an OBJECT schema answered with an N-element array is the model returning a LIST OF
+            // ALTERNATIVES; tell it to pick one.
             const wantType = Array.isArray(schema.type) ? schema.type.join('|') : schema.type;
-            const shapeHint =
-              wantType && typeOf(parsed) !== wantType && (wantType === 'object' || wantType === 'array')
-                ? `\nCRITICAL: the TOP-LEVEL value must be a JSON ${wantType} (` +
-                  (wantType === 'object'
-                    ? 'starts with `{` and `}` — do NOT wrap it in an array; return the object DIRECTLY, not `[{...}]`'
-                    : 'a JSON array `[...]`') +
-                  `). You returned a ${typeOf(parsed)}.`
-                : '';
+            let shapeHint = '';
+            if (wantType && typeOf(parsed) !== wantType && (wantType === 'object' || wantType === 'array')) {
+              if (wantType === 'object' && typeOf(parsed) === 'array') {
+                shapeHint =
+                  `\nCRITICAL: you returned a JSON ARRAY of ${parsed.length} item(s), but the answer must be ` +
+                  'EXACTLY ONE JSON object. This is not a list task — do NOT return multiple candidates or ' +
+                  'alternatives. Pick the single best answer and return ONLY that one object: your reply must ' +
+                  'start with `{` and end with `}`, with no surrounding `[ ]`.';
+              } else if (wantType === 'array') {
+                shapeHint = '\nCRITICAL: the TOP-LEVEL value must be a JSON array `[...]`. You returned a ' + typeOf(parsed) + '.';
+              }
+            }
             this._emit(`  ↻ ${label}: schema mismatch, re-prompting (${errors[0]})`);
             finalPrompt = reprompt(
               'it did not satisfy the schema. Errors:\n' +
@@ -533,6 +583,7 @@ module.exports = {
   stripAnsi,
   cleanReply,
   extractJsonText,
+  shapeDirective,
   coerceToSchema,
   validateAgainstSchema,
   runPool,
