@@ -30,11 +30,14 @@ AlignEdges→ the spec-alignment gate (steps.io on producer + consumer): arity (
             compute the 6-component score for BOTH edges (validate.deps_explain) — refuse to proceed <0.5
 Guide     → author.rules + strategies.knobs + author.config_constraints + catalog.config_fields + the
             container-path roots per step type → per-axis field guidance honoring the aligned specs
-Author    → the agent Writes the 3 artifacts (.step.yaml + <Name>Config + script) AND edits the
-            producer/consumer .step.yaml specs to accept the new step
+Author    → the agent Writes the 3 artifacts (.step.yaml + <Name>Config + script) using the exemplar as a
+            STARTING shape then applying the required divergences-from-exemplar (never a silent clone) AND
+            edits the producer/consumer .step.yaml specs to accept the new step
 Validate  → validate.step_interface (contract↔spec + container-path validators) + author.check_script
             (both directions incl. --job_type + the {job_type} subdir layout) + an EXECUTABLE parse oracle
-            (py_compile the .py artifacts + yaml.safe_load the .step.yaml, as required booleans) + re-resolve
+            (py_compile the .py artifacts + yaml.safe_load the .step.yaml, as required booleans) + a
+            DIVERGENCE-FIDELITY gate (every required delta-over-exemplar the Resolve phase named is actually
+            present — catches the copy-the-exemplar-and-drop-the-distinguishing-feature bug) + re-resolve
             BOTH edges with the real resolver (validate.deps_resolve); fix loops report py_compile_ok so a
             fixer that injects a syntax error escalates instead of silently retrying
 Preflight → author.preflight_step (offline constructibility = the CI merge gate) + compile.preview/validate

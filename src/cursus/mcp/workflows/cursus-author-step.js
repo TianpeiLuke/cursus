@@ -6,8 +6,8 @@ export const meta = {
     { title: 'Challenge', detail: 'verdict-override on the gap rung: a skeptic runs catalog.step_info/steps.io to try to REVERSE the rung (esp. a wrong cheaper reuse/extend/delete that would silently short-circuit); reverses on the same enum' },
     { title: 'AlignEdges', detail: 'the spec-alignment gate: arity (1 PropertyReference per DependencySpec); GATE-1 enum (dependency_type/output_type exact-or-in-matrix, else the edge hard-zeros); edit CONSUMER compatible_sources + OUTPUT aliases for editing room; GATE-2 compute the 6-component score for BOTH edges, refuse <0.5' },
     { title: 'Guide', detail: 'per-axis field guidance + author.config_constraints (allowed_values + case + required-no-default) + the container-path roots per step type' },
-    { title: 'Author', detail: 'agent Writes the .step.yaml + config class + script AND edits the producer/consumer .step.yaml specs so they accept the new step' },
-    { title: 'Validate', detail: 'validate.step_interface (contract<->spec + container paths) + author.check_script (both directions incl. --job_type + the {job_type} subdir layout) + py_compile/yaml parse oracle + re-resolve both edges, bounded fix loops' },
+    { title: 'Author', detail: 'agent Writes the .step.yaml + config class + script by exemplar-PLUS-required-divergences (never a silent exemplar clone) AND edits the producer/consumer .step.yaml specs so they accept the new step' },
+    { title: 'Validate', detail: 'validate.step_interface (contract<->spec + container paths) + author.check_script (both directions incl. --job_type + the {job_type} subdir layout) + py_compile/yaml parse oracle + divergence-fidelity gate (every required delta-over-exemplar is present) + re-resolve both edges, bounded fix loops' },
     { title: 'Preflight', detail: 'author.preflight_config (values) + author.preflight_step (offline constructibility = CI merge gate) + compile.validate/preview on the whole DAG' },
     { title: 'Gaps', detail: 'completeness critic over the FULL dag_path: does an additive compatible_sources edit regress another consumer? cross-branch (train vs eval) column-survival trace (habit 4)? -> green_with_open_gaps not silent-ship' },
     { title: 'Synthesize', detail: 'report what was authored + which producer/consumer specs were edited + the edge scores + the publish path' },
@@ -93,7 +93,7 @@ const CONTAINER_PATHS = [
 // --- structured outputs the script branches on ---
 const PLAN_SCHEMA = {
   type: 'object', additionalProperties: false,
-  required: ['step_name', 'snake_name', 'sagemaker_step_type', 'step_assembly', 'node_type', 'framework', 'reuse_class', 'bound_handler', 'exemplar_step', 'needed_axes', 'gap_rung', 'is_new_step', 'producer', 'consumer'],
+  required: ['step_name', 'snake_name', 'sagemaker_step_type', 'step_assembly', 'node_type', 'framework', 'reuse_class', 'bound_handler', 'exemplar_step', 'needed_axes', 'gap_rung', 'is_new_step', 'divergences_from_exemplar', 'producer', 'consumer'],
   properties: {
     step_name: { type: 'string', description: 'PascalCase; IS the .step.yaml step_type + the canonical registry name + the base of the DAG node string' },
     snake_name: { type: 'string', description: 'snake_case file stem for the 3 artifacts' },
@@ -110,6 +110,14 @@ const PLAN_SCHEMA = {
     gap_rung: { type: 'string', enum: ['reuse_config_only', 'extend_optional_dep', 'delete_node_artifact_exists', 'new_step'], description: 'the lowest rung that fits; higher rungs rejected with reason' },
     gap_rung_reason: { type: 'string' },
     is_new_step: { type: 'boolean', description: 'true only when gap_rung == new_step' },
+    // The concrete features that make this a NEW step rather than a reuse of the exemplar — the SAME
+    // facts that justified rejecting reuse_config_only. These are REQUIRED additions/changes over the
+    // exemplar shape; the Author phase must NOT drop them when it copies the exemplar. Example that
+    // motivated this field: TSATabularPreprocessing needed a second output `preprocessor` the generic
+    // TabularPreprocessing exemplar lacks — the reason it is a new step — and Author dropped it because
+    // it copied the one-output exemplar. Each entry names the axis + the delta (e.g.
+    // "outputs: ADD a `preprocessor` output (fitted scaler .pkl) — the exemplar has only processed_data").
+    divergences_from_exemplar: { type: 'array', items: { type: 'string' }, description: 'the REQUIRED deltas over the exemplar that define this step; empty ONLY if the step is byte-shape-identical to the exemplar (then it should not have been a new_step)' },
     // The adjacent nodes and their decomposition (SOP step 1). Empty producer => source; empty consumer => sink.
     producer: { type: 'object', additionalProperties: false, required: ['node', 'base_step_type'], properties: { node: { type: 'string' }, base_step_type: { type: 'string' }, job_type: { type: 'string' } } },
     consumer: { type: 'object', additionalProperties: false, required: ['node', 'base_step_type'], properties: { node: { type: 'string' }, base_step_type: { type: 'string' }, job_type: { type: 'string' } } },
@@ -210,6 +218,19 @@ const VALIDATE_SCHEMA = {
   properties: { ok: { type: 'boolean' }, errors: { type: 'array', items: { type: 'string' } }, warnings: { type: 'array', items: { type: 'string' } } },
 }
 
+// Divergence-fidelity gate: each REQUIRED delta the Resolve phase said makes this a new step must be
+// present in the authored artifact. Catches the copy-the-exemplar-and-drop-the-distinguishing-feature
+// bug (e.g. authoring TSATabularPreprocessing but omitting the `preprocessor` output that was its
+// whole reason to exist). present:false on any entry = the step is (partly) just the exemplar clone.
+const DIVERGENCE_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['all_present', 'checks'],
+  properties: {
+    all_present: { type: 'boolean' },
+    checks: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['divergence', 'present'], properties: { divergence: { type: 'string' }, present: { type: 'boolean' }, evidence: { type: 'string', description: 'where in the authored artifact the delta landed (or why it is missing)' } } } },
+  },
+}
+
 // Cross-edge resolution after the specs are written (Validate phase): does the real resolver score
 // both edges >= 0.5 now that producer/NEW/consumer specs all exist?
 const RESOLVE_SCHEMA = {
@@ -271,9 +292,17 @@ function resolvePrompt(req) {
     'Also DEMOTE any candidate whose output is invariant across runs (deterministic from static inputs) to a config field.',
     'Set is_new_step = (gap_rung == new_step). If not a new step, still return the plan with the cheaper resolution named.',
     '',
+    'STEP 2b — CAPTURE THE DIVERGENCES (do this WHENEVER new_step). The very reason reuse_config_only was',
+    'rejected IS a concrete list of features the exemplar lacks — record them in divergences_from_exemplar as',
+    'REQUIRED deltas the Author phase must add on top of the exemplar shape (it must NOT silently copy the',
+    'exemplar and drop them). One entry per delta, naming the AXIS + the change, e.g. "outputs: ADD a',
+    '`preprocessor` output (the fitted scaler .pkl) — the exemplar emits only processed_data" or "env_vars: ADD',
+    'LABEL_FIELD_2". If new_step but you cannot name a single divergence, the reuse-ladder was mis-applied — go back',
+    'to rung (a). (For a non-new-step rung, divergences_from_exemplar = [].)',
+    '',
     'If new_step: call author.checklist(sagemaker_step_type[, step_assembly]) for the ordered SOP + the bound handler +',
     'the exemplar; strategies.for_step_type to confirm the handler/knobs; author.rules("naming") + author.rules("reuse_class").',
-    'needed_axes = only the behavior axes this step actually uses. Return the PLAN.',
+    'needed_axes = only the behavior axes this step actually uses. Return the PLAN (incl. divergences_from_exemplar).',
   ].join('\n')
 }
 
@@ -349,6 +378,14 @@ function authorPrompt(plan, guides, align, req) {
     '  4. THE EDGE EDITS (additive, backward-compatible): apply every item in consumer_edits by EDITING the adjacent',
     '     .step.yaml spec section(s): ' + JSON.stringify((align && align.consumer_edits) || []),
     '',
+    'AUTHORING MODEL — exemplar-PLUS-deltas, NOT clone-the-exemplar. Start from the ' + plan.exemplar_step + ' shape,',
+    'then APPLY every REQUIRED DIVERGENCE below. These are the exact features that make this a NEW step rather than a',
+    'reuse of the exemplar — dropping any one of them reproduces the exemplar and defeats the reason this step exists:',
+    '  REQUIRED DIVERGENCES FROM EXEMPLAR: ' + JSON.stringify(plan.divergences_from_exemplar || []),
+    '  After writing, VERIFY each divergence is actually present in the artifact (e.g. if a divergence says "ADD a',
+    '  `preprocessor` output", confirm both contract.outputs.preprocessor AND spec.outputs.preprocessor exist). A',
+    '  divergence the exemplar lacks and you did not add is a BUG, not a simplification.',
+    '',
     'SPEC (from AlignEdges — do not drift): the NEW dependency-spec + output-spec types/logical-names/aliases/',
     'compatible_sources are FIXED by the edge alignment: ' + JSON.stringify((align && align.edges) || []),
     'CONTRACT (SOP step 7): ' + CONTAINER_PATHS + ' Layer {job_type}/... beneath the root; contract dict KEYS ==',
@@ -356,13 +393,15 @@ function authorPrompt(plan, guides, align, req) {
     'SCRIPT (SOP step 9): main() is indexed ONLY by contract logical_names — NEVER hardcode /opt/ml inside main().',
     'Copy the __main__ block + container-path constants VERBATIM from the exemplar (' + plan.exemplar_step + '); read every',
     'behavioral knob via environ_vars.get(NAME, default); read inputs with rglob (not a flat glob) so nested {job_type}/',
-    'files are found. EMIT the FULL downstream-consumed artifact set even for artifacts this script does not itself use.',
+    'files are found. EMIT the FULL downstream-consumed artifact set even for artifacts this script does not itself use',
+    '(this INCLUDES every output named in the REQUIRED DIVERGENCES — write the file the divergence artifact represents).',
     '',
     'PLAN: ' + JSON.stringify(plan),
     'PER-AXIS GUIDANCE: ' + JSON.stringify(guides),
-    'Copy section shapes from exemplar ' + plan.exemplar_step + '. registry.sagemaker_step_type=' + plan.sagemaker_step_type + '.',
-    'Do NOT edit any registry file (registry is derived by construction). Report the written file paths AND the exact',
-    'producer/consumer spec edits you made.',
+    'Use the exemplar ' + plan.exemplar_step + ' as the STARTING shape, then apply the required divergences above.',
+    'registry.sagemaker_step_type=' + plan.sagemaker_step_type + '.',
+    'Do NOT edit any registry file (registry is derived by construction). Report the written file paths, the exact',
+    'producer/consumer spec edits you made, AND for each required divergence a one-line confirmation it is present.',
   ].join('\n')
 }
 
@@ -482,6 +521,37 @@ const report = await pipeline(REQUESTS,
       '(edit ONLY the broken file) and re-run until it exits 0.',
       { label: 'parse:' + plan.step_name, phase: 'Validate', schema: PARSE_SCHEMA, effort: 'high' })
 
+    // 4b''. DIVERGENCE-FIDELITY gate: every REQUIRED delta the Resolve phase said makes this a new step
+    // must actually be in the authored artifact. This catches the copy-the-exemplar-and-drop-the-
+    // distinguishing-feature bug (the empirical TSATabularPreprocessing run authored the step but dropped
+    // the `preprocessor` output that was its whole reason to exist). Bounded fix loop, same shape as 4a/4b.
+    const divs = ctx.plan.divergences_from_exemplar || []
+    let dv = null
+    if (divs.length) {
+      let dtries = 0
+      do {
+        dv = await agent(
+          'The new step "' + plan.step_name + '" is a NEW step (not a reuse of exemplar ' + plan.exemplar_step + ') ' +
+          'BECAUSE of these REQUIRED divergences: ' + JSON.stringify(divs) + '. Read the authored artifacts ' +
+          '(src/cursus/steps/interfaces/' + plan.snake_name + '.step.yaml, config_' + plan.snake_name + '_step.py, ' +
+          plan.snake_name + '.py) and confirm EACH divergence is actually present (e.g. a "ADD a preprocessor output" ' +
+          'divergence needs BOTH contract.outputs.preprocessor AND spec.outputs.preprocessor, and the script writing it). ' +
+          'Return {all_present, checks:[{divergence, present, evidence}]}. A divergence that is absent means the artifact ' +
+          'silently reverted to the exemplar shape.',
+          { label: 'divergence_check:' + plan.step_name, phase: 'Validate', schema: DIVERGENCE_SCHEMA, effort: 'high' })
+        if (dv && !dv.all_present && dtries < 2) {
+          const missing = (dv.checks || []).filter(c => !c.present).map(c => c.divergence)
+          await agent(
+            'The authored "' + plan.step_name + '" is MISSING these required divergences (it copied the exemplar and ' +
+            'dropped them): ' + JSON.stringify(missing) + '. ADD each one to the correct artifact + section (an output ' +
+            'delta goes in BOTH contract.outputs and spec.outputs of the .step.yaml AND is written by the script; an ' +
+            'env_var delta goes in contract.env_vars). Edit ONLY what is needed to add the missing deltas, then stop.',
+            { label: 'fix_divergence:' + plan.step_name + ':' + dtries, phase: 'Validate', effort: 'high' })
+        }
+        dtries++
+      } while (dv && !dv.all_present && dtries <= 2)
+    }
+
     // 4c. re-resolve BOTH edges with the REAL resolver now that all three specs exist (SOP step 6, for real).
     const nodes = [ctx.req.producer_node, ctx.plan.step_name, ctx.req.consumer_node].filter(Boolean)
     const rr = await agent(
@@ -520,7 +590,7 @@ const report = await pipeline(REQUESTS,
         'node set), edit_collateral, uncovered_consumers, cross_branch_column_mismatches, sequencing_risks}. Be concrete; do not pad.',
         { label: 'gaps:' + plan.step_name, phase: 'Gaps', schema: GAPS_SCHEMA, effort: 'high' })
     }
-    return { plan, req: ctx.req, align: ctx.align, validate: v, check_script: cs, parse: parse, resolve: rr, preflight: pf, gaps: gaps }
+    return { plan, req: ctx.req, align: ctx.align, validate: v, check_script: cs, parse: parse, divergence: dv, resolve: rr, preflight: pf, gaps: gaps }
   },
 )
 
@@ -533,10 +603,17 @@ const authored = done.filter(r => !r.short_circuit && r.plan && r.plan.is_new_st
 // still has a config.py + .step.yaml to parse.
 const scriptOk = (r) => !!r.check_script && (r.check_script.status === 'skipped' || r.check_script.passed === true)
 const parseOk = (r) => !!r.parse && r.parse.py_compile_ok === true && r.parse.yaml_loads_ok === true
+// Divergence fidelity: if Resolve named required deltas over the exemplar, they must all be present.
+// No divergences declared -> vacuously ok. A missing divergence = a silent exemplar-clone bug, NOT green.
+const divergenceOk = (r) => {
+  const declared = (r.plan && r.plan.divergences_from_exemplar) || []
+  if (!declared.length) return true
+  return !!r.divergence && r.divergence.all_present === true
+}
 // Open gaps found by the completeness critic: edit collateral or a cross-branch column mismatch.
 const hasOpenGaps = (r) => !!r.gaps && (((r.gaps.edit_collateral || []).length > 0) || ((r.gaps.cross_branch_column_mismatches || []).length > 0))
 const passedCore = (r) =>
-  !!(r.validate && r.validate.ok) && scriptOk(r) && parseOk(r) &&
+  !!(r.validate && r.validate.ok) && scriptOk(r) && parseOk(r) && divergenceOk(r) &&
   !!(r.resolve && r.resolve.both_edges_resolve) &&
   !!(r.preflight && r.preflight.constructible)
 const green = authored.filter(r => passedCore(r) && !hasOpenGaps(r))
@@ -561,6 +638,9 @@ return {
     validate_ok: r.validate ? r.validate.ok : null,
     script_ok: r.check_script ? (r.check_script.status === 'skipped' ? 'skipped' : r.check_script.passed) : null,
     parse_ok: r.parse ? (r.parse.py_compile_ok === true && r.parse.yaml_loads_ok === true) : null,
+    divergences_required: (r.plan && r.plan.divergences_from_exemplar) || [],
+    divergences_present: r.divergence ? r.divergence.all_present : (((r.plan && r.plan.divergences_from_exemplar) || []).length === 0 ? true : null),
+    divergences_missing: r.divergence ? (r.divergence.checks || []).filter(c => !c.present).map(c => c.divergence) : [],
     edges_resolve: r.resolve ? r.resolve.both_edges_resolve : null,
     constructible: r.preflight ? r.preflight.constructible : null,
     failed_gates: r.preflight ? (r.preflight.gates || []).filter(g => !g.passed).map(g => g.name) : [],
@@ -571,5 +651,5 @@ return {
     } : null,
   })),
   resolved_without_new_step: shorted.map(r => ({ intent: r.req && r.req.intent, edge: r.req ? edgeStr(r.req) : null, verdict: r.short_circuit, gap_rung: r.plan ? r.plan.gap_rung : null })),
-  publish_path: 'A step is "green" only if validate.step_interface ok + author.check_script pass/skip + the py_compile/yaml PARSE oracle + both edges resolve + preflight constructible, AND the completeness critic found no open gaps (else green_with_open_gaps — flagged, not silently shipped). These are NECESSARY, not SUFFICIENT: they cover the single new step interface + its two edges + parse-ability. Before publish, ALSO run `cursus validate step-interface --all` (catches cross-step/registry-parity breakage the per-step gate cannot), and note that registry-parity / RegistryBindingValidator B3 / routability / brazil-build still run at CR. Habit 4: a green edge is a WIRE proof, not a runtime proof — for a data-carrying step run validate.run_scripts (or a sampled dry-run) and confirm the cross-branch column trace. Then: CR + brazil pb build → cursus-peru-dev → cursus-peru-shared → CDK → CodeArtifact.',
+  publish_path: 'A step is "green" only if validate.step_interface ok + author.check_script pass/skip + the py_compile/yaml PARSE oracle + every REQUIRED divergence-from-exemplar present (no silent exemplar clone) + both edges resolve + preflight constructible, AND the completeness critic found no open gaps (else green_with_open_gaps — flagged, not silently shipped). These are NECESSARY, not SUFFICIENT: they cover the single new step interface + its two edges + parse-ability. Before publish, ALSO run `cursus validate step-interface --all` (catches cross-step/registry-parity breakage the per-step gate cannot), and note that registry-parity / RegistryBindingValidator B3 / routability / brazil-build still run at CR. Habit 4: a green edge is a WIRE proof, not a runtime proof — for a data-carrying step run validate.run_scripts (or a sampled dry-run) and confirm the cross-branch column trace. Then: CR + brazil pb build → cursus-peru-dev → cursus-peru-shared → CDK → CodeArtifact.',
 }
