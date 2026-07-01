@@ -112,6 +112,30 @@ function typeMatches(v, t) {
   });
 }
 
+// Coerce common LLM shape mismatches toward the schema's top-level type BEFORE validating. Models
+// (even strong ones like Opus 4.8) sometimes wrap a single object in a one-element array (`[{...}]`)
+// when the schema wants an object, or return a bare object when the schema wants an array — and they
+// can stay stuck on that shape across re-prompts. This normalizes those two cases only; it never
+// changes field values. Returns { value, coerced (bool), note }. The Claude Code host tool-forces the
+// exact shape, so this path is Kiro-runtime-specific.
+function coerceToSchema(value, schema) {
+  if (!schema || typeof schema !== 'object' || !schema.type) return { value, coerced: false };
+  const want = Array.isArray(schema.type) ? schema.type : [schema.type];
+  const actual = typeOf(value);
+  // object wanted, got a single-element array holding an object -> unwrap
+  if (want.includes('object') && !want.includes('array') && actual === 'array') {
+    const objs = value.filter((v) => typeOf(v) === 'object');
+    if (value.length === 1 && objs.length === 1) {
+      return { value: value[0], coerced: true, note: 'unwrapped single-element array -> object' };
+    }
+  }
+  // array wanted, got a bare object -> wrap
+  if (want.includes('array') && !want.includes('object') && actual === 'object') {
+    return { value: [value], coerced: true, note: 'wrapped bare object -> single-element array' };
+  }
+  return { value, coerced: false };
+}
+
 function validateAgainstSchema(value, schema, path = '$') {
   const errors = [];
   if (!schema || typeof schema !== 'object') return errors;
@@ -183,7 +207,7 @@ class KiroWorkflowRuntime {
     this.acpProtocolVersion = config.acpProtocolVersion || 1;
     this.timeoutMs = config.timeoutMs || 15 * 60 * 1000;
     this.maxRetries = config.maxRetries ?? 1; // transport-level retries (spawn/timeout failures)
-    this.maxSchemaRetries = config.maxSchemaRetries ?? 2; // re-prompts on schema mismatch
+    this.maxSchemaRetries = config.maxSchemaRetries ?? 3; // re-prompts on schema mismatch (raise via --schema-retries)
     const cores = (os.cpus() || []).length || 4;
     this.concurrency = config.concurrency || Math.max(1, Math.min(16, cores - 2));
 
@@ -411,17 +435,34 @@ class KiroWorkflowRuntime {
       const jsonText = extractJsonText(turn.text);
       if (jsonText) {
         try {
-          const parsed = JSON.parse(jsonText);
+          const rawParsed = JSON.parse(jsonText);
+          // Normalize a common shape mismatch (e.g. single-element array when an object is wanted)
+          // before validating — models can get stuck emitting the wrong container across re-prompts.
+          const co = coerceToSchema(rawParsed, schema);
+          const parsed = co.value;
+          if (co.coerced) this._emit(`  · ${label}: ${co.note}`);
           const errors = validateAgainstSchema(parsed, schema);
           if (errors.length === 0) {
             this._emit(`  ✓ ${label}`);
             return parsed;
           }
           if (sAttempt < this.maxSchemaRetries) {
+            // If the top-level container is wrong, say so LOUDLY and concretely — a generic
+            // "expected object, got array" is what the model ignored last time.
+            const wantType = Array.isArray(schema.type) ? schema.type.join('|') : schema.type;
+            const shapeHint =
+              wantType && typeOf(parsed) !== wantType && (wantType === 'object' || wantType === 'array')
+                ? `\nCRITICAL: the TOP-LEVEL value must be a JSON ${wantType} (` +
+                  (wantType === 'object'
+                    ? 'starts with `{` and `}` — do NOT wrap it in an array; return the object DIRECTLY, not `[{...}]`'
+                    : 'a JSON array `[...]`') +
+                  `). You returned a ${typeOf(parsed)}.`
+                : '';
             this._emit(`  ↻ ${label}: schema mismatch, re-prompting (${errors[0]})`);
             finalPrompt = reprompt(
               'it did not satisfy the schema. Errors:\n' +
-                errors.slice(0, 8).map((e) => '  - ' + e).join('\n')
+                errors.slice(0, 8).map((e) => '  - ' + e).join('\n') +
+                shapeHint
             );
             continue;
           }
@@ -492,6 +533,7 @@ module.exports = {
   stripAnsi,
   cleanReply,
   extractJsonText,
+  coerceToSchema,
   validateAgainstSchema,
   runPool,
 };

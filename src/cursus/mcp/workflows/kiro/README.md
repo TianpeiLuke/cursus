@@ -148,6 +148,22 @@ workflow (each `agent()` is an independent turn). The offline test suite asserts
 shape (`--legacy-kiro` drops the new flags; `--acp-entry chat-binary` spawns `kiro-cli-chat` with no
 `acp` arg) so this stays correct without a live 2.5.0 binary.
 
+## Schema-output shape (auto-coercion + re-prompt)
+
+Because Kiro can't tool-force structured output (the Claude Code host does), the model must voluntarily
+emit JSON matching the schema. Two failure modes seen in real SAIS runs, and how the runtime handles them:
+
+- **Weak/unspecified model returns prose instead of JSON** (kiro-cli 2.5.0 without `--effort`, routed to
+  a weak Auto model): no fix except a stronger model — pin one with `--model <id>`, or run on a newer CLI.
+- **Capable model returns the right JSON in the wrong container** — e.g. Opus 4.8 returned `[{...}]` (a
+  single-element array) when the schema wanted an object, and stayed stuck on that shape across generic
+  re-prompts. The runtime now **auto-coerces** this before validating: a single-element array is unwrapped
+  to the object it wants (and a bare object is wrapped when the schema wants an array). It never changes
+  field values, and it won't touch a genuinely-multi-element array. If coercion doesn't apply, the
+  re-prompt now names the container mismatch loudly ("the TOP-LEVEL value must be a JSON object … return
+  it DIRECTLY, not `[{...}]`") instead of a generic "expected object, got array". `--schema-retries`
+  (default 3) bounds the re-prompts.
+
 ## How faithful is this to the Claude Code runtime?
 
 Same primitive API, same tools, same phase order and gates. Differences to know:

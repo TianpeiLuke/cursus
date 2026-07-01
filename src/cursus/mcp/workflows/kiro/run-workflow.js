@@ -18,6 +18,9 @@
 //   --trust-tools <csv>  pass --trust-tools=<csv> instead of --trust-all-tools
 //   --kiro-bin <path>    kiro-cli binary (default: kiro-cli on PATH)
 //   --budget <n>         token-estimate ceiling for budget.total (default: none / Infinity)
+//   --schema-retries <n> re-prompts on a schema mismatch before giving up (default 3). The runtime
+//                        also auto-coerces a single-element array to an object when the schema wants
+//                        one, so this mainly helps genuinely-wrong content, not container-shape slips.
 //   --transport <t>      'headless' (default; one `kiro-cli chat --no-interactive` per turn) or
 //                        'acp' (one long-lived `kiro-cli acp` process, one ACP session per turn —
 //                        persistent JSON-RPC connection, streaming, per-tool permission handling)
@@ -108,6 +111,7 @@ async function main() {
     trustTools: opts['trust-tools'],
     concurrency: opts.concurrency ? Number(opts.concurrency) : undefined,
     timeoutMs: opts['timeout-ms'] ? Number(opts['timeout-ms']) : undefined,
+    maxSchemaRetries: opts['schema-retries'] ? Number(opts['schema-retries']) : undefined,
     budgetTotal: opts.budget ? Number(opts.budget) : null,
     transport: opts.transport, // 'headless' (default) | 'acp'
     // Version-skew controls (SAIS is a frozen kiro-cli 2.5.0 snapshot):

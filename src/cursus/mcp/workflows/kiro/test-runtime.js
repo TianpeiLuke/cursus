@@ -11,6 +11,7 @@ const { execFileSync } = require('node:child_process');
 const {
   cleanReply,
   extractJsonText,
+  coerceToSchema,
   validateAgainstSchema,
   runPool,
 } = require('./kiro-workflow-runtime');
@@ -52,6 +53,22 @@ ok('schema bad type -> error', validateAgainstSchema({ name: 5, rung: 'new' }, s
 ok('schema array valid item -> []', validateAgainstSchema([{ name: 'a', rung: 'reuse' }], { type: 'array', items: schema }).length === 0);
 ok('schema array invalid item -> error', validateAgainstSchema([{ name: 'a', rung: 'bad' }], { type: 'array', items: schema }).length > 0);
 
+// ---- coerceToSchema: the Opus-4.8 [{...}]-instead-of-{...} fix ----
+{
+  const c1 = coerceToSchema([{ name: 'x', rung: 'new' }], schema); // object wanted, single-elem array given
+  ok('coerce: unwraps single-element array -> object', c1.coerced === true && !Array.isArray(c1.value) && c1.value.name === 'x');
+  check('coerce: unwrapped value validates clean', validateAgainstSchema(c1.value, schema), []);
+  const c2 = coerceToSchema({ name: 'x', rung: 'new' }, schema); // already correct
+  ok('coerce: leaves a correct object untouched', c2.coerced === false && c2.value.name === 'x');
+  const c3 = coerceToSchema([{ a: 1 }, { a: 2 }], schema); // 2-elem array: NOT unwrapped (ambiguous)
+  ok('coerce: does NOT unwrap a multi-element array', c3.coerced === false && Array.isArray(c3.value));
+  const arrSchema = { type: 'array', items: schema };
+  const c4 = coerceToSchema({ name: 'x', rung: 'new' }, arrSchema); // array wanted, bare object given
+  ok('coerce: wraps bare object -> single-element array', c4.coerced === true && Array.isArray(c4.value) && c4.value.length === 1);
+  const c5 = coerceToSchema('plain', { type: 'string' }); // no container mismatch
+  ok('coerce: leaves a scalar untouched', c5.coerced === false && c5.value === 'plain');
+}
+
 // ---- runPool concurrency cap ----
 (async () => {
   let inFlight = 0;
@@ -77,9 +94,11 @@ const argv = process.argv.slice(2);
 const prompt = argv[argv.length-1] || "";
 process.stderr.write("WARNING mock\\n");
 let reply;
+const lab = (prompt.match(/LABEL=(\\w+)/)||[])[1] || "none";
 if (/Respond AGAIN|was rejected/i.test(prompt)) reply = '{"label":"recovered","ok":true}';
 else if (/FORCE_REPROMPT/.test(prompt)) reply = "prose only, no json";
-else if (/SCHEMA/i.test(prompt)) reply = '{"label":"'+((prompt.match(/LABEL=(\\w+)/)||[])[1]||"none")+'","ok":true}';
+else if (/ARRAYWRAP/.test(prompt)) reply = '[{"label":"'+lab+'","ok":true}]';   // Opus-4.8 shape slip: [{...}] for an object schema
+else if (/SCHEMA/i.test(prompt)) reply = '{"label":"'+lab+'","ok":true}';
 else reply = "plain reply " + prompt.slice(0,10);
 process.stdout.write("\\x1b[38;5;141m> \\x1b[0m"+reply+"\\x1b[0m\\n");
 process.exit(0);
@@ -101,7 +120,8 @@ const piped = await pipeline(names,
   (prev, orig) => agent('SCHEMA LABEL='+orig, { label:'p2:'+orig, schema:S }));
 phase('Reprompt');
 const rec = await agent('SCHEMA FORCE_REPROMPT LABEL=z', { label:'rp', schema:S });
-return { fan, piped, rec, argsSeen: names, fanOk: fan.filter(Boolean).length };
+const wrapped = await agent('SCHEMA ARRAYWRAP LABEL=w', { label:'wrap', schema:S });   // [{...}] coerced -> {...}
+return { fan, piped, rec, wrapped, argsSeen: names, fanOk: fan.filter(Boolean).length };
 `
   );
 
@@ -131,6 +151,7 @@ return { fan, piped, rec, argsSeen: names, fanOk: fan.filter(Boolean).length };
     ok('e2e pipeline produced 2', result.piped.filter(Boolean).length === 2);
     ok('e2e last pipeline stage validated', result.piped.every((p) => p && p.ok === true));
     ok('e2e re-prompt recovered from prose', result.rec && result.rec.label === 'recovered');
+    ok('e2e [{...}] array-wrap coerced to object (Opus-4.8 fix)', result.wrapped && !Array.isArray(result.wrapped) && result.wrapped.label === 'w' && result.wrapped.ok === true);
   }
 
   // ---- ACP transport via run-workflow.js + a mock `kiro-cli acp` server ----
