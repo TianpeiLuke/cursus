@@ -11,6 +11,7 @@ const { execFileSync } = require('node:child_process');
 const {
   cleanReply,
   extractJsonText,
+  tolerantParse,
   shapeDirective,
   coerceToSchema,
   validateAgainstSchema,
@@ -41,6 +42,40 @@ check('extract array', extractJsonText('[1,2,3]'), '[1,2,3]');
 check('extract respects braces inside strings', extractJsonText('{"k":"a}b{c"}'), '{"k":"a}b{c"}');
 check('extract nested', extractJsonText('x {"a":{"b":[1]}} y'), '{"a":{"b":[1]}}');
 check('extract none -> null', extractJsonText('no json here'), null);
+
+// ---- tolerantParse: RC#3 parse-failure half. Strict-first, then SAFE syntax repairs. ----
+{
+  // valid JSON is returned UNTOUCHED and never marked repaired (the core safety guarantee)
+  const v = tolerantParse('{"a":1,"b":[2,3],"s":"x, y, True // not a comment"}');
+  ok('tolerant: valid JSON parses with repaired=false', v.value && v.repaired === false && v.repairs.length === 0);
+  ok('tolerant: valid JSON string values are untouched', v.value.s === 'x, y, True // not a comment');
+  // trailing commas
+  const tc = tolerantParse('{"a":1,"b":[2,3,],}');
+  ok('tolerant: removes trailing commas', tc.value && tc.value.a === 1 && tc.value.b.length === 2 && tc.repaired === true);
+  // // and /* */ comments
+  const cm = tolerantParse('{\n  "a":1, // one\n  /* block */ "b":2\n}');
+  ok('tolerant: strips // and /* */ comments', cm.value && cm.value.a === 1 && cm.value.b === 2);
+  // single-quoted strings + apostrophe preserved inside a double-quoted value
+  const sq = tolerantParse("{'k': 'v', \"q\": \"can't stop\"}");
+  ok('tolerant: converts single-quoted strings, keeps real apostrophes', sq.value && sq.value.k === 'v' && sq.value.q === "can't stop");
+  // smart / curly quotes
+  const smart = tolerantParse('{“k”: “v”}');
+  ok('tolerant: normalizes smart quotes', smart.value && smart.value.k === 'v');
+  // Python literals as bare words
+  const py = tolerantParse('{"a": True, "b": False, "c": None}');
+  ok('tolerant: maps True/False/None -> true/false/null', py.value && py.value.a === true && py.value.b === false && py.value.c === null);
+  ok('tolerant: does NOT touch True/None inside a string value', tolerantParse('{"s":"True None"}').value.s === 'True None');
+  // unquoted keys
+  const uk = tolerantParse('{name: "x", rung: "new"}');
+  ok('tolerant: quotes unquoted keys', uk.value && uk.value.name === 'x' && uk.value.rung === 'new');
+  // combined defects (the realistic kiro-cli-2.5.0 case)
+  const combo = tolerantParse("{name: 'BetaCalibration', is_new: True, axes: ['a','b',], /* c */}");
+  ok('tolerant: repairs a combined-defect blob', combo.value && combo.value.name === 'BetaCalibration' && combo.value.is_new === true && combo.value.axes.length === 2);
+  ok('tolerant: reports the repairs it made', combo.repaired === true && combo.repairs.length >= 3);
+  // unrepairable -> value undefined, error surfaced
+  const bad = tolerantParse('{"a": @@@ }');
+  ok('tolerant: truly-broken JSON returns undefined value + error', bad.value === undefined && typeof bad.error === 'string');
+}
 
 const schema = {
   type: 'object',
@@ -183,16 +218,19 @@ return { fan, piped, rec, wrapped, multialt, argsSeen: names, fanOk: fan.filter(
   // keyed off LABEL= in the prompt so the schema gate passes, and emits a _kiro.dev/* notification the
   // client must ignore.
   const acpMock = path.join(dir, 'mock-acp.js');
+  const mcpSeenFile = path.join(dir, 'mcp-seen.json'); // the mock records session/new mcpServers here
   fs.writeFileSync(
     acpMock,
     `#!/usr/bin/env node
+const fs=require('node:fs');
 let buf='';
 const send=o=>process.stdout.write(JSON.stringify(o)+'\\n');
 process.stdin.on('data',d=>{ buf+=d.toString(); let i;
   while((i=buf.indexOf('\\n'))>=0){ const line=buf.slice(0,i); buf=buf.slice(i+1); if(!line.trim())continue;
     let m; try{m=JSON.parse(line)}catch{continue}
     if(m.method==='initialize'){ send({jsonrpc:'2.0',id:m.id,result:{protocolVersion:1,agentInfo:{name:'MockAgent',version:'0.0.0'},agentCapabilities:{}}}); }
-    else if(m.method==='session/new'){ send({jsonrpc:'2.0',method:'_kiro.dev/noise',params:{sessionId:'s1'}}); send({jsonrpc:'2.0',id:m.id,result:{sessionId:'s1',modes:{}}}); }
+    else if(m.method==='session/new'){ try{ fs.writeFileSync(${JSON.stringify(mcpSeenFile)}, JSON.stringify(m.params.mcpServers||null)); }catch(e){}
+      send({jsonrpc:'2.0',method:'_kiro.dev/noise',params:{sessionId:'s1'}}); send({jsonrpc:'2.0',id:m.id,result:{sessionId:'s1',modes:{}}}); }
     else if(m.method==='session/prompt'){ const text=(m.params.prompt&&m.params.prompt[0]&&m.params.prompt[0].text)||'';
       const lab=(text.match(/LABEL=(\\w+)/)||[])[1]; const reply=/SCHEMA/i.test(text)?JSON.stringify({label:lab||'none',ok:true}):('MOCK '+lab);
       send({jsonrpc:'2.0',method:'session/update',params:{sessionId:'s1',update:{sessionUpdate:'agent_message_chunk',content:{type:'text',text:reply}}}});
@@ -219,13 +257,23 @@ return { one, fan };
   try {
     acpOut = execFileSync(
       'node',
-      [runner, acpWf, '--kiro-bin', acpMock, '--transport', 'acp'],
+      // --mcp-cursus proves the RC#3/RC#5 wiring reaches session/new (mock records it to mcpSeenFile)
+      [runner, acpWf, '--kiro-bin', acpMock, '--transport', 'acp', '--mcp-cursus'],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
     );
   } catch (e) {
     acpOut = e.stdout || '';
     fail++;
     console.error('FAIL acp runner threw: ' + e.message);
+  }
+  // The cursus MCP server must have reached the mock's session/new call (RC#3/RC#5 end-to-end).
+  try {
+    const seen = JSON.parse(fs.readFileSync(mcpSeenFile, 'utf8'));
+    ok('acp e2e: --mcp-cursus registered the cursus server in session/new',
+      Array.isArray(seen) && seen.length === 1 && seen[0].name === 'cursus' && seen[0].command === 'cursus' && JSON.stringify(seen[0].args) === JSON.stringify(['mcp', 'serve']));
+  } catch (e) {
+    fail++;
+    console.error('FAIL acp e2e: mcpServers not recorded by mock: ' + e.message);
   }
   let acpResult = null;
   try {
@@ -265,6 +313,28 @@ return { one, fan };
   ok('acp 2.5.0 drops --effort', !tgt25.args.includes('--effort'));
   ok('acp 2.5.0 keeps --trust-all-tools (safe)', tgt25.args.includes('--trust-all-tools'));
   ok('acp 2.5.0 keeps --agent (safe)', tgt25.args.includes('--agent') && tgt25.args.includes('my-agent'));
+
+  // ---- ACP mcpServers wiring (RC#3/RC#5): session/new params shape ----
+  const acpMcp = new KiroAcpClient({
+    mcpServers: [
+      { name: 'cursus', command: 'cursus', args: ['mcp', 'serve'] },
+      { name: 'py', command: 'python3', args: ['-m', 'cursus.mcp.server'], env: { PYTHONNOUSERSITE: '1' }, cwd: '/w' },
+    ],
+  });
+  const mp = acpMcp._mcpServerParams();
+  ok('acp mcp: two servers mapped', mp.length === 2 && mp[0].name === 'cursus' && mp[0].command === 'cursus');
+  ok('acp mcp: cursus args preserved', JSON.stringify(mp[0].args) === JSON.stringify(['mcp', 'serve']));
+  ok('acp mcp: env encoded as [{name,value}] array', Array.isArray(mp[1].env) && mp[1].env[0].name === 'PYTHONNOUSERSITE' && mp[1].env[0].value === '1');
+  ok('acp mcp: cwd carried through', mp[1].cwd === '/w');
+  ok('acp mcp: none configured -> empty array (prior default)', new KiroAcpClient({})._mcpServerParams().length === 0);
+
+  // ---- runtime.mcpCursus auto-registers the cursus server ----
+  const { KiroWorkflowRuntime } = require('./kiro-workflow-runtime');
+  const rtCursus = new KiroWorkflowRuntime({ mcpCursus: true });
+  ok('runtime mcpCursus:true -> cursus mcp serve entry', rtCursus.mcpServers.length === 1 && rtCursus.mcpServers[0].command === 'cursus' && JSON.stringify(rtCursus.mcpServers[0].args) === JSON.stringify(['mcp', 'serve']));
+  const rtPy = new KiroWorkflowRuntime({ mcpCursus: 'python3' });
+  ok('runtime mcpCursus:"python3" -> python -m cursus.mcp.server', rtPy.mcpServers[0].command === 'python3' && JSON.stringify(rtPy.mcpServers[0].args) === JSON.stringify(['-m', 'cursus.mcp.server']));
+  ok('runtime no mcp config -> empty', new KiroWorkflowRuntime({}).mcpServers.length === 0);
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

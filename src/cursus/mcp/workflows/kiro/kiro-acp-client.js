@@ -52,6 +52,10 @@ class KiroAcpClient {
     this.effort = opts.effort || null;
     this.trustAllTools = opts.trustAllTools !== false;
     this.trustTools = opts.trustTools || null;
+    // MCP servers to register for this session (RC#3/RC#5). Each: { name, command, args?, env?, cwd? }.
+    // Passed to session/new so kiro-cli's agent can CALL the cursus tools (author.*/validate.*/steps.io/
+    // catalog.*) that the post-Resolve relay-tool-result prompts require, instead of fabricating JSON.
+    this.mcpServers = Array.isArray(opts.mcpServers) ? opts.mcpServers : [];
     this.promptTimeoutMs = opts.promptTimeoutMs || 15 * 60 * 1000;
     this.startTimeoutMs = opts.startTimeoutMs || 60 * 1000;
     this.onLog = opts.onLog || (() => {});
@@ -252,12 +256,31 @@ class KiroAcpClient {
     });
   }
 
+  // Convert our { name, command, args?, env?, cwd? } entries to the ACP session/new mcpServers wire
+  // shape: { name, command, args:[...], env:[{name,value}] } (ACP encodes env as a name/value array,
+  // not an object). Returns [] when none configured (preserving the prior default).
+  _mcpServerParams() {
+    return (this.mcpServers || []).map((s) => {
+      const entry = { name: s.name, command: s.command, args: Array.isArray(s.args) ? s.args : [] };
+      if (s.env && typeof s.env === 'object') {
+        entry.env = Object.entries(s.env).map(([name, value]) => ({ name, value: String(value) }));
+      }
+      if (s.cwd) entry.cwd = s.cwd;
+      return entry;
+    });
+  }
+
   // Run one prompt turn: new session -> prompt -> accumulate agent_message_chunk text -> stopReason.
   // Serialized so only one turn writes to stdin at a time.
   prompt(text) {
     const run = async () => {
       if (!this._started) await this.start();
-      const session = await this._request('session/new', { cwd: this.cwd, mcpServers: [] }, this.startTimeoutMs);
+      const mcpServers = this._mcpServerParams();
+      if (mcpServers.length && !this._loggedMcp) {
+        this._loggedMcp = true;
+        this.onLog(`registering ${mcpServers.length} MCP server(s) in session: ${mcpServers.map((m) => m.name).join(', ')}`);
+      }
+      const session = await this._request('session/new', { cwd: this.cwd, mcpServers }, this.startTimeoutMs);
       const sessionId = session && session.sessionId;
       if (!sessionId) throw new Error('session/new returned no sessionId');
 

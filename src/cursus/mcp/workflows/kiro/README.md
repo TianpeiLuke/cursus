@@ -34,9 +34,13 @@ harnesses — Claude Code (via its `Workflow` tool) and Kiro (via this runner).
   / `--acp-entry` flags there. The runner shells out to `kiro-cli`; nothing else (no npm packages —
   the runtime is dependency-free, standard-library Node only).
 - Node.js ≥ 18 (tested on v22).
-- The cursus MCP tools must be reachable **from `kiro-cli`'s own agent config** (`~/.kiro/…` or the
-  active `--agent`). The workflow phases tell kiro-cli to call `author.*` / `validate.*` / `steps.io`
-  / `compile.*`; kiro-cli invokes them itself. The workflows also carry a `cursus` CLI fallback.
+- The cursus MCP tools must be reachable **by `kiro-cli`'s own agent**. The workflow phases tell
+  kiro-cli to call `author.*` / `validate.*` / `steps.io` / `compile.*`; kiro-cli invokes them itself.
+  The runner can register the server for you: pass **`--mcp-cursus`** (auto-registers the `cursus mcp
+  serve` stdio server). Under `--transport acp` this is injected into the ACP `session/new`, so no agent
+  config edit is needed; under `headless`, kiro-cli reads MCP servers from its `--agent` config, so pass
+  `--agent <name>` too. If no server is reachable the phases fall back to the `cursus` CLI, and any that
+  still can't run degrade to fabricated JSON — see [Schema-output shape](#schema-output-shape-explicit-directive--auto-coercion--re-prompt).
 
 ## Usage
 
@@ -73,6 +77,9 @@ concurrently, capped).
 | `--kiro-bin <path>` | kiro-cli binary (default `kiro-cli`). |
 | `--budget <n>` | Ceiling for `budget.total` (a char/4 token *estimate* — kiro reports credits, not tokens). Default none. |
 | `--transport <t>` | `headless` (default) or `acp`. See below. |
+| `--mcp-cursus` | Register the cursus stdio MCP server (`cursus mcp serve`) so the relay-tool-result phases call real `author.*`/`validate.*`/`steps.io`/`catalog.*` tools instead of fabricating JSON. Injected into ACP `session/new`; with `headless` also pass `--agent`. |
+| `--mcp-python <cmd>` | With `--mcp-cursus`, launch via `<cmd> -m cursus.mcp.server` instead of the `cursus` console script (e.g. `--mcp-python python3`). |
+| `--mcp-server '<json>'` | Register an explicit MCP server (repeatable). JSON: `{"name","command","args"?,"env"?}`. |
 | `--legacy-kiro` | Emit only the **kiro-cli 2.5.0-safe** flag set (drops `--effort` + granular `--trust-tools`; keeps `--no-interactive`/`--trust-all-tools`/`--agent`/`--model`). Use on the SAIS frozen snapshot. |
 | `--acp-entry <e>` | `subcommand` (default, `kiro-cli acp`) or `chat-binary` (2.5.0 ships a separate `kiro-cli-chat` binary that IS the ACP server). |
 | `--kiro-chat-bin <p>` | The ACP-server binary for `--acp-entry chat-binary` (default `kiro-cli-chat`). |
@@ -151,7 +158,7 @@ shape (`--legacy-kiro` drops the new flags; `--acp-entry chat-binary` spawns `ki
 ## Schema-output shape (explicit directive + auto-coercion + re-prompt)
 
 Because Kiro can't tool-force structured output (the Claude Code host does), the model must voluntarily
-emit JSON matching the schema. Three layers defend the shape, applied to EVERY schema-gated turn in
+emit JSON matching the schema. Four layers defend the shape, applied to EVERY schema-gated turn in
 EVERY workflow (no per-workflow code):
 
 1. **An explicit shape directive on the initial prompt** (`shapeDirective(schema)`). The raw JSON Schema
@@ -161,15 +168,33 @@ EVERY workflow (no per-workflow code):
    EXACTLY ONE JSON object … do NOT return a JSON array … do NOT return a list of candidates or
    alternatives — pick the single best and return ONLY that one object." This is on the FIRST attempt,
    not just re-prompts, because the bias shows on attempt 1.
-2. **Auto-coercion before validating** (`coerceToSchema`). A single-element array `[{...}]` is unwrapped
+2. **Tolerant parse — strict first, then SAFE syntax repairs** (`tolerantParse`). The model often emits
+   JSON5-ish output the bare `JSON.parse` rejects: trailing commas, `//` and `/* */` comments, single-
+   quoted strings, smart/curly quotes, Python `True`/`False`/`None`/`NaN`, unquoted keys. `tolerantParse`
+   tries strict `JSON.parse` FIRST — so already-valid JSON is returned untouched and is never mutated —
+   and only on failure applies context-aware repairs (each provably unable to corrupt valid JSON, since
+   valid JSON already returned) then re-parses. It reports which defects it fixed, so a still-failing
+   re-prompt can name them ("Likely issue(s): removed trailing commas; converted single-quoted strings …")
+   instead of echoing an opaque JS `SyntaxError` the model just repeats.
+3. **Auto-coercion before validating** (`coerceToSchema`). A single-element array `[{...}]` is unwrapped
    to the object; a *multi*-element array whose elements are all IDENTICAL (the model emitted the same
    answer N times) is unwrapped to the first (no data lost); a bare object is wrapped when the schema
    wants an array. It never changes field values and won't unwrap a multi-element array of DIFFERENT
    objects (ambiguous — left for the re-prompt).
-3. **A sharp, specific re-prompt** on any remaining mismatch (`--schema-retries`, default 3). An object
+4. **A sharp, specific re-prompt** on any remaining mismatch (`--schema-retries`, default 3). An object
    schema answered with an N-element array of different objects is named as exactly that ("you returned
    a JSON ARRAY of N items … this is not a list task … pick the single best answer"), not a generic
    "expected object, got array" the model ignored last time.
+
+**The root fix for the relay-tool-result phases is wiring the cursus MCP server, not just the four
+layers above.** The post-Resolve phases (Challenge, AlignEdges, validate, check_script, resolve,
+preflight, and configure-pipeline's DagCheck + per-node Validate) are *relay-tool-result* prompts: they
+tell kiro-cli to CALL `author.*` / `validate.*` / `steps.io` / `catalog.*` and return the tool's JSON.
+If no cursus MCP server is registered, kiro-cli has no such tools and FABRICATES the JSON — which is
+exactly the array-prone, parse-fragile output the four layers then have to salvage. Registering the
+server (**`--mcp-cursus`**, injected into ACP `session/new`; see [Requirements](#requirements)) lets
+those turns return real tool output, which is the durable fix; the four layers remain the safety net for
+the compute-mode turns and any residual drift.
 
 Failure modes seen in real SAIS runs, and how the three layers handle them:
 

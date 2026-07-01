@@ -88,6 +88,122 @@ function extractJsonText(text) {
   return null;
 }
 
+// Tolerant JSON parse. Tries strict JSON.parse FIRST — so already-valid JSON is returned untouched and
+// is NEVER mutated by a repair. Only if strict parse throws does it apply a sequence of SAFE, syntax-
+// level repairs (each provably unable to corrupt valid JSON, since valid JSON already returned) and
+// re-parse. This is RC#3's parse-failure half: on the frozen kiro-cli 2.5.0 a model commonly emits
+// JSON5-ish output (trailing commas, // or /* */ comments, single-quoted strings, smart quotes, Python
+// True/False/None, unquoted keys) that the bare JSON.parse rejects with an opaque error the model then
+// repeats across re-prompts. Returns { value, repaired (bool), repairs: string[], error?: string }.
+// repairs names each defect fixed so the re-prompt can be specific. On total failure value is undefined
+// and error carries the strict-parse message.
+function tolerantParse(text) {
+  const raw = String(text);
+  // 1) Strict first. Valid JSON exits here — no repair ever runs on it.
+  try {
+    return { value: JSON.parse(raw), repaired: false, repairs: [] };
+  } catch (strictErr) {
+    const repairs = [];
+    // Walk the text tracking whether we are inside a JSON string, so every repair is applied ONLY in
+    // the appropriate context (never inside string values, where the characters are legitimate data).
+    // A single left-to-right scan handles quotes/comments/commas together to avoid cross-interference.
+    let out = '';
+    const s = raw;
+    let inStr = false; // inside a double-quoted JSON string
+    let esc = false;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      const next = s[i + 1];
+      if (inStr) {
+        // A curly close-quote terminates a string we opened from a curly OPEN quote — normalize it to
+        // ASCII so the string closes properly (otherwise “v” would become "v” and never terminate).
+        if (ch === '”' || ch === '“') {
+          if (!repairs.includes('normalized smart quotes')) repairs.push('normalized smart quotes');
+          out += '"';
+          inStr = false;
+          continue;
+        }
+        out += ch;
+        if (esc) esc = false;
+        else if (ch === '\\') esc = true;
+        else if (ch === '"') inStr = false;
+        continue;
+      }
+      // --- OUTSIDE a string ---
+      // Line comment // ... -> drop to end of line
+      if (ch === '/' && next === '/') {
+        if (!repairs.includes('stripped // line comments')) repairs.push('stripped // line comments');
+        while (i < s.length && s[i] !== '\n') i++;
+        continue;
+      }
+      // Block comment /* ... */ -> drop
+      if (ch === '/' && next === '*') {
+        if (!repairs.includes('stripped /* */ block comments')) repairs.push('stripped /* */ block comments');
+        i += 2;
+        while (i < s.length && !(s[i] === '*' && s[i + 1] === '/')) i++;
+        i++; // skip the closing '/'
+        continue;
+      }
+      // Smart / curly double quotes -> ASCII " (opening a JSON string)
+      if (ch === '“' || ch === '”') {
+        if (!repairs.includes('normalized smart quotes')) repairs.push('normalized smart quotes');
+        out += '"';
+        inStr = true;
+        continue;
+      }
+      // A single-quoted string 'like this' -> re-emit as a double-quoted JSON string (escaping any
+      // embedded " and preserving \' as '). Only OUTSIDE a real string, so apostrophes in JSON string
+      // *values* are never touched.
+      if (ch === "'") {
+        if (!repairs.includes('converted single-quoted strings')) repairs.push('converted single-quoted strings');
+        let body = '';
+        i++;
+        while (i < s.length && s[i] !== "'") {
+          if (s[i] === '\\' && (s[i + 1] === "'" || s[i + 1] === '\\')) { body += s[i + 1]; i += 2; continue; }
+          if (s[i] === '"') { body += '\\"'; i++; continue; }
+          body += s[i];
+          i++;
+        }
+        out += '"' + body + '"';
+        continue;
+      }
+      out += ch;
+      if (ch === '"') inStr = true;
+    }
+    // Trailing commas: `,` immediately before a } or ] (allowing whitespace) — only meaningful outside
+    // strings, and the scan above preserved strings verbatim, so a regex over `out` is safe here.
+    const beforeTrailing = out;
+    out = out.replace(/,(\s*[}\]])/g, '$1');
+    if (out !== beforeTrailing) repairs.push('removed trailing commas');
+    // Python / JS literals as bare words (outside strings). Word-boundary anchored so they don't hit
+    // substrings of keys; strings were preserved verbatim above so real string values are untouched.
+    const litMap = [
+      [/\bTrue\b/g, 'true', 'True->true'],
+      [/\bFalse\b/g, 'false', 'False->false'],
+      [/\bNone\b/g, 'null', 'None->null'],
+      [/\bNaN\b/g, 'null', 'NaN->null'],
+      [/\b-?Infinity\b/g, 'null', 'Infinity->null'],
+    ];
+    for (const [re, to, name] of litMap) {
+      if (re.test(out)) { out = out.replace(re, to); repairs.push('mapped Python literal ' + name); }
+    }
+    // Unquoted object keys: `{ key:` or `, key:` -> quote the key. Conservative: only bare identifiers.
+    const beforeKeys = out;
+    out = out.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$]*)(\s*:)/g, '$1"$2"$3');
+    if (out !== beforeKeys) repairs.push('quoted unquoted keys');
+
+    if (!repairs.length) {
+      // Nothing we recognize — surface the original strict error, unrepaired.
+      return { value: undefined, repaired: false, repairs: [], error: strictErr.message };
+    }
+    try {
+      return { value: JSON.parse(out), repaired: true, repairs };
+    } catch (repairErr) {
+      return { value: undefined, repaired: false, repairs, error: repairErr.message };
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Minimal JSON-Schema validation — enough to emulate CC's schema-forced output for the shapes the
 // cursus workflows use (object with `required`, `properties`, `type`, `enum`, `items`). It is a
@@ -250,6 +366,26 @@ class KiroWorkflowRuntime {
     const cores = (os.cpus() || []).length || 4;
     this.concurrency = config.concurrency || Math.max(1, Math.min(16, cores - 2));
 
+    // MCP servers to make available to kiro-cli's own agent (RC#3/RC#5). The post-Resolve phases
+    // (Challenge, AlignEdges, validate, check_script, resolve, preflight, DagCheck) are RELAY-TOOL-
+    // RESULT prompts: they tell kiro-cli to CALL author.*/validate.*/steps.io/catalog.* and return the
+    // tool's JSON. If no cursus MCP server is registered, kiro-cli has no such tools and FABRICATES the
+    // JSON — which is array-prone and parse-fragile (the Run-5 failing phases). Registering the server
+    // lets those turns return real tool output. Each entry: { name, command, args?, env?, cwd? }.
+    // `config.mcpServers` is an explicit list; `config.mcpCursus` (or the derived default) auto-adds the
+    // cursus stdio server (`cursus mcp serve`, else `python -m cursus.mcp.server`). Passed to ACP via
+    // session/new; for headless, kiro-cli reads servers from its --agent config, so a warning fires if
+    // headless is used with servers set but no --agent (see _mcpServers()).
+    this.mcpServers = Array.isArray(config.mcpServers) ? config.mcpServers.slice() : [];
+    if (config.mcpCursus) {
+      const cmd = typeof config.mcpCursus === 'string' ? config.mcpCursus : 'cursus';
+      this.mcpServers.push(
+        cmd === 'cursus'
+          ? { name: 'cursus', command: 'cursus', args: ['mcp', 'serve'] }
+          : { name: 'cursus', command: cmd, args: ['-m', 'cursus.mcp.server'] }
+      );
+    }
+
     // Transport: 'headless' (default) spawns one `kiro-cli chat --no-interactive` per turn; 'acp'
     // holds one long-lived `kiro-cli acp` process and runs one ACP session per turn (persistent
     // connection, streaming, per-tool permission handling). ACP amortizes process/agent-init cost.
@@ -298,6 +434,21 @@ class KiroWorkflowRuntime {
     return this._runTurnHeadless(prompt, opts, attempt);
   }
 
+  // The MCP servers to expose to kiro-cli, normalized. ACP passes these in session/new; headless can
+  // only get them from the --agent config, so warn once if servers are set for headless without --agent.
+  _mcpServers() {
+    if (!this.mcpServers.length) return [];
+    if (this.transport === 'headless' && !this.defaultAgent && !this._warnedHeadlessMcp) {
+      this._warnedHeadlessMcp = true;
+      this._emit(
+        `  ⚠ ${this.mcpServers.length} MCP server(s) configured but transport=headless has no per-call ` +
+          `registration — kiro-cli reads MCP servers from its --agent config. Either pass --agent <name> ` +
+          `whose config registers the cursus server, or use --transport acp (which registers via session/new).`
+      );
+    }
+    return this.mcpServers;
+  }
+
   // Lazily create + start the shared ACP client (one long-lived `kiro-cli acp` process).
   async _ensureAcp() {
     if (!this._acp) {
@@ -313,6 +464,7 @@ class KiroWorkflowRuntime {
         effort: this.defaultEffort,
         trustAllTools: this.trustAllTools,
         trustTools: this.trustTools,
+        mcpServers: this._mcpServers(), // RC#3/RC#5: register cursus MCP tools for relay-tool-result turns
         promptTimeoutMs: this.timeoutMs,
         onLog: (m) => this._emit(`  · ${m}`),
       });
@@ -478,11 +630,15 @@ class KiroWorkflowRuntime {
 
       const jsonText = extractJsonText(turn.text);
       if (jsonText) {
-        try {
-          const rawParsed = JSON.parse(jsonText);
+        // Tolerant parse: strict JSON.parse first (valid JSON is returned untouched), then SAFE
+        // syntax-level repairs for the JSON5-ish output kiro-cli 2.5.0 emits (trailing commas,
+        // comments, single/smart quotes, Python True/False/None, unquoted keys). RC#3 parse-failure half.
+        const tp = tolerantParse(jsonText);
+        if (tp.value !== undefined) {
+          if (tp.repaired) this._emit(`  · ${label}: repaired JSON (${tp.repairs.join('; ')})`);
           // Normalize a common shape mismatch (e.g. single-element array when an object is wanted)
           // before validating — models can get stuck emitting the wrong container across re-prompts.
-          const co = coerceToSchema(rawParsed, schema);
+          const co = coerceToSchema(tp.value, schema);
           const parsed = co.value;
           if (co.coerced) this._emit(`  · ${label}: ${co.note}`);
           const errors = validateAgainstSchema(parsed, schema);
@@ -518,15 +674,21 @@ class KiroWorkflowRuntime {
           }
           this._emit(`  ✗ ${label}: schema still invalid after ${this.maxSchemaRetries} re-prompts`);
           return null;
-        } catch (e) {
-          if (sAttempt < this.maxSchemaRetries) {
-            this._emit(`  ↻ ${label}: JSON parse failed, re-prompting`);
-            finalPrompt = reprompt('the JSON could not be parsed (' + e.message + ').');
-            continue;
-          }
-          this._emit(`  ✗ ${label}: unparseable JSON — ${e.message}`);
-          return null;
         }
+        // Even tolerant parse failed. Name the likely defects (if the repair pass recognized any) so
+        // the re-prompt is specific instead of echoing an opaque JS SyntaxError the model just repeats.
+        if (sAttempt < this.maxSchemaRetries) {
+          const defectHint = tp.repairs.length
+            ? ' Likely issue(s) in your JSON: ' + tp.repairs.join('; ') +
+              '. Emit STRICT JSON only: double-quoted keys and strings, no trailing commas, no comments, ' +
+              'no single or “smart” quotes, and use true/false/null (not True/False/None).'
+            : ' Emit STRICT, valid JSON only — double-quoted keys/strings, no trailing commas, no comments.';
+          this._emit(`  ↻ ${label}: JSON parse failed, re-prompting${tp.repairs.length ? ' (' + tp.repairs.join('; ') + ')' : ''}`);
+          finalPrompt = reprompt('the JSON could not be parsed (' + tp.error + ').' + defectHint);
+          continue;
+        }
+        this._emit(`  ✗ ${label}: unparseable JSON — ${tp.error}`);
+        return null;
       }
       if (sAttempt < this.maxSchemaRetries) {
         this._emit(`  ↻ ${label}: no JSON found in reply, re-prompting`);
@@ -583,6 +745,7 @@ module.exports = {
   stripAnsi,
   cleanReply,
   extractJsonText,
+  tolerantParse,
   shapeDirective,
   coerceToSchema,
   validateAgainstSchema,

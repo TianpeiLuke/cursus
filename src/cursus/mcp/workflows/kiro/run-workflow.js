@@ -26,6 +26,16 @@
 //                        persistent JSON-RPC connection, streaming, per-tool permission handling)
 //   --print-result       write the workflow's return value as JSON to STDOUT (default on)
 //
+//   MCP wiring (RC#3/RC#5) — the post-Resolve phases (Challenge, AlignEdges, validate, check_script,
+//   resolve, preflight, DagCheck) tell kiro-cli to CALL cursus tools (author.*/validate.*/steps.io/
+//   catalog.*) and relay the JSON. Without a registered server kiro-cli has no such tools and fabricates
+//   the JSON (array-prone, parse-fragile). Register the cursus MCP server so those turns use real tools:
+//   --mcp-cursus         auto-register the cursus stdio MCP server (`cursus mcp serve`). Best with
+//                        --transport acp (registered via session/new). For headless, kiro-cli reads MCP
+//                        servers from its --agent config, so pass --agent <name> too (a warning fires if not).
+//   --mcp-python <cmd>   use `<cmd> -m cursus.mcp.server` instead of the `cursus` console script (e.g. python3)
+//   --mcp-server '<json>'  register an explicit server; repeatable. JSON: {"name","command","args"?,"env"?}
+//
 //   Version-skew controls — SAIS runs a FROZEN kiro-cli 2.5.0 snapshot; the runtime was captured on
 //   2.10.0. On the 2.5.0 build, pass these so newer flags/entry points don't hard-fail:
 //   --legacy-kiro        emit only the 2.5.0-safe flag set (drops `--effort` and granular
@@ -56,8 +66,10 @@ function parseArgv(argv) {
     const a = argv[i];
     if (a.startsWith('--')) {
       const key = a.slice(2);
-      const flags = new Set(['print-result', 'no-print-result', 'legacy-kiro']);
-      if (flags.has(key)) out[key] = true;
+      const flags = new Set(['print-result', 'no-print-result', 'legacy-kiro', 'mcp-cursus']);
+      // --mcp-server may be repeated; collect into an array.
+      if (key === 'mcp-server') (out['mcp-server'] || (out['mcp-server'] = [])).push(argv[++i]);
+      else if (flags.has(key)) out[key] = true;
       else out[key] = argv[++i];
     } else out._.push(a);
   }
@@ -102,6 +114,17 @@ async function main() {
   const argsValue = loadArgsValue(opts.args != null ? opts.args : process.env.KIRO_WF_ARGS);
   const cwd = opts.cwd ? path.resolve(opts.cwd) : path.dirname(absWorkflow);
 
+  // MCP servers to register with kiro-cli (RC#3/RC#5). --mcp-cursus auto-adds the cursus stdio server;
+  // --mcp-server '<json>' (repeatable) adds an explicit { name, command, args?, env? } entry.
+  const mcpServers = [];
+  for (const raw of opts['mcp-server'] || []) {
+    try {
+      mcpServers.push(JSON.parse(raw));
+    } catch (e) {
+      throw new Error(`--mcp-server is not valid JSON: ${e.message}`);
+    }
+  }
+
   const runtime = new KiroWorkflowRuntime({
     kiroBin: opts['kiro-bin'],
     cwd,
@@ -114,6 +137,10 @@ async function main() {
     maxSchemaRetries: opts['schema-retries'] ? Number(opts['schema-retries']) : undefined,
     budgetTotal: opts.budget ? Number(opts.budget) : null,
     transport: opts.transport, // 'headless' (default) | 'acp'
+    // MCP wiring (RC#3/RC#5): make the cursus author.*/validate.*/steps.io/catalog.* tools reachable
+    // so the post-Resolve relay-tool-result phases return REAL tool output instead of fabricated JSON.
+    mcpServers: mcpServers.length ? mcpServers : undefined,
+    mcpCursus: opts['mcp-cursus'] ? (opts['mcp-python'] || true) : undefined,
     // Version-skew controls (SAIS is a frozen kiro-cli 2.5.0 snapshot):
     allowNewFlags: opts['legacy-kiro'] ? false : undefined, // --legacy-kiro => 2.5.0-safe flags only
     acpEntry: opts['acp-entry'], // 'subcommand' (default) | 'chat-binary'
