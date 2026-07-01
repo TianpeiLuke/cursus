@@ -35,6 +35,17 @@ const REQUESTS = (args && Array.isArray(args) && args.length)
 // The six behavior axes a .step.yaml declares. The Guide phase gathers guidance per axis the step uses.
 const AXES = ['env_vars', 'job_arguments', 'inputs', 'outputs', 'compute', 'dependency']
 
+// HARNESS CAPABILITY: does the host TOOL-FORCE structured output? The Claude Code `Workflow` host does
+// (it forces a StructuredOutput tool call, so a large all-at-once schema returns as the exact object),
+// so CC keeps Resolve as ONE tool-forced PLAN_SCHEMA turn. The Kiro runtime canNOT tool-force — it only
+// appends the schema and re-prompts — and on the frozen kiro-cli 2.5.0 snapshot even Opus 4.8 answered
+// the big 15-field schema with a per-node ARRAY the harness could not coerce. So ONLY the non-tool-
+// forcing host (Kiro, which sets __workflowHost.toolForcesSchemaOutput=false on the sandbox) splits
+// Resolve into three small single-object turns. Under Claude Code __workflowHost is undefined -> we
+// treat it as tool-forcing -> the CC path is byte-for-byte the original single-turn Resolve (unchanged).
+const HOST_TOOL_FORCES_SCHEMA =
+  (typeof __workflowHost === 'undefined') || !!__workflowHost.toolForcesSchemaOutput
+
 const HOWTO = [
   'cursus 2.0 (Design B): a step = ONE .step.yaml interface + ONE <StepName>Config class + ONE script.',
   'NO builder file (synthesized via a PatternHandler), NO separate contract/spec files (sections of the',
@@ -121,6 +132,51 @@ const PLAN_SCHEMA = {
     // The adjacent nodes and their decomposition (SOP step 1). Empty producer => source; empty consumer => sink.
     producer: { type: 'object', additionalProperties: false, required: ['node', 'base_step_type'], properties: { node: { type: 'string' }, base_step_type: { type: 'string' }, job_type: { type: 'string' } } },
     consumer: { type: 'object', additionalProperties: false, required: ['node', 'base_step_type'], properties: { node: { type: 'string' }, base_step_type: { type: 'string' }, job_type: { type: 'string' } } },
+  },
+}
+
+// RESOLVE IS SPLIT into three small, single-purpose schemas (locate -> triage -> identity) whose
+// results merge into one `plan` conforming to PLAN_SCHEMA above. WHY: asking for the full 15-field
+// PLAN_SCHEMA in ONE turn makes a model decompose it — on the frozen kiro-cli 2.5.0 snapshot even a
+// strong model (Opus 4.8) returned a MULTI-element array ([{...},{...}], one plan per DAG node) that
+// the Kiro runtime cannot coerce to the single object wanted, and it stayed stuck across re-prompts
+// (empirically confirmed on SAIS, plus a per-turn timeout on the oversized turn). Small, unambiguous
+// per-decision schemas each naturally yield ONE object. Under the Claude Code host this is 3
+// tool-forced turns instead of 1 — a modest, harness-portable cost that also decides each sub-question
+// on its own rather than cramming one schema. The sub-schemas reuse PLAN_SCHEMA.properties so the
+// merged object stays byte-shape-identical to what downstream stages already read.
+const LOCATE_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['node_type', 'producer', 'consumer'],
+  properties: {
+    node_type: PLAN_SCHEMA.properties.node_type,
+    producer: PLAN_SCHEMA.properties.producer,
+    consumer: PLAN_SCHEMA.properties.consumer,
+  },
+}
+const TRIAGE_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['gap_rung', 'is_new_step'],
+  properties: {
+    gap_rung: PLAN_SCHEMA.properties.gap_rung,
+    gap_rung_reason: PLAN_SCHEMA.properties.gap_rung_reason,
+    is_new_step: PLAN_SCHEMA.properties.is_new_step,
+  },
+}
+const IDENTITY_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['step_name', 'snake_name', 'sagemaker_step_type', 'step_assembly', 'framework', 'reuse_class', 'bound_handler', 'exemplar_step', 'needed_axes', 'divergences_from_exemplar'],
+  properties: {
+    step_name: PLAN_SCHEMA.properties.step_name,
+    snake_name: PLAN_SCHEMA.properties.snake_name,
+    sagemaker_step_type: PLAN_SCHEMA.properties.sagemaker_step_type,
+    step_assembly: PLAN_SCHEMA.properties.step_assembly,
+    framework: PLAN_SCHEMA.properties.framework,
+    reuse_class: PLAN_SCHEMA.properties.reuse_class,
+    bound_handler: PLAN_SCHEMA.properties.bound_handler,
+    exemplar_step: PLAN_SCHEMA.properties.exemplar_step,
+    needed_axes: PLAN_SCHEMA.properties.needed_axes,
+    divergences_from_exemplar: PLAN_SCHEMA.properties.divergences_from_exemplar,
   },
 }
 
@@ -269,6 +325,9 @@ function edgeStr(req) {
   return p + ' -> [' + (req.name || 'NEW') + '] -> ' + c
 }
 
+// COMBINED single-turn Resolve — used ONLY on a tool-forcing host (Claude Code). The `Workflow` tool
+// forces the exact PLAN_SCHEMA object, so all of SOP steps 1-2b fit in one turn. This is the ORIGINAL
+// Resolve prompt, unchanged, so the Claude Code path is identical to before the Kiro split was added.
 function resolvePrompt(req) {
   return [
     HOWTO, '',
@@ -303,6 +362,84 @@ function resolvePrompt(req) {
     'If new_step: call author.checklist(sagemaker_step_type[, step_assembly]) for the ordered SOP + the bound handler +',
     'the exemplar; strategies.for_step_type to confirm the handler/knobs; author.rules("naming") + author.rules("reuse_class").',
     'needed_axes = only the behavior axes this step actually uses. Return the PLAN (incl. divergences_from_exemplar).',
+  ].join('\n')
+}
+
+// RESOLVE-SPLIT: THREE SEQUENTIAL TURNS (locate -> triage -> identity), each with a small single-object
+// schema, rather than one turn asking for the whole 15-field PLAN_SCHEMA. Used ONLY on a non-tool-
+// forcing host (the Kiro runtime), where a big all-at-once schema made even Opus 4.8 emit a per-node
+// array. Each prompt below states its ONE decision and its exact return shape, so the model has no
+// reason to emit a per-node array. The three results are merged into one PLAN_SCHEMA-shaped `plan`.
+
+// Turn 1 — locate + decompose the two ADJACENT nodes (no gap decision, no identity yet).
+function locatePrompt(req) {
+  return [
+    HOWTO, '',
+    'TASK (SOP step 1) — LOCATE ONLY. Decompose the two ADJACENT DAG nodes around the ONE undefined middle node.',
+    'Do NOT decide the gap rung, do NOT name the new step, do NOT write files. Return ONLY the locate result.',
+    'USER INTENT: ' + req.intent + (req.name ? '   PROPOSED NAME: ' + req.name : ''),
+    'DAG EDGE: ' + edgeStr(req) + (req.dag_path ? '   (DAG defined in ' + req.dag_path + ' — read it for the real edges)' : ''),
+    '',
+    'For the producer node "' + (req.producer_node || '(none: this is a SOURCE node)') + '" and the consumer node "' +
+      (req.consumer_node || '(none: this is a SINK node)') + '", decompose each DAG node string into <registered base',
+    'step_type> + optional <_jobtype suffix>: the BASE substring is what the resolver matches against compatible_sources;',
+    'the FULL node string becomes the config key (1 node = 1 config key). Confirm each ADJACENT base step_type is',
+    'registered via catalog.step_info / catalog.resolve_step (they must already exist — only the middle node is new). A',
+    '_jobtype variant of an existing step is NOT a new step_type. Decide node_type of the MIDDLE new node from its edges:',
+    'source (no producer) | sink (no consumer) | internal (both) | singular (neither).',
+    '',
+    'Return ONE JSON object {node_type, producer:{node,base_step_type,job_type?}, consumer:{node,base_step_type,job_type?}}.',
+    'For a missing side (source/sink) set that side to {node:"", base_step_type:""}.',
+  ].join('\n')
+}
+
+// Turn 2 — the gap-triage ladder ONLY (uses the located producer/consumer from turn 1).
+function triagePrompt(req, locate) {
+  return [
+    HOWTO, '',
+    'TASK (SOP step 2) — GAP TRIAGE ONLY. The nodes are already located: producer=' +
+      JSON.stringify(locate.producer) + ', consumer=' + JSON.stringify(locate.consumer) + ', node_type=' + locate.node_type + '.',
+    'USER INTENT: ' + req.intent + (req.name ? '   PROPOSED NAME: ' + req.name : '') + '   EDGE: ' + edgeStr(req) + '.',
+    'Decide the ONE gap rung. Do NOT name the step or gather its axes yet. Return ONLY the triage result.',
+    '',
+    'GAP TRIAGE LADDER — climb in order, STOP at the first rung that fits, and set gap_rung + gap_rung_reason:',
+    '  (a) reuse_config_only: an existing step_type already does this with only different config values? (no new step)',
+    '  (b) extend_optional_dep: adding an OPTIONAL DependencySpec + one contract line to an EXISTING step (required=False,',
+    '      backward-compatible, no builder change) covers it? (no new step)',
+    '  (c) delete_node_artifact_exists: the artifact is already produced upstream/externally, so the node can be DELETED?',
+    '  (d) new_step: only if (a)-(c) all fail — author a genuinely NEW step (full .step.yaml + config + script).',
+    'Use catalog.step_info / catalog.resolve_step / steps.io on the closest existing step types to CHECK each cheaper',
+    'rung for real. Also DEMOTE any candidate whose output is invariant across runs (deterministic from static inputs)',
+    'to a config field. Set is_new_step = (gap_rung == "new_step").',
+    '',
+    'Return ONE JSON object {gap_rung, gap_rung_reason, is_new_step}.',
+  ].join('\n')
+}
+
+// Turn 3 — the new-step IDENTITY (name/type/handler/exemplar/axes/divergences). Only reached when
+// triage said new_step, so it always yields a single object with real divergences.
+function identityPrompt(req, locate, triage) {
+  return [
+    HOWTO, '',
+    'TASK (SOP step 2b + checklist) — NEW-STEP IDENTITY. Triage already decided gap_rung="' + triage.gap_rung +
+      '" (new_step), producer=' + JSON.stringify(locate.producer) + ', consumer=' + JSON.stringify(locate.consumer) + '.',
+    'USER INTENT: ' + req.intent + (req.name ? '   PROPOSED NAME: ' + req.name : '') + '   EDGE: ' + edgeStr(req) + '.',
+    'Name and characterize the ONE new step. Do NOT write files. Return ONLY the identity result.',
+    '',
+    'Call author.checklist(sagemaker_step_type[, step_assembly]) for the ordered SOP + the bound handler + the exemplar;',
+    'strategies.for_step_type to confirm the handler/knobs; author.rules("naming") + author.rules("reuse_class").',
+    'step_name is PascalCase (IS the .step.yaml step_type + registry name + base of the DAG node string); snake_name is',
+    'its snake_case file stem. needed_axes = only the behavior axes this step actually uses (subset of ' + JSON.stringify(AXES) + ').',
+    '',
+    'CAPTURE THE DIVERGENCES. The very reason reuse_config_only was rejected IS a concrete list of features the exemplar',
+    'lacks — record them in divergences_from_exemplar as REQUIRED deltas the Author phase must add on top of the exemplar',
+    'shape (it must NOT silently copy the exemplar and drop them). One entry per delta, naming the AXIS + the change, e.g.',
+    '"outputs: ADD a `preprocessor` output (the fitted scaler .pkl) — the exemplar emits only processed_data" or "env_vars:',
+    'ADD LABEL_FIELD_2". If you cannot name a single divergence, the reuse-ladder was mis-applied — this should not have',
+    'been new_step. divergences_from_exemplar must be NON-empty.',
+    '',
+    'Return ONE JSON object {step_name, snake_name, sagemaker_step_type, step_assembly, framework, reuse_class,',
+    'bound_handler, exemplar_step, needed_axes, divergences_from_exemplar}.',
   ].join('\n')
 }
 
@@ -414,10 +551,56 @@ function authorPrompt(plan, guides, align, req) {
 // ---------------------------------------------------------------------------
 const report = await pipeline(REQUESTS,
 
-  // Stage 1 — Resolve (locate node + gap ladder) then Challenge the rung (verdict-override)
+  // Stage 1 — Resolve (locate node + gap ladder) then Challenge the rung (verdict-override).
+  // On a TOOL-FORCING host (Claude Code) Resolve is ONE tool-forced PLAN_SCHEMA turn (resolvePrompt) —
+  // the original behavior, unchanged. On a NON-tool-forcing host (the Kiro runtime) it is THREE small
+  // sequential turns (locate -> triage -> identity) merged into the SAME PLAN_SCHEMA-shaped `plan`,
+  // because a big all-at-once schema made even Opus 4.8 emit a per-node ARRAY on the frozen kiro-cli
+  // 2.5.0 snapshot that the harness could not coerce. Either branch yields the identical `plan` shape,
+  // so everything downstream (Challenge, AlignEdges, ...) is unchanged.
   async (req) => {
-    const plan = await agent(resolvePrompt(req), { label: 'resolve:' + (req.name || req.intent.slice(0, 20)), phase: 'Resolve', schema: PLAN_SCHEMA, effort: 'high' })
-    if (!plan) return null
+    const tag = req.name || req.intent.slice(0, 20)
+    let plan, identity = null
+    if (HOST_TOOL_FORCES_SCHEMA) {
+      // Claude Code: one tool-forced turn returns the whole PLAN_SCHEMA object reliably.
+      plan = await agent(resolvePrompt(req), { label: 'resolve:' + tag, phase: 'Resolve', schema: PLAN_SCHEMA, effort: 'high' })
+      if (!plan) return null
+    } else {
+      // Kiro: split into three single-object turns, then merge into a PLAN_SCHEMA-shaped plan.
+      // Turn 1 — locate + decompose the two adjacent nodes.
+      const locate = await agent(locatePrompt(req), { label: 'locate:' + tag, phase: 'Resolve', schema: LOCATE_SCHEMA, effort: 'high' })
+      if (!locate) return null
+      // Turn 2 — the gap-triage ladder.
+      const triage = await agent(triagePrompt(req, locate), { label: 'triage:' + tag, phase: 'Resolve', schema: TRIAGE_SCHEMA, effort: 'high' })
+      if (!triage) return null
+      // Turn 3 — new-step identity (name/type/handler/exemplar/axes/divergences) — only when new_step.
+      if (triage.is_new_step) {
+        identity = await agent(identityPrompt(req, locate, triage), { label: 'identity:' + tag, phase: 'Resolve', schema: IDENTITY_SCHEMA, effort: 'high' })
+        if (!identity) return null
+      }
+      // Merge into one PLAN_SCHEMA-shaped plan. For a non-new-step rung, identity is skipped and the
+      // identity fields are empty placeholders (downstream never reads them for a short-circuited item).
+      plan = {
+        step_name: identity ? identity.step_name : (req.name || ''),
+        snake_name: identity ? identity.snake_name : '',
+        sagemaker_step_type: identity ? identity.sagemaker_step_type : '',
+        step_assembly: identity ? identity.step_assembly : '',
+        node_type: locate.node_type,
+        framework: identity ? identity.framework : '',
+        reuse_class: identity ? identity.reuse_class : 'shared',
+        bound_handler: identity ? identity.bound_handler : '',
+        exemplar_step: identity ? identity.exemplar_step : '',
+        needed_axes: identity ? (identity.needed_axes || []) : [],
+        gap_rung: triage.gap_rung,
+        gap_rung_reason: triage.gap_rung_reason || '',
+        is_new_step: triage.is_new_step,
+        divergences_from_exemplar: identity ? (identity.divergences_from_exemplar || []) : [],
+        producer: locate.producer,
+        consumer: locate.consumer,
+      }
+      // stash locate for the post-challenge identity backfill below (Kiro path only)
+      plan.__locate = locate
+    }
     // Verdict-override: one skeptic tries to REVERSE the gap rung. A wrong CHEAPER rung
     // (reuse/extend/delete) is the dangerous case — it short-circuits with the need unmet — so pressure
     // it hardest. Reuses the exact gap_rung enum so the challenge authoritatively resets the rung.
@@ -434,7 +617,27 @@ const report = await pipeline(REQUESTS,
       plan.gap_rung = ch.final_rung
       plan.is_new_step = (ch.final_rung === 'new_step')
       if (ch.correction) plan.gap_rung_reason = 'CHALLENGE-REVERSED: ' + ch.correction
+      // KIRO PATH ONLY: if the challenge ESCALATED a cheaper rung UP to new_step, the identity turn was
+      // never run (turn 3 only runs when triage said new_step), so backfill it now — AlignEdges/Author
+      // need step_name/exemplar/divergences. The CC single-turn plan already carries identity fields for
+      // every rung, so no backfill there (guarded by plan.__locate, set only on the Kiro path).
+      if (plan.is_new_step && !identity && plan.__locate) {
+        identity = await agent(identityPrompt(req, plan.__locate, { gap_rung: plan.gap_rung }), { label: 'identity:' + tag + ':post-challenge', phase: 'Resolve', schema: IDENTITY_SCHEMA, effort: 'high' })
+        if (identity) {
+          plan.step_name = identity.step_name
+          plan.snake_name = identity.snake_name
+          plan.sagemaker_step_type = identity.sagemaker_step_type
+          plan.step_assembly = identity.step_assembly
+          plan.framework = identity.framework
+          plan.reuse_class = identity.reuse_class
+          plan.bound_handler = identity.bound_handler
+          plan.exemplar_step = identity.exemplar_step
+          plan.needed_axes = identity.needed_axes || []
+          plan.divergences_from_exemplar = identity.divergences_from_exemplar || []
+        }
+      }
     }
+    if (plan.__locate) delete plan.__locate // internal-only; keep the plan PLAN_SCHEMA-clean
     return { req, plan, challenge: ch }
   },
 

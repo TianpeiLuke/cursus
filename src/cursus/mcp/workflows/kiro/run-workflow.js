@@ -133,6 +133,12 @@ async function main() {
     log: (msg) => runtime.log(msg),
     args: argsValue,
     budget: runtime.budget,
+    // Host-capability marker read by workflows that adapt to the harness. The Claude Code `Workflow`
+    // host tool-forces structured output (a StructuredOutput tool call); this Kiro runtime does NOT —
+    // it appends the schema and re-prompts. Workflows key off this to, e.g., split a big schema turn
+    // into small single-object turns on Kiro while keeping one tool-forced turn on Claude Code. Under
+    // Claude Code __workflowHost is simply undefined, which workflows treat as tool-forcing.
+    __workflowHost: { name: 'kiro', transport: runtime.transport, toolForcesSchemaOutput: false },
     // give scripts the usual ambient globals
     console: { log: (...a) => runtime.log(a.join(' ')), error: (...a) => runtime.log(a.join(' ')) },
     JSON,

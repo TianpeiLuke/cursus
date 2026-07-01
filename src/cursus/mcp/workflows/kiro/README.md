@@ -151,7 +151,7 @@ shape (`--legacy-kiro` drops the new flags; `--acp-entry chat-binary` spawns `ki
 ## Schema-output shape (auto-coercion + re-prompt)
 
 Because Kiro can't tool-force structured output (the Claude Code host does), the model must voluntarily
-emit JSON matching the schema. Two failure modes seen in real SAIS runs, and how the runtime handles them:
+emit JSON matching the schema. Three failure modes seen in real SAIS runs, and how they are handled:
 
 - **Weak/unspecified model returns prose instead of JSON** (kiro-cli 2.5.0 without `--effort`, routed to
   a weak Auto model): no fix except a stronger model — pin one with `--model <id>`, or run on a newer CLI.
@@ -163,6 +163,20 @@ emit JSON matching the schema. Two failure modes seen in real SAIS runs, and how
   re-prompt now names the container mismatch loudly ("the TOP-LEVEL value must be a JSON object … return
   it DIRECTLY, not `[{...}]`") instead of a generic "expected object, got array". `--schema-retries`
   (default 3) bounds the re-prompts.
+- **Capable model returns a MULTI-element array for a large all-at-once schema** — the follow-on failure:
+  on a later SAIS run Opus 4.8 answered `cursus-author-step`'s 15-field `PLAN_SCHEMA` (which discusses
+  producer/NEW/consumer nodes) with `[{...},{...},...]` — one plan object PER NODE — plus a per-turn
+  timeout on the oversized turn. Coercion cannot unwrap a genuinely multi-element array (which object is
+  "the" plan is ambiguous), and re-prompts didn't move it. The real fix is **on the workflow side and
+  harness-conditional**: `run-workflow.js` sets `__workflowHost.toolForcesSchemaOutput = false` on the
+  sandbox, and `cursus-author-step` reads that to **split Resolve into three small single-object turns**
+  (locate → triage → identity, merged into the same `PLAN_SCHEMA`-shaped plan) ONLY on Kiro. Each small
+  turn has one unambiguous object shape, so no per-node array and a much smaller/faster turn. Under the
+  Claude Code `Workflow` host `__workflowHost` is undefined → treated as tool-forcing → Resolve stays ONE
+  `StructuredOutput`-forced `PLAN_SCHEMA` turn, byte-for-byte unchanged. Takeaway: a large schema a
+  non-tool-forcing host can't reliably shape should be **decomposed by the workflow for that host**, not
+  forced through coercion. Proven by `test-author-step-e2e.js` — the real workflow reaches a green step on
+  the Kiro runtime and the combined `PLAN_SCHEMA` turn is never emitted.
 
 ## How faithful is this to the Claude Code runtime?
 
