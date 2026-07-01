@@ -32,6 +32,7 @@
 
 const { spawn } = require('node:child_process');
 const os = require('node:os');
+const { KiroAcpClient } = require('./kiro-acp-client');
 
 // ---------------------------------------------------------------------------------------------
 // Output cleaning — kiro-cli headless writes the model reply to STDOUT (with ANSI colour codes, a
@@ -178,6 +179,12 @@ class KiroWorkflowRuntime {
     const cores = (os.cpus() || []).length || 4;
     this.concurrency = config.concurrency || Math.max(1, Math.min(16, cores - 2));
 
+    // Transport: 'headless' (default) spawns one `kiro-cli chat --no-interactive` per turn; 'acp'
+    // holds one long-lived `kiro-cli acp` process and runs one ACP session per turn (persistent
+    // connection, streaming, per-tool permission handling). ACP amortizes process/agent-init cost.
+    this.transport = config.transport === 'acp' ? 'acp' : 'headless';
+    this._acp = null; // lazily created KiroAcpClient when transport === 'acp'
+
     this.agentSeq = 0;
     this.totalAgents = 0;
     this.maxTotalAgents = config.maxTotalAgents || 1000;
@@ -214,8 +221,44 @@ class KiroWorkflowRuntime {
     return Math.ceil(String(text).length / 4);
   }
 
-  // Run one kiro-cli headless turn. Returns { text, stderr, code } or throws on spawn/timeout error.
+  // Dispatch one turn to the active transport. Returns { text, code } or throws on transport error.
   _runTurn(prompt, opts, attempt) {
+    if (this.transport === 'acp') return this._runTurnAcp(prompt, opts, attempt);
+    return this._runTurnHeadless(prompt, opts, attempt);
+  }
+
+  // Lazily create + start the shared ACP client (one long-lived `kiro-cli acp` process).
+  async _ensureAcp() {
+    if (!this._acp) {
+      this._acp = new KiroAcpClient({
+        kiroBin: this.kiroBin,
+        cwd: this.cwd,
+        agent: this.defaultAgent,
+        model: this.defaultModel,
+        effort: this.defaultEffort,
+        trustAllTools: this.trustAllTools,
+        trustTools: this.trustTools,
+        promptTimeoutMs: this.timeoutMs,
+        onLog: (m) => this._emit(`  · ${m}`),
+      });
+      await this._acp.start();
+    }
+    return this._acp;
+  }
+
+  // Run one turn over the persistent ACP session. Note: --agent/--model/--effort are session-level
+  // (set once at ACP start), so per-call opts.model/opts.effort are honored only in headless mode.
+  async _runTurnAcp(prompt, opts, attempt) {
+    if (this.abort && this.abort.aborted) throw new Error('aborted');
+    const client = await this._ensureAcp();
+    const { text, stopReason } = await client.prompt(prompt);
+    // Map ACP stop reasons to a headless-like { text, code } shape (0 = ok).
+    const ok = stopReason === 'end_turn' || stopReason === 'max_tokens' || stopReason === 'unknown';
+    return { text, rawOut: text, stderr: '', code: ok ? 0 : 1, stopReason };
+  }
+
+  // Run one kiro-cli headless turn. Returns { text, stderr, code } or throws on spawn/timeout error.
+  _runTurnHeadless(prompt, opts, attempt) {
     return new Promise((resolve, reject) => {
       const args = ['chat', '--no-interactive'];
       if (this.trustTools != null) args.push(`--trust-tools=${this.trustTools}`);
@@ -406,6 +449,14 @@ class KiroWorkflowRuntime {
     });
     const raw = await runPool(tasks, this.concurrency);
     return raw.map((r) => (r && r.__error ? null : r));
+  }
+
+  // Release transport resources (the long-lived ACP process, if any). Safe to call always.
+  async close() {
+    if (this._acp) {
+      await this._acp.close();
+      this._acp = null;
+    }
   }
 }
 

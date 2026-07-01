@@ -132,6 +132,68 @@ return { fan, piped, rec, argsSeen: names, fanOk: fan.filter(Boolean).length };
     ok('e2e re-prompt recovered from prose', result.rec && result.rec.label === 'recovered');
   }
 
+  // ---- ACP transport via run-workflow.js + a mock `kiro-cli acp` server ----
+  // The mock speaks the real wire contract: initialize -> session/new -> session/prompt, streaming a
+  // session/update agent_message_chunk then returning {stopReason:'end_turn'}. It echoes a JSON reply
+  // keyed off LABEL= in the prompt so the schema gate passes, and emits a _kiro.dev/* notification the
+  // client must ignore.
+  const acpMock = path.join(dir, 'mock-acp.js');
+  fs.writeFileSync(
+    acpMock,
+    `#!/usr/bin/env node
+let buf='';
+const send=o=>process.stdout.write(JSON.stringify(o)+'\\n');
+process.stdin.on('data',d=>{ buf+=d.toString(); let i;
+  while((i=buf.indexOf('\\n'))>=0){ const line=buf.slice(0,i); buf=buf.slice(i+1); if(!line.trim())continue;
+    let m; try{m=JSON.parse(line)}catch{continue}
+    if(m.method==='initialize'){ send({jsonrpc:'2.0',id:m.id,result:{protocolVersion:1,agentInfo:{name:'MockAgent',version:'0.0.0'},agentCapabilities:{}}}); }
+    else if(m.method==='session/new'){ send({jsonrpc:'2.0',method:'_kiro.dev/noise',params:{sessionId:'s1'}}); send({jsonrpc:'2.0',id:m.id,result:{sessionId:'s1',modes:{}}}); }
+    else if(m.method==='session/prompt'){ const text=(m.params.prompt&&m.params.prompt[0]&&m.params.prompt[0].text)||'';
+      const lab=(text.match(/LABEL=(\\w+)/)||[])[1]; const reply=/SCHEMA/i.test(text)?JSON.stringify({label:lab||'none',ok:true}):('MOCK '+lab);
+      send({jsonrpc:'2.0',method:'session/update',params:{sessionId:'s1',update:{sessionUpdate:'agent_message_chunk',content:{type:'text',text:reply}}}});
+      send({jsonrpc:'2.0',id:m.id,result:{stopReason:'end_turn'}}); }
+  }
+});
+`
+  );
+  fs.chmodSync(acpMock, 0o755);
+
+  const acpWf = path.join(dir, 'acp-wf.js');
+  fs.writeFileSync(
+    acpWf,
+    `export const meta = { name:'acp-e2e', description:'x', phases:[{title:'T'}] };
+const S = { type:'object', required:['label','ok'], properties:{ label:{type:'string'}, ok:{type:'boolean'} } };
+phase('T');
+const one = await agent('SCHEMA LABEL=uno', { label:'one', schema:S });
+const fan = await parallel([ () => agent('plain LABEL=aa', {label:'aa'}), () => agent('plain LABEL=bb', {label:'bb'}) ]);
+return { one, fan };
+`
+  );
+
+  let acpOut = '';
+  try {
+    acpOut = execFileSync(
+      'node',
+      [runner, acpWf, '--kiro-bin', acpMock, '--transport', 'acp'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    );
+  } catch (e) {
+    acpOut = e.stdout || '';
+    fail++;
+    console.error('FAIL acp runner threw: ' + e.message);
+  }
+  let acpResult = null;
+  try {
+    acpResult = JSON.parse(acpOut);
+  } catch (e) {
+    fail++;
+    console.error('FAIL acp result not JSON: ' + acpOut.slice(0, 200));
+  }
+  if (acpResult) {
+    ok('acp schema turn ok', acpResult.one && acpResult.one.label === 'uno' && acpResult.one.ok === true);
+    ok('acp parallel reused session', Array.isArray(acpResult.fan) && acpResult.fan.length === 2 && acpResult.fan.every((f) => typeof f === 'string' && f.startsWith('MOCK')));
+  }
+
   fs.rmSync(dir, { recursive: true, force: true });
 
   console.log(`\n${pass} passed, ${fail} failed`);

@@ -18,6 +18,9 @@
 //   --trust-tools <csv>  pass --trust-tools=<csv> instead of --trust-all-tools
 //   --kiro-bin <path>    kiro-cli binary (default: kiro-cli on PATH)
 //   --budget <n>         token-estimate ceiling for budget.total (default: none / Infinity)
+//   --transport <t>      'headless' (default; one `kiro-cli chat --no-interactive` per turn) or
+//                        'acp' (one long-lived `kiro-cli acp` process, one ACP session per turn —
+//                        persistent JSON-RPC connection, streaming, per-tool permission handling)
 //   --print-result       write the workflow's return value as JSON to STDOUT (default on)
 //
 // CONTRACT
@@ -97,6 +100,7 @@ async function main() {
     concurrency: opts.concurrency ? Number(opts.concurrency) : undefined,
     timeoutMs: opts['timeout-ms'] ? Number(opts['timeout-ms']) : undefined,
     budgetTotal: opts.budget ? Number(opts.budget) : null,
+    transport: opts.transport, // 'headless' (default) | 'acp'
   });
 
   const rawSource = fs.readFileSync(absWorkflow, 'utf8');
@@ -155,9 +159,11 @@ async function main() {
     if (opts['no-print-result'] !== true) {
       process.stdout.write(JSON.stringify(result ?? null, null, 2) + '\n');
     }
+    await runtime.close();
     process.exit(0);
   } catch (e) {
     runtime._emit(`\n✗ workflow error: ${e && e.stack ? e.stack : e}`);
+    await runtime.close().catch(() => {});
     process.exit(1);
   }
 }

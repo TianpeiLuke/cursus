@@ -23,7 +23,8 @@ harnesses — Claude Code (via its `Workflow` tool) and Kiro (via this runner).
 
 | File | Role |
 |------|------|
-| `kiro-workflow-runtime.js` | The engine. Re-implements `agent/parallel/pipeline/phase/log` + `args`/`budget` on `kiro-cli`. Each `agent()` call is one headless `kiro-cli chat --no-interactive` turn (a fresh sub-agent, matching CC semantics). Schema-forced output is emulated by a JSON-schema prompt suffix + parse/validate + bounded re-prompt. |
+| `kiro-workflow-runtime.js` | The engine. Re-implements `agent/parallel/pipeline/phase/log` + `args`/`budget` on `kiro-cli`. Each `agent()` call is one turn (a fresh sub-agent, matching CC semantics), served by either transport (see below). Schema-forced output is emulated by a JSON-schema prompt suffix + parse/validate + bounded re-prompt. |
+| `kiro-acp-client.js` | A dependency-free JS **ACP client** (JSON-RPC 2.0 over newline-delimited stdio) that spawns and drives one long-lived `kiro-cli acp` process. Used when `--transport acp`. Hand-rolled (no npm SDK), mirroring the internal `AGIArsenalConsole` pattern; wire contract captured live from `kiro-cli 2.10.0` (protocol version 1). |
 | `run-workflow.js` | The CLI. Loads an unmodified CC workflow `.js`, binds the primitives as globals, executes it, prints the return value to **STDOUT** as JSON while all progress goes to **STDERR**. This is the Kiro counterpart of the CC `Workflow` tool. |
 
 ## Requirements
@@ -69,19 +70,33 @@ concurrently, capped).
 | `--trust-tools <csv>` | Pass `--trust-tools=<csv>` instead of the default `--trust-all-tools`. |
 | `--kiro-bin <path>` | kiro-cli binary (default `kiro-cli`). |
 | `--budget <n>` | Ceiling for `budget.total` (a char/4 token *estimate* — kiro reports credits, not tokens). Default none. |
+| `--transport <t>` | `headless` (default) or `acp`. See below. |
 
 ## Transport: headless vs ACP
 
-This runner uses **headless** (`kiro-cli chat --no-interactive`) because each `agent()` call is an
-independent one-shot turn (no shared session needed), it needs no dependencies, and it matches the
-verified internal headless pattern (SAGE 2054738). kiro-cli invokes its own configured MCP tools
-during each turn.
+Both transports are implemented; pick with `--transport`.
 
-The streaming alternative is **`kiro-cli acp`** (Agent Client Protocol = JSON-RPC 2.0 over stdio),
-driven from Node via the `@agentclientprotocol/sdk` npm package. Real internal JS/TS clients do this
-(`A2AServer4KiroCLI`, `KiroOverlayApp`, `AGIArsenalConsole`). ACP is the right choice when you need a
-persistent session, live token streaming, or interactive per-tool permission prompts — none of which
-the workflow primitives require, so headless is simpler and sufficient here.
+**`headless` (default)** — each `agent()` call spawns one `kiro-cli chat --no-interactive` process.
+No shared state, no dependencies, matches the verified internal headless pattern (SAGE 2054738).
+Simplest and robust; every call pays full process-start + agent-init cost.
+
+**`acp`** — the runtime holds ONE long-lived `kiro-cli acp` process (Agent Client Protocol =
+JSON-RPC 2.0 over newline-delimited stdio) and runs one ACP session per `agent()` turn, via the
+dependency-free client in `kiro-acp-client.js`. This is the mechanism real internal JS clients use
+(`A2AServer4KiroCLI`, `KiroOverlayApp`, `AGIArsenalConsole`); here it is hand-rolled (no
+`@agentclientprotocol/sdk`). Choose ACP to amortize process/agent-init cost across many turns, for a
+persistent connection, live streaming, and structured per-tool permission handling (the client
+auto-approves permission requests for unattended runs).
+
+```bash
+node run-workflow.js ../cursus-author-step.js --transport acp --args '{ … }'
+```
+
+ACP caveats: `--agent` / `--model` / `--effort` are **session-level** (set once when the ACP process
+starts), so a per-call `opts.model` / `opts.effort` is honored only under `headless`. Turns are
+**serialized** on the single ACP process (one prompt in flight at a time), so `parallel()` does not
+give true wall-clock parallelism under ACP — it does under `headless` (independent processes). Rule of
+thumb: `headless` for wide fan-out, `acp` for long sequential runs where init cost dominates.
 
 ## How faithful is this to the Claude Code runtime?
 
@@ -89,7 +104,7 @@ Same primitive API, same tools, same phase order and gates. Differences to know:
 
 | Aspect | Claude Code host | This Kiro runtime |
 |--------|------------------|-------------------|
-| `agent()` | fresh sub-agent, its final message is the return value | one `kiro-cli chat --no-interactive` turn — same "fresh sub-agent" semantics |
+| `agent()` | fresh sub-agent, its final message is the return value | one kiro-cli turn (a `chat --no-interactive` process under `headless`, or one ACP session under `acp`) — same "fresh sub-agent" semantics |
 | Schema-forced output | forces a `StructuredOutput` tool call; retries on mismatch | appends the JSON Schema to the prompt, extracts + validates the JSON, **re-prompts** up to 2× on mismatch/parse-fail, then returns `null` |
 | `parallel()` / `pipeline()` | barrier fan-out / no-barrier staged, cap `min(16,cores-2)` | same, same cap; a dead/throwing task → `null` (so `.filter(Boolean)` still works) |
 | dead agent → `null` | yes | yes (transport failure after retries, or schema unmet) |
