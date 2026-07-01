@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] - 2026-07-01
+
+### Added
+
+- **Kiro workflow runtime — run the cursus dynamic workflows on `kiro-cli` — `src/cursus/mcp/workflows/kiro/`.** The shipped workflow scripts (`cursus-author-step.js`, `cursus-configure-pipeline.js`) target the Claude Code `Workflow` runtime: the `agent()` / `parallel()` / `pipeline()` / `phase()` primitives are injected by the Claude Code host, so the scripts are inert under `kiro-cli` (there is no `node <workflow>.js`). This adds a small, dependency-free Node runtime that re-implements those primitives on top of `kiro-cli` running headless (`chat --no-interactive`), so the **unmodified** workflow scripts run on Kiro — same phases, same gates, same MCP tools; each `agent()` call becomes one headless `kiro-cli` turn (a fresh sub-agent, matching Claude Code semantics). Files: `kiro-workflow-runtime.js` (the engine — primitives + `args`/`budget`, with schema-forced output emulated by a JSON-schema prompt suffix + parse/validate + bounded re-prompt, returning `null` on terminal failure), `run-workflow.js` (the CLI — loads an unmodified script, binds the primitives as globals, runs it; result to STDOUT, progress to STDERR; the Kiro counterpart to the Claude Code `Workflow` tool), `test-runtime.js` (20 offline tests via a mock `kiro-cli`), and `README.md` (rationale, usage, headless-vs-ACP transport, and a fidelity table vs the Claude Code host). Verified: 20/20 offline tests pass, both real workflows load and run unmodified, and a live smoke test against `kiro-cli 2.10.0` returned schema-validated output. Fidelity caveat: the runtime *validates and re-prompts* schema output rather than tool-forcing it, so the workflows' own executable oracles (`py_compile`, `yaml.safe_load`, `json.load`, `validate.deps_resolve`) remain the real gates.
+
 ## [2.2.1] - 2026-06-30
 
 ### Fixed
