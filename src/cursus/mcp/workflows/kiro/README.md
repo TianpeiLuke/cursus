@@ -29,8 +29,10 @@ harnesses — Claude Code (via its `Workflow` tool) and Kiro (via this runner).
 
 ## Requirements
 
-- `kiro-cli` on `PATH` (tested with `kiro-cli 2.10.0`). The runner shells out to it; nothing else
-  (no npm packages — the runtime is dependency-free, standard-library Node only).
+- `kiro-cli` on `PATH`. Developed/verified on **`kiro-cli 2.10.0`**; **SAIS runs a frozen `2.5.0`
+  snapshot** — see [Version skew](#version-skew-kiro-cli-25x-vs-210x) below and use the `--legacy-kiro`
+  / `--acp-entry` flags there. The runner shells out to `kiro-cli`; nothing else (no npm packages —
+  the runtime is dependency-free, standard-library Node only).
 - Node.js ≥ 18 (tested on v22).
 - The cursus MCP tools must be reachable **from `kiro-cli`'s own agent config** (`~/.kiro/…` or the
   active `--agent`). The workflow phases tell kiro-cli to call `author.*` / `validate.*` / `steps.io`
@@ -71,6 +73,10 @@ concurrently, capped).
 | `--kiro-bin <path>` | kiro-cli binary (default `kiro-cli`). |
 | `--budget <n>` | Ceiling for `budget.total` (a char/4 token *estimate* — kiro reports credits, not tokens). Default none. |
 | `--transport <t>` | `headless` (default) or `acp`. See below. |
+| `--legacy-kiro` | Emit only the **kiro-cli 2.5.0-safe** flag set (drops `--effort` + granular `--trust-tools`; keeps `--no-interactive`/`--trust-all-tools`/`--agent`/`--model`). Use on the SAIS frozen snapshot. |
+| `--acp-entry <e>` | `subcommand` (default, `kiro-cli acp`) or `chat-binary` (2.5.0 ships a separate `kiro-cli-chat` binary that IS the ACP server). |
+| `--kiro-chat-bin <p>` | The ACP-server binary for `--acp-entry chat-binary` (default `kiro-cli-chat`). |
+| `--acp-protocol <n>` | ACP `protocolVersion` to request (default `1`; re-negotiated to whatever the server echoes). |
 
 ## Transport: headless vs ACP
 
@@ -97,6 +103,39 @@ starts), so a per-call `opts.model` / `opts.effort` is honored only under `headl
 **serialized** on the single ACP process (one prompt in flight at a time), so `parallel()` does not
 give true wall-clock parallelism under ACP — it does under `headless` (independent processes). Rule of
 thumb: `headless` for wide fan-out, `acp` for long sequential runs where init cost dominates.
+
+## Version skew: kiro-cli 2.5.x vs 2.10.x
+
+This runtime was captured/verified on **`kiro-cli 2.10.0`**, but **SAIS runs a frozen `kiro-cli 2.5.0`
+snapshot** that is not updated. Older builds differ, so on 2.5.0:
+
+- **Newer CLI flags are absent.** `--effort` and granular `--trust-tools=<csv>` are 2.10.0-era; passing
+  them to 2.5.0 hard-fails with "unexpected argument". `--trust-all-tools`, `--agent`, `--model`, and
+  `--no-interactive` are present on 2.5.0 (confirmed by the internal headless pattern, SAGE 2054738:
+  `--no-interactive --trust-all-tools --agent`). **Fix:** pass `--legacy-kiro` to emit only the safe set.
+- **The ACP entry point differs.** 2.10.0 exposes the `kiro-cli acp` subcommand; the 2.5.0 snapshot
+  ships a separate **`kiro-cli-chat`** binary that is itself the ACP server (per the vault
+  `repo_kiro_cli` note). **Fix:** `--transport acp --acp-entry chat-binary --kiro-chat-bin kiro-cli-chat`.
+- **ACP protocol version may differ.** The client requests `--acp-protocol` (default 1) but adopts
+  whatever the server echoes in the `initialize` result, so a mismatch is logged and negotiated rather
+  than fatal.
+
+Recommended on the SAIS 2.5.0 snapshot — start with **headless + `--legacy-kiro`** (the most robust
+path; headless only needs the 2.5.0-safe flags), and only try ACP if you need streaming/session reuse:
+
+```bash
+# headless, 2.5.0-safe (recommended on SAIS)
+node run-workflow.js ../cursus-author-step.js --legacy-kiro --args '{ … }'
+
+# ACP on 2.5.0 (separate chat binary is the ACP server)
+node run-workflow.js ../cursus-author-step.js --transport acp \
+  --acp-entry chat-binary --kiro-chat-bin kiro-cli-chat --legacy-kiro --args '{ … }'
+```
+
+If a probe shows ACP is entirely absent on the frozen build, use headless — it is sufficient for every
+workflow (each `agent()` is an independent turn). The offline test suite asserts the 2.5.0-safe arg
+shape (`--legacy-kiro` drops the new flags; `--acp-entry chat-binary` spawns `kiro-cli-chat` with no
+`acp` arg) so this stays correct without a live 2.5.0 binary.
 
 ## How faithful is this to the Claude Code runtime?
 

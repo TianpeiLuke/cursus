@@ -23,6 +23,15 @@
 //                        persistent JSON-RPC connection, streaming, per-tool permission handling)
 //   --print-result       write the workflow's return value as JSON to STDOUT (default on)
 //
+//   Version-skew controls — SAIS runs a FROZEN kiro-cli 2.5.0 snapshot; the runtime was captured on
+//   2.10.0. On the 2.5.0 build, pass these so newer flags/entry points don't hard-fail:
+//   --legacy-kiro        emit only the 2.5.0-safe flag set (drops `--effort` and granular
+//                        `--trust-tools`; keeps `--no-interactive`/`--trust-all-tools`/`--agent`/`--model`)
+//   --acp-entry <e>      'subcommand' (default, `kiro-cli acp`) or 'chat-binary' (2.5.0 ships a
+//                        separate `kiro-cli-chat` binary that IS the ACP server)
+//   --kiro-chat-bin <p>  the ACP-server binary for --acp-entry chat-binary (default: kiro-cli-chat)
+//   --acp-protocol <n>   ACP protocolVersion to request (default 1; re-negotiated to server's echo)
+//
 // CONTRACT
 //   The workflow's return value is printed to STDOUT as pretty JSON; ALL progress/log lines go to
 //   STDERR. So `node run-workflow.js ... 1>result.json 2>progress.log` captures the result cleanly.
@@ -44,7 +53,7 @@ function parseArgv(argv) {
     const a = argv[i];
     if (a.startsWith('--')) {
       const key = a.slice(2);
-      const flags = new Set(['print-result', 'no-print-result']);
+      const flags = new Set(['print-result', 'no-print-result', 'legacy-kiro']);
       if (flags.has(key)) out[key] = true;
       else out[key] = argv[++i];
     } else out._.push(a);
@@ -101,6 +110,11 @@ async function main() {
     timeoutMs: opts['timeout-ms'] ? Number(opts['timeout-ms']) : undefined,
     budgetTotal: opts.budget ? Number(opts.budget) : null,
     transport: opts.transport, // 'headless' (default) | 'acp'
+    // Version-skew controls (SAIS is a frozen kiro-cli 2.5.0 snapshot):
+    allowNewFlags: opts['legacy-kiro'] ? false : undefined, // --legacy-kiro => 2.5.0-safe flags only
+    acpEntry: opts['acp-entry'], // 'subcommand' (default) | 'chat-binary'
+    kiroChatBin: opts['kiro-chat-bin'], // the 2.5.0 ACP-server binary (default kiro-cli-chat)
+    acpProtocolVersion: opts['acp-protocol'] ? Number(opts['acp-protocol']) : undefined,
   });
 
   const rawSource = fs.readFileSync(absWorkflow, 'utf8');

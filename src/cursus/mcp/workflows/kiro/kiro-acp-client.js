@@ -11,6 +11,17 @@
 // KiroOverlayApp, AGIArsenalConsole); here it is hand-rolled (no @agentclientprotocol/sdk dependency),
 // mirroring AGIArsenalConsole's raw-JSON-RPC approach.
 //
+// VERSION SKEW — IMPORTANT: this was captured on kiro-cli 2.10.0, but SAIS runs a FROZEN 2.5.0
+// snapshot. Two things differ across builds and are made configurable here:
+//   (1) ACP entry point — 2.10.0 exposes the `kiro-cli acp` SUBCOMMAND; the 2.5.0 snapshot ships a
+//       separate `kiro-cli-chat` binary that IS the ACP server (per the vault repo_kiro_cli note).
+//       Select with opts.acpEntry: 'subcommand' (default) | 'chat-binary' (+ opts.kiroChatBin).
+//   (2) protocolVersion — requested via opts.protocolVersion (default 1) and RE-NEGOTIATED to
+//       whatever the server echoes in the initialize result.
+//   Also: `--effort` and granular `--trust-tools` are 2.10.0-era flags; set opts.allowNewFlags=false
+//   to emit only the 2.5.0-safe set (`--trust-all-tools`, `--agent`, `--model`).
+//   If ACP is entirely absent/broken on the frozen build, use the HEADLESS transport instead.
+//
 // WIRE CONTRACT (captured live from kiro-cli 2.10.0, protocolVersion 1):
 //   -> initialize {protocolVersion:1, clientCapabilities:{fs:{readTextFile,writeTextFile}}}
 //        <- result {protocolVersion, agentInfo, agentCapabilities, ...}
@@ -45,6 +56,22 @@ class KiroAcpClient {
     this.startTimeoutMs = opts.startTimeoutMs || 60 * 1000;
     this.onLog = opts.onLog || (() => {});
 
+    // --- Version-skew handling (SAIS runs a frozen kiro-cli 2.5.0 snapshot; laptop is 2.10.0) ---
+    // How ACP is entered differs by build. Newer builds expose the `kiro-cli acp` SUBCOMMAND; the
+    // 2.5.0 snapshot ships a separate `kiro-cli-chat` binary that IS the ACP server (see the vault
+    // repo_kiro_cli note). `acpEntry` selects the shape:
+    //   'subcommand' (default): spawn <kiroBin> with args ['acp', ...]      (2.10.0-style)
+    //   'chat-binary':          spawn <kiroChatBin> with args [...] (no 'acp' arg)  (2.5.0-style)
+    this.acpEntry = opts.acpEntry || 'subcommand';
+    this.kiroChatBin = opts.kiroChatBin || 'kiro-cli-chat';
+    // Protocol version to REQUEST in initialize. The server echoes the version it will speak; if it
+    // returns a different one we adopt it (best-effort negotiation) rather than assuming 1.
+    this.protocolVersion = opts.protocolVersion || PROTOCOL_VERSION;
+    this.negotiatedProtocol = null;
+    // `--effort` and granular `--trust-tools` are 2.10.0-era flags absent in 2.5.0. They are only
+    // emitted when explicitly provided AND allowed; `--trust-all-tools` and `--agent` are safe on 2.5.0.
+    this.allowNewFlags = opts.allowNewFlags !== false; // set false to guarantee a 2.5.0-safe arg set
+
     this.child = null;
     this._buf = '';
     this._nextId = 1;
@@ -57,19 +84,26 @@ class KiroAcpClient {
     this._turnChain = Promise.resolve();
   }
 
-  _spawnArgs() {
-    const args = ['acp'];
-    if (this.trustTools != null) args.push(`--trust-tools=${this.trustTools}`);
+  // Returns { bin, args }. `acpEntry` decides the binary + whether the leading 'acp' arg is present.
+  _spawnTarget() {
+    const chatBinary = this.acpEntry === 'chat-binary';
+    const bin = chatBinary ? this.kiroChatBin : this.kiroBin;
+    const args = chatBinary ? [] : ['acp'];
+    // Trust: `--trust-all-tools` is present on 2.5.0; granular `--trust-tools` is newer, so only emit
+    // it when new flags are allowed.
+    if (this.trustTools != null && this.allowNewFlags) args.push(`--trust-tools=${this.trustTools}`);
     else if (this.trustAllTools) args.push('--trust-all-tools');
-    if (this.agent) args.push('--agent', this.agent);
+    if (this.agent) args.push('--agent', this.agent); // `--agent` is safe on 2.5.0
     if (this.model) args.push('--model', this.model);
-    if (this.effort) args.push('--effort', this.effort);
-    return args;
+    // `--effort` is 2.10.0-era; skip it on old builds to avoid an "unexpected argument" hard-fail.
+    if (this.effort && this.allowNewFlags) args.push('--effort', this.effort);
+    return { bin, args };
   }
 
   async start() {
     if (this._started) return;
-    this.child = spawn(this.kiroBin, this._spawnArgs(), {
+    const { bin, args } = this._spawnTarget();
+    this.child = spawn(bin, args, {
       cwd: this.cwd,
       env: process.env,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -82,18 +116,27 @@ class KiroAcpClient {
     const initResult = await this._request(
       'initialize',
       {
-        protocolVersion: PROTOCOL_VERSION,
+        protocolVersion: this.protocolVersion,
         clientCapabilities: { fs: { readTextFile: true, writeTextFile: true } },
       },
       this.startTimeoutMs
     );
     this._agentInfo = initResult && initResult.agentInfo;
+    // Adopt the server's echoed protocol version if it differs (best-effort negotiation across builds).
+    if (initResult && typeof initResult.protocolVersion !== 'undefined') {
+      this.negotiatedProtocol = initResult.protocolVersion;
+      if (initResult.protocolVersion !== this.protocolVersion) {
+        this.onLog(
+          `ACP protocol: requested ${this.protocolVersion}, server speaks ${initResult.protocolVersion} — adopting`
+        );
+      }
+    }
     this._started = true;
     this.onLog(
       `ACP connected: ${(this._agentInfo && this._agentInfo.name) || 'kiro-cli'} ` +
         `v${(this._agentInfo && this._agentInfo.version) || '?'} (protocol ${
-          initResult ? initResult.protocolVersion : '?'
-        })`
+          this.negotiatedProtocol != null ? this.negotiatedProtocol : '?'
+        }, entry ${this.acpEntry})`
     );
   }
 

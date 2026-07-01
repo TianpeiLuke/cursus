@@ -173,6 +173,14 @@ class KiroWorkflowRuntime {
     this.defaultEffort = config.effort || null;
     this.trustAllTools = config.trustAllTools !== false; // default true — unattended run
     this.trustTools = config.trustTools || null; // string; overrides trustAllTools when set
+    // Version skew: SAIS runs a frozen kiro-cli 2.5.0 snapshot. `--effort` and granular
+    // `--trust-tools` are 2.10.0-era flags; set allowNewFlags=false to emit only the 2.5.0-safe set
+    // (`--no-interactive`, `--trust-all-tools`, `--agent`, `--model`). Applies to BOTH transports.
+    this.allowNewFlags = config.allowNewFlags !== false;
+    // ACP entry differs by build (2.10.0 `kiro-cli acp` subcommand vs 2.5.0 `kiro-cli-chat` binary).
+    this.acpEntry = config.acpEntry || 'subcommand';
+    this.kiroChatBin = config.kiroChatBin || 'kiro-cli-chat';
+    this.acpProtocolVersion = config.acpProtocolVersion || 1;
     this.timeoutMs = config.timeoutMs || 15 * 60 * 1000;
     this.maxRetries = config.maxRetries ?? 1; // transport-level retries (spawn/timeout failures)
     this.maxSchemaRetries = config.maxSchemaRetries ?? 2; // re-prompts on schema mismatch
@@ -232,6 +240,10 @@ class KiroWorkflowRuntime {
     if (!this._acp) {
       this._acp = new KiroAcpClient({
         kiroBin: this.kiroBin,
+        kiroChatBin: this.kiroChatBin,
+        acpEntry: this.acpEntry,
+        protocolVersion: this.acpProtocolVersion,
+        allowNewFlags: this.allowNewFlags,
         cwd: this.cwd,
         agent: this.defaultAgent,
         model: this.defaultModel,
@@ -261,14 +273,16 @@ class KiroWorkflowRuntime {
   _runTurnHeadless(prompt, opts, attempt) {
     return new Promise((resolve, reject) => {
       const args = ['chat', '--no-interactive'];
-      if (this.trustTools != null) args.push(`--trust-tools=${this.trustTools}`);
+      // `--trust-all-tools` and `--agent` are 2.5.0-safe; granular `--trust-tools` + `--effort` are
+      // 2.10.0-era, so emit them only when allowNewFlags (avoids "unexpected argument" on the frozen build).
+      if (this.trustTools != null && this.allowNewFlags) args.push(`--trust-tools=${this.trustTools}`);
       else if (this.trustAllTools) args.push('--trust-all-tools');
       const agentName = opts.agentType || opts.agent || this.defaultAgent;
       if (agentName) args.push('--agent', agentName);
       const model = opts.model || this.defaultModel;
       if (model) args.push('--model', model);
       const effort = opts.effort || this.defaultEffort;
-      if (effort) args.push('--effort', effort);
+      if (effort && this.allowNewFlags) args.push('--effort', effort);
       args.push(prompt); // INPUT positional — kiro does not read the prompt from stdin
 
       const child = spawn(this.kiroBin, args, {

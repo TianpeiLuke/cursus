@@ -14,6 +14,7 @@ const {
   validateAgainstSchema,
   runPool,
 } = require('./kiro-workflow-runtime');
+const { KiroAcpClient } = require('./kiro-acp-client');
 
 let pass = 0;
 let fail = 0;
@@ -195,6 +196,31 @@ return { one, fan };
   }
 
   fs.rmSync(dir, { recursive: true, force: true });
+
+  // ---- version-skew arg-shape (kiro-cli 2.5.0 vs 2.10.0) — no spawn, just inspect the arg builder ----
+  // Default (2.10.0-style): subcommand entry, new flags allowed.
+  const acpDefault = new KiroAcpClient({ kiroBin: 'kiro-cli', trustTools: 'fs_read', effort: 'low' });
+  const tgtDefault = acpDefault._spawnTarget();
+  ok('acp default entry = kiro-cli', tgtDefault.bin === 'kiro-cli');
+  ok('acp default leads with the acp subcommand', tgtDefault.args[0] === 'acp');
+  ok('acp default emits granular --trust-tools when allowed', tgtDefault.args.some((a) => a.startsWith('--trust-tools=')));
+
+  // 2.5.0-safe: chat-binary entry + legacy flags — no `acp` arg, no --effort, no granular --trust-tools.
+  const acp25 = new KiroAcpClient({
+    acpEntry: 'chat-binary',
+    kiroChatBin: 'kiro-cli-chat',
+    allowNewFlags: false,
+    trustTools: 'fs_read',
+    effort: 'low',
+    agent: 'my-agent',
+  });
+  const tgt25 = acp25._spawnTarget();
+  ok('acp 2.5.0 entry = kiro-cli-chat binary', tgt25.bin === 'kiro-cli-chat');
+  ok('acp 2.5.0 has NO acp subcommand arg', !tgt25.args.includes('acp'));
+  ok('acp 2.5.0 drops granular --trust-tools', !tgt25.args.some((a) => a.startsWith('--trust-tools=')));
+  ok('acp 2.5.0 drops --effort', !tgt25.args.includes('--effort'));
+  ok('acp 2.5.0 keeps --trust-all-tools (safe)', tgt25.args.includes('--trust-all-tools'));
+  ok('acp 2.5.0 keeps --agent (safe)', tgt25.args.includes('--agent') && tgt25.args.includes('my-agent'));
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
