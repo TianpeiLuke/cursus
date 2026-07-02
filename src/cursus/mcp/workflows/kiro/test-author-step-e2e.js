@@ -90,7 +90,10 @@ if (p.includes("ALIGN EXACTLY ONE EDGE")) {
   // Run-11 regression mode: the per-edge align turns return NON-JSON (as Sonnet 4.6 did on 2.5.0:
   // "[step_type=..." / "[OPTIONS]"), so align is INCONCLUSIVE. The workflow must still proceed to Author.
   if (process.env.MOCK_ALIGN_NONJSON === "1") return say(isProd ? "[step_type=PROCESSING_OUTPUT unparseable prose" : "[OPTIONS] not json at all");
-  return say({ edge, dependency_type:"PROCESSING_OUTPUT", output_type:"PROCESSING_OUTPUT", type_ok:true, data_type_ok:true,
+  // NOTE: 'edge' is intentionally OMITTED — the schema no longer requires it and the runtime injects it
+  // (SAIS Run-13 fix: the model kept dropping the one field the runtime already knows). A green run here
+  // proves the reroute survives a dropped 'edge'.
+  return say({ dependency_type:"PROCESSING_OUTPUT", output_type:"PROCESSING_OUTPUT", type_ok:true, data_type_ok:true,
     projected_score: isProd ? 0.85 : 0.8, resolves:true, fragile:false,
     consumer_edits: isProd ? [] : ["add BetaCalibration to ModelMetricsComputation dependency compatible_sources"] });
 }
@@ -121,7 +124,8 @@ if (p.includes("BECAUSE of these REQUIRED divergences:"))
 if (p.includes("Report ONLY the single edge")) {
   const m = p.match(/Report ONLY the single edge "([^"]+)"/);
   const edge = m ? m[1] : "producer->NEW";
-  return say({ edge, score: edge === "producer->NEW" ? 0.85 : 0.8, resolves:true, note:"" });
+  // 'edge' OMITTED — runtime injects it (Run-13 fix). Green run proves re-resolve survives a dropped edge.
+  return say({ score: edge === "producer->NEW" ? 0.85 : 0.8, resolves:true, note:"" });
 }
 // --- re-resolve single-turn (tool-forcing host) ---
 if (p.includes("validate.deps_resolve(step_names="))

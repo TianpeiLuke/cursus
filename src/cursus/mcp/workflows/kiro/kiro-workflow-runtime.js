@@ -735,11 +735,35 @@ class KiroWorkflowRuntime {
                 shapeHint = '\nCRITICAL: the TOP-LEVEL value must be a JSON array `[...]`. You returned a ' + typeOf(parsed) + '.';
               }
             }
+            // MISSING-REQUIRED-FIELD hint — the dominant post-CLI-reroute failure (SAIS Run 13: the model
+            // returns valid JSON but drops a required field like `holds`/`ok`/`edge`/`axis`). Name the
+            // exact missing keys LOUDLY (a buried "$.holds: required property missing" line got ignored),
+            // and echo each one's expected type/enum from the schema so the model fills it in verbatim.
+            let missingHint = '';
+            if (!shapeHint && typeOf(parsed) === 'object') {
+              const missing = errors
+                .filter((e) => /: required property missing$/.test(e))
+                .map((e) => e.replace(/^\$\./, '').replace(/: required property missing$/, ''))
+                .filter((k) => k.indexOf('.') === -1); // top-level keys only
+              if (missing.length) {
+                const props = schema.properties || {};
+                const spec = (k) => {
+                  const p = props[k] || {};
+                  if (p.enum) return `${k} (one of ${JSON.stringify(p.enum)})`;
+                  return `${k} (${Array.isArray(p.type) ? p.type.join('|') : p.type || 'value'})`;
+                };
+                missingHint =
+                  `\nCRITICAL: your JSON is missing REQUIRED field(s): ${missing.join(', ')}. ` +
+                  `You returned valid JSON but left these out — you MUST include EVERY required field. ` +
+                  `Add them now: ${missing.map(spec).join('; ')}. Include ALL required keys, not just some.`;
+              }
+            }
             this._emit(`  ↻ ${label}: schema mismatch, re-prompting (${errors[0]})`);
             finalPrompt = reprompt(
               'it did not satisfy the schema. Errors:\n' +
                 errors.slice(0, 8).map((e) => '  - ' + e).join('\n') +
-                shapeHint
+                shapeHint +
+                missingHint
             );
             continue;
           }

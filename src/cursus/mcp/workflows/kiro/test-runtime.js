@@ -150,7 +150,14 @@ const prompt = argv[argv.length-1] || "";
 process.stderr.write("WARNING mock\\n");
 let reply;
 const lab = (prompt.match(/LABEL=(\\w+)/)||[])[1] || "none";
-if (/Respond AGAIN|was rejected/i.test(prompt)) reply = '{"label":"recovered","ok":true}';
+// MISSINGFIELD: first attempt returns valid JSON but DROPS the required 'ok' field (the SAIS Run-13
+// failure). It recovers ONLY if the re-prompt LOUDLY names the missing field ('missing REQUIRED
+// field(s): ok') — proving the runtime's missing-required-field hint fired, not just a generic retry.
+if (/MISSINGFIELD/.test(prompt)) {
+  if (/missing REQUIRED field\\(s\\): .*\\bok\\b/i.test(prompt)) reply = '{"label":"'+lab+'","ok":true}';
+  else reply = '{"label":"'+lab+'"}';   // valid JSON, but the required 'ok' is absent
+}
+else if (/Respond AGAIN|was rejected/i.test(prompt)) reply = '{"label":"recovered","ok":true}';
 else if (/FORCE_REPROMPT/.test(prompt)) reply = "prose only, no json";
 else if (/ARRAYWRAP/.test(prompt)) reply = '[{"label":"'+lab+'","ok":true},{"label":"'+lab+'","ok":true}]';   // Opus-4.8-on-2.5.0: same object repeated in a MULTI-element array -> coercion unwraps
 else if (/MULTIALT/.test(prompt)) reply = '[{"label":"aa","ok":true},{"label":"bb","ok":false}]';   // multi-element DIFFERENT objects -> coercion can't unwrap -> sharper re-prompt recovers
@@ -178,7 +185,8 @@ phase('Reprompt');
 const rec = await agent('SCHEMA FORCE_REPROMPT LABEL=z', { label:'rp', schema:S });
 const wrapped = await agent('SCHEMA ARRAYWRAP LABEL=w', { label:'wrap', schema:S });   // multi-element identical array coerced -> {...}
 const multialt = await agent('SCHEMA MULTIALT LABEL=m', { label:'malt', schema:S });   // multi-element DIFFERENT array -> re-prompt recovers
-return { fan, piped, rec, wrapped, multialt, argsSeen: names, fanOk: fan.filter(Boolean).length };
+const missing = await agent('SCHEMA MISSINGFIELD LABEL=f', { label:'miss', schema:S });   // drops required 'ok' -> missing-field hint re-prompt recovers (SAIS Run 13)
+return { fan, piped, rec, wrapped, multialt, missing, argsSeen: names, fanOk: fan.filter(Boolean).length };
 `
   );
 
@@ -210,6 +218,7 @@ return { fan, piped, rec, wrapped, multialt, argsSeen: names, fanOk: fan.filter(
     ok('e2e re-prompt recovered from prose', result.rec && result.rec.label === 'recovered');
     ok('e2e multi-element identical array coerced to object (Opus-4.8-on-2.5.0 fix)', result.wrapped && !Array.isArray(result.wrapped) && result.wrapped.label === 'w' && result.wrapped.ok === true);
     ok('e2e multi-element DIFFERENT array recovers via sharper re-prompt', result.multialt && !Array.isArray(result.multialt) && result.multialt.label === 'recovered');
+    ok('e2e missing-required-field recovers (re-prompt names the dropped field — SAIS Run 13 fix)', result.missing && result.missing.label === 'f' && result.missing.ok === true);
   }
 
   // ---- ACP transport via run-workflow.js + a mock `kiro-cli acp` server ----

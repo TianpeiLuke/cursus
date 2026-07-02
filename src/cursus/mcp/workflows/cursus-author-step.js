@@ -228,11 +228,15 @@ const ALIGN_SCHEMA = {
 // the AlignEdges failure in SAIS Runs 5-6), score ONE edge per turn with this single-object schema,
 // plus a tiny arity turn, then assemble the ALIGN_SCHEMA-shaped object in plain code. Each turn yields
 // ONE object, so no per-edge array. Merged shape is byte-identical to what Guide/Author/Synthesize read.
+// NOTE: `edge` is NOT required — the runtime dictates WHICH edge each turn scores (the prompt says
+// "ALIGN EXACTLY ONE EDGE: <edge>"), so the model needn't echo it and the assembly injects it after
+// parse. Dropping it from `required` eliminated the dominant "$.edge missing" schema failure (SAIS
+// Run 13, where the model returned valid JSON but omitted the one field the runtime already knows).
 const EDGE_ALIGN_SCHEMA = {
   type: 'object', additionalProperties: false,
-  required: ['edge', 'dependency_type', 'output_type', 'type_ok', 'data_type_ok', 'projected_score', 'resolves', 'consumer_edits'],
+  required: ['dependency_type', 'output_type', 'type_ok', 'data_type_ok', 'projected_score', 'resolves', 'consumer_edits'],
   properties: {
-    edge: { type: 'string', description: 'producer->NEW or NEW->consumer' },
+    edge: { type: 'string', description: 'producer->NEW or NEW->consumer (optional — the runtime sets it)' },
     dependency_type: { type: 'string' }, output_type: { type: 'string' },
     type_ok: { type: 'boolean', description: 'dependency_type/output_type exact-or-compatible (GATE-1)' },
     data_type_ok: { type: 'boolean' },
@@ -348,9 +352,10 @@ const RESOLVE_SCHEMA = {
 
 // Per-edge re-resolution result (the single-object form of one RESOLVE_SCHEMA.edges entry). Used on the
 // non-tool-forcing host to score ONE edge per turn, avoiding the edges[] array-of-objects bias.
+// `edge` not required — the runtime dictates it per turn and injects it after parse (see EDGE_ALIGN_SCHEMA note).
 const EDGE_RESOLVE_SCHEMA = {
   type: 'object', additionalProperties: false,
-  required: ['edge', 'score', 'resolves'],
+  required: ['score', 'resolves'],
   properties: { edge: { type: 'string' }, score: { type: 'number' }, resolves: { type: 'boolean' }, note: { type: 'string' } },
 }
 
@@ -804,7 +809,7 @@ const report = await pipeline(REQUESTS,
       const edges = []
       for (const { edge } of realEdges(ctx.plan, ctx.req)) {
         const e = await agent(edgeAlignPrompt(ctx.plan, ctx.req, edge), { label: 'align:' + ctx.plan.step_name + ':' + edge, phase: 'AlignEdges', schema: EDGE_ALIGN_SCHEMA, effort: 'high' })
-        if (e) edges.push(e)
+        if (e) { e.edge = edge; edges.push(e) } // inject the edge label the runtime dictated (model needn't echo it)
       }
       const ar = await agent(arityPrompt(ctx.plan, ctx.req), { label: 'align:' + ctx.plan.step_name + ':arity', phase: 'AlignEdges', schema: ARITY_SCHEMA, effort: 'high' })
       // CRITICAL — match the single-turn contract's control flow. When the single-turn AlignEdges agent
@@ -968,7 +973,7 @@ const report = await pipeline(REQUESTS,
       const redges = []
       for (const { edge } of realEdges(plan, ctx.req)) {
         const e = await agent(edgeResolvePrompt(plan, ctx.req, edge, nodes), { label: 'resolve:' + plan.step_name + ':' + edge, phase: 'Validate', schema: EDGE_RESOLVE_SCHEMA, effort: 'high' })
-        if (e) redges.push(e)
+        if (e) { e.edge = edge; redges.push(e) } // inject the edge label the runtime dictated (model needn't echo it)
       }
       const expected = realEdges(plan, ctx.req).length
       // both_edges_resolve when every expected real edge was scored AND resolves (vacuously true for a
