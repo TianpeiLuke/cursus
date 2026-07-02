@@ -87,6 +87,9 @@ if (p.includes("ALIGN EXACTLY ONE EDGE")) {
   const edge = m ? m[1] : "producer->NEW";
   const isProd = edge === "producer->NEW";
   try { fs.appendFileSync(${JSON.stringify(alignEdgeLog)}, edge + "\\n"); } catch (e) {}
+  // Run-11 regression mode: the per-edge align turns return NON-JSON (as Sonnet 4.6 did on 2.5.0:
+  // "[step_type=..." / "[OPTIONS]"), so align is INCONCLUSIVE. The workflow must still proceed to Author.
+  if (process.env.MOCK_ALIGN_NONJSON === "1") return say(isProd ? "[step_type=PROCESSING_OUTPUT unparseable prose" : "[OPTIONS] not json at all");
   return say({ edge, dependency_type:"PROCESSING_OUTPUT", output_type:"PROCESSING_OUTPUT", type_ok:true, data_type_ok:true,
     projected_score: isProd ? 0.85 : 0.8, resolves:true, fragile:false,
     consumer_edits: isProd ? [] : ["add BetaCalibration to ModelMetricsComputation dependency compatible_sources"] });
@@ -182,6 +185,35 @@ ok('AlignEdges single-turn (array-of-objects) prompt was NEVER emitted on the Ki
 {
   const edgeTurns = fs.existsSync(alignEdgeLog) ? fs.readFileSync(alignEdgeLog, 'utf8').trim().split('\n').filter(Boolean) : [];
   ok('AlignEdges ran one per-edge turn per real edge (2)', edgeTurns.length === 2 && edgeTurns.includes('producer->NEW') && edgeTurns.includes('NEW->consumer'));
+}
+
+// ---- Run-11 regression: inconclusive AlignEdges (edge turns return NON-JSON) must NOT block authoring ----
+// The 6th-fix decomposition originally short-circuited to 0 artifacts when the per-edge align turns
+// failed (Run 11). The fix: an INCONCLUSIVE alignment (fewer edges scored than expected) sets align=null
+// and PROCEEDS to Author (the authoritative edge gate is the post-write re-resolve at Stage 4c), matching
+// the pre-split single-turn control flow. Re-run the SAME workflow with the mock returning non-JSON for
+// the per-edge align turns, and assert a step is still authored.
+{
+  let regOut = '';
+  let regThrew = false;
+  try {
+    regOut = execFileSync(
+      'node',
+      [runner, workflow, '--kiro-bin', mock, '--args', reqArgs, '--concurrency', '4', '--timeout-ms', '20000'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, MOCK_ALIGN_NONJSON: '1' } }
+    );
+  } catch (e) {
+    regThrew = true;
+    regOut = e.stdout || '';
+    console.error('regression runner exited non-zero: ' + (e.message || '').slice(0, 200));
+  }
+  let regResult = null;
+  try { regResult = JSON.parse(regOut); } catch (e) { console.error('regression result not JSON: ' + regOut.slice(0, 200)); }
+  ok('regression: runner completed without throwing', !regThrew);
+  ok('regression: inconclusive AlignEdges still AUTHORED a step (did NOT short-circuit to 0)',
+    regResult && Array.isArray(regResult.authored) && regResult.authored.length === 1 && regResult.authored[0].step === 'BetaCalibration');
+  ok('regression: nothing was wrongly reported as resolved-without-a-new-step',
+    regResult && Array.isArray(regResult.resolved_without_new_step) && regResult.resolved_without_new_step.length === 0);
 }
 
 fs.rmSync(dir, { recursive: true, force: true });

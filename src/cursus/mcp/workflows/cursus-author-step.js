@@ -749,28 +749,39 @@ const report = await pipeline(REQUESTS,
       align = await agent(alignPrompt(ctx.plan, ctx.req), { label: 'align:' + ctx.plan.step_name, phase: 'AlignEdges', schema: ALIGN_SCHEMA, effort: 'high' })
     } else {
       // Kiro: one turn per real edge + one arity turn, assembled into an ALIGN_SCHEMA-shaped object.
+      const expectedEdges = realEdges(ctx.plan, ctx.req).length
       const edges = []
       for (const { edge } of realEdges(ctx.plan, ctx.req)) {
         const e = await agent(edgeAlignPrompt(ctx.plan, ctx.req, edge), { label: 'align:' + ctx.plan.step_name + ':' + edge, phase: 'AlignEdges', schema: EDGE_ALIGN_SCHEMA, effort: 'high' })
         if (e) edges.push(e)
       }
       const ar = await agent(arityPrompt(ctx.plan, ctx.req), { label: 'align:' + ctx.plan.step_name + ':arity', phase: 'AlignEdges', schema: ARITY_SCHEMA, effort: 'high' })
-      // Assemble into the ALIGN_SCHEMA shape. A source/sink/singular node with no real edges is not
-      // scored → vacuously ready (matches the single-turn contract, which marks a missing side resolved).
-      const expectedEdges = realEdges(ctx.plan, ctx.req).length
-      const gotAll = edges.length === expectedEdges
-      const consumer_edits = [...new Set(edges.flatMap(e => e.consumer_edits || []))]
-      align = {
-        arity_ok: ar ? ar.arity_ok : false,
-        arity_note: ar ? (ar.arity_note || '') : 'arity turn failed',
-        edges: edges.map(e => ({ edge: e.edge, dependency_type: e.dependency_type, output_type: e.output_type, type_ok: e.type_ok, data_type_ok: e.data_type_ok, projected_score: e.projected_score, resolves: e.resolves, fragile: e.fragile })),
-        consumer_edits,
-        // ready when every EXPECTED real edge was scored AND resolves (a node with zero real edges is
-        // vacuously ready, as in the single-turn path).
-        ready: gotAll && edges.every(e => e.resolves === true),
+      // CRITICAL — match the single-turn contract's control flow. When the single-turn AlignEdges agent
+      // returned null (couldn't produce a scorable result), `align` was null and the pipeline PROCEEDED
+      // to Author (the real edge gate is the post-write re-resolve at Stage 4c). The per-edge path must
+      // do the same: if NOT ALL expected edges were scored, alignment is INCONCLUSIVE, not "failed" — set
+      // align=null and proceed, rather than fabricating ready:false and short-circuiting (the Run-11
+      // regression, where edge turns returned non-JSON, decomposition built ready:false, and the workflow
+      // authored 0 artifacts even though the post-write oracles would have caught the real issues).
+      if (edges.length < expectedEdges) {
+        align = null // inconclusive: fewer edges scored than expected — proceed, defer to Stage 4c re-resolve
+      } else {
+        const consumer_edits = [...new Set(edges.flatMap(e => e.consumer_edits || []))]
+        align = {
+          arity_ok: ar ? ar.arity_ok : false,
+          arity_note: ar ? (ar.arity_note || '') : 'arity turn failed',
+          edges: edges.map(e => ({ edge: e.edge, dependency_type: e.dependency_type, output_type: e.output_type, type_ok: e.type_ok, data_type_ok: e.data_type_ok, projected_score: e.projected_score, resolves: e.resolves, fragile: e.fragile })),
+          consumer_edits,
+          // Every expected edge scored → ready iff they all resolve (a node with zero real edges is
+          // vacuously ready, matching the single-turn path).
+          ready: edges.every(e => e.resolves === true),
+        }
       }
     }
-    return { ...ctx, align, short_circuit: (align && !align.ready) ? 'edges do not resolve (>=0.5) even after the planned consumer edits — revisit the DAG or the step design' : null }
+    // Short-circuit ONLY on a DEFINITIVE non-resolution (align present AND ready:false). A null align
+    // (single-turn agent died, or per-edge inconclusive) proceeds to Author — the authoritative edge
+    // gate is the post-write re-resolve (Stage 4c) + the executable oracles, exactly as before the split.
+    return { ...ctx, align, short_circuit: (align && align.ready === false) ? 'edges do not resolve (>=0.5) even after the planned consumer edits — revisit the DAG or the step design' : null }
   },
 
   // Stage 3 — Guide (per-axis barrier) then Author (the agent's own Write) — skipped if short-circuited
