@@ -109,10 +109,14 @@ if (p.includes("write the THREE artifacts"))
   return say("Wrote src/cursus/steps/interfaces/beta_calibration.step.yaml, config, script; edited consumer spec. Divergence present: calibrator output.");
 
 // --- Validate loop / oracles ---
-// validate: matches BOTH the CC MCP prompt ("validate.step_interface(step_name=") and the Kiro CLI
-// reroute ("run this EXACT command ... validate step-interface"). Returns the already-mapped {ok,...}.
-if (p.includes("validate.step_interface(step_name=") || (p.includes("validate step-interface") && p.includes("Return EXACTLY {ok:")))
+// validate: CC MCP prompt returns the mapped {ok,errors,warnings} natively; the Kiro CLI reroute
+// (verbatim-relay of "cursus validate step-interface --format json") returns the RAW CLI shape
+// {validated, errors(count), warnings(count), results:[{step, ok, errors, warnings}]} -- the runtime
+// projects results[0] in code. Return the shape matching whichever prompt fired.
+if (p.includes("validate.step_interface(step_name="))
   return say({ ok:true, errors:[], warnings:[] });
+if (p.includes("validate step-interface") && p.includes("VERBATIM"))
+  return say({ validated:1, errors:0, warnings:0, results:[{ step:"BetaCalibration", ok:true, errors:[], warnings:[] }] });
 // check_script: CC MCP prompt OR the Kiro skip reroute ("Return {status:\\"skipped\\"").
 if (p.includes("author.check_script(step_name=") || p.includes('Return {status:"skipped", passed:true'))
   return say({ status:"skipped", passed:true, issues:[] });
@@ -120,13 +124,16 @@ if (p.includes("actually PARSE"))
   return say({ py_compile_ok:true, yaml_loads_ok:true, detail:"exit 0" });
 if (p.includes("BECAUSE of these REQUIRED divergences:"))
   return say({ all_present:true, checks:[{ divergence:"outputs: ADD a calibrator output", present:true, evidence:"spec.outputs.calibrator" }] });
-// --- re-resolve DECOMPOSED (Kiro path): one object per edge (check BEFORE the single-turn branch) ---
-if (p.includes("Report ONLY the single edge")) {
-  const m = p.match(/Report ONLY the single edge "([^"]+)"/);
-  const edge = m ? m[1] : "producer->NEW";
-  // 'edge' OMITTED — runtime injects it (Run-13 fix). Green run proves re-resolve survives a dropped edge.
-  return say({ score: edge === "producer->NEW" ? 0.85 : 0.8, resolves:true, note:"" });
-}
+// --- re-resolve via "cursus dag resolve" FETCH (Kiro path): return the real-resolver JSON VERBATIM ---
+// The runtime's matchResolvedEdge maps these onto producer->NEW (NEW consumes producer) + NEW->consumer
+// (consumer consumes NEW). Producer base=XGBoostModelEval, NEW=BetaCalibration, consumer=ModelMetricsComputation.
+if (p.includes("dag resolve") && p.includes("return its stdout JSON VERBATIM"))
+  return say({ steps:["XGBoostModelEval_calibration","BetaCalibration","ModelMetricsComputation"],
+    loaded:["XGBoostModelEval_calibration","BetaCalibration","ModelMetricsComputation"], load_errors:{},
+    edges:[
+      { consumer:"BetaCalibration", dependency:"eval_output", provider:"XGBoostModelEval", score:1.0, resolves:true },
+      { consumer:"ModelMetricsComputation", dependency:"calibrated", provider:"BetaCalibration", score:1.0, resolves:true }
+    ], all_edges_resolve:true, threshold:0.5 });
 // --- re-resolve single-turn (tool-forcing host) ---
 if (p.includes("validate.deps_resolve(step_names="))
   return say({ both_edges_resolve:true, edges:[{ edge:"producer->NEW", score:0.85, resolves:true, note:"" },{ edge:"NEW->consumer", score:0.8, resolves:true, note:"" }] });

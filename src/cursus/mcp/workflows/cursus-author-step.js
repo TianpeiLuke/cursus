@@ -355,6 +355,13 @@ const RESOLVE_SCHEMA = {
 
 // Per-edge re-resolution result (the single-object form of one RESOLVE_SCHEMA.edges entry). Used on the
 // non-tool-forcing host to score ONE edge per turn, avoiding the edges[] array-of-objects bias.
+// A permissive "parse it, don't constrain it" schema for RELAY-then-map-in-code turns (validate,
+// re-resolve on the non-tool-forcing host). It only asks the runtime to PARSE the returned JSON into
+// an object (agent() returns a parsed object when a schema is present; raw TEXT when it is absent) —
+// no required fields, so the model just relays the tool's JSON verbatim and the workflow maps it in
+// code. Using {} instead of no-schema is what makes the returned value a parsed object, not a string.
+const RELAY_JSON_SCHEMA = { type: 'object' }
+
 // `edge` not required — the runtime dictates it per turn and injects it after parse (see EDGE_ALIGN_SCHEMA note).
 const EDGE_RESOLVE_SCHEMA = {
   type: 'object', additionalProperties: false,
@@ -557,6 +564,36 @@ function realEdges(plan, req) {
   return edges
 }
 
+// Map a `cursus dag resolve` edge list onto ONE of this request's edges. The CLI edges are keyed by
+// {consumer, provider, score, resolves}; our edges are 'producer->NEW' (the NEW step consumes the
+// producer's output) and 'NEW->consumer' (the consumer consumes the NEW step's output). We match on the
+// endpoint STEP NAMES (base_step_type falls back to the node string). If the resolver scored several
+// deps between the pair, keep the BEST (highest score) — that is the edge the resolver would use. The
+// CLI reports resolved deps as score 1.0/resolves:true and failed ones with their real sub-threshold
+// score; returns null if the resolver produced no edge for this pair (treated as unscored → not-green).
+function matchResolvedEdge(scored, edge, plan, req) {
+  const newName = plan.step_name
+  const prod = (plan.producer && (plan.producer.base_step_type || plan.producer.node)) || req.producer_node
+  const cons = (plan.consumer && (plan.consumer.base_step_type || plan.consumer.node)) || req.consumer_node
+  // producer->NEW: NEW is the consumer, producer is the provider. NEW->consumer: consumer is the
+  // consumer, NEW is the provider. Match by name substring so a job-typed node string still matches.
+  const wantConsumer = edge === 'producer->NEW' ? newName : cons
+  const wantProvider = edge === 'producer->NEW' ? prod : newName
+  const hit = (s) => s && typeof s === 'string'
+  const matches = scored.filter(e =>
+    hit(e.consumer) && hit(wantConsumer) && (e.consumer === wantConsumer || e.consumer.indexOf(wantConsumer) >= 0 || wantConsumer.indexOf(e.consumer) >= 0) &&
+    (e.provider == null || !hit(wantProvider) || e.provider === wantProvider || (hit(e.provider) && (e.provider.indexOf(wantProvider) >= 0 || wantProvider.indexOf(e.provider) >= 0)))
+  )
+  if (!matches.length) return null
+  const best = matches.reduce((a, b) => ((b.score || 0) > (a.score || 0) ? b : a))
+  return {
+    edge,
+    score: typeof best.score === 'number' ? best.score : (best.resolves ? 1 : 0),
+    resolves: best.resolves === true,
+    note: 'scored by the real UnifiedDependencyResolver via `cursus dag resolve` (' + best.consumer + '.' + (best.dependency || '?') + ' <- ' + (best.provider || 'none') + ')',
+  }
+}
+
 // DECOMPOSED AlignEdges — one edge scored per turn (single object), for the non-tool-forcing host.
 function edgeAlignPrompt(plan, req, edge) {
   const isProducerEdge = edge === 'producer->NEW'
@@ -603,20 +640,19 @@ function arityPrompt(plan, req) {
 // is MCP-only; `cursus validate deps-resolve` is a PHANTOM that hard-errors), so on the non-tool-forcing
 // host this edge is REASONED from the two steps' `steps io` JSON, not resolver-verified. This green gate
 // is therefore relaxed on the frozen host and re-verified by the real UnifiedDependencyResolver at CR.
-function edgeResolvePrompt(plan, req, edge, nodes) {
-  const near = edge === 'producer->NEW' ? plan.producer : plan.consumer
+// Re-resolve FETCH prompt for the non-tool-forcing host: the model runs ONE `cursus dag resolve`
+// command (the REAL UnifiedDependencyResolver, same weights + 0.5 threshold CI uses) and returns its
+// JSON VERBATIM — no per-edge math, no synthesis. The runtime picks the relevant edges + computes
+// both_edges_resolve in code. This is what unblocked green after Runs 13-15 (three prompt-shaping
+// attempts) proved the model cannot compute the 6-component score itself: move the score to real code.
+function resolveFetchPrompt(nodes) {
   return [
-    relay(
-      'The new step .step.yaml now exists, so the real resolver can score its edges. Call ' +
-        'validate.deps_resolve(step_names=' + JSON.stringify(nodes) + ').',
-      'The resolver has NO CLI on this host (validate.deps_resolve is MCP-only; there is NO `cursus validate ' +
-        'deps-resolve` command — do NOT try it). Instead REASON about this one edge: use your shell tool to run\n  ' +
-        cliJson('steps io ' + (plan.step_name)) + '\nand\n  ' + cliJson('steps io ' + (near.base_step_type || near.node)) +
-        '\nread the dependency-spec + output-spec (logical_name, dependency_type/output_type, data_type, compatible_sources, ' +
-        'aliases) from the two JSON blobs, and compute the 6-component score by the HOWTO rule (type 40 / data 20 / ' +
-        'semantic-name+alias 25 / exact-or-alias 5 / source-compat 10-or-5-or-0 / keyword 5).'),
-    'Report ONLY the single edge "' + edge + '" of ' + edgeStr(req) + ': its resolution score and whether it resolves (>=0.5).',
-    'Return ONE JSON object {edge:"' + edge + '", score, resolves, note' + (HOST_TOOL_FORCES_SCHEMA ? '' : ':"reasoned from steps io JSON; no resolver CLI on this host"') + '}. Do NOT return the other edge, do NOT return a list.',
+    'The new step .step.yaml now exists, so the REAL resolver can score its edges.',
+    'Use your shell/execute tool to run this EXACT command and return its stdout JSON VERBATIM',
+    '(do NOT rename, reshape, drop keys, summarize, or compute anything yourself):',
+    '  ' + cliJson('dag resolve ' + nodes.join(' ')),
+    'It prints {steps, loaded, edges:[{consumer, dependency, provider, score, resolves}], all_edges_resolve, threshold}.',
+    'Return that object exactly as printed.',
   ].join('\n')
 }
 
@@ -861,17 +897,35 @@ const report = await pipeline(REQUESTS,
     if (ctx.short_circuit) return { plan: ctx.plan, req: ctx.req, short_circuit: ctx.short_circuit }
     const plan = ctx.plan
 
-    // 4a. interface gate (contract<->spec + container-path Pydantic validators)
+    // 4a. interface gate (contract<->spec + container-path Pydantic validators).
+    // RELAY, not synthesis: `cursus validate step-interface --format json` IS the real oracle CI runs.
+    // On the tool-forcing host the MCP tool returns {ok,errors,warnings} natively (schema-forced). On the
+    // non-tool-forcing (Kiro) host, asking the model to reshape results[0] while ignoring same-named
+    // top-level COUNT fields is the exact confusable transform it dropped in SAIS Runs 13-15 — so instead
+    // the model returns the CLI JSON VERBATIM (no schema) and the RUNTIME does the results[0] projection
+    // in code (3 lines that can't mis-read). This strengthens H4: the green verdict is the real oracle's
+    // boolean, not a model-relayed object that merely happens to schema-validate.
     let v, tries = 0
     do {
       v = await agent(
         relay(
           'Call validate.step_interface(step_name="' + plan.step_name + '") (CLI fallback: `cursus validate step-interface ' + plan.step_name + ' --format json`). Return its {ok, errors, warnings}.',
-          'Use your shell/execute tool to run this EXACT command and read its stdout:\n  ' + cliJson('validate step-interface ' + plan.step_name) +
-          '\nIt prints {validated, errors (a COUNT), warnings (a COUNT), results:[{step, ok, errors:[...], warnings:[...]}]}. ' +
-          'Return EXACTLY {ok: results[0].ok, errors: results[0].errors, warnings: results[0].warnings} — map from results[0]; ' +
-          'the TOP-LEVEL errors/warnings are integer counts, do NOT use them (VALIDATE_SCHEMA wants string arrays).'),
-        { label: 'validate:' + plan.step_name, phase: 'Validate', schema: VALIDATE_SCHEMA })
+          'Use your shell/execute tool to run this EXACT command and return its stdout JSON VERBATIM (do NOT rename, reshape, or drop keys):\n  ' + cliJson('validate step-interface ' + plan.step_name)),
+        HOST_TOOL_FORCES_SCHEMA
+          ? { label: 'validate:' + plan.step_name, phase: 'Validate', schema: VALIDATE_SCHEMA }
+          : { label: 'validate:' + plan.step_name, phase: 'Validate', schema: RELAY_JSON_SCHEMA }) // Kiro: parse-only relay (raw CLI object), mapped in code below
+      // Kiro path: project the real CLI object {validated, errors(count), warnings(count), results:[{ok,
+      // errors[], warnings[]}]} down to VALIDATE_SCHEMA shape in CODE. r0.ok is already boolean and
+      // r0.errors/warnings already string[] from _validate_one_interface, so no mis-read is possible.
+      if (!HOST_TOOL_FORCES_SCHEMA) {
+        if (v && Array.isArray(v.results) && v.results.length) {
+          const r0 = v.results[0]
+          v = { ok: !!r0.ok, errors: r0.errors || [], warnings: r0.warnings || [] }
+        } else if (v && typeof v.ok !== 'boolean') {
+          // Malformed/empty CLI stdout (sed filter missed noise, or model paraphrased): fail safe.
+          v = { ok: false, errors: ['validate CLI produced no parseable {results:[...]} JSON'], warnings: [] }
+        }
+      }
       if (v && !v.ok && tries < 2) {
         await agent(
           'validate.step_interface failed for ' + plan.step_name + ' with errors: ' + JSON.stringify(v.errors) +
@@ -974,15 +1028,20 @@ const report = await pipeline(REQUESTS,
         'producer/consumer is not an edge. Return {both_edges_resolve, edges:[{edge,score,resolves,note}]}.',
         { label: 'resolve:' + plan.step_name, phase: 'Validate', schema: RESOLVE_SCHEMA, effort: 'high' })
     } else {
-      const redges = []
-      for (const { edge } of realEdges(plan, ctx.req)) {
-        const e = await agent(edgeResolvePrompt(plan, ctx.req, edge, nodes), { label: 'resolve:' + plan.step_name + ':' + edge, phase: 'Validate', schema: EDGE_RESOLVE_SCHEMA, effort: 'high' })
-        if (e) { e.edge = edge; redges.push(e) } // inject the edge label the runtime dictated (model needn't echo it)
+      // Non-tool-forcing (Kiro) host: ONE fetch turn runs the REAL resolver via `cursus dag resolve`
+      // and returns its JSON verbatim (no schema — pure relay); the runtime maps the real per-edge
+      // scores onto this request's producer->NEW / NEW->consumer edges and computes both_edges_resolve
+      // in code. This is the honest, drift-free path (same resolver CI runs) that unblocked Runs 13-15,
+      // where asking the model to compute the 6-component score itself always failed.
+      const raw = await agent(resolveFetchPrompt(nodes), { label: 'resolve:' + plan.step_name, phase: 'Validate', schema: RELAY_JSON_SCHEMA })
+      const scored = (raw && Array.isArray(raw.edges)) ? raw.edges : []
+      const want = realEdges(plan, ctx.req)
+      const edges = want.map(({ edge }) => matchResolvedEdge(scored, edge, plan, ctx.req))
+      const gotAll = edges.every(Boolean)
+      rr = {
+        both_edges_resolve: gotAll && want.length > 0 && edges.every(e => e && e.resolves === true),
+        edges: edges.filter(Boolean),
       }
-      const expected = realEdges(plan, ctx.req).length
-      // both_edges_resolve when every expected real edge was scored AND resolves (vacuously true for a
-      // node with no real edges — matches the single-turn RESOLVE_SCHEMA contract).
-      rr = { both_edges_resolve: redges.length === expected && redges.every(e => e.resolves === true), edges: redges }
     }
 
     // 4d. constructibility proof (CI merge gate) + whole-DAG compile preview.

@@ -158,6 +158,41 @@ ok('schema array invalid item -> error', validateAgainstSchema([{ name: 'a', run
   ok('backfill does NOT fabricate a REQUIRED string (name)', !('name' in b3.value) && b3.value.note === '');
 }
 
+// ---- matchResolvedEdge: maps `cursus dag resolve` JSON onto producer->NEW / NEW->consumer (Run-15 fix) ----
+// The function is workflow-internal (cursus-author-step.js), so extract + eval it standalone.
+{
+  const wfSrc = fs.readFileSync(path.join(__dirname, '..', 'cursus-author-step.js'), 'utf8');
+  const s0 = wfSrc.indexOf('function matchResolvedEdge');
+  // end at the function's own closing brace: the first `}` at column 0 after s0 (top-level close).
+  const s1 = wfSrc.indexOf('\n}\n', s0) === -1 ? wfSrc.length : wfSrc.indexOf('\n}\n', s0) + 2;
+  // strict-mode eval has its own scope, so return the fn as an expression value
+  // eslint-disable-next-line no-eval
+  const matchResolvedEdge = eval('(' + wfSrc.slice(s0, s1).trim() + ')');
+  const plan = { step_name: 'BetaCalibration', producer: { node: 'XGBoostModelEval_calibration', base_step_type: 'XGBoostModelEval' }, consumer: { node: 'ModelMetricsComputation', base_step_type: 'ModelMetricsComputation' } };
+  const req = { producer_node: 'XGBoostModelEval_calibration', consumer_node: 'ModelMetricsComputation', name: 'BetaCalibration' };
+  const scored = [
+    { consumer: 'BetaCalibration', dependency: 'eval_output', provider: 'XGBoostModelEval', score: 1.0, resolves: true },
+    { consumer: 'ModelMetricsComputation', dependency: 'calibrated', provider: 'BetaCalibration', score: 1.0, resolves: true },
+  ];
+  const pN = matchResolvedEdge(scored, 'producer->NEW', plan, req);
+  ok('matchEdge producer->NEW: NEW consumes producer (matched by name)', pN && pN.edge === 'producer->NEW' && pN.resolves === true && pN.score === 1);
+  const nC = matchResolvedEdge(scored, 'NEW->consumer', plan, req);
+  ok('matchEdge NEW->consumer: consumer consumes NEW (matched by name)', nC && nC.edge === 'NEW->consumer' && nC.resolves === true);
+  ok('matchEdge note cites the real resolver', /real UnifiedDependencyResolver via/.test(pN.note));
+  // a sub-threshold real score maps to resolves:false (honest — no green-faking)
+  const failScored = [{ consumer: 'BetaCalibration', dependency: 'eval_output', provider: 'XGBoostModelEval', score: 0.44, resolves: false }];
+  const pf = matchResolvedEdge(failScored, 'producer->NEW', plan, req);
+  ok('matchEdge preserves a sub-threshold resolves:false + real score', pf && pf.resolves === false && pf.score === 0.44);
+  // no matching edge in the resolver output -> null (treated by the caller as not-green)
+  ok('matchEdge returns null when the resolver scored no edge for this pair', matchResolvedEdge([], 'producer->NEW', plan, req) === null);
+  // picks the BEST (highest-score) when several deps connect the same pair
+  const multi = [
+    { consumer: 'BetaCalibration', dependency: 'x', provider: 'XGBoostModelEval', score: 0.3, resolves: false },
+    { consumer: 'BetaCalibration', dependency: 'eval_output', provider: 'XGBoostModelEval', score: 0.9, resolves: true },
+  ];
+  ok('matchEdge picks the best-scoring candidate among ties', matchResolvedEdge(multi, 'producer->NEW', plan, req).score === 0.9);
+}
+
 // ---- runPool concurrency cap ----
 (async () => {
   let inFlight = 0;
