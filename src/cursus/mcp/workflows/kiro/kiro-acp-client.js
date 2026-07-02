@@ -259,8 +259,15 @@ class KiroAcpClient {
   // Convert our { name, command, args?, env?, cwd? } entries to the ACP session/new mcpServers wire
   // shape: { name, command, args:[...], env:[{name,value}] } (ACP encodes env as a name/value array,
   // not an object). Returns [] when none configured (preserving the prior default).
+  //
+  // VERSION SKEW (empirical, SAIS Run 8): kiro-cli 2.5.0's ACP server does NOT support dynamic MCP
+  // registration via session/new — it exits (code 0) the moment it receives a non-empty mcpServers
+  // payload. So on the 2.5.0-safe path (allowNewFlags=false, set by --legacy-kiro) we must NOT send
+  // mcpServers over the wire at all; the supported route on 2.5.0 is a static ~/.kiro/settings/mcp.json
+  // + `--agent`. On 2.10.0 (allowNewFlags=true) session/new registration works (and the e2e test
+  // relies on it). This mirrors how --effort/--trust-tools are gated on allowNewFlags.
   _mcpServerParams() {
-    return (this.mcpServers || []).map((s) => {
+    const list = (this.mcpServers || []).map((s) => {
       const entry = { name: s.name, command: s.command, args: Array.isArray(s.args) ? s.args : [] };
       if (s.env && typeof s.env === 'object') {
         entry.env = Object.entries(s.env).map(([name, value]) => ({ name, value: String(value) }));
@@ -268,6 +275,18 @@ class KiroAcpClient {
       if (s.cwd) entry.cwd = s.cwd;
       return entry;
     });
+    if (list.length && !this.allowNewFlags) {
+      if (!this._warnedMcpDropped) {
+        this._warnedMcpDropped = true;
+        this.onLog(
+          `⚠ ${list.length} MCP server(s) requested but --legacy-kiro is set: kiro-cli 2.5.0's ACP ` +
+            `server CRASHES on session/new mcpServers (SAIS Run 8), so registration is SKIPPED. To wire ` +
+            `MCP on 2.5.0, add the server to ~/.kiro/settings/mcp.json and run headless with --agent <name>.`
+        );
+      }
+      return [];
+    }
+    return list;
   }
 
   // Run one prompt turn: new session -> prompt -> accumulate agent_message_chunk text -> stopReason.

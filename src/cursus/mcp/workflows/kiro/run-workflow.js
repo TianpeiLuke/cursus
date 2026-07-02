@@ -30,9 +30,12 @@
 //   resolve, preflight, DagCheck) tell kiro-cli to CALL cursus tools (author.*/validate.*/steps.io/
 //   catalog.*) and relay the JSON. Without a registered server kiro-cli has no such tools and fabricates
 //   the JSON (array-prone, parse-fragile). Register the cursus MCP server so those turns use real tools:
-//   --mcp-cursus         auto-register the cursus stdio MCP server (`cursus mcp serve`). Best with
-//                        --transport acp (registered via session/new). For headless, kiro-cli reads MCP
-//                        servers from its --agent config, so pass --agent <name> too (a warning fires if not).
+//   --mcp-cursus         auto-register the cursus stdio MCP server (`cursus mcp serve`). Works on
+//                        kiro-cli >= 2.10.0 with --transport acp (registered via session/new). On the
+//                        FROZEN 2.5.0 build this is unavailable: 2.5.0's ACP CRASHES on a session/new
+//                        mcpServers payload (SAIS Run 8) and headless has no per-call registration — there
+//                        the ONLY route is a static ~/.kiro/settings/mcp.json + --transport headless
+//                        --agent <name>. When the runner can't deliver MCP it prints the mcp.json to add.
 //   --mcp-python <cmd>   use `<cmd> -m cursus.mcp.server` instead of the `cursus` console script (e.g. python3)
 //   --mcp-server '<json>'  register an explicit server; repeatable. JSON: {"name","command","args"?,"env"?}
 //

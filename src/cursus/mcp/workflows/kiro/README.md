@@ -36,11 +36,20 @@ harnesses — Claude Code (via its `Workflow` tool) and Kiro (via this runner).
 - Node.js ≥ 18 (tested on v22).
 - The cursus MCP tools must be reachable **by `kiro-cli`'s own agent**. The workflow phases tell
   kiro-cli to call `author.*` / `validate.*` / `steps.io` / `compile.*`; kiro-cli invokes them itself.
-  The runner can register the server for you: pass **`--mcp-cursus`** (auto-registers the `cursus mcp
-  serve` stdio server). Under `--transport acp` this is injected into the ACP `session/new`, so no agent
-  config edit is needed; under `headless`, kiro-cli reads MCP servers from its `--agent` config, so pass
-  `--agent <name>` too. If no server is reachable the phases fall back to the `cursus` CLI, and any that
-  still can't run degrade to fabricated JSON — see [Schema-output shape](#schema-output-shape-explicit-directive--auto-coercion--re-prompt).
+  How to register the `cursus mcp serve` stdio server depends on the build:
+  - **kiro-cli ≥ 2.10.0:** pass **`--mcp-cursus --transport acp`** — the runner injects the server into
+    the ACP `session/new`, no config edit needed.
+  - **kiro-cli 2.5.0 (frozen SAIS snapshot):** dynamic registration is NOT available — the 2.5.0 ACP
+    server **crashes** on a `session/new` `mcpServers` payload (SAIS Run 8), and headless has no per-call
+    registration at all. The ONLY working route is a **static config + `--agent`**: add the server to
+    `~/.kiro/settings/mcp.json` (the runner prints the exact snippet when it can't deliver MCP itself)
+    and run **`--transport headless --agent <name-bound-to-that-config>`** (do NOT pass `--mcp-cursus`
+    or `--transport acp` there). Example `~/.kiro/settings/mcp.json`:
+    ```json
+    { "mcpServers": { "cursus": { "command": "cursus", "args": ["mcp", "serve"] } } }
+    ```
+  If no server is reachable the phases fall back to the `cursus` CLI, and any that still can't run
+  degrade to fabricated JSON — see [Schema-output shape](#schema-output-shape-explicit-directive--auto-coercion--re-prompt).
 
 ## Usage
 
@@ -77,7 +86,7 @@ concurrently, capped).
 | `--kiro-bin <path>` | kiro-cli binary (default `kiro-cli`). |
 | `--budget <n>` | Ceiling for `budget.total` (a char/4 token *estimate* — kiro reports credits, not tokens). Default none. |
 | `--transport <t>` | `headless` (default) or `acp`. See below. |
-| `--mcp-cursus` | Register the cursus stdio MCP server (`cursus mcp serve`) so the relay-tool-result phases call real `author.*`/`validate.*`/`steps.io`/`catalog.*` tools instead of fabricating JSON. Injected into ACP `session/new`; with `headless` also pass `--agent`. |
+| `--mcp-cursus` | Register the cursus stdio MCP server (`cursus mcp serve`) so relay-tool-result phases call real `author.*`/`validate.*`/`steps.io`/`catalog.*` tools instead of fabricating JSON. **kiro-cli ≥ 2.10.0 only** (injected into ACP `session/new`). On the frozen **2.5.0** build this is unavailable (ACP crashes on the payload, headless can't register per-call) — use a static `~/.kiro/settings/mcp.json` + `--agent` instead (see [Requirements](#requirements)). |
 | `--mcp-python <cmd>` | With `--mcp-cursus`, launch via `<cmd> -m cursus.mcp.server` instead of the `cursus` console script (e.g. `--mcp-python python3`). |
 | `--mcp-server '<json>'` | Register an explicit MCP server (repeatable). JSON: `{"name","command","args"?,"env"?}`. |
 | `--legacy-kiro` | Emit only the **kiro-cli 2.5.0-safe** flag set (drops `--effort` + granular `--trust-tools`; keeps `--no-interactive`/`--trust-all-tools`/`--agent`/`--model`). Use on the SAIS frozen snapshot. |
@@ -192,9 +201,10 @@ preflight, and configure-pipeline's DagCheck + per-node Validate) are *relay-too
 tell kiro-cli to CALL `author.*` / `validate.*` / `steps.io` / `catalog.*` and return the tool's JSON.
 If no cursus MCP server is registered, kiro-cli has no such tools and FABRICATES the JSON — which is
 exactly the array-prone, parse-fragile output the four layers then have to salvage. Registering the
-server (**`--mcp-cursus`**, injected into ACP `session/new`; see [Requirements](#requirements)) lets
-those turns return real tool output, which is the durable fix; the four layers remain the safety net for
-the compute-mode turns and any residual drift.
+server (see [Requirements](#requirements) for the per-build mechanism — `--mcp-cursus --transport acp`
+on kiro-cli ≥ 2.10.0, a static `~/.kiro/settings/mcp.json` + `--agent` on the frozen 2.5.0 build, whose
+ACP crashes on dynamic registration) lets those turns return real tool output, which is the durable fix;
+the four layers remain the safety net for the compute-mode turns and any residual drift.
 
 Failure modes seen in real SAIS runs, and how the three layers handle them:
 

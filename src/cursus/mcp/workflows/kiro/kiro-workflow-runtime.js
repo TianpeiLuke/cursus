@@ -434,19 +434,42 @@ class KiroWorkflowRuntime {
     return this._runTurnHeadless(prompt, opts, attempt);
   }
 
-  // The MCP servers to expose to kiro-cli, normalized. ACP passes these in session/new; headless can
-  // only get them from the --agent config, so warn once if servers are set for headless without --agent.
+  // The MCP servers to expose to kiro-cli, normalized. ACP registers them via session/new (2.10.0
+  // only — 2.5.0's ACP CRASHES on that payload, see the ACP client + SAIS Run 8). Headless has no
+  // per-call registration at all: kiro-cli reads MCP servers from its --agent config there. So warn
+  // once when servers are configured but this run can't actually deliver them, pointing at the ONE
+  // route that works on the frozen 2.5.0 build: a static ~/.kiro/settings/mcp.json + headless --agent.
   _mcpServers() {
     if (!this.mcpServers.length) return [];
-    if (this.transport === 'headless' && !this.defaultAgent && !this._warnedHeadlessMcp) {
-      this._warnedHeadlessMcp = true;
+    // Headless never delivers MCP via the runtime; it must come from --agent config. On the 2.5.0-safe
+    // path ACP can't deliver it either. In both cases, emit the mcp.json the user should install.
+    const cantDeliver =
+      (this.transport === 'headless' && !this.defaultAgent) ||
+      (this.transport === 'acp' && !this.allowNewFlags);
+    if (cantDeliver && !this._warnedMcpUndeliverable) {
+      this._warnedMcpUndeliverable = true;
+      const reason =
+        this.transport === 'headless'
+          ? 'transport=headless has no per-call MCP registration (kiro-cli reads it from --agent config)'
+          : 'transport=acp + --legacy-kiro: kiro-cli 2.5.0 ACP crashes on session/new mcpServers (SAIS Run 8)';
       this._emit(
-        `  ⚠ ${this.mcpServers.length} MCP server(s) configured but transport=headless has no per-call ` +
-          `registration — kiro-cli reads MCP servers from its --agent config. Either pass --agent <name> ` +
-          `whose config registers the cursus server, or use --transport acp (which registers via session/new).`
+        `  ⚠ ${this.mcpServers.length} MCP server(s) configured but ${reason}. On the frozen 2.5.0 build ` +
+          `the WORKING route is a static config + headless --agent. Add to ~/.kiro/settings/mcp.json:\n` +
+          `    ${JSON.stringify({ mcpServers: this._mcpJsonShape() })}\n` +
+          `  then run: --transport headless --agent <name-bound-to-that-config> (drop --transport acp / --mcp-cursus).`
       );
     }
     return this.mcpServers;
+  }
+
+  // The ~/.kiro/settings/mcp.json "mcpServers" object shape for the configured servers (name -> spec).
+  _mcpJsonShape() {
+    const obj = {};
+    for (const s of this.mcpServers) {
+      obj[s.name] = { command: s.command, args: Array.isArray(s.args) ? s.args : [] };
+      if (s.env && typeof s.env === 'object') obj[s.name].env = s.env;
+    }
+    return obj;
   }
 
   // Lazily create + start the shared ACP client (one long-lived `kiro-cli acp` process).

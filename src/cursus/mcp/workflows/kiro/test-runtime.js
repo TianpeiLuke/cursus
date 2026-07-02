@@ -327,6 +327,11 @@ return { one, fan };
   ok('acp mcp: env encoded as [{name,value}] array', Array.isArray(mp[1].env) && mp[1].env[0].name === 'PYTHONNOUSERSITE' && mp[1].env[0].value === '1');
   ok('acp mcp: cwd carried through', mp[1].cwd === '/w');
   ok('acp mcp: none configured -> empty array (prior default)', new KiroAcpClient({})._mcpServerParams().length === 0);
+  // 2.5.0-safe guard (SAIS Run 8): kiro-cli 2.5.0 ACP crashes on session/new mcpServers, so when
+  // allowNewFlags is false the payload MUST be dropped (empty) rather than sent over the wire.
+  const acp25mcp = new KiroAcpClient({ allowNewFlags: false, mcpServers: [{ name: 'cursus', command: 'cursus', args: ['mcp', 'serve'] }] });
+  ok('acp mcp: --legacy-kiro (2.5.0) DROPS session/new mcpServers (crash guard)', acp25mcp._mcpServerParams().length === 0);
+  ok('acp mcp: allowNewFlags:true (2.10.0) still sends mcpServers', new KiroAcpClient({ allowNewFlags: true, mcpServers: [{ name: 'cursus', command: 'cursus', args: ['mcp', 'serve'] }] })._mcpServerParams().length === 1);
 
   // ---- runtime.mcpCursus auto-registers the cursus server ----
   const { KiroWorkflowRuntime } = require('./kiro-workflow-runtime');
@@ -335,6 +340,9 @@ return { one, fan };
   const rtPy = new KiroWorkflowRuntime({ mcpCursus: 'python3' });
   ok('runtime mcpCursus:"python3" -> python -m cursus.mcp.server', rtPy.mcpServers[0].command === 'python3' && JSON.stringify(rtPy.mcpServers[0].args) === JSON.stringify(['-m', 'cursus.mcp.server']));
   ok('runtime no mcp config -> empty', new KiroWorkflowRuntime({}).mcpServers.length === 0);
+  // The ~/.kiro/settings/mcp.json shape the runtime prints for the static (working-on-2.5.0) route.
+  const shape = new KiroWorkflowRuntime({ mcpCursus: true })._mcpJsonShape();
+  ok('runtime _mcpJsonShape -> {cursus:{command,args}}', shape.cursus && shape.cursus.command === 'cursus' && JSON.stringify(shape.cursus.args) === JSON.stringify(['mcp', 'serve']));
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
