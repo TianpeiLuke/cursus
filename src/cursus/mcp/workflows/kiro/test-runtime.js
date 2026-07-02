@@ -13,7 +13,9 @@ const {
   extractJsonText,
   tolerantParse,
   shapeDirective,
+  typedSkeleton,
   coerceToSchema,
+  backfillDefaults,
   validateAgainstSchema,
   runPool,
 } = require('./kiro-workflow-runtime');
@@ -124,6 +126,38 @@ ok('schema array invalid item -> error', validateAgainstSchema([{ name: 'a', run
   ok('shapeDirective(array) asks for a JSON array', /JSON array/.test(arrDir) && !/EXACTLY ONE JSON object/.test(arrDir));
 }
 
+// ---- typedSkeleton: fill-in-the-blank with TYPED example values (Run-14 fix, SAGE 373135) ----
+{
+  const CH = { type: 'object', additionalProperties: false, required: ['holds', 'final_rung'],
+    properties: { holds: { type: 'boolean' }, challenges: { type: 'array', items: { type: 'string' } }, final_rung: { type: 'string', enum: ['reuse_config_only', 'new_step'] }, correction: { type: 'string' } } };
+  const sk = typedSkeleton(CH);
+  ok('typedSkeleton pre-writes EVERY key (no dropped-field temptation)', sk.includes('"holds"') && sk.includes('"challenges"') && sk.includes('"final_rung"') && sk.includes('"correction"'));
+  ok('typedSkeleton uses TYPED placeholders not bare ...', /"holds": true/.test(sk) && /"challenges": \[ "\.\.\." \]/.test(sk));
+  ok('typedSkeleton renders enum as its first literal', /"final_rung": "reuse_config_only"/.test(sk));
+  const dir = shapeDirective(CH);
+  ok('shapeDirective embeds the typed skeleton + names required keys', dir.includes('"holds": true') && /REQUIRED.*holds.*final_rung/.test(dir));
+}
+
+// ---- backfillDefaults: SAFE omitted-field defaults (Run-14 fix) — the safety rule is load-bearing ----
+{
+  const CH = { type: 'object', additionalProperties: false, required: ['holds', 'final_rung'],
+    properties: { holds: { type: 'boolean' }, challenges: { type: 'array', items: { type: 'string' } }, final_rung: { type: 'string', enum: ['reuse_config_only', 'new_step'] }, correction: { type: 'string' } } };
+  // SAFETY: an empty object must NOT get holds/final_rung fabricated (that would fake a verdict/green).
+  const b1 = backfillDefaults({}, CH);
+  ok('backfill does NOT fabricate a required boolean (holds)', !('holds' in b1.value));
+  ok('backfill does NOT fabricate a required enum (final_rung)', !('final_rung' in b1.value));
+  ok('backfill leaves an all-required-missing object INVALID (re-prompt, not fake-green)', validateAgainstSchema(b1.value, CH).length > 0);
+  ok('backfill DOES inject [] for an omitted array (challenges)', Array.isArray(b1.value.challenges) && b1.value.challenges.length === 0);
+  ok('backfill DOES inject "" for an omitted optional string (correction)', b1.value.correction === '');
+  // Verdict present, optional array dropped -> now valid (the common Run-13/14 case).
+  const b2 = backfillDefaults({ holds: false, final_rung: 'new_step' }, CH);
+  ok('backfill: verdict given + dropped optional array -> valid', validateAgainstSchema(b2.value, CH).length === 0 && Array.isArray(b2.value.challenges));
+  // A REQUIRED string is NOT fabricated (only OPTIONAL strings get "").
+  const RS = { type: 'object', additionalProperties: false, required: ['name'], properties: { name: { type: 'string' }, note: { type: 'string' } } };
+  const b3 = backfillDefaults({}, RS);
+  ok('backfill does NOT fabricate a REQUIRED string (name)', !('name' in b3.value) && b3.value.note === '');
+}
+
 // ---- runPool concurrency cap ----
 (async () => {
   let inFlight = 0;
@@ -157,6 +191,9 @@ if (/MISSINGFIELD/.test(prompt)) {
   if (/missing REQUIRED field\\(s\\): .*\\bok\\b/i.test(prompt)) reply = '{"label":"'+lab+'","ok":true}';
   else reply = '{"label":"'+lab+'"}';   // valid JSON, but the required 'ok' is absent
 }
+// DROPARRAY: valid JSON with the required scalars but the OPTIONAL array 'tags' omitted — backfill must
+// inject tags:[] so it validates on the FIRST attempt (no re-prompt). Recognised by the recovered marker.
+else if (/DROPARRAY/.test(prompt)) reply = '{"label":"'+lab+'","ok":true}';   // 'tags' array intentionally absent
 else if (/Respond AGAIN|was rejected/i.test(prompt)) reply = '{"label":"recovered","ok":true}';
 else if (/FORCE_REPROMPT/.test(prompt)) reply = "prose only, no json";
 else if (/ARRAYWRAP/.test(prompt)) reply = '[{"label":"'+lab+'","ok":true},{"label":"'+lab+'","ok":true}]';   // Opus-4.8-on-2.5.0: same object repeated in a MULTI-element array -> coercion unwraps
@@ -186,7 +223,9 @@ const rec = await agent('SCHEMA FORCE_REPROMPT LABEL=z', { label:'rp', schema:S 
 const wrapped = await agent('SCHEMA ARRAYWRAP LABEL=w', { label:'wrap', schema:S });   // multi-element identical array coerced -> {...}
 const multialt = await agent('SCHEMA MULTIALT LABEL=m', { label:'malt', schema:S });   // multi-element DIFFERENT array -> re-prompt recovers
 const missing = await agent('SCHEMA MISSINGFIELD LABEL=f', { label:'miss', schema:S });   // drops required 'ok' -> missing-field hint re-prompt recovers (SAIS Run 13)
-return { fan, piped, rec, wrapped, multialt, missing, argsSeen: names, fanOk: fan.filter(Boolean).length };
+const SA = { type:'object', required:['label','ok'], properties:{ label:{type:'string'}, ok:{type:'boolean'}, tags:{type:'array', items:{type:'string'}} } };
+const droparr = await agent('SCHEMA DROPARRAY LABEL=d', { label:'darr', schema:SA });   // omits optional array 'tags' -> backfill injects [] on FIRST try (Run 14 fix)
+return { fan, piped, rec, wrapped, multialt, missing, droparr, argsSeen: names, fanOk: fan.filter(Boolean).length };
 `
   );
 
@@ -219,6 +258,7 @@ return { fan, piped, rec, wrapped, multialt, missing, argsSeen: names, fanOk: fa
     ok('e2e multi-element identical array coerced to object (Opus-4.8-on-2.5.0 fix)', result.wrapped && !Array.isArray(result.wrapped) && result.wrapped.label === 'w' && result.wrapped.ok === true);
     ok('e2e multi-element DIFFERENT array recovers via sharper re-prompt', result.multialt && !Array.isArray(result.multialt) && result.multialt.label === 'recovered');
     ok('e2e missing-required-field recovers (re-prompt names the dropped field — SAIS Run 13 fix)', result.missing && result.missing.label === 'f' && result.missing.ok === true);
+    ok('e2e omitted optional array backfilled to [] on first try (SAIS Run 14 fix)', result.droparr && result.droparr.label === 'd' && result.droparr.ok === true && Array.isArray(result.droparr.tags) && result.droparr.tags.length === 0);
   }
 
   // ---- ACP transport via run-workflow.js + a mock `kiro-cli acp` server ----

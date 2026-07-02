@@ -309,11 +309,14 @@ const GAPS_SCHEMA = {
   },
 }
 
+// `axis` is NOT required — the runtime dictates WHICH axis each Guide turn covers (the loop passes it)
+// and injects it after parse, so the model needn't echo it (same lever as EDGE_ALIGN_SCHEMA.edge; the
+// dropped-`axis` failure was 0/6 in SAIS Run 13/14). restrictions[] backfills to [] if omitted.
 const GUIDE_SCHEMA = {
   type: 'object', additionalProperties: false,
-  required: ['axis', 'recommended', 'restrictions', 'exemplar_snippet'],
+  required: ['recommended', 'exemplar_snippet'],
   properties: {
-    axis: { type: 'string' },
+    axis: { type: 'string', description: 'the behavior axis (optional — the runtime sets it)' },
     recommended: { type: 'string', description: 'the concrete field values to use for this axis' },
     restrictions: { type: 'array', items: { type: 'string' }, description: 'legal-value / closed-enum restrictions that apply' },
     exemplar_snippet: { type: 'string', description: 'the matching section shape copied from the exemplar' },
@@ -846,6 +849,7 @@ const report = await pipeline(REQUESTS,
     if (ctx.short_circuit) return ctx
     const guides = (await parallel((ctx.plan.needed_axes || []).map(ax => () =>
       agent(guidePrompt(ctx.plan, ax, ctx.align), { label: 'guide:' + ctx.plan.step_name + ':' + ax, phase: 'Guide', schema: GUIDE_SCHEMA })
+        .then(g => { if (g && !g.axis) g.axis = ax; return g }) // inject the axis the runtime dictated (model needn't echo it)
     ))).filter(Boolean)
     await agent(authorPrompt(ctx.plan, guides, ctx.align, ctx.req), { label: 'author:' + ctx.plan.step_name, phase: 'Author', effort: 'high' })
     return { ...ctx, guides }

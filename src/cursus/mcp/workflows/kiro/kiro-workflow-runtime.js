@@ -238,19 +238,44 @@ function typeMatches(v, t) {
 // (author-step's locate/triage/identity AND configure-pipeline's DagCheck + per-node Validate), with
 // no per-workflow edits and no model change. The Claude Code host tool-forces the shape, so this is
 // Kiro-runtime-specific.
+// A TYPED-EXAMPLE placeholder for a schema node: a concrete value of the right JSON type, NOT a bare
+// `...`. This is the fill-in-the-blank lever (SAGE 373135/372052; external fill-in-the-blank + few-shot
+// research): when the skeleton carries a real placeholder per key, weak models copy the structure and
+// substitute only the values — so they cannot DROP a required key (every key is pre-written) and cannot
+// array-wrap a single object (the outer braces are pinned). Recurses one level into nested objects and
+// shows arrays as a single-element `[ <elem> ]` to teach cardinality without inviting a per-item list.
+function typedSkeleton(schema, depth) {
+  depth = depth || 0;
+  if (!schema || typeof schema !== 'object') return '...';
+  if (schema.enum && schema.enum.length) return JSON.stringify(schema.enum[0]); // first enum literal
+  const t = Array.isArray(schema.type) ? schema.type[0] : schema.type;
+  if (t === 'string') return '"..."';
+  if (t === 'boolean') return 'true';
+  if (t === 'integer' || t === 'number') return '0';
+  if (t === 'array') return '[ ' + (depth < 3 ? typedSkeleton(schema.items || {}, depth + 1) : '...') + ' ]';
+  if (t === 'object') {
+    const keys = Object.keys(schema.properties || {});
+    if (!keys.length || depth >= 3) return '{ ... }';
+    return '{ ' + keys.map((k) => JSON.stringify(k) + ': ' + typedSkeleton(schema.properties[k], depth + 1)).join(', ') + ' }';
+  }
+  return '...';
+}
+
 function shapeDirective(schema) {
   if (!schema || typeof schema !== 'object') return 'Return a single JSON value and NOTHING else.';
   const t = Array.isArray(schema.type) ? schema.type[0] : schema.type;
   if (t === 'object') {
     const keys = Object.keys(schema.properties || {});
-    const skeleton = keys.length
-      ? '{ ' + keys.map((k) => JSON.stringify(k) + ': ...').join(', ') + ' }'
-      : '{ ... }';
+    const skeleton = keys.length ? typedSkeleton(schema) : '{ ... }';
+    const reqLine = Array.isArray(schema.required) && schema.required.length
+      ? '\nEVERY one of these keys is REQUIRED and must be present: ' + schema.required.join(', ') + '.'
+      : '';
     return (
       'Return EXACTLY ONE JSON object and NOTHING else. Your entire reply MUST start with `{` and end ' +
       'with `}`. Do NOT return a JSON array; do NOT wrap the object in `[ ]`; do NOT return a list of ' +
       'candidates or alternatives — if you weighed several options, pick the single best and return ONLY ' +
-      'that one object. The top-level shape is exactly:\n' + skeleton
+      'that one object. Copy this SHAPE exactly — keep EVERY key, replace only the placeholder values ' +
+      '(the values below are type examples, not answers):\n' + skeleton + reqLine
     );
   }
   if (t === 'array') return 'Return a JSON array `[ ... ]` and NOTHING else (no prose, no object wrapper).';
@@ -289,6 +314,31 @@ function coerceToSchema(value, schema) {
     return { value: [value], coerced: true, note: 'wrapped bare object -> single-element array' };
   }
   return { value, coerced: false };
+}
+
+// Backfill SAFE defaults for keys the model OMITTED, before validating (the VelociraptorDocker
+// _coerce_to_schema pattern; SAIS Run 13/14 showed the model returns valid JSON but drops fields).
+// STRICT SAFETY RULE — this must NEVER fabricate a verdict, or it would fake a green:
+//   - array-typed property absent  -> inject []  (empty = "no restrictions / no challenges / no errors /
+//     no collateral", the common + honest default; safe whether required or optional).
+//   - OPTIONAL (non-required) string property absent -> inject "" (a note/detail field left blank).
+//   - a REQUIRED boolean / number / enum / string that is absent is LEFT ABSENT — validation then fails
+//     and the model is re-prompted, because those carry the actual decision (holds/ok/constructible/
+//     score/gap_rung) and must come from the model, never from us.
+// Only iterates top-level object properties (the failing phases are flat). Returns { value, filled:[] }.
+function backfillDefaults(value, schema) {
+  if (!schema || typeof schema !== 'object' || typeOf(value) !== 'object') return { value, filled: [] };
+  const props = schema.properties || {};
+  const required = new Set(schema.required || []);
+  const filled = [];
+  for (const [key, sub] of Object.entries(props)) {
+    if (key in value) continue;
+    const t = sub && (Array.isArray(sub.type) ? sub.type[0] : sub.type);
+    if (t === 'array') { value[key] = []; filled.push(key + '=[]'); }
+    else if (t === 'string' && sub && !sub.enum && !required.has(key)) { value[key] = ''; filled.push(key + '=""'); }
+    // required scalars / enums / booleans / numbers: intentionally NOT filled — model must supply them.
+  }
+  return { value, filled };
 }
 
 function validateAgainstSchema(value, schema, path = '$') {
@@ -712,6 +762,11 @@ class KiroWorkflowRuntime {
           const co = coerceToSchema(tp.value, schema);
           const parsed = co.value;
           if (co.coerced) this._emit(`  · ${label}: ${co.note}`);
+          // Backfill SAFE defaults for omitted array/optional-string keys (never a required scalar/enum/
+          // bool — those must come from the model). Turns a dropped optional array into a valid response
+          // instead of a wasted re-prompt (SAIS Run 13/14: model returns valid JSON but drops fields).
+          const bf = backfillDefaults(parsed, schema);
+          if (bf.filled.length) this._emit(`  · ${label}: backfilled omitted ${bf.filled.join(', ')}`);
           const errors = validateAgainstSchema(parsed, schema);
           if (errors.length === 0) {
             this._emit(`  ✓ ${label}`);
@@ -842,7 +897,9 @@ module.exports = {
   extractJsonText,
   tolerantParse,
   shapeDirective,
+  typedSkeleton,
   coerceToSchema,
+  backfillDefaults,
   validateAgainstSchema,
   runPool,
 };
