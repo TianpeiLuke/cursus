@@ -434,29 +434,41 @@ class KiroWorkflowRuntime {
     return this._runTurnHeadless(prompt, opts, attempt);
   }
 
-  // The MCP servers to expose to kiro-cli, normalized. ACP registers them via session/new (2.10.0
-  // only — 2.5.0's ACP CRASHES on that payload, see the ACP client + SAIS Run 8). Headless has no
-  // per-call registration at all: kiro-cli reads MCP servers from its --agent config there. So warn
-  // once when servers are configured but this run can't actually deliver them, pointing at the ONE
-  // route that works on the frozen 2.5.0 build: a static ~/.kiro/settings/mcp.json + headless --agent.
+  // The MCP servers to expose to kiro-cli, normalized.
+  //
+  // LEGACY (kiro-cli 2.5.0, `--legacy-kiro` / allowNewFlags=false): MCP is UNLOADABLE in ANY mode on
+  // this build — headless ignores ~/.kiro/settings/mcp.json (loads only built-in tools) and ACP
+  // crashes on session/new mcpServers (SAIS Runs 8 + 10, the definitive negative). So on the legacy
+  // path we DROP the MCP config entirely and let the workflows use their built-in `cursus` CLI
+  // fallback; passing servers here would be a no-op at best and a crash at worst. We warn ONCE so the
+  // operator knows the phases are on the CLI-fallback path, not real MCP tools.
+  //
+  // MODERN (kiro-cli >= 2.10.0, allowNewFlags=true): MCP works. ACP registers servers via session/new;
+  // headless reads them from the --agent config (so warn once if servers are set for headless without
+  // --agent, since the runtime can't inject them per-call there).
   _mcpServers() {
     if (!this.mcpServers.length) return [];
-    // Headless never delivers MCP via the runtime; it must come from --agent config. On the 2.5.0-safe
-    // path ACP can't deliver it either. In both cases, emit the mcp.json the user should install.
-    const cantDeliver =
-      (this.transport === 'headless' && !this.defaultAgent) ||
-      (this.transport === 'acp' && !this.allowNewFlags);
-    if (cantDeliver && !this._warnedMcpUndeliverable) {
+    if (!this.allowNewFlags) {
+      // kiro-cli 2.5.0: MCP cannot be delivered in any mode — drop it, fall back to the cursus CLI.
+      if (!this._warnedMcpDropped) {
+        this._warnedMcpDropped = true;
+        this._emit(
+          `  ⚠ ${this.mcpServers.length} MCP server(s) configured but --legacy-kiro (kiro-cli 2.5.0) cannot ` +
+            `load MCP in any mode (headless ignores the config; ACP crashes on registration — SAIS Runs 8+10). ` +
+            `DROPPING MCP; the workflow phases use the built-in \`cursus\` CLI fallback. MCP tool-forcing ` +
+            `needs kiro-cli >= 2.10.0 (run without --legacy-kiro).`
+        );
+      }
+      return [];
+    }
+    // Modern build: headless can't register per-call — those servers must come from the --agent config.
+    if (this.transport === 'headless' && !this.defaultAgent && !this._warnedMcpUndeliverable) {
       this._warnedMcpUndeliverable = true;
-      const reason =
-        this.transport === 'headless'
-          ? 'transport=headless has no per-call MCP registration (kiro-cli reads it from --agent config)'
-          : 'transport=acp + --legacy-kiro: kiro-cli 2.5.0 ACP crashes on session/new mcpServers (SAIS Run 8)';
       this._emit(
-        `  ⚠ ${this.mcpServers.length} MCP server(s) configured but ${reason}. On the frozen 2.5.0 build ` +
-          `the WORKING route is a static config + headless --agent. Add to ~/.kiro/settings/mcp.json:\n` +
-          `    ${JSON.stringify({ mcpServers: this._mcpJsonShape() })}\n` +
-          `  then run: --transport headless --agent <name-bound-to-that-config> (drop --transport acp / --mcp-cursus).`
+        `  ⚠ ${this.mcpServers.length} MCP server(s) configured but transport=headless has no per-call ` +
+          `registration — kiro-cli reads MCP from its --agent config. Pass --agent <name> whose config ` +
+          `registers them (or use --transport acp on kiro-cli >= 2.10.0). Add to that agent's mcpServers:\n` +
+          `    ${JSON.stringify({ mcpServers: this._mcpJsonShape() })}`
       );
     }
     return this.mcpServers;

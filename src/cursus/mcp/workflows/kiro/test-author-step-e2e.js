@@ -31,6 +31,8 @@ function ok(name, cond) {
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'kiro-author-e2e-'));
 const sentinel = path.join(dir, 'BIG_SCHEMA_SEEN'); // written iff the mock sees the old combined schema
+const alignSingleSentinel = path.join(dir, 'ALIGN_SINGLE_SEEN'); // written iff the single-turn AlignEdges fired (must NOT on Kiro)
+const alignEdgeLog = path.join(dir, 'ALIGN_EDGES.log'); // one line per decomposed per-edge align turn
 
 // The mock kiro-cli. It gets the prompt as its last positional arg (as run-workflow.js passes it),
 // routes on the prompt's unique TASK marker, and prints a schema-valid JSON reply with the same
@@ -71,12 +73,26 @@ if (p.includes("NEW-STEP IDENTITY"))
 if (p.includes("TRY TO BREAK"))
   return say({ holds:true, final_rung:"new_step", challenges:["reuse_config_only checked: none fits"], correction:"" });
 
-// --- AlignEdges ---
-if (p.includes("ALIGN the two DAG edges"))
+// --- AlignEdges (single-turn, tool-forcing host) — must NEVER fire on the Kiro path; leave a sentinel ---
+if (p.includes("ALIGN the two DAG edges")) {
+  fs.writeFileSync(${JSON.stringify(alignSingleSentinel)}, "seen");
   return say({ arity_ok:true, arity_note:"one data producer",
     edges:[{ edge:"producer->NEW", dependency_type:"PROCESSING_OUTPUT", output_type:"PROCESSING_OUTPUT", type_ok:true, data_type_ok:true, projected_score:0.85, resolves:true, fragile:false },
            { edge:"NEW->consumer", dependency_type:"PROCESSING_OUTPUT", output_type:"PROCESSING_OUTPUT", type_ok:true, data_type_ok:true, projected_score:0.8, resolves:true, fragile:false }],
     consumer_edits:["add BetaCalibration to ModelMetricsComputation dependency compatible_sources"], ready:true });
+}
+// --- AlignEdges DECOMPOSED (Kiro path): one object per edge + one arity object; count the per-edge turns ---
+if (p.includes("ALIGN EXACTLY ONE EDGE")) {
+  const m = p.match(/ALIGN EXACTLY ONE EDGE: "([^"]+)"/);
+  const edge = m ? m[1] : "producer->NEW";
+  const isProd = edge === "producer->NEW";
+  try { fs.appendFileSync(${JSON.stringify(alignEdgeLog)}, edge + "\\n"); } catch (e) {}
+  return say({ edge, dependency_type:"PROCESSING_OUTPUT", output_type:"PROCESSING_OUTPUT", type_ok:true, data_type_ok:true,
+    projected_score: isProd ? 0.85 : 0.8, resolves:true, fragile:false,
+    consumer_edits: isProd ? [] : ["add BetaCalibration to ModelMetricsComputation dependency compatible_sources"] });
+}
+if (p.includes("ARITY CHECK ONLY"))
+  return say({ arity_ok:true, arity_note:"one data producer" });
 
 // --- Guide (one per needed axis) ---
 { const m = p.match(/guidance for the "(\\w+)" axis/);
@@ -95,6 +111,13 @@ if (p.includes("actually PARSE"))
   return say({ py_compile_ok:true, yaml_loads_ok:true, detail:"exit 0" });
 if (p.includes("BECAUSE of these REQUIRED divergences:"))
   return say({ all_present:true, checks:[{ divergence:"outputs: ADD a calibrator output", present:true, evidence:"spec.outputs.calibrator" }] });
+// --- re-resolve DECOMPOSED (Kiro path): one object per edge (check BEFORE the single-turn branch) ---
+if (p.includes("Report ONLY the single edge")) {
+  const m = p.match(/Report ONLY the single edge "([^"]+)"/);
+  const edge = m ? m[1] : "producer->NEW";
+  return say({ edge, score: edge === "producer->NEW" ? 0.85 : 0.8, resolves:true, note:"" });
+}
+// --- re-resolve single-turn (tool-forcing host) ---
 if (p.includes("validate.deps_resolve(step_names="))
   return say({ both_edges_resolve:true, edges:[{ edge:"producer->NEW", score:0.85, resolves:true, note:"" },{ edge:"NEW->consumer", score:0.8, resolves:true, note:"" }] });
 if (p.includes("author.preflight_step(step_name="))
@@ -152,6 +175,13 @@ if (result) {
   ok('divergence-fidelity gate saw it present', a && a.divergences_present === true);
   ok('both edges resolve after specs written', a && a.edges_resolve === true);
   ok('nothing resolved-without-a-new-step', Array.isArray(result.resolved_without_new_step) && result.resolved_without_new_step.length === 0);
+}
+// AlignEdges was DECOMPOSED on the Kiro path: the single-turn ALIGN_SCHEMA prompt must NEVER fire, and
+// there must be one per-edge align turn per real edge (2 here: producer->NEW + NEW->consumer).
+ok('AlignEdges single-turn (array-of-objects) prompt was NEVER emitted on the Kiro path', !fs.existsSync(alignSingleSentinel));
+{
+  const edgeTurns = fs.existsSync(alignEdgeLog) ? fs.readFileSync(alignEdgeLog, 'utf8').trim().split('\n').filter(Boolean) : [];
+  ok('AlignEdges ran one per-edge turn per real edge (2)', edgeTurns.length === 2 && edgeTurns.includes('producer->NEW') && edgeTurns.includes('NEW->consumer'));
 }
 
 fs.rmSync(dir, { recursive: true, force: true });

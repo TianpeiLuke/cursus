@@ -34,22 +34,19 @@ harnesses — Claude Code (via its `Workflow` tool) and Kiro (via this runner).
   / `--acp-entry` flags there. The runner shells out to `kiro-cli`; nothing else (no npm packages —
   the runtime is dependency-free, standard-library Node only).
 - Node.js ≥ 18 (tested on v22).
-- The cursus MCP tools must be reachable **by `kiro-cli`'s own agent**. The workflow phases tell
-  kiro-cli to call `author.*` / `validate.*` / `steps.io` / `compile.*`; kiro-cli invokes them itself.
-  How to register the `cursus mcp serve` stdio server depends on the build:
-  - **kiro-cli ≥ 2.10.0:** pass **`--mcp-cursus --transport acp`** — the runner injects the server into
-    the ACP `session/new`, no config edit needed.
-  - **kiro-cli 2.5.0 (frozen SAIS snapshot):** dynamic registration is NOT available — the 2.5.0 ACP
-    server **crashes** on a `session/new` `mcpServers` payload (SAIS Run 8), and headless has no per-call
-    registration at all. The ONLY working route is a **static config + `--agent`**: add the server to
-    `~/.kiro/settings/mcp.json` (the runner prints the exact snippet when it can't deliver MCP itself)
-    and run **`--transport headless --agent <name-bound-to-that-config>`** (do NOT pass `--mcp-cursus`
-    or `--transport acp` there). Example `~/.kiro/settings/mcp.json`:
-    ```json
-    { "mcpServers": { "cursus": { "command": "cursus", "args": ["mcp", "serve"] } } }
-    ```
-  If no server is reachable the phases fall back to the `cursus` CLI, and any that still can't run
-  degrade to fabricated JSON — see [Schema-output shape](#schema-output-shape-explicit-directive--auto-coercion--re-prompt).
+- The workflow phases tell kiro-cli to call `author.*` / `validate.*` / `steps.io` / `compile.*`. How
+  (and whether) those MCP tools are reachable depends entirely on the kiro-cli build:
+  - **kiro-cli ≥ 2.10.0: MCP works.** Pass **`--mcp-cursus --transport acp`** — the runner injects the
+    `cursus mcp serve` stdio server into the ACP `session/new`, no config edit. (Or register the server
+    in the `--agent` config and run headless.) This is the best path when available.
+  - **kiro-cli 2.5.0 (frozen SAIS snapshot): MCP is UNAVAILABLE in ANY mode** — SAIS Runs 8 + 10 proved
+    2.5.0 headless ignores `~/.kiro/settings/mcp.json` (loads only built-in tools) and its ACP crashes on
+    a `session/new` `mcpServers` payload. So on the legacy path the runtime **drops MCP entirely** (pass
+    `--legacy-kiro`; it warns once) and the workflow phases use their built-in **`cursus` CLI fallback**.
+    Structured output on 2.5.0 therefore rests on the runtime's schema layers (see
+    [Schema-output shape](#schema-output-shape-explicit-directive--auto-coercion--re-prompt)) plus the
+    **schema decomposition** the workflows apply on non-tool-forcing hosts (Resolve and AlignEdges are
+    split into one-object-per-turn), not on MCP tool calls.
 
 ## Usage
 
@@ -86,7 +83,7 @@ concurrently, capped).
 | `--kiro-bin <path>` | kiro-cli binary (default `kiro-cli`). |
 | `--budget <n>` | Ceiling for `budget.total` (a char/4 token *estimate* — kiro reports credits, not tokens). Default none. |
 | `--transport <t>` | `headless` (default) or `acp`. See below. |
-| `--mcp-cursus` | Register the cursus stdio MCP server (`cursus mcp serve`) so relay-tool-result phases call real `author.*`/`validate.*`/`steps.io`/`catalog.*` tools instead of fabricating JSON. **kiro-cli ≥ 2.10.0 only** (injected into ACP `session/new`). On the frozen **2.5.0** build this is unavailable (ACP crashes on the payload, headless can't register per-call) — use a static `~/.kiro/settings/mcp.json` + `--agent` instead (see [Requirements](#requirements)). |
+| `--mcp-cursus` | Register the cursus stdio MCP server (`cursus mcp serve`) so relay-tool-result phases call real `author.*`/`validate.*`/`steps.io`/`catalog.*` tools instead of fabricating JSON. **kiro-cli ≥ 2.10.0 only** (injected into ACP `session/new`). On the frozen **2.5.0** build MCP is unloadable in every mode (SAIS Runs 8+10) — with `--legacy-kiro` the runtime DROPS MCP and the phases use the `cursus` CLI fallback; do not rely on this flag there. |
 | `--mcp-python <cmd>` | With `--mcp-cursus`, launch via `<cmd> -m cursus.mcp.server` instead of the `cursus` console script (e.g. `--mcp-python python3`). |
 | `--mcp-server '<json>'` | Register an explicit MCP server (repeatable). JSON: `{"name","command","args"?,"env"?}`. |
 | `--legacy-kiro` | Emit only the **kiro-cli 2.5.0-safe** flag set (drops `--effort` + granular `--trust-tools`; keeps `--no-interactive`/`--trust-all-tools`/`--agent`/`--model`). Use on the SAIS frozen snapshot. |
@@ -232,6 +229,14 @@ Failure modes seen in real SAIS runs, and how the three layers handle them:
   non-tool-forcing host can't reliably shape should be **decomposed by the workflow for that host**, not
   forced through coercion. Proven by `test-author-step-e2e.js` — the real workflow reaches a green step on
   the Kiro runtime and the combined `PLAN_SCHEMA` turn is never emitted.
+  - **Post-Resolve phases with array-of-objects schemas are decomposed the same way** (SAIS Runs 5-6 showed
+    AlignEdges + the Validate re-resolve failing on their `edges[]` arrays even on the working model, and
+    Run 10 proved MCP can't rescue them on 2.5.0). On the non-tool-forcing host `cursus-author-step` scores
+    **one edge per turn** (a single object) for both AlignEdges (`EDGE_ALIGN_SCHEMA` + a tiny arity turn)
+    and the Validate re-resolve (`EDGE_RESOLVE_SCHEMA`), then assembles the `ALIGN_SCHEMA` / `RESOLVE_SCHEMA`
+    shape in plain code — no `edges[]` array is ever requested from the model. Under Claude Code these
+    stay single tool-forced turns, unchanged. `test-author-step-e2e.js` asserts the Kiro path runs one
+    per-edge align turn per real edge and never emits the single-turn array prompt.
 
 ## Tool-forcing structured output (candidate — offline-safe half built, SAIS probe pending)
 

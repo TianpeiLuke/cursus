@@ -203,6 +203,34 @@ const ALIGN_SCHEMA = {
   },
 }
 
+// ALIGNEDGES IS DECOMPOSED for the non-tool-forcing host: instead of one turn returning ALIGN_SCHEMA
+// (whose `edges` is an array-of-objects that triggers the multi-element-array bias on kiro-cli 2.5.0 —
+// the AlignEdges failure in SAIS Runs 5-6), score ONE edge per turn with this single-object schema,
+// plus a tiny arity turn, then assemble the ALIGN_SCHEMA-shaped object in plain code. Each turn yields
+// ONE object, so no per-edge array. Merged shape is byte-identical to what Guide/Author/Synthesize read.
+const EDGE_ALIGN_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['edge', 'dependency_type', 'output_type', 'type_ok', 'data_type_ok', 'projected_score', 'resolves', 'consumer_edits'],
+  properties: {
+    edge: { type: 'string', description: 'producer->NEW or NEW->consumer' },
+    dependency_type: { type: 'string' }, output_type: { type: 'string' },
+    type_ok: { type: 'boolean', description: 'dependency_type/output_type exact-or-compatible (GATE-1)' },
+    data_type_ok: { type: 'boolean' },
+    projected_score: { type: 'number', description: 'the 6-component score you expect for THIS one edge' },
+    resolves: { type: 'boolean', description: 'projected_score >= 0.5 (or true for a missing source/sink side)' },
+    fragile: { type: 'boolean', description: 'projected_score < 0.7' },
+    consumer_edits: { type: 'array', items: { type: 'string' }, description: 'the additive spec edits THIS edge needs (compatible_sources / alias); [] if none' },
+  },
+}
+const ARITY_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['arity_ok'],
+  properties: {
+    arity_ok: { type: 'boolean', description: 'the consumer has exactly one DependencySpec per intended data producer (no silent ordering-only demotion)' },
+    arity_note: { type: 'string' },
+  },
+}
+
 // Verdict-Override Challenge on the gap-ladder rung (before the is_new_step branch). A single agent
 // picks the rung in Resolve with no second opinion; a wrong CHEAPER rung (reuse/extend/delete)
 // silently short-circuits with the need unmet. This lets a skeptic REVERSE the rung on the same enum.
@@ -296,6 +324,14 @@ const RESOLVE_SCHEMA = {
     both_edges_resolve: { type: 'boolean' },
     edges: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['edge', 'score', 'resolves'], properties: { edge: { type: 'string' }, score: { type: 'number' }, resolves: { type: 'boolean' }, note: { type: 'string' } } } },
   },
+}
+
+// Per-edge re-resolution result (the single-object form of one RESOLVE_SCHEMA.edges entry). Used on the
+// non-tool-forcing host to score ONE edge per turn, avoiding the edges[] array-of-objects bias.
+const EDGE_RESOLVE_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['edge', 'score', 'resolves'],
+  properties: { edge: { type: 'string' }, score: { type: 'number' }, resolves: { type: 'boolean' }, note: { type: 'string' } },
 }
 
 const PREFLIGHT_SCHEMA = {
@@ -483,6 +519,65 @@ function alignPrompt(plan, req) {
   ].join('\n')
 }
 
+// The real (non-source/sink) edges for a request, as {edge, side} — used to drive one align/resolve
+// turn per edge on the decomposed path. producer->NEW exists iff there is a producer; NEW->consumer
+// iff there is a consumer.
+function realEdges(plan, req) {
+  const edges = []
+  if (req.producer_node) edges.push({ edge: 'producer->NEW', side: 'producer' })
+  if (req.consumer_node) edges.push({ edge: 'NEW->consumer', side: 'consumer' })
+  return edges
+}
+
+// DECOMPOSED AlignEdges — one edge scored per turn (single object), for the non-tool-forcing host.
+function edgeAlignPrompt(plan, req, edge) {
+  const isProducerEdge = edge === 'producer->NEW'
+  const near = isProducerEdge ? plan.producer : plan.consumer
+  return [
+    HOWTO, '',
+    'TASK (SOP steps 4-6) — ALIGN EXACTLY ONE EDGE: "' + edge + '" for new step "' + plan.step_name + '" (' + edgeStr(req) + ').',
+    'Score ONLY this edge and return ONE object. Do NOT score the other edge, do NOT write files, do NOT return a list.',
+    'Bound handler: ' + plan.bound_handler + '. Exemplar: ' + plan.exemplar_step + '. This edge\'s adjacent node: ' + JSON.stringify(near) + '.',
+    'Read the REAL spec with steps.io("' + (near.base_step_type || near.node) + '"' + (near.job_type ? ', job_type="' + near.job_type + '"' : '') + ') — ' +
+      (isProducerEdge ? 'the producer OUTPUT spec (aligns to the NEW dependency-spec).' : 'the consumer DEPENDENCY spec (the NEW output-spec must satisfy it).'),
+    '',
+    'GATE-1 ENUM (do FIRST; a mismatch HARD-ZEROS the 40%): ' +
+      (isProducerEdge ? 'set the NEW dependency_type exact-or-compatible with the producer output_type.'
+                      : 'set the NEW output_type so the consumer dependency_type accepts it.') +
+    ' Matrix: MODEL_ARTIFACTS->{MODEL_ARTIFACTS}; TRAINING_DATA<->PROCESSING_OUTPUT (0.20); ' +
+    'HYPERPARAMETERS->{HYPERPARAMETERS,CUSTOM_PROPERTY}; PAYLOAD_SAMPLES->{PAYLOAD_SAMPLES,PROCESSING_OUTPUT}. Match data_types (usually S3Uri).',
+    'EDITING ROOM (additive only): ' +
+      (isProducerEdge ? 'put the producer base step_type in the NEW dependency compatible_sources (or leave EMPTY for +0.05 rather than a wrong entry).'
+                      : 'plan to ADD "' + plan.step_name + '" to the consumer dependency compatible_sources (+0.10) and ADD the counterpart logical_name as an ALIAS on the NEW output.') +
+    ' NEVER mutate an existing step output_type/dependency_type. List THIS edge\'s edits in consumer_edits.',
+    'GATE-2 SCORE (compute, do not eyeball): the 6-component score (type 40 / data 20 / semantic-with-aliases 25 / exact-or-alias 5 / source-compat 10-or-5-or-0 / keyword 5).',
+    'Use validate.deps_explain(name1,name2) for the 25% semantic sub-score. Require projected_score >= 0.5; flag < 0.7 fragile; a type-compatible-only (0.20) edge must earn >= 0.30 elsewhere.',
+    '',
+    'Return ONE JSON object {edge:"' + edge + '", dependency_type, output_type, type_ok, data_type_ok, projected_score, resolves, fragile, consumer_edits:[...]}.',
+  ].join('\n')
+}
+function arityPrompt(plan, req) {
+  return [
+    HOWTO, '',
+    'TASK (SOP step 3) — ARITY CHECK ONLY for new step "' + plan.step_name + '" (' + edgeStr(req) + '). Return ONE object.',
+    'The resolver assigns exactly ONE PropertyReference per DependencySpec; extra incoming data edges silently demote to ordering-only.',
+    'Confirm the number of intended DATA producers into the new node (and into the consumer) equals the number of its data DependencySpec entries.',
+    'If >1 producers of DIFFERENT step types, an optional DATA_SECONDARY dependency is needed; if the SAME step type twice, collapse to one producer emitting a sidecar.',
+    'Return ONE JSON object {arity_ok, arity_note}.',
+  ].join('\n')
+}
+
+// DECOMPOSED Validate/re-resolve — score ONE edge per turn with the REAL resolver, for the non-tool-
+// forcing host. Assembled into RESOLVE_SCHEMA shape in plain code.
+function edgeResolvePrompt(plan, req, edge, nodes) {
+  return [
+    'The new step .step.yaml now exists, so the real resolver can score its edges. Call ' +
+      'validate.deps_resolve(step_names=' + JSON.stringify(nodes) + ') (CLI fallback: `cursus validate deps-resolve ...`).',
+    'Report ONLY the single edge "' + edge + '" of ' + edgeStr(req) + ': its resolution score and whether it resolves (>=0.5).',
+    'Return ONE JSON object {edge:"' + edge + '", score, resolves, note}. Do NOT return the other edge, do NOT return a list.',
+  ].join('\n')
+}
+
 function guidePrompt(plan, axis, align) {
   return [
     HOWTO, '',
@@ -641,11 +736,40 @@ const report = await pipeline(REQUESTS,
     return { req, plan, challenge: ch }
   },
 
-  // Stage 2 — AlignEdges (the spec-alignment gate) — only for genuine new steps
+  // Stage 2 — AlignEdges (the spec-alignment gate) — only for genuine new steps.
+  // On a TOOL-FORCING host (Claude Code): one turn returns ALIGN_SCHEMA. On the non-tool-forcing Kiro
+  // host: score ONE edge per turn (single object) + a tiny arity turn, then ASSEMBLE the ALIGN_SCHEMA
+  // shape in plain code — avoiding the edges[] array-of-objects that triggered the AlignEdges failure
+  // in SAIS Runs 5-6. Either branch yields the identical `align` shape, so Guide/Author are unchanged.
   async (ctx) => {
     if (!ctx || !ctx.plan) return null
     if (!ctx.plan.is_new_step) return { ...ctx, align: null, short_circuit: 'gap_rung=' + ctx.plan.gap_rung + ': ' + (ctx.plan.gap_rung_reason || 'no new step needed') }
-    const align = await agent(alignPrompt(ctx.plan, ctx.req), { label: 'align:' + ctx.plan.step_name, phase: 'AlignEdges', schema: ALIGN_SCHEMA, effort: 'high' })
+    let align
+    if (HOST_TOOL_FORCES_SCHEMA) {
+      align = await agent(alignPrompt(ctx.plan, ctx.req), { label: 'align:' + ctx.plan.step_name, phase: 'AlignEdges', schema: ALIGN_SCHEMA, effort: 'high' })
+    } else {
+      // Kiro: one turn per real edge + one arity turn, assembled into an ALIGN_SCHEMA-shaped object.
+      const edges = []
+      for (const { edge } of realEdges(ctx.plan, ctx.req)) {
+        const e = await agent(edgeAlignPrompt(ctx.plan, ctx.req, edge), { label: 'align:' + ctx.plan.step_name + ':' + edge, phase: 'AlignEdges', schema: EDGE_ALIGN_SCHEMA, effort: 'high' })
+        if (e) edges.push(e)
+      }
+      const ar = await agent(arityPrompt(ctx.plan, ctx.req), { label: 'align:' + ctx.plan.step_name + ':arity', phase: 'AlignEdges', schema: ARITY_SCHEMA, effort: 'high' })
+      // Assemble into the ALIGN_SCHEMA shape. A source/sink/singular node with no real edges is not
+      // scored → vacuously ready (matches the single-turn contract, which marks a missing side resolved).
+      const expectedEdges = realEdges(ctx.plan, ctx.req).length
+      const gotAll = edges.length === expectedEdges
+      const consumer_edits = [...new Set(edges.flatMap(e => e.consumer_edits || []))]
+      align = {
+        arity_ok: ar ? ar.arity_ok : false,
+        arity_note: ar ? (ar.arity_note || '') : 'arity turn failed',
+        edges: edges.map(e => ({ edge: e.edge, dependency_type: e.dependency_type, output_type: e.output_type, type_ok: e.type_ok, data_type_ok: e.data_type_ok, projected_score: e.projected_score, resolves: e.resolves, fragile: e.fragile })),
+        consumer_edits,
+        // ready when every EXPECTED real edge was scored AND resolves (a node with zero real edges is
+        // vacuously ready, as in the single-turn path).
+        ready: gotAll && edges.every(e => e.resolves === true),
+      }
+    }
     return { ...ctx, align, short_circuit: (align && !align.ready) ? 'edges do not resolve (>=0.5) even after the planned consumer edits — revisit the DAG or the step design' : null }
   },
 
@@ -756,13 +880,29 @@ const report = await pipeline(REQUESTS,
     }
 
     // 4c. re-resolve BOTH edges with the REAL resolver now that all three specs exist (SOP step 6, for real).
+    // Tool-forcing host: one turn returns RESOLVE_SCHEMA. Non-tool-forcing host: one turn per real edge
+    // (single object) assembled into RESOLVE_SCHEMA shape — avoids the edges[] array bias (Validate/
+    // resolve failure in SAIS Runs 5-6). Identical `rr` shape either way, so Synthesize is unchanged.
     const nodes = [ctx.req.producer_node, ctx.plan.step_name, ctx.req.consumer_node].filter(Boolean)
-    const rr = await agent(
-      'The new step .step.yaml now exists, so the real resolver can score its edges. Call ' +
-      'validate.deps_resolve(step_names=' + JSON.stringify(nodes) + ') and report, for each of the edges ' +
-      edgeStr(ctx.req) + ', the resolution score and whether it resolves (>=0.5). A source/sink side that has no ' +
-      'producer/consumer is not an edge. Return {both_edges_resolve, edges:[{edge,score,resolves,note}]}.',
-      { label: 'resolve:' + plan.step_name, phase: 'Validate', schema: RESOLVE_SCHEMA, effort: 'high' })
+    let rr
+    if (HOST_TOOL_FORCES_SCHEMA) {
+      rr = await agent(
+        'The new step .step.yaml now exists, so the real resolver can score its edges. Call ' +
+        'validate.deps_resolve(step_names=' + JSON.stringify(nodes) + ') and report, for each of the edges ' +
+        edgeStr(ctx.req) + ', the resolution score and whether it resolves (>=0.5). A source/sink side that has no ' +
+        'producer/consumer is not an edge. Return {both_edges_resolve, edges:[{edge,score,resolves,note}]}.',
+        { label: 'resolve:' + plan.step_name, phase: 'Validate', schema: RESOLVE_SCHEMA, effort: 'high' })
+    } else {
+      const redges = []
+      for (const { edge } of realEdges(plan, ctx.req)) {
+        const e = await agent(edgeResolvePrompt(plan, ctx.req, edge, nodes), { label: 'resolve:' + plan.step_name + ':' + edge, phase: 'Validate', schema: EDGE_RESOLVE_SCHEMA, effort: 'high' })
+        if (e) redges.push(e)
+      }
+      const expected = realEdges(plan, ctx.req).length
+      // both_edges_resolve when every expected real edge was scored AND resolves (vacuously true for a
+      // node with no real edges — matches the single-turn RESOLVE_SCHEMA contract).
+      rr = { both_edges_resolve: redges.length === expected && redges.every(e => e.resolves === true), edges: redges }
+    }
 
     // 4d. constructibility proof (CI merge gate) + whole-DAG compile preview.
     const pf = await agent(
