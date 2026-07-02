@@ -46,6 +46,26 @@ const AXES = ['env_vars', 'job_arguments', 'inputs', 'outputs', 'compute', 'depe
 const HOST_TOOL_FORCES_SCHEMA =
   (typeof __workflowHost === 'undefined') || !!__workflowHost.toolForcesSchemaOutput
 
+// CLI-REROUTE FOR NON-TOOL-FORCING HOSTS (kiro-cli, esp. the frozen SAIS 2.5.0 that loads NO MCP
+// servers — SAIS Run 10). The relay-tool-result phases tell the model to CALL author.*/validate.*/
+// steps.io/catalog.* MCP tools; on 2.5.0 those tools do not exist, so the model fabricates JSON (the
+// AlignEdges/validate/resolve/preflight failures in Runs 5-11). But the built-in SHELL/execute tool
+// WORKS on 2.5.0 (Author writes files, the parse phase runs py_compile), and `cursus` is installed.
+// So on the non-tool-forcing host we reroute each phase to the equivalent `cursus` CLI command run via
+// the shell tool. cliJson(cmd) returns the MANDATORY clean-JSON recipe: the sagemaker.config INFO lines
+// print to STDOUT (they survive 2>/dev/null), so a `sed -n '/^{/,$p'` filter to the first `{`-at-col-0
+// is REQUIRED — a bare 2>/dev/null feeds noise+JSON to the parser and fails. `--format json` is also
+// mandatory (Run 11 showed the model reaching for the CLI but forgetting it and capturing text/usage).
+function cliJson(cmd) {
+  return "PYTHONNOUSERSITE=1 python3 -m cursus.cli " + cmd + " --format json 2>/dev/null | sed -n '/^{/,$p'"
+}
+// Per-phase relay instruction, branched by host. On a tool-forcing host (Claude Code) the ORIGINAL
+// 'call the MCP tool' text is emitted verbatim (byte-for-byte unchanged). On the non-tool-forcing host
+// the shell-CLI instruction replaces it. `mcpText` = the original instruction; `cliText` = the reroute.
+function relay(mcpText, cliText) {
+  return HOST_TOOL_FORCES_SCHEMA ? mcpText : cliText
+}
+
 const HOWTO = [
   'cursus 2.0 (Design B): a step = ONE .step.yaml interface + ONE <StepName>Config class + ONE script.',
   'NO builder file (synthesized via a PatternHandler), NO separate contract/spec files (sections of the',
@@ -538,8 +558,11 @@ function edgeAlignPrompt(plan, req, edge) {
     'TASK (SOP steps 4-6) — ALIGN EXACTLY ONE EDGE: "' + edge + '" for new step "' + plan.step_name + '" (' + edgeStr(req) + ').',
     'Score ONLY this edge and return ONE object. Do NOT score the other edge, do NOT write files, do NOT return a list.',
     'Bound handler: ' + plan.bound_handler + '. Exemplar: ' + plan.exemplar_step + '. This edge\'s adjacent node: ' + JSON.stringify(near) + '.',
-    'Read the REAL spec with steps.io("' + (near.base_step_type || near.node) + '"' + (near.job_type ? ', job_type="' + near.job_type + '"' : '') + ') — ' +
-      (isProducerEdge ? 'the producer OUTPUT spec (aligns to the NEW dependency-spec).' : 'the consumer DEPENDENCY spec (the NEW output-spec must satisfy it).'),
+    relay(
+      'Read the REAL spec with steps.io("' + (near.base_step_type || near.node) + '"' + (near.job_type ? ', job_type="' + near.job_type + '"' : '') + ').',
+      'Read the REAL spec by running this via your shell/execute tool and reading its JSON:\n  ' +
+        cliJson('steps io ' + (near.base_step_type || near.node) + (near.job_type ? ' --job-type ' + near.job_type : '')) + '\n') +
+    (isProducerEdge ? ' Use the producer OUTPUT spec (aligns to the NEW dependency-spec).' : ' Use the consumer DEPENDENCY spec (the NEW output-spec must satisfy it).'),
     '',
     'GATE-1 ENUM (do FIRST; a mismatch HARD-ZEROS the 40%): ' +
       (isProducerEdge ? 'set the NEW dependency_type exact-or-compatible with the producer output_type.'
@@ -567,14 +590,25 @@ function arityPrompt(plan, req) {
   ].join('\n')
 }
 
-// DECOMPOSED Validate/re-resolve — score ONE edge per turn with the REAL resolver, for the non-tool-
-// forcing host. Assembled into RESOLVE_SCHEMA shape in plain code.
+// DECOMPOSED Validate/re-resolve — score ONE edge per turn, for the non-tool-forcing host. Assembled
+// into RESOLVE_SCHEMA shape in plain code. NOTE: validate.deps_resolve has NO cursus CLI (the resolver
+// is MCP-only; `cursus validate deps-resolve` is a PHANTOM that hard-errors), so on the non-tool-forcing
+// host this edge is REASONED from the two steps' `steps io` JSON, not resolver-verified. This green gate
+// is therefore relaxed on the frozen host and re-verified by the real UnifiedDependencyResolver at CR.
 function edgeResolvePrompt(plan, req, edge, nodes) {
+  const near = edge === 'producer->NEW' ? plan.producer : plan.consumer
   return [
-    'The new step .step.yaml now exists, so the real resolver can score its edges. Call ' +
-      'validate.deps_resolve(step_names=' + JSON.stringify(nodes) + ') (CLI fallback: `cursus validate deps-resolve ...`).',
+    relay(
+      'The new step .step.yaml now exists, so the real resolver can score its edges. Call ' +
+        'validate.deps_resolve(step_names=' + JSON.stringify(nodes) + ').',
+      'The resolver has NO CLI on this host (validate.deps_resolve is MCP-only; there is NO `cursus validate ' +
+        'deps-resolve` command — do NOT try it). Instead REASON about this one edge: use your shell tool to run\n  ' +
+        cliJson('steps io ' + (plan.step_name)) + '\nand\n  ' + cliJson('steps io ' + (near.base_step_type || near.node)) +
+        '\nread the dependency-spec + output-spec (logical_name, dependency_type/output_type, data_type, compatible_sources, ' +
+        'aliases) from the two JSON blobs, and compute the 6-component score by the HOWTO rule (type 40 / data 20 / ' +
+        'semantic-name+alias 25 / exact-or-alias 5 / source-compat 10-or-5-or-0 / keyword 5).'),
     'Report ONLY the single edge "' + edge + '" of ' + edgeStr(req) + ': its resolution score and whether it resolves (>=0.5).',
-    'Return ONE JSON object {edge:"' + edge + '", score, resolves, note}. Do NOT return the other edge, do NOT return a list.',
+    'Return ONE JSON object {edge:"' + edge + '", score, resolves, note' + (HOST_TOOL_FORCES_SCHEMA ? '' : ':"reasoned from steps io JSON; no resolver CLI on this host"') + '}. Do NOT return the other edge, do NOT return a list.',
   ].join('\n')
 }
 
@@ -584,14 +618,27 @@ function guidePrompt(plan, axis, align) {
     'TASK (SOP steps 7,10): gather field guidance for the "' + axis + '" axis of new ' + plan.sagemaker_step_type + ' step "' + plan.step_name + '".',
     'Bound handler: ' + plan.bound_handler + '. Exemplar to copy shape from: ' + plan.exemplar_step + '.',
     'The two edges are already aligned; honor that: ' + JSON.stringify((align && align.edges) || []) + '.',
-    'Call author.rules for the relevant topic (naming/packaging/sdk_carveout/closure as applicable),',
-    'strategies.knobs(axis, strategy) for legal knob values + defaults, and',
-    'steps.io / steps.patterns / catalog.config_fields on the exemplar for the wired shape.',
+    relay(
+      'Call author.rules for the relevant topic (naming/packaging/sdk_carveout/closure as applicable),\n' +
+        'strategies.knobs(axis, strategy) for legal knob values + defaults, and\n' +
+        'steps.io / steps.patterns / catalog.config_fields on the exemplar for the wired shape.',
+      'Use your shell/execute tool to gather the wired shape (read each command\'s JSON):\n  ' +
+        cliJson('strategies knobs --axis ' + axis + ' --name ' + plan.bound_handler) + '\n  ' +
+        cliJson('steps io ' + plan.exemplar_step) + '\n  ' +
+        cliJson('steps patterns ' + plan.exemplar_step) + '\n  ' +
+        cliJson('catalog fields ' + plan.exemplar_step) + '\n' +
+        '(author.rules has no CLI — reason naming/packaging rules from the exemplar shape.)'),
     'For inputs/outputs: the dependency/output spec logical names + types + aliases + compatible_sources MUST match the',
     'AlignEdges decision above; the contract path for each is under the container roots — ' + CONTAINER_PATHS,
-    'For the config-class field VALUES (esp. env_vars / compute), ALSO call author.config_constraints(' + plan.exemplar_step + ')',
-    'to get each field allowed_values + case_sensitive + the required_no_default list — so you write a LEGAL enum value',
-    '(e.g. output_format CSV/TSV/Parquet) and supply every required field, not a guessed one. Do NOT write any file.',
+    relay(
+      'For the config-class field VALUES (esp. env_vars / compute), ALSO call author.config_constraints(' + plan.exemplar_step + ')\n' +
+        'to get each field allowed_values + case_sensitive + the required_no_default list — so you write a LEGAL enum value\n' +
+        '(e.g. output_format CSV/TSV/Parquet) and supply every required field, not a guessed one.',
+      'For the config-class field VALUES: `catalog fields ' + plan.exemplar_step + '` JSON (above) gives each field\'s ' +
+        'required flag + default (default "PydanticUndefined" == required-no-default) — use it for the required set. ' +
+        'author.config_constraints has NO CLI, so for allowed_values + case-sensitivity reason from the exemplar ' +
+        '.step.yaml + the config class @field_validator (HABIT-1: read the validator, not the docstring — output_format is ' +
+        'case-sensitive CSV/TSV/Parquet). Do NOT guess a field.') + ' Do NOT write any file.',
     'Return the SECTION_GUIDE for this axis.',
   ].join('\n')
 }
@@ -701,8 +748,12 @@ const report = await pipeline(REQUESTS,
     // it hardest. Reuses the exact gap_rung enum so the challenge authoritatively resets the rung.
     const ch = await agent(
       'TRY TO BREAK this gap-ladder routing decision for "' + (req.name || plan.step_name) + '" (edge ' + edgeStr(req) + '). ' +
-      'The Resolve agent chose gap_rung="' + plan.gap_rung + '" (reason: ' + (plan.gap_rung_reason || 'n/a') + '). Run the ACTUAL ' +
-      'checks to refute it: catalog.step_info / catalog.resolve_step / steps.io on the closest existing step types. Is there ' +
+      'The Resolve agent chose gap_rung="' + plan.gap_rung + '" (reason: ' + (plan.gap_rung_reason || 'n/a') + '). ' +
+      relay(
+        'Run the ACTUAL checks to refute it: catalog.step_info / catalog.resolve_step / steps.io on the closest existing step types.',
+        'Run the ACTUAL checks to refute it: for each closest existing step type X, use your shell/execute tool to run\n  ' +
+          cliJson('catalog show X') + '\nand\n  ' + cliJson('steps io X') + '\nand read the printed JSON (what the step does + its I/O).') +
+      ' Is there ' +
       'REALLY no existing step_type that does this config-only (reuse_config_only)? no backward-compatible OPTIONAL-dependency ' +
       'extension of an existing step (extend_optional_dep)? is the artifact already produced upstream (delete_node_artifact_exists)? ' +
       'Pressure the CHEAPER rungs HARDEST — a wrong cheaper rung silently short-circuits with the need unmet; only escalate to ' +
@@ -805,7 +856,12 @@ const report = await pipeline(REQUESTS,
     let v, tries = 0
     do {
       v = await agent(
-        'Call validate.step_interface(step_name="' + plan.step_name + '") (CLI fallback: `cursus validate step-interface ' + plan.step_name + ' --format json`). Return its {ok, errors, warnings}.',
+        relay(
+          'Call validate.step_interface(step_name="' + plan.step_name + '") (CLI fallback: `cursus validate step-interface ' + plan.step_name + ' --format json`). Return its {ok, errors, warnings}.',
+          'Use your shell/execute tool to run this EXACT command and read its stdout:\n  ' + cliJson('validate step-interface ' + plan.step_name) +
+          '\nIt prints {validated, errors (a COUNT), warnings (a COUNT), results:[{step, ok, errors:[...], warnings:[...]}]}. ' +
+          'Return EXACTLY {ok: results[0].ok, errors: results[0].errors, warnings: results[0].warnings} — map from results[0]; ' +
+          'the TOP-LEVEL errors/warnings are integer counts, do NOT use them (VALIDATE_SCHEMA wants string arrays).'),
         { label: 'validate:' + plan.step_name, phase: 'Validate', schema: VALIDATE_SCHEMA })
       if (v && !v.ok && tries < 2) {
         await agent(
@@ -823,8 +879,13 @@ const report = await pipeline(REQUESTS,
     let cs, ctries = 0
     do {
       cs = await agent(
-        'Call author.check_script(step_name="' + plan.step_name + '"). Return {status, passed, issues}. ' +
-        'status:"skipped" means a script-less / SDK-delegation step (treat as pass). Beyond the tool result, ALSO reason ' +
+        relay(
+          'Call author.check_script(step_name="' + plan.step_name + '"). Return {status, passed, issues}. ' +
+          'status:"skipped" means a script-less / SDK-delegation step (treat as pass).',
+          'author.check_script has NO cursus CLI on this host (there is no `author` CLI group), so it cannot run here. ' +
+          'Return {status:"skipped", passed:true, issues:[]} — this gate is relaxed to skip on the frozen host (the ' +
+          'publish path permits skip; the py_compile/yaml PARSE oracle below backstops syntax, and check_script re-runs at CR).') +
+        ' Beyond that, ALSO reason ' +
         'about SOP step 8 (the physical contract below the spec): does the producer emit its {job_type} subdir where the ' +
         'consumer scans, or does the script rglob recursively? A flat glob("*.parquet") that misses nested {job_type}/ files ' +
         'is a real bug even when the tool passes — record it as an issue if present.',
@@ -917,10 +978,17 @@ const report = await pipeline(REQUESTS,
 
     // 4d. constructibility proof (CI merge gate) + whole-DAG compile preview.
     const pf = await agent(
-      'Call author.preflight_step(step_name="' + plan.step_name + '") under offline (PYTHONNOUSERSITE=1) semantics; then ' +
-      'sanity-check the whole DAG the new step lives in via compile.preview / compile.validate (nodes ' +
-      JSON.stringify(nodes) + ') so the new node resolves to its config + builder with high confidence. ' +
-      'Return {constructible, gates:[{name,passed,detail}]}. SDK-delegation rows must be skip-not-error.',
+      relay(
+        'Call author.preflight_step(step_name="' + plan.step_name + '") under offline (PYTHONNOUSERSITE=1) semantics; then ' +
+        'sanity-check the whole DAG the new step lives in via compile.preview / compile.validate (nodes ' +
+        JSON.stringify(nodes) + ') so the new node resolves to its config + builder with high confidence. ' +
+        'Return {constructible, gates:[{name,passed,detail}]}. SDK-delegation rows must be skip-not-error.',
+        'author.preflight_step and compile.preview have NO cursus CLI on this host (no `author` group; the compile ' +
+        'command has --validate-only but no preview). Assess constructibility by REASONING: the .step.yaml parsed ' +
+        '(the PARSE oracle above), its registry.sagemaker_step_type is a known type, and its dependency/output specs ' +
+        'match the AlignEdges decision — from these set constructible + a gate {name:"preflight", passed:<bool>, ' +
+        'detail:"reasoned; author.preflight_step CLI absent on frozen host — re-verified at CR"}. Return ' +
+        '{constructible, gates:[{name,passed,detail}]}. This gate is relaxed (reasoned, not preflight-verified) on the frozen host.'),
       { label: 'preflight:' + plan.step_name, phase: 'Preflight', schema: PREFLIGHT_SCHEMA, effort: 'high' })
 
     // Gaps: completeness critic over the FULL DAG (not the 3-node triple). The additive

@@ -106,10 +106,13 @@ if (p.includes("write the THREE artifacts"))
   return say("Wrote src/cursus/steps/interfaces/beta_calibration.step.yaml, config, script; edited consumer spec. Divergence present: calibrator output.");
 
 // --- Validate loop / oracles ---
-if (p.includes("validate.step_interface(step_name="))
+// validate: matches BOTH the CC MCP prompt ("validate.step_interface(step_name=") and the Kiro CLI
+// reroute ("run this EXACT command ... validate step-interface"). Returns the already-mapped {ok,...}.
+if (p.includes("validate.step_interface(step_name=") || (p.includes("validate step-interface") && p.includes("Return EXACTLY {ok:")))
   return say({ ok:true, errors:[], warnings:[] });
-if (p.includes("author.check_script(step_name="))
-  return say({ status:"checked", passed:true, issues:[] });
+// check_script: CC MCP prompt OR the Kiro skip reroute ("Return {status:\\"skipped\\"").
+if (p.includes("author.check_script(step_name=") || p.includes('Return {status:"skipped", passed:true'))
+  return say({ status:"skipped", passed:true, issues:[] });
 if (p.includes("actually PARSE"))
   return say({ py_compile_ok:true, yaml_loads_ok:true, detail:"exit 0" });
 if (p.includes("BECAUSE of these REQUIRED divergences:"))
@@ -123,8 +126,10 @@ if (p.includes("Report ONLY the single edge")) {
 // --- re-resolve single-turn (tool-forcing host) ---
 if (p.includes("validate.deps_resolve(step_names="))
   return say({ both_edges_resolve:true, edges:[{ edge:"producer->NEW", score:0.85, resolves:true, note:"" },{ edge:"NEW->consumer", score:0.8, resolves:true, note:"" }] });
-if (p.includes("author.preflight_step(step_name="))
-  return say({ constructible:true, gates:[{ name:"offline_construct", passed:true, detail:"ok" }] });
+// preflight: CC MCP prompt ("author.preflight_step(step_name=") OR the Kiro reasoned reroute
+// ("Assess constructibility by REASONING").
+if (p.includes("author.preflight_step(step_name=") || p.includes("Assess constructibility by REASONING"))
+  return say({ constructible:true, gates:[{ name:"preflight", passed:true, detail:"reasoned; ok" }] });
 if (p.includes("COMPLETENESS CRITIC"))
   return say({ full_dag_scanned:true, edit_collateral:[], uncovered_consumers:[], cross_branch_column_mismatches:[], sequencing_risks:[] });
 
@@ -214,6 +219,36 @@ ok('AlignEdges single-turn (array-of-objects) prompt was NEVER emitted on the Ki
     regResult && Array.isArray(regResult.authored) && regResult.authored.length === 1 && regResult.authored[0].step === 'BetaCalibration');
   ok('regression: nothing was wrongly reported as resolved-without-a-new-step',
     regResult && Array.isArray(regResult.resolved_without_new_step) && regResult.resolved_without_new_step.length === 0);
+}
+
+// ---- LIVE CLI-recipe proof: the cliJson() recipe the reroute emits must yield parseable JSON from the
+// REAL cursus CLI (the load-bearing check — the sagemaker.config INFO lines are on STDOUT, so the
+// `sed -n '/^{/,$p'` filter, not a bare 2>/dev/null, is what makes json.load succeed). Skips gracefully
+// if the cursus CLI isn't importable in this environment (e.g. a minimal CI runner). ----
+{
+  const recipe = "PYTHONNOUSERSITE=1 python3 -m cursus.cli validate step-interface XGBoostTraining --format json 2>/dev/null | sed -n '/^{/,$p'";
+  let cliAvailable = false;
+  try {
+    execFileSync('python3', ['-c', 'import cursus'], { stdio: 'ignore' });
+    cliAvailable = true;
+  } catch (e) { /* cursus not importable here — skip the live check */ }
+  if (cliAvailable) {
+    let parsed = null;
+    try {
+      const outStr = execFileSync('bash', ['-c', recipe], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      parsed = JSON.parse(outStr);
+    } catch (e) { console.error('live cliJson recipe failed: ' + (e.message || '').slice(0, 200)); }
+    ok('live: cliJson recipe yields parseable JSON from the real cursus CLI (sed strips stdout noise)', !!parsed);
+    ok('live: the JSON carries results[0].ok (the value the validate phase maps to {ok})',
+      parsed && Array.isArray(parsed.results) && parsed.results.length > 0 && typeof parsed.results[0].ok === 'boolean');
+    // Prove the filter is NECESSARY: bare 2>/dev/null leaves the sagemaker INFO lines and breaks json.load.
+    let bareParsed = true;
+    try { JSON.parse(execFileSync('bash', ['-c', 'PYTHONNOUSERSITE=1 python3 -m cursus.cli validate step-interface XGBoostTraining --format json 2>/dev/null'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })); }
+    catch (e) { bareParsed = false; }
+    ok('live: bare 2>/dev/null does NOT parse (confirms the sed filter is mandatory, not optional)', bareParsed === false);
+  } else {
+    console.error('(skipped live cliJson recipe check — cursus not importable in this environment)');
+  }
 }
 
 fs.rmSync(dir, { recursive: true, force: true });
