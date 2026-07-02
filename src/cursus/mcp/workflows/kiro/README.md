@@ -233,6 +233,35 @@ Failure modes seen in real SAIS runs, and how the three layers handle them:
   forced through coercion. Proven by `test-author-step-e2e.js` — the real workflow reaches a green step on
   the Kiro runtime and the combined `PLAN_SCHEMA` turn is never emitted.
 
+## Tool-forcing structured output (candidate — offline-safe half built, SAIS probe pending)
+
+The four layers above *salvage* free-text JSON; they don't *force* it. The Claude Code host forces it
+by making the sub-agent call a `StructuredOutput` tool whose parameters ARE the schema. The Kiro analog,
+built here as **`submit-result-server.js`**, is a tiny dependency-free stdio MCP server exposing one tool
+`submit_result` whose `inputSchema` is the phase schema. The model is told to CALL it with its answer;
+kiro-cli validates the arguments against the schema *before* dispatching, so an object can't come back
+wrapped in an array — the array-bias is killed at the source. Because the runtime *is* the server, it
+receives the validated arguments directly (no stdout scraping). `runtime.buildSubmitResultConfig(schema,
+{schemaFile, resultFile})` emits the 2.5.0-safe static `~/.kiro/settings/mcp.json` registering it plus
+the prompt suffix that instructs the tool call.
+
+**Status: the server + emitter + offline tests are shipped, but it is NOT yet wired into `agent()` as
+the primary path.** ACP research (4 independent kiro-cli client implementations + the ACP spec) confirms
+tools reach kiro-cli *only* via MCP servers, never as inline ACP tool declarations — and on the frozen
+2.5.0 build this MUST be the static-config + headless `--agent` route (dynamic `session/new` crashes it,
+Run 8). The one unverified fact is whether **kiro-cli 2.5.0 headless actually reads the static config,
+runs the tool loop, and emits the `submit_result` call** (every production example of this pattern is on
+newer/unspecified builds). Shipping that unprobed is exactly what caused the Run-8 crash, so it stays
+un-wired until a SAIS probe confirms it. Run the probe:
+
+```bash
+node run-toolforce-probe.js        # writes a temp mcp.json + drives one headless kiro-cli turn
+# GREEN iff exit 0 AND the probe reports the submit_result arguments it captured.
+```
+
+If the probe is green, wiring `submit_result` in as the primary schema-forcing path (with the four
+layers kept as fallback) is the follow-up. If red, the four layers remain the mechanism on 2.5.0.
+
 ## How faithful is this to the Claude Code runtime?
 
 Same primitive API, same tools, same phase order and gates. Differences to know:

@@ -472,6 +472,42 @@ class KiroWorkflowRuntime {
     return obj;
   }
 
+  // Build the 2.5.0-SAFE static config to tool-force this turn's output via the submit-result MCP
+  // server (the analog of the Claude Code StructuredOutput mechanism). Writes the phase schema to a
+  // file and returns an mcp.json-shaped object registering submit-result-server.js with that schema +
+  // a result-file sink. The caller writes the returned `mcpJson` to ~/.kiro/settings/mcp.json (or an
+  // --agent spec) BEFORE spawning kiro-cli headless, and after the turn reads `resultFile` for the
+  // validated structured payload. This NEVER uses dynamic ACP session/new (which crashes 2.5.0, Run 8).
+  //
+  // NOTE: this is the OFFLINE-SAFE builder only. It is NOT yet wired into agent() as the primary
+  // schema-forcing path — that waits on a SAIS probe confirming kiro-cli 2.5.0 headless actually reads
+  // the static config, runs the tool loop, and emits the submit_result call (see README "Tool-forcing").
+  buildSubmitResultConfig(schema, paths, opts = {}) {
+    const toolName = opts.toolName || 'submit_result';
+    const serverName = opts.serverName || 'cursus-submit';
+    const serverPath = opts.serverPath || require('node:path').join(__dirname, 'submit-result-server.js');
+    const nodeBin = opts.nodeBin || process.execPath; // absolute node path — robust under a bare PATH
+    const env = {
+      SUBMIT_SCHEMA_FILE: paths.schemaFile,
+      SUBMIT_RESULT_FILE: paths.resultFile,
+      SUBMIT_TOOL_NAME: toolName,
+    };
+    const mcpJson = { mcpServers: { [serverName]: { command: nodeBin, args: [serverPath], env } } };
+    return {
+      mcpJson,
+      env,
+      serverName,
+      toolName,
+      // The line to append to the phase prompt so the model calls the tool instead of emitting prose.
+      promptSuffix:
+        '\n\n---\nDo NOT print your answer as text. Instead CALL the `' + toolName + '` tool EXACTLY ONCE, ' +
+        'passing your answer as its arguments; the arguments MUST conform to that tool\'s inputSchema. ' +
+        'The tool validates your arguments and records the result.',
+      // Convenience: write the schema file now (the server reads it via SUBMIT_SCHEMA_FILE).
+      writeSchema: () => require('node:fs').writeFileSync(paths.schemaFile, JSON.stringify(schema)),
+    };
+  }
+
   // Lazily create + start the shared ACP client (one long-lived `kiro-cli acp` process).
   async _ensureAcp() {
     if (!this._acp) {

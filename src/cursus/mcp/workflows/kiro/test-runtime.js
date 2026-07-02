@@ -344,6 +344,102 @@ return { one, fan };
   const shape = new KiroWorkflowRuntime({ mcpCursus: true })._mcpJsonShape();
   ok('runtime _mcpJsonShape -> {cursus:{command,args}}', shape.cursus && shape.cursus.command === 'cursus' && JSON.stringify(shape.cursus.args) === JSON.stringify(['mcp', 'serve']));
 
+  // ---- submit_result MCP server (tool-forcing candidate; offline-safe half) ----
+  // Drive the hand-rolled server's handler directly with MCP JSON-RPC messages and assert the wire
+  // behavior: initialize echoes protocol + tools capability; tools/list returns ONE tool whose
+  // inputSchema IS the phase schema; a valid tools/call validates + writes the result file + acks; a
+  // schema-violating tools/call is rejected with isError and does NOT write the result.
+  const srvDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kiro-submit-test-')); // `dir` was already removed above
+  {
+    const schemaFile = path.join(srvDir, 'phase-schema.json');
+    const resultFile = path.join(srvDir, 'phase-result.json');
+    const S = { type: 'object', required: ['label', 'ok'], additionalProperties: true, properties: { label: { type: 'string' }, ok: { type: 'boolean' } } };
+    fs.writeFileSync(schemaFile, JSON.stringify(S));
+    // Load the server module in-process with its env configured, capturing what it writes to stdout.
+    process.env.SUBMIT_SCHEMA_FILE = schemaFile;
+    process.env.SUBMIT_RESULT_FILE = resultFile;
+    process.env.SUBMIT_TOOL_NAME = 'submit_result';
+    delete require.cache[require.resolve('./submit-result-server')];
+    const srv = require('./submit-result-server');
+    const sent = [];
+    const origWrite = process.stdout.write;
+    process.stdout.write = (s) => { sent.push(String(s).trim()); return true; };
+    try {
+      srv.handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05' } });
+      srv.handle({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
+      srv.handle({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'submit_result', arguments: { label: 'x', ok: true } } });
+      srv.handle({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'submit_result', arguments: { ok: 'not-bool' } } }); // invalid: missing label + wrong type
+    } finally {
+      process.stdout.write = origWrite;
+    }
+    const msgs = sent.map((l) => JSON.parse(l));
+    const init = msgs.find((m) => m.id === 1);
+    ok('submit server: initialize returns tools capability', init && init.result && init.result.capabilities && init.result.capabilities.tools);
+    const list = msgs.find((m) => m.id === 2);
+    ok('submit server: tools/list exposes ONE tool named submit_result', list && list.result.tools.length === 1 && list.result.tools[0].name === 'submit_result');
+    ok('submit server: the tool inputSchema IS the phase schema', list && JSON.stringify(list.result.tools[0].inputSchema) === JSON.stringify(S));
+    const good = msgs.find((m) => m.id === 3);
+    ok('submit server: valid call acks (not isError)', good && good.result && !good.result.isError);
+    ok('submit server: valid call wrote the validated result to the sink', fs.existsSync(resultFile) && JSON.parse(fs.readFileSync(resultFile, 'utf8')).label === 'x');
+    const bad = msgs.find((m) => m.id === 4);
+    ok('submit server: schema-violating call rejected with isError', bad && bad.result && bad.result.isError === true);
+    // the bad call must NOT have overwritten the good result
+    ok('submit server: rejected call did not overwrite the result sink', JSON.parse(fs.readFileSync(resultFile, 'utf8')).label === 'x');
+    delete process.env.SUBMIT_SCHEMA_FILE; delete process.env.SUBMIT_RESULT_FILE; delete process.env.SUBMIT_TOOL_NAME;
+  }
+
+  // ---- runtime.buildSubmitResultConfig: the 2.5.0-safe static config emitter ----
+  {
+    const rt = new KiroWorkflowRuntime({});
+    const S = { type: 'object', required: ['a'], properties: { a: { type: 'string' } } };
+    const schemaFile = path.join(srvDir, 'sr-schema.json');
+    const resultFile = path.join(srvDir, 'sr-result.json');
+    const cfg = rt.buildSubmitResultConfig(S, { schemaFile, resultFile }, { serverName: 'cursus-submit' });
+    ok('buildSubmitResultConfig: mcp.json registers the submit server under mcpServers', cfg.mcpJson.mcpServers['cursus-submit'] && Array.isArray(cfg.mcpJson.mcpServers['cursus-submit'].args));
+    ok('buildSubmitResultConfig: server env carries schema + result file + tool name', cfg.env.SUBMIT_SCHEMA_FILE === schemaFile && cfg.env.SUBMIT_RESULT_FILE === resultFile && cfg.env.SUBMIT_TOOL_NAME === 'submit_result');
+    ok('buildSubmitResultConfig: prompt suffix tells the model to CALL the tool once', /CALL the `submit_result` tool EXACTLY ONCE/.test(cfg.promptSuffix));
+    ok('buildSubmitResultConfig: command is an absolute node path (robust under bare PATH)', cfg.mcpJson.mcpServers['cursus-submit'].command === process.execPath);
+    cfg.writeSchema();
+    ok('buildSubmitResultConfig: writeSchema() persists the phase schema for the server', fs.existsSync(schemaFile) && JSON.parse(fs.readFileSync(schemaFile, 'utf8')).required[0] === 'a');
+  }
+
+  // ---- submit_result server: REAL stdio round-trip (spawn the process, speak MCP over the pipe) ----
+  // Proves the actual wire kiro-cli would drive: spawn the server as a child, send framed JSON-RPC on
+  // stdin, read replies on stdout, and confirm a valid submit_result call lands the structured payload
+  // in the result file. This is the offline analog of what a SAIS probe verifies against real kiro-cli.
+  await (async () => {
+    const { spawn } = require('node:child_process');
+    const schemaFile = path.join(srvDir, 'rt-schema.json');
+    const resultFile = path.join(srvDir, 'rt-result.json');
+    fs.writeFileSync(schemaFile, JSON.stringify({ type: 'object', required: ['plan'], properties: { plan: { type: 'string' } } }));
+    const child = spawn(process.execPath, [path.join(__dirname, 'submit-result-server.js')], {
+      env: { ...process.env, SUBMIT_SCHEMA_FILE: schemaFile, SUBMIT_RESULT_FILE: resultFile, SUBMIT_TOOL_NAME: 'submit_result' },
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
+    const lines = [];
+    let obuf = '';
+    child.stdout.on('data', (d) => {
+      obuf += d.toString();
+      let i;
+      while ((i = obuf.indexOf('\n')) >= 0) { const l = obuf.slice(0, i); obuf = obuf.slice(i + 1); if (l.trim()) lines.push(JSON.parse(l)); }
+    });
+    const send = (o) => child.stdin.write(JSON.stringify(o) + '\n');
+    send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05' } });
+    send({ jsonrpc: '2.0', method: 'notifications/initialized' });
+    send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
+    send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'submit_result', arguments: { plan: 'BetaCalibration' } } });
+    await new Promise((r) => setTimeout(r, 300));
+    child.stdin.end();
+    await new Promise((r) => child.on('close', r));
+    const list = lines.find((m) => m.id === 2);
+    ok('submit server (stdio): tools/list over the real pipe returns submit_result', list && list.result.tools[0].name === 'submit_result');
+    const call = lines.find((m) => m.id === 3);
+    ok('submit server (stdio): valid call acks over the real pipe', call && call.result && !call.result.isError);
+    ok('submit server (stdio): payload landed in the result file', fs.existsSync(resultFile) && JSON.parse(fs.readFileSync(resultFile, 'utf8')).plan === 'BetaCalibration');
+  })();
+
+  fs.rmSync(srvDir, { recursive: true, force: true });
+
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })();
