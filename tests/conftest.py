@@ -49,9 +49,13 @@ def _install_torch_stub() -> None:
         "torch.utils.data",
         "torch.utils.data._utils",
         "torch.utils.data._utils.collate",
+        "torch.utils.tensorboard",
         "torch.nn",
         "torch.nn.utils",
         "torch.nn.utils.rnn",
+        "torch.optim",
+        "torch.distributed",
+        "torch.distributed.fsdp",
     ):
         sys.modules[submodule] = MagicMock()
 
@@ -65,6 +69,14 @@ def _install_xgboost_stub() -> None:
     # introspects xgboost's classes, so the auto-callable Mock is the correct stand-in —
     # this mirrors the original per-file torch shim.
     sys.modules["xgboost"] = MagicMock()
+
+
+# NOTE: transformers / lightning are deliberately NOT stubbed here. The tests that touch them use
+# `pytest.importorskip("transformers")` (e.g. tests/processing/test_dialogue_chunker_processor.py),
+# which is meant to SKIP the module when the lib is genuinely absent. Stubbing transformers would
+# make importorskip SUCCEED and then the module's next import (e.g. `from bs4 import BeautifulSoup`
+# in dialogue_processor) would raise a hard COLLECTION ERROR instead of a clean skip. Only torch and
+# xgboost are stubbed, because their tests `@patch` the symbols rather than importorskip.
 
 
 # Install at import time (conftest is imported before any test module is collected).

@@ -23,7 +23,7 @@
         "__model_type__": "BasePipelineConfig"
       },
       "CradleDataLoading_calibration": {
-        "__model_type__": "CradleDataLoadConfig",
+        "__model_type__": "CradleDataLoadingConfig",
         "cradle_job_spec": {
           "__model_type__": "CradleJobSpecificationConfig",
           "cluster_type": "MEDIUM",
@@ -453,7 +453,7 @@
         }
       },
       "CradleDataLoading_training": {
-        "__model_type__": "CradleDataLoadConfig",
+        "__model_type__": "CradleDataLoadingConfig",
         "cradle_job_spec": {
           "__model_type__": "CradleJobSpecificationConfig",
           "cluster_type": "MEDIUM",
@@ -2217,8 +2217,8 @@
   "metadata": {
     "config_types": {
       "Base": "BasePipelineConfig",
-      "CradleDataLoading_calibration": "CradleDataLoadConfig",
-      "CradleDataLoading_training": "CradleDataLoadConfig",
+      "CradleDataLoading_calibration": "CradleDataLoadingConfig",
+      "CradleDataLoading_training": "CradleDataLoadingConfig",
       "ModelCalibration_calibration": "ModelCalibrationConfig",
       "Package": "PackageConfig",
       "Payload": "PayloadConfig",

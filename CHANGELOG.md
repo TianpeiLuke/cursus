@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.4] - 2026-07-03
+
+Ported from amzn-cursus 2.4.4: test-suite + offline-collection hardening (test/fixture/conftest only — no `src` behavior change).
+
+### Fixed
+
+- **torch offline-collection stubs completed (`tests/conftest.py`)** — added `torch.optim`, `torch.distributed`, `torch.distributed.fsdp`, `torch.utils.tensorboard` (imported at module level by the pytorch scripts) so those modules collect offline. `transformers`/`lightning` are deliberately NOT stubbed (their tests use `pytest.importorskip`; stubbing turns a clean skip into a hard collection error on the next heavy import).
+- **Two tests/fixtures aligned to the 2.5.3 fail-loud contract** — `test_job_type_integration` asserts the new `ValueError` (was: silent base fallback); the `test_generator_integration` fixture corrected a stale nonexistent class name `CradleDataLoadConfig` → `CradleDataLoadingConfig`.
+
 ## [2.5.3] - 2026-07-03
 
 Ported from amzn-cursus 2.4.3: second tranche of the silent-misresolution deep dive + validation hardening.
