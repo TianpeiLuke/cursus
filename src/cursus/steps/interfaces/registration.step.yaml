@@ -17,7 +17,7 @@ contract:
   outputs: {}
   arguments: {}
   env_vars:
-    required: [MODS_WORKFLOW_EXECUTION_ID]
+    required: []
     optional:
       PERFORMANCE_METADATA_PATH: ""
   framework_requirements:

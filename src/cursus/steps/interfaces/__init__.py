@@ -2,8 +2,9 @@
 Step Interface Loader
 
 Loads unified .step.yaml files and emits a single validated StepInterface object.
-This is the single entry point for all step interface data — replaces direct imports
-from steps/specs/ and steps/contracts/.
+This is the single entry point for all step interface data. The former per-step
+steps/specs/ and steps/contracts/ folders are gone — the ``.step.yaml`` here is the
+sole source, and its contract/spec sections are views onto one aligned object.
 
 For backward compatibility, ``load_step_interface`` still returns a 2-tuple that
 destructures as ``(contract, spec)``:

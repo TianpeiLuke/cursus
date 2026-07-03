@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-07-03
+
+The **interface-first discovery + folder deletion** tranche: step discovery now sources contract and spec data exclusively from the unified `.step.yaml` interfaces (+ configs + scripts + registry), the residual per-step data folders are physically deleted, and a single canonical interface loader replaces the two parallel load paths. This completes the Design-B discovery migration (Cursus Simplification Trail, FZ 31): a step is an interface + config + script, and nothing scans `builder_*.py` / `*_contract.py` / `*_spec.py` files anymore because those files — and now their folders — are gone. Mostly internal (discovery internals, one new facade method); two breaking changes are called out under **Removed**.
+
+### Added
+
+- **`StepCatalog.get_step_interface(step_name, job_type=None) -> Optional[StepInterface]` — the single canonical interface loader.** Wraps the cached `cursus.steps.interfaces.load_interface` with null-safety (never raises → returns `None`) and, in ONE place, the job_type-suffix fallback: a variant-suffixed name with no dedicated YAML (e.g. `ModelCalibration_calibration`) strips a known suffix (`naming.JOB_TYPE_SUFFIXES` — deliberately excludes `"model"` so `XGBoostModel` is never mis-stripped) and retries the base name as that `job_type`. `load_contract_class`/`load_spec_class` collapse to one-line views (`iface.contract` / `iface`) over it, so all ~15 consumers inherit the fallback for free and contract↔spec always come from one `_sync_and_align`-validated object (no double load).
+
+### Changed
+
+- **`contract_discovery.py` / `spec_discovery.py` rewritten interface-first.** All AST / `importlib` / `glob` file-scan machinery deleted; `ContractAutoDiscovery` and `SpecAutoDiscovery` now derive every result from `registry.get_all_step_names()` + `load_interface`. The pure serializers (`serialize_contract`, `serialize_spec`), smart-specification selection (`create_unified_specification`, `validate_logical_names_smart`), and their helpers are preserved verbatim — they already duck-type on `ContractSection`/`StepInterface`. `get_job_type_variants` now returns `StepInterface.variants` keys; `find_specs_by_contract` fans out variants via `load_interface(name, job_type=…)`. Return shapes are unchanged (drop-in for the validation/CLI/MCP consumers).
+- **`steps/__init__.py` made resilient.** No longer star-imports the (now-deleted) `builders`/`contracts`/`specs` subpackages; `import cursus.steps` no longer depends on those folders existing.
+- **`io_view.describe_step_patterns` is 2-tier and folder-free.** The AST/glob scan of `steps/builders/builder_*_step.py` (`_scan_builder_overrides`) is deleted; per-axis `custom_override` flags now come from inspecting the loaded/synthesized builder class, with a declarative-shell note otherwise. The `note` + per-axis keys the MCP/CLI consumers read are preserved.
+- **`registration.step.yaml` no longer declares `MODS_WORKFLOW_EXECUTION_ID` as a required env var.** Registration is a SAIS-SDK sink step whose runtime env is supplied by the execution doc; the var is read only by `edx_uploading.py`, and execution-doc generation never references it, so the declaration was a misdeclaration surfaced (and now fixed) by the interface-first env-vars conformance check.
+- **Workspace scaffolding updated to Design B** — `registry/hybrid/setup.py` and `cli/registry_cli.py` no longer create or require `steps/{builders,contracts,specs}` directories; a new workspace step is a `.step.yaml` interface + config + script.
+
+### Removed
+
+- **BREAKING — `src/cursus/steps/{builders,contracts,specs}/` folders deleted.** The `from cursus.steps.builders import <X>StepBuilder` public import surface (a PEP-562 lazy shim) is removed. Builder classes are synthesized from the registry at runtime; obtain one via `StepCatalog().load_builder_class("<StepName>")`. `S3PathHandler` lives in `cursus.steps.utils`; `StepBuilderBase` in `cursus.core.base.builder_base`. The dead `ValidationResult`/`ScriptAnalyzer` re-export from `steps/contracts` is gone (real homes: `core.base.contract_base`, `validation.alignment.analyzer.script_analyzer`).
+- **BREAKING — `StepCatalog.get_contract_entry_points()` key semantics changed.** Keys are now the PascalCase canonical step name (e.g. `TabularPreprocessing`) instead of the old file-stem (`tabular_preprocessing_contract`). This aligns with the step-name lookups its CLI/validation consumers already perform and fixes a lookup that previously returned an empty map under the dead file-scan.
+
 ## [2.4.0] - 2026-07-03
 
 ### Added

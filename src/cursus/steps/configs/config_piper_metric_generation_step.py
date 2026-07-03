@@ -395,11 +395,16 @@ class PiperMetricGenerationConfig(ProcessingStepConfigBase):
             raise ValueError("dataset_type must be a non-empty string")
 
         # Validate metrics_to_render
-        if not isinstance(self.metrics_to_render, list) or len(self.metrics_to_render) == 0:
+        if (
+            not isinstance(self.metrics_to_render, list)
+            or len(self.metrics_to_render) == 0
+        ):
             raise ValueError("metrics_to_render must be a non-empty list of strings")
 
         valid_metrics_to_render = {"auc_roc", "auc_pr", "data_statistics"}
-        invalid = [m for m in self.metrics_to_render if m not in valid_metrics_to_render]
+        invalid = [
+            m for m in self.metrics_to_render if m not in valid_metrics_to_render
+        ]
         if invalid:
             raise ValueError(
                 f"metrics_to_render entries must be one of {valid_metrics_to_render}, got invalid entries {invalid}"

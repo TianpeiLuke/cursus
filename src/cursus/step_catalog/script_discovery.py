@@ -622,7 +622,14 @@ class ScriptAutoDiscovery:
         self, workspace_id: str, workspace_path: Optional[Path] = None
     ) -> Dict[str, ScriptInfo]:
         """
-        Discover scripts from contract classes by analyzing entry point fields.
+        Discover scripts from step contracts by reading their entry points.
+
+        Interface-first: contracts come from ``ContractAutoDiscovery.discover_contract_classes()``,
+        which now returns ``{PascalCase step name: ContractSection}`` sourced from each step's
+        ``.step.yaml`` interface (no builder/contract file scan). We read ``contract.entry_point``
+        directly off the ContractSection rather than inspecting a Pydantic ``entry_point`` field on
+        a legacy contract class. Steps whose contract declares no entry point (script-less
+        CreateModel/Transform steps) are skipped. Never raises — degrades to an empty mapping.
 
         Args:
             workspace_id: ID of the workspace
@@ -643,24 +650,41 @@ class ScriptAutoDiscovery:
                 self.package_root, workspace_dirs
             )
 
-            # Discover contract classes
-            contract_classes = contract_discovery.discover_contract_classes()
+            # Discover contracts (PascalCase step name -> ContractSection view)
+            contracts = contract_discovery.discover_contract_classes()
 
-            # Analyze each contract class for entry point fields
-            for contract_name, contract_class in contract_classes.items():
+            # Read the entry point off each contract section
+            for step_name, contract in contracts.items():
                 try:
-                    script_info = self._extract_script_from_contract(
-                        contract_class, workspace_id, workspace_path
+                    entry_point_value = getattr(contract, "entry_point", None)
+                    if not entry_point_value or not isinstance(entry_point_value, str):
+                        continue
+
+                    script_name = self._extract_script_name_from_entry_point(
+                        entry_point_value
                     )
-                    if script_info:
-                        discovered_scripts[script_info.script_name] = script_info
-                        self.logger.debug(
-                            f"Found script {script_info.script_name} from contract {contract_name}"
-                        )
+                    if not script_name:
+                        continue
+
+                    script_path = self._find_script_file_path(
+                        script_name, workspace_path
+                    )
+                    if not script_path:
+                        continue
+
+                    discovered_scripts[script_name] = ScriptInfo(
+                        script_name=script_name,
+                        step_name=step_name,
+                        script_path=script_path,
+                        workspace_id=workspace_id,
+                    )
+                    self.logger.debug(
+                        f"Found script {script_name} from contract {step_name}"
+                    )
 
                 except Exception as e:
                     self.logger.warning(
-                        f"Error extracting script from contract {contract_name}: {e}"
+                        f"Error extracting script from contract {step_name}: {e}"
                     )
                     continue
 

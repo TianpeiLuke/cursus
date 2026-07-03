@@ -167,9 +167,6 @@ def validate_environment_setup() -> List[str]:
     # Check for required directories
     required_dirs = [
         "src/cursus/steps/scripts",
-        "src/cursus/steps/contracts",
-        "src/cursus/steps/specs",
-        "src/cursus/steps/builders",
         "src/cursus/steps/configs",
     ]
 

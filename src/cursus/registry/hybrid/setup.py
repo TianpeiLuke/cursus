@@ -139,12 +139,13 @@ def create_workspace_structure(workspace_path: str) -> None:
     """Create complete workspace directory structure."""
     workspace_dir = Path(workspace_path)
 
+    # Interface-first authoring (Design B): a step is a .step.yaml interface + config class +
+    # script. The per-step builders/contracts/specs folders are gone — builders are synthesized
+    # from the registry interface, and contract/spec are sections of the .step.yaml.
     directories = [
-        "src/cursus_dev/steps/builders",
+        "src/cursus_dev/steps/interfaces",
         "src/cursus_dev/steps/configs",
-        "src/cursus_dev/steps/contracts",
         "src/cursus_dev/steps/scripts",
-        "src/cursus_dev/steps/specs",
         "src/cursus_dev/registry",
         "test/unit",
         "test/integration",
@@ -178,11 +179,9 @@ This workspace contains custom step implementations for developer {developer_id}
 {developer_id}/
 ├── src/cursus_dev/           # Custom step implementations
 │   ├── steps/
-│   │   ├── builders/         # Step builder classes
+│   │   ├── interfaces/       # Step interfaces (.step.yaml — contract + spec + patterns)
 │   │   ├── configs/          # Configuration classes
-│   │   ├── contracts/        # Script contracts
-│   │   ├── scripts/          # Processing scripts
-│   │   └── specs/            # Step specifications
+│   │   └── scripts/          # Processing scripts
 │   └── registry/             # Local registry
 │       └── workspace_registry.py
 ├── test/                     # Unit and integration tests
@@ -190,6 +189,10 @@ This workspace contains custom step implementations for developer {developer_id}
 ├── examples/                 # Usage examples
 └── docs/                     # Additional documentation
 ```
+
+Under interface-first authoring (Design B) a step is a `.step.yaml` interface + a config
+class + a script. Builders are synthesized from the registry interface (no per-step builder
+module), and the contract + specification are sections of the `.step.yaml` interface.
 
 ## Registry
 
@@ -218,12 +221,12 @@ LOCAL_STEPS = {{
 ```
 
 ### 3. Implement Step Components
-Create the corresponding implementation files:
+Create the corresponding implementation files. Under interface-first authoring the contract
+and specification are sections of the `.step.yaml` interface, and the builder is synthesized
+from the registry interface — you author only the interface, config, and script:
+- Interface: `src/cursus_dev/steps/interfaces/my_custom_step.step.yaml` (contract + spec + patterns)
 - Config: `src/cursus_dev/steps/configs/my_custom_step_config.py`
-- Builder: `src/cursus_dev/steps/builders/my_custom_step_builder.py`
-- Contract: `src/cursus_dev/steps/contracts/my_custom_step_contract.py`
 - Script: `src/cursus_dev/steps/scripts/my_custom_step_script.py`
-- Spec: `src/cursus_dev/steps/specs/my_custom_step_spec.py`
 
 ### 4. Test Your Implementation
 ```python
@@ -325,10 +328,11 @@ def validate_workspace_setup(workspace_path: str, developer_id: str) -> None:
     """Validate that workspace setup is correct."""
     workspace_dir = Path(workspace_path)
 
-    # Check required directories exist
+    # Check required directories exist. Interface-first authoring (Design B): the step interface
+    # (.step.yaml) folder + configs, not the retired builders/contracts/specs folders.
     required_dirs = [
         "src/cursus_dev/registry",
-        "src/cursus_dev/steps/builders",
+        "src/cursus_dev/steps/interfaces",
         "src/cursus_dev/steps/configs",
         "test",
     ]

@@ -529,13 +529,11 @@ class StepCatalog:
                     if file_path and file_path != "Unknown":
                         return str(file_path)
 
-            # Fallback to registry-based path construction (legacy compatibility)
+            # Check file components as final fallback. The former
+            # ``cursus.steps.builders.{name}`` registry-string fallback is gone: under Design B
+            # builders are synthesized (no per-step builder_*.py module), so a dotted string to a
+            # nonexistent module was a lie. Return None rather than an unimportable path.
             step_info = self.get_step_info(step_name)
-            if step_info and "builder_step_name" in step_info.registry_data:
-                builder_name = step_info.registry_data["builder_step_name"]
-                return f"cursus.steps.builders.{builder_name.lower()}.{builder_name}"
-
-            # Check file components as final fallback
             if step_info:
                 builder_metadata = step_info.file_components.get("builder")
                 if builder_metadata:
@@ -680,75 +678,79 @@ class StepCatalog:
         # type for cradle); pass it through only when provided so the SDK owns its own contract.
         return getter(output_type) if output_type is not None else getter()
 
+    def get_step_interface(
+        self, step_name: str, job_type: Optional[str] = None
+    ) -> Optional[Any]:
+        """
+        Load a step's unified ``.step.yaml`` interface — the single canonical accessor.
+
+        This is THE one load function for interface data (FZ 31e1d3g3 follow-up): both
+        ``load_contract_class`` (→ ``iface.contract``) and ``load_spec_class`` (→ ``iface``)
+        are thin views over it, so the job_type-suffix fallback below is written once and
+        every consumer inherits it.
+
+        On the first (exact) load miss, if ``job_type`` was not supplied, we strip a trailing
+        ``_<suffix>`` where ``suffix`` is a known job-type suffix and retry as a variant
+        (``ModelCalibration_calibration`` → ``ModelCalibration`` + job_type ``calibration``).
+        This mirrors :func:`naming.is_job_type_variant`. The suffix set is deliberately
+        ``naming.JOB_TYPE_SUFFIXES`` (NOT ``JOB_TYPE_KEYWORDS``, which contains ``"model"``
+        and would mis-strip ``XGBoostModel`` → ``XGBoost``).
+
+        Args:
+            step_name: PascalCase step name (may be a ``Base_variant`` compound).
+            job_type: Optional job_type variant; when given, no suffix stripping is attempted.
+
+        Returns:
+            The validated StepInterface, or None if no interface resolves (never raises).
+        """
+        from ..steps.interfaces import load_interface
+
+        try:
+            return load_interface(step_name, job_type=job_type)
+        except Exception:
+            pass
+
+        # Job-type-suffix fallback: only when the caller did not already pin a job_type,
+        # and only for a trailing suffix in the variant vocabulary (never "model").
+        if job_type is None and "_" in step_name:
+            from .naming import JOB_TYPE_SUFFIXES
+
+            base_name, _, suffix = step_name.rpartition("_")
+            if base_name and suffix.lower() in JOB_TYPE_SUFFIXES:
+                try:
+                    return load_interface(base_name, job_type=suffix)
+                except Exception:
+                    pass
+
+        return None
+
     def load_contract_class(self, step_name: str) -> Optional[Any]:
         """
-        Load contract for a step. Tries YAML interface first, falls back to Python discovery.
+        Load the contract for a step — a VIEW onto its ``.step.yaml`` interface.
 
         Args:
             step_name: Name of the step (PascalCase, e.g., "TabularPreprocessing")
 
         Returns:
-            Contract object or None if not found/loadable
+            ContractSection (drop-in for the legacy ScriptContract), or None if not found.
         """
-        # Try YAML interface first
-        try:
-            from ..steps.interfaces import load_step_interface
-
-            contract, _spec = load_step_interface(step_name)
-            if contract:
-                self.logger.debug(
-                    f"Loaded contract for {step_name} from YAML interface"
-                )
-                return contract
-        except (FileNotFoundError, Exception):
-            pass
-
-        # Fall back to Python contract discovery
-        try:
-            if self.contract_discovery:
-                contract = self.contract_discovery.load_contract_class(step_name)
-                if contract:
-                    self.logger.debug(f"Successfully loaded contract for {step_name}")
-                    return contract
-        except Exception as e:
-            self.logger.error(f"Error loading contract for {step_name}: {e}")
-
-        return None
+        iface = self.get_step_interface(step_name)
+        return iface.contract if iface else None
 
     def load_spec_class(self, step_name: str) -> Optional[Any]:
         """
-        Load specification for a step. Tries YAML interface first, falls back to Python discovery.
+        Load the specification for a step — the ``.step.yaml`` interface itself.
+
+        The StepInterface is a drop-in for the legacy StepSpecification (exposes
+        ``dependencies``/``outputs``/...), so it IS the spec view.
 
         Args:
             step_name: Name of the step (PascalCase)
 
         Returns:
-            Specification instance or None if not found/loadable
+            StepInterface (drop-in for the legacy StepSpecification), or None if not found.
         """
-        # Try YAML interface first
-        try:
-            from ..steps.interfaces import load_step_interface
-
-            _contract, spec = load_step_interface(step_name)
-            if spec:
-                self.logger.debug(f"Loaded spec for {step_name} from YAML interface")
-                return spec
-        except (FileNotFoundError, Exception):
-            pass
-
-        # Fall back to Python spec discovery
-        try:
-            if self.spec_discovery:
-                spec_instance = self.spec_discovery.load_spec_class(step_name)
-                if spec_instance:
-                    self.logger.debug(
-                        f"Successfully loaded specification for {step_name}"
-                    )
-                    return spec_instance
-        except Exception as e:
-            self.logger.error(f"Error loading specification for {step_name}: {e}")
-
-        return None
+        return self.get_step_interface(step_name)
 
     def find_specs_by_contract(self, contract_name: str) -> Dict[str, Any]:
         """
@@ -1349,11 +1351,15 @@ class StepCatalog:
             self.logger.warning(f"Workspace directory does not exist: {steps_dir}")
             return
 
+        # Design B "Phase E": file-based builder/contract/spec discovery is REMOVED entirely, for
+        # BOTH the package and workspace/plugin roots. A step's builder is synthesized from the
+        # registry (TemplateStepBuilder); its contract + spec come from the .step.yaml interface
+        # (ContractSection / StepInterface.spec). So an external step-pack — like the package — brings
+        # only interfaces + configs + scripts; a dropped builder_*.py / *_contract.py / *_spec.py in
+        # ANY root is no longer honored. Only configs/ + scripts/ are file-scanned (they hold real
+        # files with no interface equivalent).
         component_types = {
             "scripts": "script",
-            "contracts": "contract",
-            "specs": "spec",
-            "builders": "builder",
             "configs": "config",
         }
 

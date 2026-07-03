@@ -493,12 +493,13 @@ def reset_validation_metrics():
 # Helper functions for workspace creation
 def _create_workspace_structure(workspace_dir: Path) -> None:
     """Create complete workspace directory structure."""
+    # Interface-first authoring (Design B): a step is a .step.yaml interface + config class +
+    # script. The per-step builders/contracts/specs folders are gone — builders are synthesized
+    # from the registry interface, and contract/spec are sections of the .step.yaml.
     directories = [
-        "src/cursus_dev/steps/builders",
+        "src/cursus_dev/steps/interfaces",
         "src/cursus_dev/steps/configs",
-        "src/cursus_dev/steps/contracts",
         "src/cursus_dev/steps/scripts",
-        "src/cursus_dev/steps/specs",
         "src/cursus_dev/registry",
         "test/unit",
         "test/integration",

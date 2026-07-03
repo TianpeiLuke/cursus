@@ -126,45 +126,6 @@ _COMPUTE_METHODS = (
 )
 
 
-def _scan_builder_overrides(step_name: str, method_names):
-    """Import-free fallback: AST-scan the step's builder ``.py`` for which of ``method_names`` it
-    defines in its class body. Used when the builder class can't be imported (SAIS SDK absent), so
-    the patterns view stays faithful for SDK-bound steps. Returns ``(overridden_set, scanned_bool)``.
-    """
-    import ast
-    import glob
-
-    try:
-        from ...step_catalog.naming import canonical_to_snake
-
-        snake = canonical_to_snake(step_name)
-    except Exception:
-        snake = step_name.lower()
-    matches = glob.glob(f"src/cursus/steps/builders/builder_{snake}_step.py")
-    if not matches:
-        # fall back to STEP_NAME grep across builder files
-        for f in glob.glob("src/cursus/steps/builders/builder_*_step.py"):
-            try:
-                if f'STEP_NAME = "{step_name}"' in open(f).read():
-                    matches = [f]
-                    break
-            except Exception:
-                continue
-    if not matches:
-        return set(), False
-    try:
-        tree = ast.parse(open(matches[0]).read())
-    except Exception:
-        return set(), False
-    found = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            for b in node.body:
-                if isinstance(b, ast.FunctionDef) and b.name in method_names:
-                    found.add(b.name)
-    return found, True
-
-
 def describe_step_patterns(
     step_name: str, job_type: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -197,14 +158,13 @@ def describe_step_patterns(
         sm_type = getattr(getattr(iface, "registry", None), "sagemaker_step_type", None)
 
     # --- which builder methods does this step still hand-override? (genuine keeps) ---
-    # Tiered so the answer is faithful in every state (FZ 31e1d3g3 Phase E deleted the per-step
-    # builder files — most steps are now SYNTHESIZED fileless shells with NO overrides by definition):
+    # Two-tier so the answer is faithful in every state (the per-step builder files are gone — builders
+    # are SYNTHESIZED fileless shells, so most steps have NO overrides by definition):
     #   1. load the class and inspect __dict__ (most accurate — incl. a synthesized shell, which has
     #      no own methods, so overridden = {} correctly);
-    #   2. if the class won't load (SAIS SDK absent offline), STATICALLY scan a builder .py if one is
-    #      still on disk (a not-yet-deleted hand-written builder) — an import-free fallback;
-    #   3. if neither loads nor has a source file, it is a pure declarative shell → no overrides.
-    # We never silently report "no override" when we couldn't actually check (case 2 vs 3 distinguished).
+    #   2. if the class won't load (e.g. SAIS SDK absent offline), it is a pure declarative shell we
+    #      can't introspect here → report no overrides and attach a note so a caller never mistakes a
+    #      "couldn't check" for a genuine "no override".
     overridden: set = set()
     builder_note = None
     method_names = [m for _, m in _PATTERN_AXES] + list(_COMPUTE_METHODS)
@@ -220,12 +180,9 @@ def describe_step_patterns(
             m for m in method_names if m in getattr(builder_cls, "__dict__", {})
         }
     else:
-        overridden, scanned = _scan_builder_overrides(step_name, method_names)
         builder_note = (
-            "builder class not importable here (e.g. SAIS SDK absent); custom_override determined "
-            "by static source scan of the on-disk builder file"
-            if scanned
-            else "declarative shell — no per-step builder file (synthesized at runtime); no overrides"
+            "declarative shell — builder synthesized at runtime and not importable here "
+            "(e.g. SAIS SDK absent); custom_override not introspected, reported as no overrides"
         )
 
     # --- create_step: the bound construction handler (the registry binding) ---

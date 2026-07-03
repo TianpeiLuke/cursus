@@ -441,7 +441,11 @@ def compute_metadata(
 # CSV WRITERS (2-column paired data files for PIPER Graph-Line)
 # ============================================================================
 def write_curve_csv(
-    output_dir: str, filename: str, header: Tuple[str, str], x: np.ndarray, y: np.ndarray
+    output_dir: str,
+    filename: str,
+    header: Tuple[str, str],
+    x: np.ndarray,
+    y: np.ndarray,
 ) -> str:
     """
     Write a 2-column data CSV (with header) FLAT to output_dir.
@@ -495,7 +499,9 @@ def emit_roc(
             "label": "Variant",
             "modelId": variant_model_id,
             "data-file": "variant_roc.csv",
-            "summary": {"auc-roc-value": round(float(roc_auc_score(y_true, variant_score)), 6)},
+            "summary": {
+                "auc-roc-value": round(float(roc_auc_score(y_true, variant_score)), 6)
+            },
         }
     )
 
@@ -508,7 +514,11 @@ def emit_roc(
                 "label": "Control",
                 "modelId": control_model_id,
                 "data-file": "control_roc.csv",
-                "summary": {"auc-roc-value": round(float(roc_auc_score(y_true, control_score)), 6)},
+                "summary": {
+                    "auc-roc-value": round(
+                        float(roc_auc_score(y_true, control_score)), 6
+                    )
+                },
             }
         )
 
@@ -541,13 +551,19 @@ def emit_pr(
 
     # Variant series
     precision, recall, _ = precision_recall_curve(y_true, variant_score)
-    write_curve_csv(output_dir, "variant_pr.csv", ("Recall", "Precision"), recall, precision)
+    write_curve_csv(
+        output_dir, "variant_pr.csv", ("Recall", "Precision"), recall, precision
+    )
     series.append(
         {
             "label": "Variant",
             "modelId": variant_model_id,
             "data-file": "variant_pr.csv",
-            "summary": {"auc-pr-value": round(float(average_precision_score(y_true, variant_score)), 6)},
+            "summary": {
+                "auc-pr-value": round(
+                    float(average_precision_score(y_true, variant_score)), 6
+                )
+            },
         }
     )
 
@@ -562,7 +578,11 @@ def emit_pr(
                 "label": "Control",
                 "modelId": control_model_id,
                 "data-file": "control_pr.csv",
-                "summary": {"auc-pr-value": round(float(average_precision_score(y_true, control_score)), 6)},
+                "summary": {
+                    "auc-pr-value": round(
+                        float(average_precision_score(y_true, control_score)), 6
+                    )
+                },
             }
         )
 
@@ -655,7 +675,9 @@ def main(
     variant_model_id = environ_vars.get("VARIANT_MODEL_ID", "").strip()
     control_model_id = environ_vars.get("CONTROL_MODEL_ID", "").strip() or None
     pipeline_name = environ_vars.get("PIPELINE_NAME", "").strip() or None
-    dataset_type = environ_vars.get("DATASET_TYPE", "Validation").strip() or "Validation"
+    dataset_type = (
+        environ_vars.get("DATASET_TYPE", "Validation").strip() or "Validation"
+    )
     metrics_to_render = [
         m.strip()
         for m in environ_vars.get(
@@ -774,10 +796,14 @@ def main(
     if "data_statistics" in metrics_to_render:
         written.append(emit_data_statistics(output_dir, metadata))
     else:
-        logger.info("Skipping data statistics — 'data_statistics' not in METRICS_TO_RENDER")
+        logger.info(
+            "Skipping data statistics — 'data_statistics' not in METRICS_TO_RENDER"
+        )
 
     logger.info("=" * 70)
-    logger.info(f"PIPER metric generation complete. Wrote {len(written)} .metric files:")
+    logger.info(
+        f"PIPER metric generation complete. Wrote {len(written)} .metric files:"
+    )
     for p in written:
         logger.info(f"  - {p}")
     logger.info("=" * 70)
