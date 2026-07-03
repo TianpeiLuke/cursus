@@ -137,10 +137,9 @@ class LightGBMModelInferenceConfig(ProcessingStepConfigBase):
         if not self.processing_entry_point:
             raise ValueError("inference step requires a processing_entry_point")
 
-        valid_job_types = {"training", "calibration", "validation", "testing"}
-        if self.job_type not in valid_job_types:
+        if self.job_type and (not self.job_type.replace("_", "").isalnum() or self.job_type != self.job_type.lower()):
             raise ValueError(
-                f"job_type must be one of {valid_job_types}, got '{self.job_type}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{self.job_type}'"
             )
 
         # Validate required fields from script contract

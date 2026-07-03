@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.5] - 2026-07-03
+
+Ported from amzn-cursus 2.4.5 + 2.4.6: config-resolver deep-dive Tranche 3 (allow-all job_types).
+
+### Changed
+
+- **`from_yaml` unknown-`job_type` → warn + base-spec fallback** (was: raise). Configs don't restrict `job_type` to the interface's variant set, so a legitimate open value (e.g. `CradleDataLoading`'s `munged`/`normal`) resolves to the base spec instead of crashing the build; real declared variants still tighten. (3a)
+- **Closed `job_type` validators relaxed to allow-all (14 config classes)** — batch_transform, tsa_tabular_preprocessing, the 8 xgboost/lightgbm/lightgbmmt/pytorch model_eval & inference configs, and the 4 training configs (`{pretrain,finetune}`, `None`-handling preserved). Each now accepts any lowercase-alphanumeric-with-underscores value, matching the interface layer. (3b)
+
+### Fixed
+
+- **Preview/compile coverage gap** — `validate_dag_compatibility` now loads each node's interface with its resolved `job_type` (the same call the builder makes at compile), so interface-load failures surface in preview, not only at build time. (3c)
+
+Verified: complete `munged_address_pytorch` DAG resolves 15/15 + validates clean; `from_yaml('CradleDataLoading', job_type='munged')` no raise.
+
 ## [2.5.4] - 2026-07-03
 
 Ported from amzn-cursus 2.4.4: test-suite + offline-collection hardening (test/fixture/conftest only — no `src` behavior change).

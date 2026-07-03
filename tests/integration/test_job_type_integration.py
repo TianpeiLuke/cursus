@@ -78,23 +78,18 @@ class TestJobTypeVariantResolution(unittest.TestCase):
                     "from_yaml and load_interface should resolve identical outputs",
                 )
 
-    def test_unknown_job_type_raises(self):
-        """An unknown job_type on a step that declares variants raises ValueError.
+    def test_unknown_job_type_falls_back_to_base(self):
+        """A job_type with no matching variant falls back to the base spec (warns, does NOT raise).
 
-        Silently falling back to the base spec is a correctness hazard: variants
-        routinely tighten the base (e.g. flip a dependency from optional to
-        required), so the base would drop a required edge with no signal. The
-        loader now fails loud and the error names the declared variants.
+        Configs deliberately do NOT restrict job_type to the interface's declared variant set — most
+        step configs validate job_type only as "lowercase alphanumeric" (open), so a legitimate
+        config value that isn't an enumerated variant (e.g. CradleDataLoading's `munged`/`tagging`)
+        must resolve to the base spec rather than crash the build. `from_yaml` warns on the fallback;
+        the variant-tightening hazard is caught downstream (dependency resolver + `_sync_and_align`).
         """
-        with self.assertRaises(ValueError) as ctx:
-            StepInterface.from_yaml(self.raw, job_type="does_not_exist")
-        message = str(ctx.exception)
-        for job_type in JOB_TYPES:
-            self.assertIn(
-                job_type,
-                message,
-                f"error should name the declared variant '{job_type}'",
-            )
+        base = load_interface("CradleDataLoading")
+        fallback = StepInterface.from_yaml(self.raw, job_type="does_not_exist")
+        self.assertEqual(set(fallback.outputs.keys()), set(base.outputs.keys()))
 
 
 class TestGenericPreprocessingInterface(unittest.TestCase):

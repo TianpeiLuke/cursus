@@ -366,6 +366,27 @@ class ValidationEngine:
                     f"JSON, or a metadata.config_types['{node}'] mapping to the intended class."
                 )
 
+            # PREVIEW/COMPILE COVERAGE (deep dive 2026-07-03, Tranche 3c): actually LOAD the node's
+            # .step.yaml interface with its resolved job_type — the same call the builder makes at
+            # compile (TemplateStepBuilder.__init__ -> load_step_interface(step, job_type=...)). Preview
+            # previously never did this, so an interface-load failure (e.g. an unknown job_type raise,
+            # or a variant/YAML error) surfaced only at build time, not in `cursus validate`. Surface it
+            # here so the preview covers the same failure class as compile.
+            effective_jt = job_type or node_job_type
+            try:
+                from ...steps.interfaces import load_interface
+
+                load_interface(step_type, job_type=effective_jt)
+            except FileNotFoundError:
+                # Interface-less rows (abstract/registry-only) are handled by the builder-registry /
+                # routability checks below; not an interface-load error.
+                pass
+            except Exception as e:
+                config_errors.setdefault(node, []).append(
+                    f"Interface load failed for step '{step_type}' "
+                    f"(job_type={effective_jt!r}): {e}"
+                )
+
             # Try with job type first if available
             if job_type or node_job_type:
                 effective_job_type = job_type or node_job_type

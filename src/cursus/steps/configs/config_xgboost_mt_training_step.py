@@ -171,16 +171,13 @@ class XgboostMtTrainingConfig(BasePipelineConfig):
     @field_validator("job_type")
     @classmethod
     def validate_job_type(cls, v: Optional[str]) -> Optional[str]:
-        """Validate job_type is one of allowed values."""
+        """Validate job_type is open (any lowercase alphanumeric with underscores; None = standard)."""
         if v is None:
             return None  # Standard supervised learning
 
-        allowed = {"pretrain", "finetune"}
-        if v not in allowed:
+        if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be None (standard) or one of {allowed}, got '{v}'. "
-                f"Use None for standard training, 'pretrain' for SSL pretraining, "
-                f"'finetune' for SSL fine-tuning."
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
         return v
 

@@ -46,7 +46,7 @@ class TSATabularPreprocessingConfig(ProcessingStepConfigBase):
     # =========================================================================
 
     job_type: str = Field(
-        description="One of ['training','validation','testing','calibration']",
+        description="Lowercase alphanumeric slice name (e.g. 'training','validation','testing','calibration')",
     )
 
     # =========================================================================
@@ -256,9 +256,10 @@ class TSATabularPreprocessingConfig(ProcessingStepConfigBase):
     @classmethod
     def validate_job_type(cls, v: str) -> str:
         """job_type must be lowercase alphanumeric (with underscores)."""
-        allowed = {"training", "validation", "testing", "calibration"}
-        if v not in allowed:
-            raise ValueError(f"job_type must be one of {sorted(allowed)}, got '{v}'")
+        if not v.replace("_", "").isalnum() or v != v.lower():
+            raise ValueError(
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
+            )
         return v
 
     @field_validator("train_ratio", "test_val_ratio")

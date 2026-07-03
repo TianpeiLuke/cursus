@@ -15,7 +15,7 @@ class BatchTransformStepConfig(BasePipelineConfig):
     # 1) Which slice are we scoring?
     job_type: str = Field(
         ...,
-        description="One of 'training','testing','validation','calibration' to indicate which slice to transform",
+        description="Lowercase alphanumeric slice name (e.g. 'training','testing','validation','calibration') to indicate which slice to transform",
     )
 
     # Note: Input/output locations are now defined in step specs and provided through dependencies
@@ -67,15 +67,13 @@ class BatchTransformStepConfig(BasePipelineConfig):
     @field_validator("job_type")
     def _validate_job_type(cls, v: str) -> str:
         # job_type is used as an output-path subdirectory name and is lowercased
-        # in scripts, so match case-insensitively and store the canonical
-        # (lowercase) value.
-        allowed = {"training", "testing", "validation", "calibration"}
-        match = next((a for a in allowed if a.lower() == v.lower()), None)
-        if match is None:
+        # in scripts, so require a lowercase alphanumeric (with underscores)
+        # value. Any such job_type is allowed (open set).
+        if not v.replace("_", "").isalnum() or v != v.lower():
             raise ValueError(
-                f"job_type must be one of {sorted(allowed)} (case-insensitive), got '{v}'"
+                f"job_type must be lowercase alphanumeric (with underscores), got '{v}'"
             )
-        return match
+        return v
 
     # Note: S3 URI validator removed as batch_input_location and batch_output_location were removed
 

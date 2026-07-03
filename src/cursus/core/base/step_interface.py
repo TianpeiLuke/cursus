@@ -35,6 +35,7 @@ declare them as ``null`` in YAML.
 
 from __future__ import annotations
 
+import logging
 from typing import ClassVar, Dict, List, Optional, TYPE_CHECKING
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -44,6 +45,8 @@ from .enums import DependencyType, NodeType
 
 if TYPE_CHECKING:
     from .contract_base import ValidationResult
+
+logger = logging.getLogger(__name__)
 
 
 def _deep_merge(base: Dict, override: Dict) -> Dict:
@@ -783,16 +786,25 @@ class StepInterface(BaseModel):
                     data.get("patterns") or {}, variant["patterns"]
                 )
         elif job_type and variants:
-            # A job_type was requested but this step declares variants and none matches. Silently
-            # using the base spec is a real correctness hazard: variants routinely tighten the base
-            # (e.g. RiskTableMapping's variants flip model_artifacts_input from required=false to
-            # required=true), so the base would drop a required dependency and the resolver would
-            # never wire that edge — a structurally wrong step with no signal (deep dive 2026-07-03,
-            # T6). Fail loud. (Gated on `variants` being non-empty so a variant-less step whose
-            # config still carries a job_type is unaffected.)
-            raise ValueError(
-                f"Unknown job_type {job_type!r} for step "
-                f"{data.get('step_type', '<unknown>')!r}; declared variants: {sorted(variants)}"
+            # A job_type was requested but this step declares variants and none matches → fall back
+            # to the base spec (WARN, do not raise). Configs deliberately DO NOT restrict job_type to
+            # the interface's declared variant set: most step configs validate job_type only as
+            # "lowercase alphanumeric" (open), so a legitimate config value like CradleDataLoading's
+            # `munged` / `tagging` is expected NOT to be an enumerated variant and must resolve to the
+            # base spec — raising here crashed the build for valid configs (regression from the
+            # 2.4.3 raise; deep dive 2026-07-03 T6 follow-up). The T6 hazard (a variant that TIGHTENS
+            # a base-optional dep to required — e.g. RiskTableMapping validation/testing/calibration)
+            # is not silently masked: (a) this warns, and (b) the real gate is downstream — the
+            # dependency resolver flags an unwired REQUIRED dep and `_sync_and_align` validates
+            # contract↔spec. So base-fallback here can only under-tighten an OPTIONAL dep, never hide
+            # a missing required one.
+            logger.warning(
+                "job_type %r for step %r matches no declared variant %s; using the base spec. "
+                "If this job_type needs variant-specific dependencies/outputs, add it to the "
+                ".step.yaml variants block.",
+                job_type,
+                data.get("step_type", "<unknown>"),
+                sorted(variants),
             )
         return cls(**data)
 
