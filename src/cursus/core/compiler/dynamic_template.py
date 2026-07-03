@@ -324,6 +324,7 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                 available_configs=self.configs,
                 config_map=config_map,
                 builder_registry=builder_map,
+                metadata=self._loaded_metadata,
             )
 
             if not validation_result.is_valid:
@@ -371,20 +372,22 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                 metadata=self._loaded_metadata,
             )
 
-            # Convert to display format
+            # Convert to display format. preview_resolution returns a fixed-shape dict whose
+            # node_resolution maps node -> {config_type, confidence, method, job_type} (or
+            # {error, error_type}); it is NOT {node: [candidates]}. The old candidates[0] iteration
+            # raised on every key and returned {'error': ...} (deep dive 2026-07-03, T4).
             preview = {"nodes": len(dag_nodes), "resolutions": {}}
+            node_resolution = preview_data.get("node_resolution", {})
 
-            for node, candidates in preview_data.items():
+            for node, info in node_resolution.items():
                 resolutions = preview.get("resolutions")
                 if isinstance(resolutions, dict):
-                    if candidates:
-                        best_candidate = candidates[0]
+                    if info and "error" not in info:
                         resolutions[node] = {
-                            "config_type": best_candidate["config_type"],
-                            "confidence": best_candidate["confidence"],
-                            "method": best_candidate["method"],
-                            "job_type": best_candidate["job_type"],
-                            "alternatives": len(candidates) - 1,
+                            "config_type": info.get("config_type", "UNKNOWN"),
+                            "confidence": info.get("confidence", 0.0),
+                            "method": info.get("method", "unknown"),
+                            "job_type": info.get("job_type", "N/A"),
                         }
                     else:
                         resolutions[node] = {
@@ -392,7 +395,6 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                             "confidence": 0.0,
                             "method": "none",
                             "job_type": "N/A",
-                            "alternatives": 0,
                         }
 
             return preview

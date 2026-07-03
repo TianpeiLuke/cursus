@@ -37,6 +37,8 @@ spec:
     GeneratedPayloadSamples:
       type: payload_samples
       required: true
-      compatible_sources: [PayloadTestStep, PayloadStep, ProcessingStep]
+      # Canonical `Payload` first (the real registry step type of the producer); the legacy
+      # PayloadTestStep/PayloadStep spellings are kept for back-compat with older configs.
+      compatible_sources: [Payload, PayloadTestStep, PayloadStep, ProcessingStep]
       semantic_keywords: [payload, samples, test, generated, inference]
   outputs: {}

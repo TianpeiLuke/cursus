@@ -42,11 +42,17 @@ class TestValidateStepInterface:
         assert r.exit_code == 2
 
     def test_all_validates_every_interface_green(self, runner):
+        import re
+
         r = runner.invoke(validate_cli, ["step-interface", "--all"])
         assert r.exit_code == 0, r.output
-        # the whole fleet must be clean (no blocking errors); ~45 steps
+        # the whole fleet must be clean (no blocking errors); ~45+ steps
         assert "0 error(s)" in r.output
-        assert "validated 4" in r.output  # 4x ⇒ ≥40 steps
+        # Parse the actual validated count rather than substring-matching a fixed prefix
+        # (the old `"validated 4" in output` broke once the count wasn't 4X — e.g. 53).
+        m = re.search(r"validated (\d+)", r.output)
+        assert m, r.output
+        assert int(m.group(1)) >= 40, r.output
 
     def test_json_shape(self, runner):
         r = runner.invoke(validate_cli, ["step-interface", "XGBoostTraining", "--format", "json"])

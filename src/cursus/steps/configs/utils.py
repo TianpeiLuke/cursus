@@ -175,6 +175,12 @@ def merge_and_save_configs(
 
     Under "metadata" → "config_types" we map each unique step_name → config class name.
     """
+    # Fail fast on duplicate generated step names BEFORE writing. Two configs that reduce to the
+    # same step_name would otherwise silently overwrite each other last-write-wins in the saved
+    # JSON (config_types + specific are keyed by step_name), so a node's config is lost on reload —
+    # data loss at save time (deep dive 2026-07-03, T2). verify_configs raises on the collision.
+    verify_configs(config_list)
+
     # Generate field sources for backward compatibility
     field_sources = get_field_sources(config_list)
 
@@ -269,7 +275,11 @@ def load_configs(
         if "metadata" in file_data and "config_types" in file_data["metadata"]:
             config_types = file_data["metadata"]["config_types"]
 
-            # Make sure all configs in the metadata are properly loaded
+            # Make sure all configs in the metadata are properly loaded. Any config the file
+            # DECLARES (in metadata.config_types) but that we cannot materialize is a hard error —
+            # silently skipping it leaves the config map incomplete, which then feeds the resolver's
+            # fallback and mis-binds the corresponding DAG node (deep dive 2026-07-03, T2).
+            failed_configs: List[str] = []
             for step_name, class_name in config_types.items():
                 if step_name in loaded_configs_dict:
                     result_configs[step_name] = loaded_configs_dict[step_name]
@@ -331,9 +341,22 @@ def load_configs(
                             # Create the instance
                             result_configs[step_name] = config_class(**clean_data)
                     except Exception as e:
-                        logger.warning(
-                            f"Failed to create config for {step_name}: {str(e)}"
-                        )
+                        # Collect, don't drop — reconstruction failure is reported below, never
+                        # silently omitted (deep dive 2026-07-03, T2).
+                        logger.error(f"Failed to create config for {step_name}: {str(e)}")
+                        failed_configs.append(f"{step_name} ({class_name}): {e}")
+                else:
+                    # A declared config whose class was not discovered — cannot be materialized.
+                    failed_configs.append(
+                        f"{step_name}: config class '{class_name}' not found in discovered "
+                        f"config_classes"
+                    )
+
+            if failed_configs:
+                raise ValueError(
+                    f"Failed to load {len(failed_configs)} config(s) declared in "
+                    f"{input_file} metadata.config_types: " + "; ".join(failed_configs)
+                )
         else:
             # Just use the loaded configs as is
             result_configs = loaded_configs_dict

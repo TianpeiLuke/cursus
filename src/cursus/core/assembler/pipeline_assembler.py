@@ -468,19 +468,25 @@ class PipelineAssembler:
                                 f"Created runtime property reference for {step_name}.{input_name} -> {src_step}.{output_spec.property_path}"
                             )
                         except Exception as e:
-                            # Log the error and fall back to a safe string
-                            logger.warning(
-                                f"Error creating runtime property reference: {str(e)}"
-                            )
-                            s3_uri = f"s3://pipeline-reference/{src_step}/{src_output}"
-                            inputs[input_name] = s3_uri
-                            logger.warning(f"Using S3 URI fallback: {s3_uri}")
+                            # A matched edge whose runtime property cannot be built is a real wiring
+                            # failure — do NOT fabricate an s3://pipeline-reference/... placeholder.
+                            # The placeholder used to make the input APPEAR present (defeating the
+                            # get_inputs required-input guard), so the step would build a channel
+                            # pointing at a nonexistent bucket and read empty/stale data at runtime
+                            # (deep dive 2026-07-03, T5). Fail loud instead.
+                            raise ValueError(
+                                f"Could not build runtime property reference for "
+                                f"'{step_name}.{input_name}' from '{src_step}.{src_output}': {e}"
+                            ) from e
                     else:
-                        # Create a safe string reference as a fallback
-                        s3_uri = f"s3://pipeline-reference/{src_step}/{src_output}"
-                        inputs[input_name] = s3_uri
-                        logger.warning(
-                            f"Could not find output spec for {src_step}.{src_output}, using S3 URI placeholder: {s3_uri}"
+                        # The edge matched a source step, but that step's spec has no output named
+                        # (or aliased) src_output — a spec/alias mismatch. Fabricating a placeholder
+                        # URI here silently wires a wrong/nonexistent source; raise so the mismatch
+                        # surfaces at compile time (deep dive 2026-07-03, T5).
+                        raise ValueError(
+                            f"Could not find output spec '{src_output}' on source step '{src_step}' "
+                            f"for input '{step_name}.{input_name}'. The producer step does not "
+                            f"declare that output (check the output logical_name / alias)."
                         )
 
         # Generate outputs using the specification

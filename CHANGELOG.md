@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.3] - 2026-07-03
+
+Ported from amzn-cursus 2.4.3: second tranche of the silent-misresolution deep dive + validation hardening.
+
+### Fixed
+
+- **Assembler raises instead of fabricating a placeholder S3 URI** for a matched edge whose output spec is missing (`pipeline_assembler._instantiate_step`) — the old `s3://pipeline-reference/...` placeholder defeated the required-input guard.
+- **`StepInterface.from_yaml` raises on an unknown `job_type`** when the step declares variants (was: silent base-spec fallback that dropped variant tightenings such as a dependency the variant makes required).
+- **`compatible_sources` is alias/suffix-aware** (`Payload` ≡ `PayloadStep`, `Package` ≡ `PackagingStep`, + `LEGACY_ALIASES`) with a −0.1 penalty for out-of-list providers; `registration.step.yaml` / `tsa_model_calibration.step.yaml` now list canonical producer step types.
+- **`load_configs` / `merge_and_save_configs` no longer silently drop or overwrite configs** — they raise listing unmaterializable declared configs / duplicate step names.
+- **Validation module flags misresolutions as errors**: `validate_dag_compatibility` records a `config_errors` entry (→ `is_valid=False`) for a node bound to a config of a different step type, accepts `metadata` so explicit `metadata.config_types` mappings are exempt, and consults `has_builder_provider` so routable SDK-delegation steps (CradleDataLoading/Registration) are no longer false-flagged as unresolvable offline. `compile()` honors an explicit `skip_validation`.
+- **`preview_resolution` consumers read the real `node_resolution` shape** (was `candidates[0]` → KeyError → empty preview).
+
+Verified against `munged_address_pytorch/dag_NA.json`: complete config resolves 15/15 and validates clean; a partial 3-config subset raises `ResolutionError` naming all 13 unsatisfiable nodes. The 5 corresponding test files are synced from amzn-cursus.
+
 ## [2.5.2] - 2026-07-03
 
 Correctness bugfix (ported from amzn-cursus 2.4.2): the config resolver no longer silently compiles a wrong pipeline from an incomplete config.

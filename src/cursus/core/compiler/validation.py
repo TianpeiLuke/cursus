@@ -268,6 +268,7 @@ class ValidationEngine:
         available_configs: Dict[str, Any],
         config_map: Dict[str, Any],
         builder_registry: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> ValidationResult:
         """
         Validate DAG-config compatibility.
@@ -277,6 +278,10 @@ class ValidationEngine:
             available_configs: Available configuration instances
             config_map: Resolved node-to-config mapping
             builder_registry: Available step builders
+            metadata: Optional pipeline metadata; its ``config_types`` map (node -> config class)
+                records USER-AUTHORED node→config bindings. The node-vs-config cross-check honors it,
+                so a deliberately off-convention node name explicitly mapped there is not flagged as
+                a misresolution.
 
         Returns:
             ValidationResult with detailed validation information
@@ -287,12 +292,16 @@ class ValidationEngine:
         dependency_issues: List[str] = []
         warnings: List[str] = []
 
+        # User-authored explicit node->config-class mappings (never flagged as misresolutions).
+        explicit_config_types = (metadata or {}).get("config_types", {}) or {}
+
         # Check for missing configurations
         for node in dag_nodes:
             if node not in config_map:
                 missing_configs.append(node)
 
         # Check for unresolvable builders
+        legacy_aliases = StepCatalog.LEGACY_ALIASES
         for node, config in config_map.items():
             config_type = type(config).__name__
 
@@ -323,6 +332,40 @@ class ValidationEngine:
             if match:
                 _, node_job_type = match.groups()
 
+            # NODE-vs-CONFIG CROSS-CHECK (deep dive 2026-07-03 T4): a mis-bound node used to pass
+            # validation because its WRONG config's builder still exists. When the node name encodes
+            # its step type (the convention — CradleDataLoading_munged / TabularPreprocessing_training),
+            # a config whose real step type differs is a misresolution. Validation's job is to flag it
+            # as an ERROR to be fixed (config_errors → is_valid=False), not merely warn. If the node
+            # is intentionally named off-convention, the fix is an explicit config key or a
+            # metadata.config_types entry — the error message says so. Only fires when the node name
+            # actually encodes a step type (matches a known registry step base, so an arbitrary /
+            # already-explicitly-resolved name isn't falsely flagged).
+            node_base = node[: -(len(node_job_type) + 1)] if node_job_type else node
+            node_base_looks_like_step_type = (
+                node_base in CONFIG_STEP_REGISTRY.values()
+                or node_base in builder_registry
+                or node_base in legacy_aliases
+            )
+            # Skip a node the user explicitly mapped via metadata.config_types — that binding is
+            # intentional, not a misresolution, even if the node name doesn't match its config type.
+            explicitly_mapped = node in explicit_config_types
+            if (
+                node_base
+                and step_type
+                and node_base_looks_like_step_type
+                and not explicitly_mapped
+                and node_base.lower() != step_type.lower()
+                and step_type not in legacy_aliases.values()
+                and legacy_aliases.get(node_base) != step_type
+            ):
+                config_errors.setdefault(node, []).append(
+                    f"Config-node mismatch: node base '{node_base}' names a step type, but the "
+                    f"bound config {config_type} resolves to step type '{step_type}'. This is a "
+                    f"misresolved config. Fix: add an explicit config key '{node}' to the config "
+                    f"JSON, or a metadata.config_types['{node}'] mapping to the intended class."
+                )
+
             # Try with job type first if available
             if job_type or node_job_type:
                 effective_job_type = job_type or node_job_type
@@ -333,9 +376,7 @@ class ValidationEngine:
                     continue
 
             # Check if step type is in builder registry or legacy aliases
-            # Use StepCatalog's legacy aliases instead of StepBuilderRegistry
-            legacy_aliases = StepCatalog.LEGACY_ALIASES
-
+            # (legacy_aliases hoisted above the loop for the node-vs-config cross-check).
             if step_type in builder_registry:
                 continue
             elif step_type in legacy_aliases:
@@ -352,6 +393,22 @@ class ValidationEngine:
                 step_type == "Registration" and "ModelRegistration" in builder_registry
             ):
                 continue
+
+            # ROUTABILITY FALLBACK: the builder_registry (get_builder_map) only contains builders
+            # that LOAD in the current environment — the 4 SDK-delegation steps (CradleDataLoading,
+            # Registration, …) are absent OFFLINE because their builder imports the SAIS SDK, even
+            # though they are perfectly routable. Flagging them "unresolvable" here is a false
+            # positive (deep dive 2026-07-03 followup). has_builder_provider answers routability from
+            # declarative data (registry sagemaker_step_type + .step.yaml patterns) WITHOUT importing
+            # the builder, so it stays True for SDK steps offline. Only flag genuinely non-routable
+            # rows as unresolvable.
+            try:
+                if StepCatalog().has_builder_provider(step_type):
+                    continue
+            except Exception as e:
+                self.logger.debug(
+                    f"has_builder_provider routability check failed for '{step_type}': {e}"
+                )
 
             # If we get here, builder not found
             unresolvable_builders.append(f"{node} ({step_type})")

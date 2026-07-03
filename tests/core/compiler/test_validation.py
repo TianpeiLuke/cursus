@@ -311,6 +311,10 @@ class TestValidationEngine:
         mock_catalog_instance.get_builder_for_config.return_value = (
             None  # No builder found
         )
+        # The step is genuinely non-routable (not merely a builder that can't load offline), so the
+        # routability fallback must also report False — otherwise has_builder_provider's default
+        # truthy MagicMock would rescue this deliberately-unresolvable case.
+        mock_catalog_instance.has_builder_provider.return_value = False
         mock_step_catalog.return_value = mock_catalog_instance
 
         dag_nodes = ["training"]

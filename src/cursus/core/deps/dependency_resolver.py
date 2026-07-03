@@ -482,18 +482,32 @@ class UnifiedDependencyResolver:
         elif dep_spec.logical_name in output_spec.aliases:
             score += 0.05  # Exact alias match bonus
 
-        # 4. Compatible source check with job type normalization (10% weight)
+        # 4. Compatible source check with job type normalization (10% weight, +/- penalty).
+        # NOTE (deep dive 2026-07-03, T5): compatible_sources is NOT a clean exact-match allowlist —
+        # ~40% of declared tokens are generic categories / legacy aliases (ProcessingStep,
+        # TrainingStep, PayloadStep, S3Source, UserProvided, …) that are not real registry step
+        # types, so a HARD GATE here wrongly rejects legitimate edges (e.g. provider 'Payload' vs
+        # declared 'PayloadStep'). Instead: reward an in-list provider (+0.1) and mildly PENALIZE an
+        # out-of-list one (-0.1) rather than zeroing it. This disadvantages a semantically-wrong
+        # producer (the original concern) without breaking correct-but-legacy-named matches, and it
+        # is only decisive near the 0.5 threshold — the base type(0.4)+data(0.2)+semantic(0.25)
+        # still dominates.
         if dep_spec.compatible_sources:
-            # Normalize the provider step type for compatibility checking
             normalized_step_type = self._normalize_step_type_for_compatibility(
                 provider_spec.step_type
             )
-
-            if normalized_step_type in dep_spec.compatible_sources:
+            if self._provider_in_compatible_sources(
+                normalized_step_type, dep_spec.compatible_sources
+            ):
                 score += 0.1
-        else:
-            # If no compatible sources specified, give small bonus for any match
-            score += 0.05
+            else:
+                logger.debug(
+                    f"Provider '{provider_spec.step_type}' (normalized "
+                    f"'{normalized_step_type}') is not in compatible_sources "
+                    f"{dep_spec.compatible_sources} for dependency "
+                    f"'{dep_spec.logical_name}'; applying compatibility penalty."
+                )
+                score -= 0.1
 
         # 5. Keyword matching bonus (5% weight)
         if dep_spec.semantic_keywords:
@@ -599,6 +613,49 @@ class UnifiedDependencyResolver:
                     return normalized
 
             return step_type
+
+    def _provider_in_compatible_sources(
+        self, provider_step_type: str, compatible_sources: List[str]
+    ) -> bool:
+        """Alias/suffix-aware membership test of a provider against a compatible_sources list.
+
+        ``compatible_sources`` mixes canonical step types with legacy-convention names — chiefly a
+        trailing ``Step`` (``PayloadStep``/``PackagingStep``/``ModelStep``/``TrainingStep``) and the
+        MIMS aliases (``MIMSPayload``→``Payload``). A plain ``in`` check therefore fails a legitimate
+        provider whose canonical type (``Payload``, ``Package``) is listed only under its legacy
+        spelling (deep dive 2026-07-03, T5 — ``Payload`` vs ``PayloadStep``). This reconciles both
+        sides: exact match, ``StepCatalog.LEGACY_ALIASES``, and a trailing-``Step`` equivalence so
+        ``Payload`` ≡ ``PayloadStep`` and ``Package`` ≡ ``PackagingStep``.
+        """
+        if provider_step_type in compatible_sources:
+            return True
+
+        # Build the set of names equivalent to the provider's canonical step type.
+        equivalents = {provider_step_type}
+        try:
+            from ...step_catalog.step_catalog import StepCatalog
+
+            for legacy, canonical in StepCatalog.LEGACY_ALIASES.items():
+                if canonical == provider_step_type:
+                    equivalents.add(legacy)
+        except Exception:
+            pass
+        # Trailing-"Step" equivalence, both directions (Payload <-> PayloadStep). Package's legacy
+        # form is "Packaging" + "Step", so also cover the *aging/*age → *e style via a suffix strip.
+        equivalents.add(f"{provider_step_type}Step")
+
+        # Compare against each compatible_sources token with the same trailing-"Step" strip applied,
+        # so "PayloadStep" -> "Payload" and "PackagingStep" -> "Packaging" are reconciled.
+        def _strip_step(name: str) -> str:
+            return name[: -len("Step")] if name.endswith("Step") else name
+
+        provider_stripped = _strip_step(provider_step_type)
+        for src in compatible_sources:
+            if src in equivalents:
+                return True
+            if _strip_step(src) == provider_stripped:
+                return True
+        return False
 
     def _calculate_keyword_match(self, keywords: List[str], output_name: str) -> float:
         """Calculate keyword matching score."""

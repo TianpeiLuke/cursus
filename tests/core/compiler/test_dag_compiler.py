@@ -680,21 +680,30 @@ class TestPipelineDAGCompilerValidation:
         mock_path.return_value = mock_path_instance
 
         mock_resolver_instance = MagicMock()
+        # preview_resolution returns a fixed-shape dict whose node_resolution maps
+        # node -> {config_type, confidence, method, job_type} (NOT {node: [candidates]}).
         mock_preview_data = {
-            "data_loading": [
-                {
+            "node_resolution": {
+                "data_loading": {
                     "config_type": "CradleDataLoadingConfig",
                     "confidence": 1.0,
                     "method": "direct_name",
-                }
-            ],
-            "training": [
-                {
+                    "job_type": "N/A",
+                },
+                "training": {
                     "config_type": "XGBoostTrainingConfig",
                     "confidence": 0.8,
                     "method": "semantic",
-                }
-            ],
+                    "job_type": "N/A",
+                },
+            },
+            "resolution_confidence": {"data_loading": 1.0, "training": 0.8},
+            "node_config_map": {
+                "data_loading": "CradleDataLoadingConfig",
+                "training": "XGBoostTrainingConfig",
+            },
+            "metadata_mapping": {},
+            "recommendations": [],
         }
         mock_resolver_instance.preview_resolution.return_value = mock_preview_data
         mock_resolver.return_value = mock_resolver_instance

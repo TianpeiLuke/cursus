@@ -89,15 +89,23 @@ def flag_pairs():
 
 
 def test_declared_job_arg_flags_match_config(flag_pairs):
-    """Every ``.step.yaml`` declared job-arg flag set equals the flag set the config emits."""
-    mismatches = [
-        (st, sorted(decl), sorted(emit))
-        for st, decl, emit in flag_pairs
-        if decl != emit
+    """Every flag the config EMITS must be DECLARED in the .step.yaml (emitted ⊆ declared).
+
+    The dangerous drift is a config emitting an UNDECLARED flag — an argument the script receives
+    that the interface never documents. A declared flag MAY be conditionally omitted: some configs
+    emit optional-field-driven flags only when that field is set (e.g. TSATabularPreprocessing emits
+    --label-field / --id-fields / --date-field only when the corresponding Optional[str] field is
+    populated, mirroring its conditional env-var emission). The gate enforces the subset invariant,
+    not exact equality, so a legitimately-conditional flag is not a failure. (Values are not
+    compared — they are runtime/config-supplied.)
+    """
+    undeclared = [
+        (st, sorted(emit - decl)) for st, decl, emit in flag_pairs if emit - decl
     ]
-    assert not mismatches, (
-        "Declared job_arguments flags drifted from config.get_job_arguments() output: "
-        + "; ".join(f"{st}: declared={d} emitted={e}" for st, d, e in mismatches)
+    assert not undeclared, (
+        "config.get_job_arguments() emits flags NOT declared in the .step.yaml "
+        "job_arguments block: "
+        + "; ".join(f"{st}: undeclared={u}" for st, u in undeclared)
     )
 
 

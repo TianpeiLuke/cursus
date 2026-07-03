@@ -121,10 +121,8 @@ spec:
       required: true
       compatible_sources:
       - TabularPreprocessing
-      - TabularPreprocessingTraining
       - TSAPreprocessing
-      - TSAPreprocessingTraining
-      - TSATabularPreprocessingTraining
+      - TSATabularPreprocessing
       - DataPreprocessing
       semantic_keywords:
       - preprocessor

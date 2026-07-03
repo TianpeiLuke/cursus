@@ -351,6 +351,7 @@ class PipelineDAGCompiler:
                 available_configs=available_configs,
                 config_map=config_map,
                 builder_registry=builder_map,
+                metadata=getattr(temp_template, "_loaded_metadata", None),
             )
 
             self.logger.info(f"Validation completed: {validation_result.summary()}")
@@ -419,18 +420,22 @@ class PipelineDAGCompiler:
             ambiguous_resolutions = []
             recommendations = []
 
-            for node, candidates in preview_data.items():
-                if candidates:
-                    best_candidate = candidates[0]
-                    config_type = best_candidate["config_type"]
-                    confidence = best_candidate["confidence"]
+            # preview_resolution returns a fixed-shape dict, NOT {node: [candidates]}. Consume the
+            # real shape: node_resolution maps node -> {config_type, confidence, method, job_type}
+            # (or {error, error_type} for an unresolved node). The old code iterated .items() over
+            # the top-level dict and indexed candidates[0], raising KeyError on every key and
+            # silently falling back to an empty preview (deep dive 2026-07-03, T4).
+            node_resolution = preview_data.get("node_resolution", {})
+            for node, info in node_resolution.items():
+                if info and "error" not in info:
+                    config_type = info.get("config_type", "UNKNOWN")
+                    confidence = info.get("confidence", 0.0)
 
                     node_config_map[node] = config_type
                     resolution_confidence[node] = confidence
 
                     # Get builder for this config type
                     try:
-                        # Use step catalog to get builder for config type
                         builder_class = self.step_catalog.get_builder_for_step_type(
                             config_type
                         )
@@ -445,26 +450,19 @@ class PipelineDAGCompiler:
                     except Exception:
                         config_builder_map[config_type] = "UNKNOWN"
 
-                    # Check for ambiguity
-                    if (
-                        len(candidates) > 1
-                        and abs(
-                            candidates[0]["confidence"] - candidates[1]["confidence"]
-                        )
-                        < 0.1
-                    ):
-                        ambiguous_resolutions.append(
-                            f"{node} has {len(candidates)} similar candidates"
-                        )
-
                     # Add recommendations for low confidence
                     if confidence < 0.8:
                         recommendations.append(
-                            f"Consider renaming '{node}' for better matching"
+                            f"Consider renaming '{node}' for better matching "
+                            f"(confidence {confidence:.2f})"
                         )
                 else:
                     node_config_map[node] = "UNRESOLVED"
                     resolution_confidence[node] = 0.0
+                    recommendations.append(
+                        f"Node '{node}' did not resolve to any config — add an explicit "
+                        f"config key or metadata.config_types entry."
+                    )
                     recommendations.append(f"Add configuration for node '{node}'")
 
             preview = ResolutionPreview(
@@ -519,12 +517,15 @@ class PipelineDAGCompiler:
         try:
             self.logger.info(f"Compiling DAG with {len(dag.nodes)} nodes to pipeline")
 
-            # Reuse our create_template method but enforce skip_validation=True for performance
-            # as the validation is typically done separately before compilation
+            # Reuse create_template. Default to skip_validation=True for performance (validation is
+            # typically run separately via compile_with_report / validate_dag_compatibility), BUT
+            # honor an explicit caller override instead of forcibly overriding it — a caller that
+            # asks for skip_validation=False must get the alignment engine run before assembly
+            # (deep dive 2026-07-03, T4). Note: config RESOLUTION is now strict regardless (it raises
+            # on any unresolved/misresolved node), so skipping validation no longer means silently
+            # accepting a bad config map — it only skips the separate alignment layer.
             template_kwargs = {**self.template_kwargs, **kwargs}
-            template_kwargs["skip_validation"] = (
-                True  # Skip validation for performance during direct compilation
-            )
+            template_kwargs.setdefault("skip_validation", True)
 
             template = self.create_template(dag, **template_kwargs)
 

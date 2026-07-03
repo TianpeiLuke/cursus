@@ -782,6 +782,18 @@ class StepInterface(BaseModel):
                 data["patterns"] = _deep_merge(
                     data.get("patterns") or {}, variant["patterns"]
                 )
+        elif job_type and variants:
+            # A job_type was requested but this step declares variants and none matches. Silently
+            # using the base spec is a real correctness hazard: variants routinely tighten the base
+            # (e.g. RiskTableMapping's variants flip model_artifacts_input from required=false to
+            # required=true), so the base would drop a required dependency and the resolver would
+            # never wire that edge — a structurally wrong step with no signal (deep dive 2026-07-03,
+            # T6). Fail loud. (Gated on `variants` being non-empty so a variant-less step whose
+            # config still carries a job_type is unaffected.)
+            raise ValueError(
+                f"Unknown job_type {job_type!r} for step "
+                f"{data.get('step_type', '<unknown>')!r}; declared variants: {sorted(variants)}"
+            )
         return cls(**data)
 
     @model_validator(mode="after")

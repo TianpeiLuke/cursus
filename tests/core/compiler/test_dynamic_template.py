@@ -328,32 +328,42 @@ class TestDynamicPipelineTemplate:
         mock_load_configs.return_value = configs
         mock_template_load_configs.return_value = configs
 
-        # Setup config resolver mock
+        # Setup config resolver mock. preview_resolution returns a fixed-shape dict whose
+        # node_resolution maps node -> {config_type, confidence, method, job_type} (NOT
+        # {node: [candidates]}).
         preview_data = {
-            "data_loading": [
-                {
+            "node_resolution": {
+                "data_loading": {
                     "config_type": "CradleDataLoadingConfig",
                     "confidence": 0.95,
                     "method": "direct_name",
                     "job_type": "training",
-                }
-            ],
-            "preprocessing": [
-                {
+                },
+                "preprocessing": {
                     "config_type": "TabularPreprocessingConfig",
                     "confidence": 0.85,
                     "method": "job_type",
                     "job_type": "training",
-                }
-            ],
-            "training": [
-                {
+                },
+                "training": {
                     "config_type": "XGBoostTrainingConfig",
                     "confidence": 0.75,
                     "method": "pattern",
                     "job_type": "training",
-                }
-            ],
+                },
+            },
+            "resolution_confidence": {
+                "data_loading": 0.95,
+                "preprocessing": 0.85,
+                "training": 0.75,
+            },
+            "node_config_map": {
+                "data_loading": "CradleDataLoadingConfig",
+                "preprocessing": "TabularPreprocessingConfig",
+                "training": "XGBoostTrainingConfig",
+            },
+            "metadata_mapping": {},
+            "recommendations": [],
         }
         self.mock_config_resolver.preview_resolution.return_value = preview_data
 
@@ -383,17 +393,16 @@ class TestDynamicPipelineTemplate:
         assert preview["nodes"] == 3
         assert len(preview["resolutions"]) == 3
 
-        # Check individual node resolutions
+        # Check individual node resolutions (new fixed-shape: node_resolution[node] -> dict)
         for node in ["data_loading", "preprocessing", "training"]:
             assert node in preview["resolutions"]
             node_preview = preview["resolutions"][node]
 
-            expected_data = preview_data[node][0]
+            expected_data = preview_data["node_resolution"][node]
             assert node_preview["config_type"] == expected_data["config_type"]
             assert node_preview["confidence"] == expected_data["confidence"]
             assert node_preview["method"] == expected_data["method"]
             assert node_preview["job_type"] == expected_data["job_type"]
-            assert node_preview["alternatives"] == 0  # Each node has only one candidate
 
     @patch.object(PipelineTemplateBase, "_load_configs")
     @patch("cursus.steps.configs.utils.detect_config_classes_from_json")
