@@ -1,0 +1,144 @@
+step_type: TSATraining
+node_type: internal
+registry:
+  sagemaker_step_type: Training
+  description: TSA (Temporal Sequence Attention) model training step for PyTorch-based temporal attention models
+patterns:
+  direct_input_keys: [input_path]
+compute:
+  kind: estimator
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
+contract:
+  entry_point: tsa_training.py
+  inputs:
+    input_path:
+      path: /opt/ml/input/data
+      required: true
+    hyperparameters_s3_uri:
+      path: /opt/ml/code/hyperparams
+      required: false
+  outputs:
+    model_output:
+      path: /opt/ml/model
+    evaluation_output:
+      path: /opt/ml/output/data
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      LOCAL_RANK: '-1'
+      REGION: ''
+      USE_SECURE_PYPI: 'true'
+      USE_AMP: 'true'
+      GRADIENT_ACCUMULATION_STEPS: '1'
+      MAX_GRAD_NORM: '1.0'
+      CHECKPOINT_FREQ: '20'
+      USE_DISTRIBUTED_TRAINING: 'false'
+      MAX_RUNTIME_SECONDS: '259200'
+  framework_requirements:
+    torch: '>=1.10.0'
+    numpy: '>=1.19.0'
+    pandas: '>=1.2.0'
+    matplotlib: '>=3.0.0'
+    pydantic: '>=2.0.0,<3.0.0'
+  description: "\n    TSA (Temporal Sequence Attention) training script for AFN Return\
+    \ Kickout model that:\n    1. Loads pre-processed training data from TSA preprocessing\
+    \ output (4 numpy arrays)\n    2. Builds temporal attention-based neural network\
+    \ model (OrderFeatureAttentionClassifier)\n    3. Supports distributed training\
+    \ with PyTorch DDP (DistributedDataParallel)\n    4. Trains model with configurable\
+    \ hyperparameters including focal loss support\n    5. Implements OneCycleLR learning\
+    \ rate scheduling\n    6. Saves training checkpoints periodically\n    7. Generates\
+    \ training loss plots for monitoring\n    8. Saves trained model with all artifacts\
+    \ following standard pattern (model.tar.gz)\n    9. Supports region-specific hyperparameters\
+    \ (NA, EU, FE) via REGION environment variable\n    "
+spec:
+  dependencies:
+    input_path:
+      type: training_data
+      required: true
+      compatible_sources:
+      - TSAPreprocessing
+      - TemporalSequenceNormalization
+      - TemporalFeatureEngineering
+      - TabularPreprocessing
+      - ProcessingStep
+      - DataLoad
+      semantic_keywords:
+      - data
+      - input
+      - training
+      - dataset
+      - temporal
+      - sequence
+      - train
+      - numpy
+      - arrays
+      - tsa
+      - preprocessed
+      - cid
+      - customer
+      data_type: S3Uri
+      description: "Training dataset S3 location from TSA preprocessing with train/\
+        \ and validation/ subdirectories, each containing 4 numpy arrays: {prefix}_cid_X_seq_cat,\
+        \ {prefix}_cid_X_seq_num, {prefix}_X_num, {prefix}_Y (prefix is 'train' or\
+        \ 'validation')"
+    hyperparameters_s3_uri:
+      type: hyperparameters
+      required: false
+      compatible_sources:
+      - HyperparameterPrep
+      - ProcessingStep
+      semantic_keywords:
+      - config
+      - params
+      - hyperparameters
+      - settings
+      - hyperparams
+      - tsa
+      - attention
+      - region
+      - amp
+      - mixed_precision
+      - gradient_accumulation
+      - performance
+      - optimization
+      - gpu
+      - distributed
+      data_type: S3Uri
+      description: 'S3 URI containing hyperparameters configuration files: hyperparameters.json
+        (default) and optional hyperparameters_{REGION}.json (NA, EU, FE) for region-specific
+        configs'
+  outputs:
+    model_output:
+      type: model_artifacts
+      property_path: properties.ModelArtifacts.S3ModelArtifacts
+      aliases:
+      - ModelOutputPath
+      - ModelArtifacts
+      - model_data
+      - output_path
+      - model_input
+      - model_artifacts_input
+      - tsa_model
+      - pytorch_model
+      semantic_keywords: []
+      data_type: S3Uri
+      description: 'Trained TSA PyTorch model artifacts (model.tar.gz containing:
+        model.pt, model_artifacts.pth, hyperparameters.json, feature_columns.txt)'
+    evaluation_output:
+      type: processing_output
+      property_path: properties.OutputDataConfig.S3OutputPath
+      aliases:
+      - evaluation_data
+      - eval_data
+      - training_output
+      - checkpoint_output
+      - training_artifacts
+      - loss_plots
+      - data_output
+      semantic_keywords: []
+      data_type: S3Uri
+      description: Training evaluation results including checkpoints, loss plots, and
+        success markers

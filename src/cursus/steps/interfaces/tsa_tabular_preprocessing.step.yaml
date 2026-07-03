@@ -1,0 +1,163 @@
+step_type: TSATabularPreprocessing
+node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: TSA-specific tabular preprocessing with explicit output declarations for processed_data and preprocessor artifacts
+patterns:
+  step_assembly: step_args
+  include_job_type_in_path: true
+  direct_input_keys: [DATA, METADATA, SIGNATURE]
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  framework_version_default: 2.1.0
+  py_version_field: py_version
+contract:
+  entry_point: tsa_tabular_preprocessing.py
+  inputs:
+    DATA:
+      path: /opt/ml/processing/input/data
+      required: true
+    DATA_SECONDARY:
+      path: /opt/ml/processing/input/data_secondary
+      required: false
+    SIGNATURE:
+      path: /opt/ml/processing/input/signature
+      required: false
+  outputs:
+    tsa_processed_data:
+      path: /opt/ml/processing/output/processed_data
+    preprocessor:
+      path: /opt/ml/processing/output/preprocessor
+  arguments: {}
+  job_arguments:
+    - flag: --job_type
+      source: job_type
+    - flag: --label-field
+      source: tsa_label_field
+    - flag: --id-fields
+      source: tsa_id_fields
+    - flag: --date-field
+      source: tsa_date_field
+    - flag: --preprocessor-output-path
+      source: preprocessor_output_path
+  env_vars:
+    required: []
+    optional:
+      TSA_LABEL_FIELD: ''
+      TSA_ID_FIELDS: ''
+      TSA_DATE_FIELD: ''
+      OUTPUT_FORMAT: CSV
+      MAX_WORKERS: '0'
+      BATCH_SIZE: '5'
+      OPTIMIZE_MEMORY: 'true'
+      STREAMING_BATCH_SIZE: '0'
+      ENABLE_TRUE_STREAMING: 'false'
+      TRAIN_RATIO: '0.7'
+      TEST_VAL_RATIO: '0.5'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+    scikit-learn: '>=1.0.0'
+  description: >
+    TSA tabular preprocessing script that combines data shards, loads column
+    signature, applies TSA-domain feature engineering (label encoding, ID field
+    handling, date-based feature extraction), splits data into train/test/val,
+    serialises the fitted sklearn preprocessor pipeline to preprocessor.pkl,
+    and outputs both processed CSV and the preprocessor artifact.
+    Supports streaming mode for large datasets.
+spec:
+  dependencies:
+    DATA:
+      type: processing_output
+      required: true
+      compatible_sources:
+        - CradleDataLoading
+        - DummyDataLoading
+        - RedshiftDataLoading
+        - DataLoad
+        - ProcessingStep
+        - BedrockProcessing
+        - StratifiedSampling
+      semantic_keywords:
+        - data
+        - input
+        - raw
+        - dataset
+        - source
+        - tabular
+        - training
+        - validation
+        - testing
+        - calibration
+        - tsa
+        - travel
+        - spend
+    DATA_SECONDARY:
+      type: processing_output
+      required: false
+      compatible_sources:
+        - CradleDataLoading
+        - DummyDataLoading
+        - RedshiftDataLoading
+        - DataLoad
+        - ProcessingStep
+        - BedrockProcessing
+        - StratifiedSampling
+      semantic_keywords:
+        - data
+        - secondary
+        - additional
+        - supplementary
+    SIGNATURE:
+      type: processing_output
+      required: false
+      compatible_sources:
+        - CradleDataLoading
+        - DummyDataLoading
+      semantic_keywords:
+        - signature
+        - schema
+        - columns
+        - column_names
+        - metadata
+        - header
+  outputs:
+    tsa_processed_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['tsa_processed_data'].S3Output.S3Uri
+      semantic_keywords:
+        - tsa_processed
+        - tsa_features
+        - tsa_training_data
+        - processed
+        - features
+        - training_data
+        - model_input_data
+      aliases:
+        - tsa_input_path
+        - tsa_training_data
+        - tsa_model_input_data
+        - tsa_processed_data
+        - processed_data
+        - input_data
+        - training_data
+      data_type: S3Uri
+    preprocessor:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['preprocessor'].S3Output.S3Uri
+      semantic_keywords:
+        - preprocessor
+        - fitted_preprocessor
+        - sklearn_pipeline
+        - feature_transformer
+        - scaler
+        - encoder
+        - tsa_preprocessor
+      aliases:
+        - fitted_preprocessor
+        - preprocessor_artifact
+        - sklearn_preprocessor
+        - tsa_fitted_preprocessor
+      data_type: S3Uri

@@ -1,0 +1,179 @@
+step_type: TSAPreprocessing
+node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: TSA (Temporal Sequence Analysis) data preprocessing step that performs sequence processing with feature transformation and scaling for fraud detection models
+patterns:
+  step_assembly: step_args
+  include_job_type_in_path: true
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
+contract:
+  entry_point: tsa_preprocessing.py
+  inputs:
+    artifacts:
+      path: /opt/ml/processing/input/code/artifacts
+      required: false
+    processed_data:
+      path: /opt/ml/processing/input/data
+      required: true
+    preprocessor:
+      path: /opt/ml/processing/input/preprocessor
+      required: false
+  outputs:
+    tsa_processed_data:
+      path: /opt/ml/processing/output
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      REGION: na
+      TAG: is_abusive_mdr
+      TAG2: is_flr
+      TARGET_POSITIVE_RATE: '0.2'
+      TIME_WINDOW_TRAIN: '240'
+      TIME_WINDOW_CALIB: '150'
+      TIME_WINDOW_VALI: '90'
+      AMOUNT_FIELD: concamt
+      PREPROCESSOR_PATH: /opt/ml/processing/input/preprocessor/preprocessor.pkl
+      TRAINING_PREPROCESSOR_PATH: /opt/ml/processing/input/training_preprocessor
+      ENABLE_TSA_STREAMING: 'false'
+      TSA_STREAMING_BATCH_SIZE: '10'
+      VALIDATION_SPLIT_RATIO: '0.1'
+  framework_requirements:
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+  description: >
+    TSA preprocessing script that performs CID sequence processing for fraud
+    detection. It loads model artifacts (preprocessor, categorical mappings,
+    default values, Python modules), loads and combines data from tabular
+    preprocessing output, processes Customer ID (CID) sequences, applies feature
+    transformations, scaling, and categorical encoding, handles time windowing
+    and downsampling for different dataset types, and outputs numpy arrays for
+    TSA model training. Inputs are artifacts (model artifacts read from
+    /opt/ml/processing/input/code/artifacts), preprocessor (optional
+    training-fitted scaling parameters, used via PREPROCESSOR_PATH when
+    provided), and processed_data (tabular preprocessing output with
+    train/test/val splits). Output is tsa_processed_data (5 numpy arrays per
+    dataset - CID categorical sequences, CID numerical sequences, static
+    features, labels, amounts). Supports streaming mode (ENABLE_TSA_STREAMING)
+    for memory-efficient processing of large datasets.
+spec:
+  dependencies:
+    artifacts:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - CradleDataLoading
+      - DummyDataLoading
+      - DataLoad
+      - ProcessingStep
+      - TabularPreprocessing
+      semantic_keywords:
+      - artifacts
+      - config
+      - configuration
+      - preprocessor
+      - categorical
+      - mappings
+      - parameters
+      - params
+      - transformer
+      - scaling
+      - encoding
+      - feature_config
+      - model_artifacts
+      data_type: S3Uri
+      description: >
+        Model artifacts for TSA preprocessing including preprocessor parameters,
+        categorical mappings, default values, and feature definitions. Loaded
+        from local code at /opt/ml/processing/input/code, not from external step
+    preprocessor:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - TSATabularPreprocessing
+      - ProcessingStep
+      semantic_keywords:
+      - preprocessor
+      - scaling
+      - parameters
+      - training_preprocessor
+      - fit_preprocessor
+      - scaler
+      - normalization
+      - standardization
+      data_type: S3Uri
+      description: >
+        Optional preprocessor from TSA tabular preprocessing training step.
+        Contains scaling parameters (seq_num_scale_, seq_num_min_,
+        num_static_scale_, num_static_min_) fitted on actual training data. If
+        provided, script uses this via PREPROCESSOR_PATH environment variable
+        instead of the preprocessor in artifacts directory. Enables
+        better-calibrated feature scaling for TSA model training
+    processed_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - TSATabularPreprocessing
+      - CradleDataLoading
+      - DummyDataLoading
+      - DataLoad
+      - ProcessingStep
+      semantic_keywords:
+      - data
+      - input
+      - raw
+      - dataset
+      - source
+      - sequence
+      - temporal
+      - orders
+      - transactions
+      - cid
+      - customer
+      - training
+      - train
+      - validation
+      - val
+      - testing
+      - test
+      - calibration
+      - calib
+      data_type: S3Uri
+      description: >
+        Tabular preprocessing output with train/test/val splits. For training
+        jobs all splits are loaded and combined. For other jobs only the
+        relevant split is loaded. Contains order data with CID sequences
+  outputs:
+    tsa_processed_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['tsa_processed_data'].S3Output.S3Uri
+      aliases:
+      - train_dir
+      - training_data
+      - model_input_data
+      - input_data
+      - input_path
+      - validation_data
+      - testing_data
+      - calibration_data
+      - tsa_data
+      - sequence_data
+      - processed_sequence_data
+      - numpy_arrays
+      - processed_training_data
+      - processed_validation_data
+      - processed_testing_data
+      - processed_calibration_data
+      semantic_keywords: []
+      data_type: S3Uri
+      description: >
+        Processed TSA data in numpy array format. Contains 5 arrays - CID
+        categorical sequences, CID numerical sequences, static features, labels,
+        and amounts. Compatible with all job types (training, validation,
+        testing, calibration)

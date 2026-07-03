@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-07-03
+
+### Added
+
+- **Seven XGBoost-MT + TSA step types (new) — `steps/interfaces/{xgboost_mt_training, xgboost_mt_model_eval, tsa_preprocessing, tsa_tabular_preprocessing, tsa_training, tsa_model_eval, tsa_model_calibration}.step.yaml` + paired `configs/config_*_step.py`.** Brings previously project-only step types into the catalog as native steps (**56 registry rows**): `XgboostMtTraining` / `XgboostMtModelEval` (multi-task XGBoost) and the TSA family — `TSAPreprocessing`, `TSATabularPreprocessing`, `TSATraining`, `TSAModelEval`, `TSAModelCalibration`. Each is a Design-B step (one `.step.yaml` interface + one `<StepType>Config`; builder synthesized at runtime, registry derived by construction). `XgboostMtTraining`/`TSATraining` are `Training`, the rest `Processing`. No scripts ship in the package — these are model-dependent / project-provided steps whose scripts live in the consuming project's `dockers/`; the `.step.yaml` + config make them discoverable, resolvable, and constructible so a project supplies only the script. Configs use relative imports only, so they resolve unchanged. Verified: `cursus validate step-interface` passes (0 errors) on all seven, all seven auto-derive into `STEP_NAMES` with the correct `config_class` + `sagemaker_step_type`, and the registry golden-snapshot was re-based (delta = exactly the seven new rows).
+- **`hyperparameters_xgboost_mt.py` (new) — `steps/hyperparams/`.** The multi-task XGBoost hyperparameter model (a `ModelHyperparameters` subclass) that `XgboostMtTraining` relies on; the TSA hyperparameter models (`hyperparameters_tsa.py`, `hyperparameters_dual_sequence_tsa.py`) already shipped.
+
 ## [2.3.0] - 2026-07-01
 
 ### Added

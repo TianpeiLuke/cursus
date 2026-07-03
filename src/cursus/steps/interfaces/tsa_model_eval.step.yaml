@@ -1,0 +1,304 @@
+step_type: TSAModelEval
+node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: TSA (Temporal Sequence Analysis) model evaluation step for dual-task PyTorch models with comprehensive metrics and visualizations
+patterns:
+  step_assembly: step_args
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
+contract:
+  entry_point: tsa_model_eval.py
+  inputs:
+    model_input:
+      path: /opt/ml/processing/input/model
+      required: true
+    processed_data:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+  outputs:
+    eval_output:
+      path: /opt/ml/processing/output/eval
+    metrics_output:
+      path: /opt/ml/processing/output/metrics
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      DATA_VERSION: v0
+      ID_FIELD: id
+      LABEL_FIELD: label
+      USE_SECURE_PYPI: 'false'
+      LOCAL_RANK: '-1'
+      ENABLE_EVAL_STREAMING: 'false'
+      ENABLE_AMP: 'true'
+      NUM_WORKERS: '4'
+      ENABLE_CPU_OPTIMIZATION: 'true'
+      EVAL_BATCH_SIZE: ''
+  framework_requirements:
+    torch: '>=1.10.0'
+    numpy: '>=1.21.0'
+    scipy: '>=1.7.0'
+    pandas: '>=1.3.0'
+    scikit-learn: '>=1.0.0'
+    matplotlib: '>=3.3.0'
+  description: |2
+
+    TSA model evaluation script that:
+    1. Loads trained TSA PyTorch model and configuration from model directory
+    2. Loads and processes evaluation data from numpy arrays (sequences + static features)
+    3. Generates predictions for dual-task learning objectives
+    4. Computes comprehensive performance metrics with business impact analysis
+    5. Creates visualizations comparing task performance
+    6. Saves predictions and metrics to separate output directories
+
+    Input Structure:
+    - /opt/ml/processing/input/model: Model artifacts directory containing:
+      - model.pth or model.pt: Trained PyTorch model state dict
+      - hyperparameters.json: Complete model configuration and hyperparameters
+      - Contains model architecture parameters (n_cat_features, n_num_features, etc.)
+    - /opt/ml/processing/input/eval_data: Evaluation data directory containing numpy arrays:
+      - {prefix}_X_num_{version}.npy: Static numerical features
+      - {prefix}_cid_X_seq_num_{version}.npy: Customer ID numerical sequences
+      - {prefix}_cid_X_seq_cat_{version}.npy: Customer ID categorical sequences
+      - {prefix}_Y_{version}.npy: Multi-column labels and amounts
+        * Format: [task1_label, task2_label, ..., amount]
+        * Last column: transaction amounts for dollar-weighted metrics
+        * Label columns: binary labels (0/1) for each task
+      - Prefix can be empty or "cid_" (script handles both)
+
+    Standard Output Structure:
+    - /opt/ml/processing/output/eval: Model predictions (numpy arrays)
+      - scores1.npy: Task 1 prediction scores (probabilities)
+      - labels1.npy: Task 1 true labels
+      - scores2.npy: Task 2 prediction scores (probabilities)
+      - labels2.npy: Task 2 true labels
+      - amounts.npy: Transaction amounts for business metrics
+    - /opt/ml/processing/output/metrics: Performance metrics and visualizations
+      - {test_name}_metrics.json: Comprehensive performance metrics
+      - {test_name}_report.txt: Human-readable metrics summary
+      - {test_name}_evaluation.png: Visualization comparing both tasks
+      - _SUCCESS: Success marker file (created on successful completion)
+
+    Metrics Computed (Dual-Task Performance):
+
+    Task 1 Metrics (Primary Task):
+    - Binary classification metrics:
+      * auc1: Area under ROC curve
+      * precision1: Precision score
+      * recall1: Recall score
+      * dollar_recall1: Dollar-weighted recall using transaction amounts
+
+    Task 2 Metrics (Secondary Task):
+    - Binary classification metrics:
+      * auc2: Area under ROC curve
+      * precision2: Precision score
+      * recall2: Recall score
+      * dollar_recall2: Dollar-weighted recall using transaction amounts
+
+    Aggregate Metrics:
+    - auc_avg: Average AUC across both tasks
+    - loss: Average evaluation loss
+
+    Visualization Components:
+    - AUC Comparison: Histogram comparing Task 1 vs Task 2 AUC scores
+    - Recall Comparison: Bar chart comparing recall metrics
+    - Precision Comparison: Bar chart comparing precision metrics
+    - Dollar Recall Comparison: Bar chart comparing business impact metrics
+
+    Required Environment Variables: None (all have defaults)
+
+    Optional Environment Variables:
+    - DATA_VERSION: Version suffix for numpy array files (default: "v0")
+      * Locates files like X_num_v0.npy, Y_v0.npy
+    - ID_FIELD: Name of ID field for output formatting (default: "id")
+    - LABEL_FIELD: Name of label field for output formatting (default: "label")
+    - USE_SECURE_PYPI: Use secure CodeArtifact PyPI during setup (default: "false")
+    - LOCAL_RANK: Distributed training rank for multi-GPU evaluation (default: "-1")
+      * Set to 0+ for distributed evaluation
+      * -1 for single-GPU or CPU evaluation
+    - ENABLE_EVAL_STREAMING: Enable two-pass streaming evaluation mode (default: "false")
+      * Set to "true" for streaming mode with 30-40% speedup and 50% memory savings
+      * Uses memory-mapped files for incremental prediction storage
+      * Pass 1: Stream predictions to disk during inference
+      * Pass 2: Load predictions from disk for metrics computation
+      * Benefits: Faster evaluation, lower memory, handles 2-3x larger datasets
+      * Maintains 100% metric accuracy (identical results to non-streaming)
+    - ENABLE_AMP: Enable mixed precision (AMP) for GPU inference (default: "true")
+      * Automatic on CUDA devices, provides 2-3x speedup
+      * Uses torch.cuda.amp.autocast() for faster inference
+      * No accuracy loss - predictions remain identical
+    - NUM_WORKERS: Number of parallel data loading workers (default: "4")
+      * Set to 0 to disable parallel loading (single-threaded)
+      * 4 workers recommended for production (30-50% faster I/O)
+      * 2 workers for testing/debugging
+    - ENABLE_CPU_OPTIMIZATION: Enable CPU-specific optimizations (default: "true")
+      * Provides 2-5x faster evaluation on CPU-only systems
+      * Automatically detects CPU and applies optimizations:
+        · Intel MKL threading (20-30% speedup): Optimizes thread count and enables MKL-DNN
+        · TorchScript JIT compilation (30-50% speedup): Compiles model to optimized machine code
+        · Optimized batch sizing (10-20% speedup): Reduces batch size to 64 for better CPU cache utilization
+        · CPU-specific data loading (5-10% speedup): Disables pin_memory for faster CPU data transfer
+      * Set to "false" to disable for baseline comparison or troubleshooting
+      * Has no effect on GPU systems (GPU optimizations used instead)
+      * Graceful fallback if any optimization fails
+    - EVAL_BATCH_SIZE: Override batch_size for evaluation (default: auto-detect or use hyperparameters.json)
+      * Independent from training batch_size - allows larger batches for faster evaluation
+      * Auto-detects optimal size based on instance type if not specified:
+        · ml.p3.16xlarge (8x V100): 512 per GPU, effective 4096 with DDP
+        · ml.p3.8xlarge (4x V100): 512 per GPU, effective 2048 with DDP
+        · ml.p3.2xlarge (1x V100): 256-512
+        · ml.g5.16xlarge (1x A10G): 256-512
+        · ml.g4dn.xlarge (1x T4): 128-256
+        · CPU instances: 64-128 (cache-friendly)
+      * Falls back to hyperparameters.json batch_size if not set (typically 2 for training)
+      * Larger batches dramatically reduce overhead: 512 vs 2 = 256x fewer iterations
+      * Performance impact: 18-36x faster evaluation for large datasets (1M+ samples)
+      * Set explicitly to override auto-detection (e.g., "512", "256", "128")
+      * Leave empty ("") to use auto-detection or hyperparameters.json fallback
+
+    Arguments:
+    - --job_type: Type of evaluation job to perform (e.g., "evaluation")
+
+    Model Architecture Support:
+    - OrderFeatureAttentionClassifier: Temporal attention model for sequence analysis
+    - Dual-task learning with shared representations
+    - Supports categorical and numerical sequence features
+    - Static feature integration for enhanced predictions
+
+    Data Loading Details:
+    - Memory-mapped numpy arrays (mmap_mode="r+") for efficient large dataset handling
+    - Flexible file naming: supports both "X_num" and "cid_X_num" prefixes
+    - Label extraction: First N-1 columns are task labels, last column is amounts
+    - Empty string amounts converted to 0.0
+    - Batch processing with configurable batch_size from hyperparameters
+
+    Distributed Evaluation Support:
+    - Multi-GPU evaluation via DistributedDataParallel (DDP)
+    - Automatic result aggregation across processes
+    - Synchronized batch normalization for consistency
+    - Results saved only from rank 0 to avoid conflicts
+
+    Performance Considerations:
+    - GPU acceleration when CUDA available
+    - Memory-mapped arrays for handling large datasets
+    - Efficient batch processing with DataLoader
+    - Progress logging every 100 batches
+    - **Streaming mode optimization** (ENABLE_EVAL_STREAMING=true):
+      * Two-pass evaluation: inference → disk → metrics
+      * 30-40% faster evaluation with 50% lower memory
+      * Handles 2-3x larger evaluation datasets
+      * Maintains 100% metric accuracy
+      * Creates temporary streaming_temp/ directory in eval_output
+      * Recommended for large datasets (>1M samples) or memory-constrained environments
+    - **Mixed Precision (AMP) optimization** (ENABLE_AMP=true, default enabled):
+      * Automatic mixed precision for 2-3x faster GPU inference
+      * Enabled by default on CUDA devices
+      * Uses torch.cuda.amp.autocast() during forward pass
+      * Zero accuracy loss - identical predictions to FP32
+      * Can be disabled by setting ENABLE_AMP=false
+    - **Parallel data loading** (NUM_WORKERS=4, default):
+      * 4 parallel workers for faster data I/O (30-50% speedup)
+      * Includes pinned memory for faster GPU transfer
+      * Persistent workers to avoid startup overhead
+      * Prefetching for better pipeline utilization
+      * Set NUM_WORKERS=0 to disable for debugging
+
+    Error Handling:
+    - Validates model file existence (.pth or .pt)
+    - Validates evaluation data directory existence
+    - Comprehensive error logging with stack traces
+    - Creates _FAILURE marker on errors for pipeline monitoring
+    - Exits with code 1 on failure, 0 on success
+
+    Integration Notes:
+    - Output structure matches PyTorch model eval contract
+    - Predictions saved to eval_output (separate from metrics)
+    - Metrics and visualizations saved to metrics_output
+    - Success/failure markers enable downstream monitoring
+    - Compatible with Cursus pipeline orchestration
+
+    The script uses the same contract signature as PyTorch model eval:
+    - main(input_paths, output_paths, environ_vars, job_args)
+    - Loads config and model internally (not passed as parameters)
+    - Returns None (void function)
+    - All logging via CloudWatch-compatible logger
+spec:
+  dependencies:
+    model_input:
+      type: model_artifacts
+      required: true
+      compatible_sources:
+      - TSATraining
+      - PyTorchTraining
+      - DummyTraining
+      - PyTorchModel
+      semantic_keywords:
+      - model
+      - artifacts
+      - trained
+      - pytorch
+      - tsa
+      - temporal
+      - sequence
+      - output
+      - ModelArtifacts
+      - training
+      data_type: S3Uri
+      description: Trained TSA PyTorch model artifacts to be evaluated (includes hyperparameters.json)
+    processed_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TSAPreprocessing
+      - TabularPreprocessing
+      - ProcessingStep
+      semantic_keywords:
+      - data
+      - evaluation
+      - eval
+      - validation
+      - test
+      - calibration
+      - processed
+      - numpy
+      - arrays
+      - sequence
+      - temporal
+      - tsa
+      - streaming
+      - performance
+      - optimization
+      - cpu
+      - threading
+      - torchscript
+      - jit
+      - mkl
+      - inference
+      - batch_size
+      data_type: S3Uri
+      description: Evaluation dataset for TSA model assessment (numpy arrays with sequences and static features)
+  outputs:
+    eval_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri
+      aliases:
+      - inference_output
+      - predictions
+      - model_predictions
+      - inference_results
+      - prediction_data
+      - evaluation_data
+      semantic_keywords: []
+      data_type: S3Uri
+      description: 'TSA model evaluation results including predictions (numpy arrays: scores1/2, labels1/2, amounts)'
+    metrics_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+      aliases: []
+      semantic_keywords: []
+      data_type: S3Uri
+      description: TSA model evaluation metrics (dual-task AUC, precision, recall, dollar recall, visualizations)

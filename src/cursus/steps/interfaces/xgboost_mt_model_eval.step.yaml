@@ -1,0 +1,113 @@
+step_type: XgboostMtModelEval
+node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: XGBoost multi-task model evaluation step
+patterns:
+  step_assembly: step_args
+  include_job_type_in_path: false
+compute:
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
+contract:
+  entry_point: xgboost_mt_model_eval.py
+  inputs:
+    model_input:
+      path: /opt/ml/processing/input/model
+      required: true
+    processed_data:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+  outputs:
+    eval_output:
+      path: /opt/ml/processing/output/eval
+    metrics_output:
+      path: /opt/ml/processing/output/metrics
+  arguments: {}
+  env_vars:
+    required:
+    - ID_FIELD
+    - TASK_LABEL_NAMES
+    optional:
+      GENERATE_PLOTS: 'true'
+      COMPARISON_MODE: 'false'
+      STATISTICAL_TESTS: 'true'
+  framework_requirements:
+    pandas: '>=1.2.0,<2.0.0'
+    numpy: '>=1.21.0'
+    scikit-learn: '>=0.23.2,<1.0.0'
+    matplotlib: '>=3.0.0'
+  description: 'XgboostMt multi-task model evaluation. Generates per-task and aggregate
+    metrics with visualizations.
+
+    '
+spec:
+  dependencies:
+    model_input:
+      type: model_artifacts
+      required: true
+      compatible_sources:
+      - XgboostMtTraining
+      - XGBoostTraining
+      - XgboostMtModel
+      - XGBoostModel
+      - DummyTraining
+      semantic_keywords:
+      - model
+      - artifacts
+      - trained
+      - output
+      - ModelArtifacts
+      - multi-task
+      - multitask
+    processed_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - CradleDataLoading
+      - RiskTableMapping
+      - CurrencyConversion
+      - LabelRulesetExecution
+      - BedrockBatchProcessing
+      - BedrockProcessing
+      semantic_keywords:
+      - data
+      - evaluation
+      - calibration
+      - validation
+      - test
+      - processed
+      - multi-task
+      - multitask
+  outputs:
+    eval_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['eval_output'].S3Output.S3Uri
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - multi_task_predictions
+      aliases:
+      - inference_output
+      - predictions
+      - model_predictions
+      - inference_results
+      - prediction_data
+      - evaluation_data
+      - multi_task_predictions
+      - multitask_predictions
+      data_type: S3Uri
+    metrics_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+      semantic_keywords:
+      - metrics
+      - multi_task_metrics
+      - multitask_metrics
+      aliases:
+      - multi_task_metrics
+      - multitask_metrics
+      data_type: S3Uri

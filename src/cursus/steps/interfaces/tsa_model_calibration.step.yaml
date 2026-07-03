@@ -1,0 +1,316 @@
+step_type: TSAModelCalibration
+node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: TSA (Time Series Analysis) model calibration step using monotone B-spline calibration for converting raw prediction scores to well-calibrated probabilities for fraud detection
+patterns:
+  step_assembly: code
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
+  framework_version_default: 1.2-1
+contract:
+  entry_point: tsa_model_calibration.py
+  inputs:
+    evaluation_data:
+      path: /opt/ml/processing/input/eval_data
+      required: true
+    preprocessor_input:
+      path: /opt/ml/processing/input/preprocessor
+      required: true
+  outputs:
+    calibration_output:
+      path: /opt/ml/processing/output/calibration
+    metrics_output:
+      path: /opt/ml/processing/output/metrics
+    calibrated_data:
+      path: /opt/ml/processing/output/calibrated_data
+  arguments:
+    job-type: calibration
+  env_vars:
+    required:
+    - CALIBRATION_METHOD
+    - LABEL_FIELD
+    - SCORE_FIELD
+    optional:
+      BSPLINE_DEGREE: '3'
+      ADAPTIVE_KNOTS: 'True'
+      BASE_KNOTS: ''
+      MIN_RECORDS: '1000'
+      MIN_FRAUD: '10'
+      LAMBDA_SMOOTH: 1e-10
+      MAX_ITER: '1000'
+      TOLERANCE: 1e-6
+      MAX_COEF_THRESHOLD: 1e12
+      MIN_UNIQUE_VALUES: '10'
+      USE_SECURE_PYPI: 'false'
+  framework_requirements:
+    numpy: '>=1.21.0'
+    scipy: '>=1.7.0'
+    pandas: '>=1.3.0'
+    scikit-learn: '>=1.0.0'
+    matplotlib: '>=3.3.0'
+  description: "Contract for TSA model calibration processing step.\n\nThe TSA model calibration step\
+    \ implements monotone B-spline calibration specifically\nfor Time Series Analysis fraud detection\
+    \ models. It converts raw model prediction scores\ninto well-calibrated probabilities using constrained\
+    \ optimization, which is essential for\nrisk-based decision-making and reliable fraud detection thresholds.\n\
+    \nThis calibration method is based on the generic_rfuge.r approach and uses:\n- B-spline basis functions\
+    \ with adaptive knot placement\n- Monotonicity constraints to ensure score ordering preservation\n\
+    - Iterative reweighted least squares (IRLS) with quadratic programming\n- Emphasis on high-score regions\
+    \ (90th-100th percentile) for fraud detection\n\nInput Structure:\n- /opt/ml/processing/input/eval_data:\
+    \ Evaluation dataset with ground truth labels and model predictions\n  * Supports multiple formats:\
+    \ CSV, TSV, Parquet\n  * Can handle nested tarballs from SageMaker training job outputs\n  * Expected\
+    \ columns: label field (ground truth) and score field (raw predictions)\n\nOutput Structure:\n- /opt/ml/processing/output/calibration:\
+    \ Calibration model artifacts\n  * calibration_model.pkl: Pickled B-spline calibrator (for backward\
+    \ compatibility)\n  * tsa_bspline_calibrator.json: JSON format calibrator (for inspection)\n  * tsa_calibration_summary.json:\
+    \ Summary of calibration results\n- /opt/ml/processing/output/metrics: Calibration quality metrics\
+    \ and visualizations\n  * tsa_calibration_metrics.json: Comprehensive metrics (ECE, MCE, Brier score,\
+    \ AUC)\n  * tsa_reliability_diagram.png: Visual comparison of uncalibrated vs calibrated\n- /opt/ml/processing/output/calibrated_data:\
+    \ Dataset with calibrated probabilities\n  * Original format preserved (CSV/TSV/Parquet)\n  * New\
+    \ column: calibrated_{SCORE_FIELD}\n  * All original columns retained\n\nCommand-Line Arguments:\n\
+    - job-type: Determines data loading strategy\n  * \"training\": Uses nested tarball extraction for\
+    \ training job outputs\n  * \"calibration\"/\"validation\"/\"testing\": Uses standard data loading\n\
+    \nEnvironment Variables (Required):\n- CALIBRATION_METHOD: Calibration method to use (currently only\
+    \ \"bspline\" supported)\n- LABEL_FIELD: Name of the ground truth label column (e.g., \"is_abusive_mdr\"\
+    )\n- SCORE_FIELD: Name of the raw prediction score column (e.g., \"prob_class_1\")\n\nEnvironment\
+    \ Variables (Optional - B-spline Configuration):\n- BSPLINE_DEGREE: Degree of B-spline basis functions\
+    \ (default: 3 for cubic splines)\n- ADAPTIVE_KNOTS: Whether to use adaptive knot placement based on\
+    \ data size (default: True)\n- BASE_KNOTS: Fixed number of knots to use (overrides adaptive if set)\n\
+    \nEnvironment Variables (Optional - Quality Thresholds):\n- MIN_RECORDS: Minimum number of records\
+    \ required for calibration (default: 1000)\n- MIN_FRAUD: Minimum number of fraud cases required (default:\
+    \ 10)\n- MAX_COEF_THRESHOLD: Maximum acceptable coefficient magnitude (default: 1e12)\n- MIN_UNIQUE_VALUES:\
+    \ Minimum unique calibrated predictions required (default: 10)\n\nEnvironment Variables (Optional\
+    \ - Optimization Parameters):\n- LAMBDA_SMOOTH: Smoothness penalty for P-spline regularization (default:\
+    \ 1e-10)\n- MAX_ITER: Maximum iterations for IRLS optimization (default: 1000)\n- TOLERANCE: Convergence\
+    \ tolerance for coefficient updates (default: 1e-6)\n\nInfrastructure:\n- USE_SECURE_PYPI: Whether\
+    \ to use secure CodeArtifact PyPI for package installation (default: false)\n\nKey Features:\n- Monotone\
+    \ B-spline calibration preserves score ordering\n- Adaptive knot placement with emphasis on high-score\
+    \ regions\n- Format preservation for input/output data (CSV/TSV/Parquet)\n- Nested tarball support\
+    \ for SageMaker training job outputs\n- Comprehensive metrics: ECE, MCE, Brier score, AUC\n- Visual\
+    \ reliability diagrams for calibration quality assessment\n- Quality validation with automatic status\
+    \ determination\n\nCalibration Quality Metrics:\n- Expected Calibration Error (ECE): Average calibration\
+    \ error across bins\n- Maximum Calibration Error (MCE): Worst-case calibration error\n- Brier Score:\
+    \ Mean squared difference between predictions and outcomes\n- AUC-ROC: Area under receiver operating\
+    \ characteristic curve\n- Model MSE: Mean squared error of fitted B-spline\n- Coefficient magnitude:\
+    \ Maximum absolute coefficient value\n- Unique predictions: Number of distinct calibrated probabilities\n\
+    \nSuccess Criteria:\n- Convergence: IRLS optimization converges within MAX_ITER iterations\n- No NaN\
+    \ coefficients: All B-spline coefficients are finite\n- Sufficient unique values: At least MIN_UNIQUE_VALUES\
+    \ distinct predictions\n- MSE improvement: Model MSE better than baseline (mean prediction)\n- Coefficient\
+    \ stability: Maximum coefficient below MAX_COEF_THRESHOLD\n\nSupported Job Types:\n- training: Extracts\
+    \ data from nested tarballs (output.tar.gz -> val.tar.gz/test.tar.gz)\n- calibration: Standard data\
+    \ loading for dedicated calibration datasets\n- validation: Standard data loading for validation datasets\n\
+    - testing: Standard data loading for test datasets\n\nPerformance Optimizations:\nThe script includes\
+    \ transparent I/O optimizations that automatically improve performance\nwithout requiring any configuration\
+    \ changes:\n\n- PyArrow-based Parquet I/O:\n  * Uses PyArrow engine for Parquet files when available\
+    \ (30-50% faster loading)\n  * Writes Parquet with Snappy compression (40-60% smaller files, 20-30%\
+    \ faster)\n  * Automatic fallback to default pandas engine if PyArrow unavailable\n  * No configuration\
+    \ required - optimizations are transparent\n\n- Enhanced Logging:\n  * Tracks file sizes, row counts,\
+    \ and column counts during I/O operations\n  * Reports detected file formats and compression ratios\n\
+    \  * Provides visibility into I/O performance\n\n- Format Preservation:\n  * Input format automatically\
+    \ detected (CSV, TSV, or Parquet)\n  * Output saved in same format as input for consistency\n  * Parquet\
+    \ format recommended for best performance (2x faster, 60% smaller)\n\nExpected Performance:\n- Small\
+    \ datasets (<100K rows): 20-40% faster I/O\n- Medium datasets (1M rows): 30-50% faster I/O, 40-60%\
+    \ smaller files\n- Large datasets (>10M rows): 40-60% faster I/O, significant memory savings\n\nThe\
+    \ optimizations primarily benefit data I/O operations. Calibration optimization itself\n(B-spline\
+    \ fitting) remains CPU-bound and represents the main processing time. Overall\nspeedup for typical\
+    \ calibration workflows: ~30-40% faster end-to-end.\n"
+spec:
+  dependencies:
+    preprocessor_input:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - TabularPreprocessingTraining
+      - TSAPreprocessing
+      - TSAPreprocessingTraining
+      - TSATabularPreprocessingTraining
+      - DataPreprocessing
+      semantic_keywords:
+      - preprocessor
+      - preprocessing
+      - scaler
+      - normalization
+      - scaling
+      - minmax
+      - preprocessor_na
+      - preprocessor_eu
+      - tabular_preprocessing
+      - tsa_preprocessing
+      - feature_scaling
+      - data_preprocessing
+      data_type: S3Uri
+      description: Preprocessor artifacts (preprocessor_na.pkl or preprocessor_eu.pkl) from tabular preprocessing
+        step. Contains min-max scaling parameters for sequential and static features. Will be copied to
+        calibration output and included in the final model.tar.gz for inference.
+    evaluation_data:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TSATraining
+      - TSAModelEval
+      - PyTorchTraining
+      - PyTorchModelEval
+      - XGBoostTraining
+      - XGBoostModelEval
+      - LightGBMTraining
+      - LightGBMModelEval
+      - ModelEvaluation
+      - TrainingEvaluation
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - scores
+      - results
+      - model_output
+      - inference
+      - output_data
+      - prediction_results
+      - tsa
+      - temporal
+      - sequence
+      - fraud_detection
+      - training
+      - train
+      - training_evaluation
+      - train_predictions
+      - training_results
+      - validation
+      - val
+      - evaluate
+      - validation_evaluation
+      - val_predictions
+      - validation_results
+      - testing
+      - test
+      - testing_evaluation
+      - test_predictions
+      - testing_results
+      - calibration
+      - calib
+      - calibration_evaluation
+      - calib_predictions
+      - calibration_results
+      - eval_output
+      - metrics_output
+      data_type: S3Uri
+      description: 'Evaluation dataset with ground truth labels and raw model prediction scores. Supports
+        multiple formats (CSV, TSV, Parquet) and nested tarballs from SageMaker training jobs. Compatible
+        with all job types: training, validation, testing, and calibration.'
+  outputs:
+    calibration_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['calibration_output'].S3Output.S3Uri
+      aliases:
+      - calibration_model
+      - calibration_artifacts
+      - bspline_calibrator
+      - probability_calibration
+      - calibrator
+      - score_transformer
+      - probability_adjustment
+      - tsa_calibrator
+      - tsa_calibration_model
+      - tsa_bspline
+      - monotone_calibration
+      - training_calibration
+      - train_calibrator
+      - training_probability_calibration
+      - training_calibration_artifacts
+      - validation_calibration
+      - val_calibrator
+      - validation_probability_calibration
+      - validation_calibration_artifacts
+      - testing_calibration
+      - test_calibrator
+      - testing_probability_calibration
+      - testing_calibration_artifacts
+      - calibration_calibration
+      - calib_calibrator
+      - calibration_probability_calibration
+      - calibration_calibration_artifacts
+      semantic_keywords: []
+      data_type: S3Uri
+      description: TSA B-spline calibration model artifacts including pickled calibrator (calibration_model.pkl),
+        JSON format calibrator (tsa_bspline_calibrator.json), and summary (tsa_calibration_summary.json).
+        Compatible with all job types.
+    metrics_output:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['metrics_output'].S3Output.S3Uri
+      aliases:
+      - calibration_metrics
+      - reliability_metrics
+      - probability_metrics
+      - calibration_performance
+      - calibration_evaluation
+      - tsa_calibration_metrics
+      - tsa_reliability_metrics
+      - bspline_metrics
+      - ece_metrics
+      - mce_metrics
+      - brier_metrics
+      - reliability_diagram
+      - training_calibration_metrics
+      - training_reliability_metrics
+      - training_probability_metrics
+      - training_calibration_performance
+      - training_calibration_evaluation
+      - validation_calibration_metrics
+      - validation_reliability_metrics
+      - validation_probability_metrics
+      - validation_calibration_performance
+      - validation_calibration_evaluation
+      - testing_calibration_metrics
+      - testing_reliability_metrics
+      - testing_probability_metrics
+      - testing_calibration_performance
+      - testing_calibration_evaluation
+      - calibration_calibration_metrics
+      - calibration_reliability_metrics
+      - calibration_probability_metrics
+      - calibration_calibration_performance
+      - calibration_calibration_evaluation
+      semantic_keywords: []
+      data_type: S3Uri
+      description: TSA calibration quality metrics including ECE, MCE, Brier score, AUC-ROC, and reliability
+        diagrams (tsa_calibration_metrics.json, tsa_reliability_diagram.png). Compatible with all job
+        types.
+    calibrated_data:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['calibrated_data'].S3Output.S3Uri
+      aliases:
+      - calibrated_predictions
+      - calibrated_probabilities
+      - probability_scores
+      - adjusted_predictions
+      - calibrated_outputs
+      - tsa_calibrated_predictions
+      - tsa_calibrated_probabilities
+      - tsa_probability_scores
+      - bspline_predictions
+      - monotone_predictions
+      - training_calibrated_predictions
+      - training_calibrated_probabilities
+      - training_probability_scores
+      - training_adjusted_predictions
+      - training_calibrated_outputs
+      - validation_calibrated_predictions
+      - validation_calibrated_probabilities
+      - validation_probability_scores
+      - validation_adjusted_predictions
+      - validation_calibrated_outputs
+      - testing_calibrated_predictions
+      - testing_calibrated_probabilities
+      - testing_probability_scores
+      - testing_adjusted_predictions
+      - testing_calibrated_outputs
+      - calibration_calibrated_predictions
+      - calibration_calibrated_probabilities
+      - calibration_probability_scores
+      - calibration_adjusted_predictions
+      - calibration_calibrated_outputs
+      semantic_keywords: []
+      data_type: S3Uri
+      description: Dataset with calibrated probabilities added as new column (calibrated_{SCORE_FIELD}).
+        Original format preserved (CSV/TSV/Parquet), all original columns retained. Compatible with all
+        job types.

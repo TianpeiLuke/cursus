@@ -279,6 +279,41 @@
     "sagemaker_step_type": "Processing",
     "spec_type": "StratifiedSampling"
   },
+  "TSAModelCalibration": {
+    "builder_step_name": "TSAModelCalibrationStepBuilder",
+    "config_class": "TSAModelCalibrationConfig",
+    "description": "TSA (Time Series Analysis) model calibration step using monotone B-spline calibration for converting raw prediction scores to well-calibrated probabilities for fraud detection",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TSAModelCalibration"
+  },
+  "TSAModelEval": {
+    "builder_step_name": "TSAModelEvalStepBuilder",
+    "config_class": "TSAModelEvalConfig",
+    "description": "TSA (Temporal Sequence Analysis) model evaluation step for dual-task PyTorch models with comprehensive metrics and visualizations",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TSAModelEval"
+  },
+  "TSAPreprocessing": {
+    "builder_step_name": "TSAPreprocessingStepBuilder",
+    "config_class": "TSAPreprocessingConfig",
+    "description": "TSA (Temporal Sequence Analysis) data preprocessing step that performs sequence processing with feature transformation and scaling for fraud detection models",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TSAPreprocessing"
+  },
+  "TSATabularPreprocessing": {
+    "builder_step_name": "TSATabularPreprocessingStepBuilder",
+    "config_class": "TSATabularPreprocessingConfig",
+    "description": "TSA-specific tabular preprocessing with explicit output declarations for processed_data and preprocessor artifacts",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TSATabularPreprocessing"
+  },
+  "TSATraining": {
+    "builder_step_name": "TSATrainingStepBuilder",
+    "config_class": "TSATrainingConfig",
+    "description": "TSA (Temporal Sequence Attention) model training step for PyTorch-based temporal attention models",
+    "sagemaker_step_type": "Training",
+    "spec_type": "TSATraining"
+  },
   "TabularPreprocessing": {
     "builder_step_name": "TabularPreprocessingStepBuilder",
     "config_class": "TabularPreprocessingConfig",
@@ -341,5 +376,19 @@
     "description": "XGBoost model training step",
     "sagemaker_step_type": "Training",
     "spec_type": "XGBoostTraining"
+  },
+  "XgboostMtModelEval": {
+    "builder_step_name": "XgboostMtModelEvalStepBuilder",
+    "config_class": "XgboostMtModelEvalConfig",
+    "description": "XGBoost multi-task model evaluation step",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "XgboostMtModelEval"
+  },
+  "XgboostMtTraining": {
+    "builder_step_name": "XgboostMtTrainingStepBuilder",
+    "config_class": "XgboostMtTrainingConfig",
+    "description": "XGBoost multi-task training with one_output_per_tree strategy",
+    "sagemaker_step_type": "Training",
+    "spec_type": "XgboostMtTraining"
   }
 }

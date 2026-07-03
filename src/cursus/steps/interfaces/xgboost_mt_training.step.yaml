@@ -1,0 +1,139 @@
+step_type: XgboostMtTraining
+node_type: internal
+registry:
+  sagemaker_step_type: Training
+  description: XGBoost multi-task training with one_output_per_tree strategy
+patterns:
+  direct_input_keys: [input_path]
+compute:
+  kind: estimator
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
+  retrieve_image: true
+  lock_training_region: true
+contract:
+  entry_point: xgboost_mt_training.py
+  inputs:
+    input_path:
+      path: /opt/ml/input/data
+      required: true
+    hyperparameters_s3_uri:
+      path: /opt/ml/code/hyperparams/hyperparameters.json
+      required: false
+    model_artifacts_input:
+      path: /opt/ml/input/data/model_artifacts_input
+      required: false
+  outputs:
+    model_output:
+      path: /opt/ml/model
+    evaluation_output:
+      path: /opt/ml/output/data
+  arguments: {}
+  env_vars:
+    required: []
+    optional:
+      USE_SECURE_PYPI: 'true'
+      USE_PRECOMPUTED_IMPUTATION: 'false'
+      USE_PRECOMPUTED_RISK_TABLES: 'false'
+      USE_PRECOMPUTED_FEATURES: 'false'
+      REGION: NA
+  framework_requirements:
+    xgboost: '>=2.0.0'
+    scikit-learn: '>=0.23.2,<1.0.0'
+    pandas: '>=1.2.0,<2.0.0'
+    pyarrow: '>=4.0.0,<6.0.0'
+    boto3: '>=1.26.0'
+    pydantic: '>=2.0.0,<3.0.0'
+    scipy: '>=1.7.0'
+    numpy: '>=1.19.0'
+    matplotlib: '>=3.0.0'
+  description: 'XgboostMt multi-task training for multi-label tabular classification
+    with adaptive task weighting and knowledge distillation. Supports shared tree
+    structures, JS-divergence weight adaptation, and per-task evaluation metrics.
+
+    '
+spec:
+  dependencies:
+    input_path:
+      type: training_data
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - StratifiedSampling
+      - ProcessingStep
+      - DataLoad
+      semantic_keywords:
+      - data
+      - input
+      - training
+      - dataset
+      - multi_label
+      - multi_task
+      - processed
+      - train
+      - tabular
+    hyperparameters_s3_uri:
+      type: hyperparameters
+      required: false
+      compatible_sources:
+      - HyperparameterPrep
+      - ProcessingStep
+      semantic_keywords:
+      - config
+      - params
+      - hyperparameters
+      - settings
+      - multi_task_config
+    model_artifacts_input:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - XgboostMtTraining
+      - MissingValueImputation
+      - RiskTableMapping
+      - FeatureSelection
+      semantic_keywords:
+      - artifacts
+      - model_artifacts
+      - preprocessing
+      - imputation
+      - risk_tables
+      - pretrained
+  outputs:
+    model_output:
+      type: model_artifacts
+      property_path: properties.ModelArtifacts.S3ModelArtifacts
+      semantic_keywords:
+      - model
+      - trained
+      - xgboost_mt
+      - multi_task
+      - artifacts
+      aliases:
+      - ModelOutputPath
+      - ModelArtifacts
+      - model_data
+      - output_path
+      - model_input
+      - model_artifacts_input
+      - xgboost_mt_model
+      - multi_task_model
+      data_type: S3Uri
+    evaluation_output:
+      type: processing_output
+      property_path: properties.OutputDataConfig.S3OutputPath
+      semantic_keywords:
+      - evaluation
+      - predictions
+      - results
+      - metrics
+      - multi_task_results
+      aliases:
+      - evaluation_data
+      - eval_data
+      - validation_output
+      - test_output
+      - prediction_results
+      - task_predictions
+      data_type: S3Uri
