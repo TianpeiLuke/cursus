@@ -16,11 +16,6 @@ import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Load contract from unified YAML interface
-from ..interfaces import load_step_interface
-
-TSA_PREPROCESSING_CONTRACT, _spec = load_step_interface("TSAPreprocessing")
-
 # Import for type hints only
 if TYPE_CHECKING:
     from ...core.base.contract_base import ScriptContract
@@ -43,6 +38,7 @@ class TSAPreprocessingConfig(ProcessingStepConfigBase):
     # These are fields that users must explicitly provide
 
     job_type: str = Field(
+        default="training",
         description="Processing job type. One of ['training', 'validation', 'testing', 'calibration']",
     )
 
@@ -323,18 +319,9 @@ class TSAPreprocessingConfig(ProcessingStepConfigBase):
         return self
 
     # ===== Script Contract =====
-
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The TSA preprocessing script contract
-        """
-        return TSA_PREPROCESSING_CONTRACT
-
-    # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
-    # which includes hybrid resolution and comprehensive fallbacks
+    # get_script_contract() / get_script_path() are inherited from BasePipelineConfig, which loads
+    # the contract from the unified .step.yaml interface via the step catalog (Design B standard —
+    # matches ModelCalibration / XGBoostModelEval / TabularPreprocessing, which define no override).
 
     # ===== Overrides for Inheritance =====
 

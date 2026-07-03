@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] - 2026-07-03
+
+Completes the 2.5.0 discovery migration to full parity with the internal `amzn-cursus` source, and fixes the compound-acronym / snake-case name-resolution drift the migration surfaced.
+
+### Fixed
+
+- **`builder_discovery.py` collapsed to synthesis-only (940 → 420 lines).** The 2.5.0 tranche deleted `steps/builders/` but had left the old AST/file-scan `BuilderAutoDiscovery` in place (it still referenced the deleted directory; harmless only because scanning a missing dir returns empty). It is now the registry-interface synthesizer that `amzn-cursus` ships — no dead file-scan code.
+- **Robust interface-derived step-name resolution.** `BuilderAutoDiscovery` builds a normalized (`canonical_key`) index of registry keys, and `_resolve_to_canonical_name_for_indexing` gains a `canonical_key` fallback, so a compound-acronym name resolves under any casing: `load_builder_class("XGBoostMTTraining")` and `("XgboostMtTraining")` return the same synthesized class, and a config/script discovered as `tsa_training` / `xgboost_mt_training` / `package` folds into its canonical registry row instead of creating a phantom duplicate index entry (index 67 → 57). The registry keys ARE the authored `.step.yaml` `step_type` values, so this needs no hand-maintained `COMPOUND_ACRONYMS` edit and can't drift.
+- **TSA configs standardized.** `config_tsa_model_eval_step.py` / `config_tsa_preprocessing_step.py` / `config_tsa_model_calibration_step.py` drop their module-level `load_step_interface(...)` + `get_script_contract()` override and inherit the Design-B contract-from-interface path from the base config (matching ModelCalibration / XGBoostModelEval / TabularPreprocessing); `TSAPreprocessingConfig.job_type` now defaults to `"training"`.
+
 ## [2.5.0] - 2026-07-03
 
 The **interface-first discovery + folder deletion** tranche: step discovery now sources contract and spec data exclusively from the unified `.step.yaml` interfaces (+ configs + scripts + registry), the residual per-step data folders are physically deleted, and a single canonical interface loader replaces the two parallel load paths. This completes the Design-B discovery migration (Cursus Simplification Trail, FZ 31): a step is an interface + config + script, and nothing scans `builder_*.py` / `*_contract.py` / `*_spec.py` files anymore because those files — and now their folders — are gone. Mostly internal (discovery internals, one new facade method); two breaking changes are called out under **Removed**.

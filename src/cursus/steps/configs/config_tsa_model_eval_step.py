@@ -18,11 +18,6 @@ import logging
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
-# Load script contract from unified YAML interface
-from ..interfaces import load_step_interface
-
-TSA_MODEL_EVAL_CONTRACT, _spec = load_step_interface("TSAModelEval")
-
 # Import for type hints only
 if TYPE_CHECKING:
     from ...core.base.contract_base import ScriptContract
@@ -390,7 +385,7 @@ class TSAModelEvalConfig(ProcessingStepConfigBase):
         )
 
         # Add TSA evaluation specific environment variables
-        # All align with the optional_env_vars in TSA_MODEL_EVAL_CONTRACT
+        # All align with the optional env_vars in the TSAModelEval .step.yaml contract
         env_vars.update(
             {
                 "DATA_VERSION": self.data_version,
@@ -414,17 +409,9 @@ class TSAModelEvalConfig(ProcessingStepConfigBase):
 
         return env_vars
 
-    def get_script_contract(self) -> "ScriptContract":
-        """
-        Get script contract for this configuration.
-
-        Returns:
-            The TSA model evaluation script contract
-        """
-        return TSA_MODEL_EVAL_CONTRACT
-
-    # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase
-    # which includes hybrid resolution and comprehensive fallbacks
+    # get_script_contract() / get_script_path() are inherited from BasePipelineConfig, which loads
+    # the contract from the unified .step.yaml interface via the step catalog (Design B standard —
+    # matches ModelCalibration / XGBoostModelEval / TabularPreprocessing, which define no override).
 
     def get_public_init_fields(self) -> Dict[str, Any]:
         """

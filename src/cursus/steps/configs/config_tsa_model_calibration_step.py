@@ -235,17 +235,9 @@ class TSAModelCalibrationConfig(ProcessingStepConfigBase):
 
         return self
 
-    def get_script_contract(self):
-        """Return the script contract for this step.
-
-        Returns:
-            ScriptContract: The contract for TSA model calibration script.
-        """
-        from ..contracts.tsa_model_calibration_contract import (
-            TSA_MODEL_CALIBRATION_CONTRACT,
-        )
-
-        return TSA_MODEL_CALIBRATION_CONTRACT
+    # get_script_contract() is inherited from BasePipelineConfig, which loads the contract from the
+    # unified .step.yaml interface via the step catalog (Design B). The legacy override that imported
+    # ..contracts.tsa_model_calibration_contract was removed — that module no longer exists.
 
     def get_environment_variables(self) -> Dict[str, str]:
         """Get environment variables for the TSA calibration processing script.

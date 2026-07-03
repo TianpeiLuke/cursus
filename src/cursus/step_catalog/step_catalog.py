@@ -1475,6 +1475,20 @@ class StepCatalog:
                 if pascal_candidate in registry:
                     return pascal_candidate
 
+            # ROBUST FALLBACK (interface-derived acronym deduction): match against every registry
+            # key by a case/separator-insensitive key. This resolves file stems whose compound
+            # acronym is NOT in COMPOUND_ACRONYMS — e.g. `xgboost_mt_training` -> `XgboostMtTraining`,
+            # `tsa_training` -> `TSATraining`, `package` -> `Package` — folding their config/script
+            # component into the canonical registry row instead of orphaning it under a duplicate
+            # snake_case index entry. The registry keys ARE the authored .step.yaml step_types, so
+            # this needs no hand-maintained table and can't drift.
+            from .naming import canonical_key
+
+            want = canonical_key(step_name)
+            for reg_name in registry:
+                if canonical_key(reg_name) == want:
+                    return reg_name
+
             return None
 
         except Exception as e:

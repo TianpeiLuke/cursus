@@ -67,7 +67,9 @@ class SpecAutoDiscovery:
 
             discovered[step_name] = iface
 
-        self.logger.info(f"Discovered {len(discovered)} specification interfaces")
+        self.logger.info(
+            f"Discovered {len(discovered)} specification interfaces"
+        )
         return discovered
 
     def load_spec_class(self, step_name: str) -> Optional[Any]:
