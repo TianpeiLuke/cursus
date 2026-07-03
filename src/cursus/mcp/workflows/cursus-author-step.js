@@ -360,7 +360,7 @@ const RESOLVE_SCHEMA = {
 // an object (agent() returns a parsed object when a schema is present; raw TEXT when it is absent) —
 // no required fields, so the model just relays the tool's JSON verbatim and the workflow maps it in
 // code. Using {} instead of no-schema is what makes the returned value a parsed object, not a string.
-const RELAY_JSON_SCHEMA = { type: 'object' }
+const RELAY_JSON_SCHEMA = { } // accept any valid JSON (object or array) — the runtime maps the result in code
 
 // `edge` not required — the runtime dictates it per turn and injects it after parse (see EDGE_ALIGN_SCHEMA note).
 const EDGE_RESOLVE_SCHEMA = {
@@ -1034,7 +1034,7 @@ const report = await pipeline(REQUESTS,
       // in code. This is the honest, drift-free path (same resolver CI runs) that unblocked Runs 13-15,
       // where asking the model to compute the 6-component score itself always failed.
       const raw = await agent(resolveFetchPrompt(nodes), { label: 'resolve:' + plan.step_name, phase: 'Validate', schema: RELAY_JSON_SCHEMA })
-      const scored = (raw && Array.isArray(raw.edges)) ? raw.edges : []
+      const scored = (raw && Array.isArray(raw.edges)) ? raw.edges : (Array.isArray(raw) ? raw : [])
       const want = realEdges(plan, ctx.req)
       const edges = want.map(({ edge }) => matchResolvedEdge(scored, edge, plan, ctx.req))
       const gotAll = edges.every(Boolean)
