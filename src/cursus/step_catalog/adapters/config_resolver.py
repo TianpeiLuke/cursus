@@ -11,6 +11,17 @@ from typing import List, Dict, Optional, Any, Type
 
 from ..step_catalog import StepCatalog
 
+try:
+    from ...core.compiler.exceptions import ResolutionError
+except ImportError:  # pragma: no cover - compiler package optional at import time
+    class ResolutionError(Exception):  # type: ignore
+        """Fallback when the compiler exceptions module is unavailable."""
+
+        def __init__(self, message, failed_nodes=None, suggestions=None):
+            super().__init__(message)
+            self.failed_nodes = failed_nodes or []
+            self.suggestions = suggestions or []
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,45 +80,75 @@ class StepConfigResolverAdapter:
         available_configs: Dict[str, Any],
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Enhanced resolution with direct name matching + catalog fallback."""
-        try:
-            resolved_configs = {}
+        """Resolve every DAG node to a config, or RAISE listing every node that cannot be resolved.
 
-            for node_name in dag_nodes:
-                # 1. Try direct name matching first (handles 99% of cases)
-                config = self._direct_name_matching(node_name, available_configs)
-                if config is not None:
-                    resolved_configs[node_name] = config
-                    continue
+        This is the compile-path entry point. It delegates each node to :meth:`_resolve_single_node`
+        — the same safe matcher ``resolve_config_for_step`` / ``preview_resolution`` use — which
+        raises ``ResolutionError`` on a no-match and warns below the confidence threshold. Previously
+        this method had its own weaker 3-tier loop whose tier-3 "first available config" silently
+        bound any unmatched node to ``next(iter(available_configs.values()))`` — compiling a
+        structurally WRONG pipeline from an incomplete config (deep dive 2026-07-03). The fix unifies
+        the two entry points on ``_resolve_single_node`` and turns "can't resolve" into a loud failure
+        that names EVERY unsatisfiable node, never a plausible-but-wrong binding.
+        """
+        # Honor the user-authored metadata.config_types mapping on the compile path too — previously
+        # only preview_resolution populated it, so the compile path silently ignored it.
+        self._metadata_mapping = {}
+        if metadata and "config_types" in metadata:
+            self._metadata_mapping = metadata["config_types"]
+            self.logger.info(
+                f"Using metadata.config_types mapping with {len(self._metadata_mapping)} entries"
+            )
 
-                # 2. Fallback to catalog-based matching
-                step_info = self.catalog.get_step_info(node_name)
-                if step_info and step_info.config_class:
-                    # Find config instance that matches the step's config class
-                    for config_name, config_instance in available_configs.items():
-                        if type(config_instance).__name__ == step_info.config_class:
-                            resolved_configs[node_name] = config_instance
-                            break
-                else:
-                    # 3. Last resort: first available config
-                    if available_configs:
-                        resolved_configs[node_name] = next(
-                            iter(available_configs.values())
-                        )
+        resolved_configs: Dict[str, Any] = {}
+        failed_nodes: List[str] = []
+        suggestions: List[str] = []
 
-            # Safety check: detect duplicate step name collisions
-            # Two nodes resolving to configs that produce the same step name
-            # will cause MODS _validate_no_duplicated_steps to reject at runtime.
-            self._warn_duplicate_step_names(resolved_configs)
+        for node_name in dag_nodes:
+            try:
+                config, confidence, method = self._resolve_single_node(
+                    node_name, available_configs
+                )
+                resolved_configs[node_name] = config
+                self.logger.debug(
+                    f"Resolved node '{node_name}' -> {type(config).__name__} "
+                    f"(confidence {confidence:.2f} via {method})"
+                )
+            except ResolutionError as e:
+                failed_nodes.append(node_name)
+                suggestions.extend(getattr(e, "suggestions", []) or [])
+            except Exception as e:
+                # An unexpected error resolving a node is itself a failure to resolve that node —
+                # record it (never swallow into a silently-partial map).
+                self.logger.error(f"Error resolving node '{node_name}': {e}")
+                failed_nodes.append(node_name)
 
-            return resolved_configs
+        if failed_nodes:
+            raise ResolutionError(
+                f"Could not resolve {len(failed_nodes)} of {len(dag_nodes)} DAG nodes to a "
+                f"configuration: {failed_nodes}",
+                failed_nodes=failed_nodes,
+                suggestions=suggestions
+                or [
+                    "Add an explicit config key for each failed node to your config JSON, or",
+                    "map it in metadata.config_types with the correct config class.",
+                ],
+            )
 
-        except Exception as e:
-            self.logger.error(f"Error resolving config map: {e}")
-            return {}
+        # Safety check: detect duplicate step name collisions. Two nodes resolving to configs that
+        # produce the same step name will cause MODS _validate_no_duplicated_steps to reject at
+        # runtime, so fail fast here rather than deep in assembly.
+        self._raise_on_duplicate_step_names(resolved_configs)
 
-    def _warn_duplicate_step_names(self, resolved_configs: Dict[str, Any]) -> None:
-        """Detect and warn when multiple nodes would produce the same step name."""
+        return resolved_configs
+
+    def _raise_on_duplicate_step_names(self, resolved_configs: Dict[str, Any]) -> None:
+        """Fail fast when multiple nodes would produce the same generated step name.
+
+        A step-name collision makes MODS ``_validate_no_duplicated_steps`` reject the pipeline at
+        execution time — far from its config-resolution cause. This raises a ``ResolutionError`` at
+        resolve time instead of warning-and-proceeding, so the operator sees the real cause.
+        """
         step_name_sources: Dict[str, List[str]] = {}
         for node_name, config in resolved_configs.items():
             config_type = type(config).__name__
@@ -118,19 +159,25 @@ class StepConfigResolverAdapter:
             else:
                 generated_step_name = step_type
 
-            if generated_step_name not in step_name_sources:
-                step_name_sources[generated_step_name] = []
-            step_name_sources[generated_step_name].append(node_name)
+            step_name_sources.setdefault(generated_step_name, []).append(node_name)
 
-        for step_name, source_nodes in step_name_sources.items():
-            if len(source_nodes) > 1:
-                self.logger.warning(
-                    f"DUPLICATE STEP NAME COLLISION: Nodes {source_nodes} would all "
-                    f"produce step name '{step_name}'. This will cause "
-                    f"'Steps with duplicated name {step_name} found' at execution time. "
-                    f"Fix: ensure each node has a matching config key, or rename nodes "
-                    f"to match their intended config types."
-                )
+        collisions = {
+            name: nodes for name, nodes in step_name_sources.items() if len(nodes) > 1
+        }
+        if collisions:
+            detail = "; ".join(
+                f"nodes {nodes} -> step name '{name}'"
+                for name, nodes in collisions.items()
+            )
+            raise ResolutionError(
+                f"Duplicate step-name collision(s): {detail}. MODS rejects duplicate step names "
+                f"at execution time.",
+                failed_nodes=[n for nodes in collisions.values() for n in nodes],
+                suggestions=[
+                    "Ensure each DAG node maps to a distinct config (matching key), or",
+                    "rename the colliding nodes to match their intended config types.",
+                ],
+            )
 
     def _direct_name_matching(
         self, node_name: str, configs: Dict[str, Any]
@@ -298,33 +345,54 @@ class StepConfigResolverAdapter:
     def _semantic_matching(
         self, node_name: str, configs: Dict[str, Any]
     ) -> List[tuple]:
-        """Semantic matching based on keywords."""
+        """Semantic matching, GATED by actual step-type agreement.
+
+        The prior implementation matched on loose keyword-category overlap alone (e.g. category
+        "preprocess" = {preprocessing, tabular, process}), so ``TabularPreprocessing_*`` matched a
+        ``BedrockProcessingConfig`` at the exact 0.7 threshold and silently won on the compile path
+        (deep dive 2026-07-03 followup). A keyword hint is necessary but NOT sufficient: the config's
+        real step type (derived from its class via the registry) must equal the node's base step type,
+        otherwise the match is rejected. This makes the semantic tier a same-step-type disambiguator
+        (which of two CradleDataLoading configs?), never a cross-step-type guess.
+        """
         matches = []
 
-        # Define semantic keywords
+        # Keyword categories are a coarse pre-filter only; the step-type gate below is authoritative.
         semantic_map = {
             "data": ["loading", "load", "cradle"],
-            "preprocess": ["preprocessing", "tabular", "process"],
-            "train": ["training", "xgboost", "pytorch", "model"],
+            "preprocess": ["preprocessing", "tabular"],
+            "train": ["training", "xgboost", "pytorch"],
             "evaluate": ["evaluation", "eval", "test"],
             "transform": ["transformation", "batch"],
         }
 
         node_lower = node_name.lower()
+        # The node's base step type is its name minus any trailing job-type suffix.
+        from ..naming import JOB_TYPE_SUFFIXES
+
+        base, _, suffix = node_name.rpartition("_")
+        node_step_type = base if (base and suffix.lower() in JOB_TYPE_SUFFIXES) else node_name
 
         for config_key, config_instance in configs.items():
             config_lower = config_key.lower()
-            confidence = 0.0
 
-            # Check for semantic matches
+            keyword_hit = False
             for category, keywords in semantic_map.items():
-                if any(keyword in node_lower for keyword in keywords):
-                    if any(keyword in config_lower for keyword in keywords):
-                        confidence = 0.7
-                        break
+                if any(k in node_lower for k in keywords) and any(
+                    k in config_lower for k in keywords
+                ):
+                    keyword_hit = True
+                    break
+            if not keyword_hit:
+                continue
 
-            if confidence > 0:
-                matches.append((config_instance, confidence, "semantic"))
+            # GATE: the config's real step type must match the node's base step type. Reject a
+            # keyword coincidence between different step types (Tabular vs Bedrock both "process").
+            config_step_type = self._config_class_to_step_type(
+                type(config_instance).__name__
+            )
+            if config_step_type and config_step_type.lower() == node_step_type.lower():
+                matches.append((config_instance, 0.7, "semantic"))
 
         return matches
 

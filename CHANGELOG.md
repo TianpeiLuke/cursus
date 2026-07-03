@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.2] - 2026-07-03
+
+Correctness bugfix (ported from amzn-cursus 2.4.2): the config resolver no longer silently compiles a wrong pipeline from an incomplete config.
+
+### Fixed
+
+- **`StepConfigResolverAdapter.resolve_config_map` now resolves-or-raises.** It delegates every node to the existing safe `_resolve_single_node` (raises `ResolutionError` on no-match, warns below the 0.7 threshold), accumulates a `failed_nodes` list, and raises a `ResolutionError` naming **every** unsatisfiable node — instead of the old tier-3 catch-all that bound any unmatched node to the first loaded config (`next(iter(available_configs.values()))`) and the `except: return {}` that swallowed errors. Also honors `metadata.config_types` on the compile path and fails fast on duplicate generated step names.
+- **`_semantic_matching` is gated by step-type agreement** — a keyword-category overlap is necessary but not sufficient; the config's real step type must equal the node's base step type, so `TabularPreprocessing_*` no longer matches `BedrockProcessingConfig` at the 0.7 threshold.
+- **`StepCatalog.get_step_info` strips job_type suffixes** — a suffixed node (`TabularPreprocessing_training`) with `job_type=None` falls back to the base name via the `naming.JOB_TYPE_SUFFIXES`-guarded strip (`XGBoostModel` not mis-stripped), fixing the catalog-tier resolution miss.
+- **`DynamicPipelineTemplate._create_config_map` asserts completeness** — raises `ConfigurationError` if any DAG node is unresolved and logs `N/total` rather than "resolved all N".
+
+Verified against `munged_address_pytorch/dag_NA.json` (15 nodes): complete config resolves 15/15 with zero cross-step-type mis-bindings; a partial 3-config subset raises `ResolutionError` naming all 13 unsatisfiable nodes with zero silent wrong-bindings.
+
 ## [2.5.1] - 2026-07-03
 
 Completes the 2.5.0 discovery migration to full parity with the internal `amzn-cursus` source, and fixes the compound-acronym / snake-case name-resolution drift the migration surfaced.

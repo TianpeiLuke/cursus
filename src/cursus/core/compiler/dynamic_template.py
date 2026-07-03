@@ -193,8 +193,19 @@ class DynamicPipelineTemplate(PipelineTemplateBase):
                 # Update the early-initialized dict
                 self._resolved_config_map.update(resolved_map)
 
+                # COMPLETENESS ASSERTION: never let map-length stand in for map-correctness.
+                # resolve_config_map now raises on any unresolved node, but assert here too as
+                # defense-in-depth — a partial map must be a hard error, not a "success" that
+                # emits a structurally incomplete pipeline (deep dive 2026-07-03).
+                unresolved = [n for n in dag_nodes if n not in self._resolved_config_map]
+                if unresolved:
+                    raise ConfigurationError(
+                        f"Resolved only {len(self._resolved_config_map)}/{len(dag_nodes)} DAG "
+                        f"nodes; unresolved: {unresolved}"
+                    )
+
                 self.logger.info(
-                    f"Successfully resolved all {len(self._resolved_config_map)} nodes"
+                    f"Resolved {len(self._resolved_config_map)}/{len(dag_nodes)} DAG nodes"
                 )
 
                 # Log resolution details

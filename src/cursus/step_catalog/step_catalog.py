@@ -160,8 +160,24 @@ class StepCatalog:
             # Handle job_type variants
             search_key = f"{step_name}_{job_type}" if job_type else step_name
             result = self._step_index.get(search_key) or self._step_index.get(step_name)
+            if result is not None:
+                return result
 
-            return result
+            # JOB-TYPE-SUFFIX FALLBACK: the index is keyed on canonical base names
+            # (TabularPreprocessing), but DAG nodes arrive job-type-suffixed
+            # (TabularPreprocessing_training) with job_type=None. Without this, a suffixed node
+            # returns None, which silently breaks the config resolver + dependency checks
+            # (deep dive 2026-07-03, Defect B). Mirror the guarded fallback get_step_interface uses:
+            # strip ONLY a known job-type suffix (naming.JOB_TYPE_SUFFIXES) — never a bare rsplit,
+            # so XGBoostModel is not mis-stripped — and retry the base name.
+            if job_type is None and "_" in step_name:
+                from .naming import JOB_TYPE_SUFFIXES
+
+                base, _, suffix = step_name.rpartition("_")
+                if base and suffix.lower() in JOB_TYPE_SUFFIXES:
+                    return self._step_index.get(base)
+
+            return None
 
         except Exception as e:
             self.metrics["errors"] += 1
