@@ -203,7 +203,12 @@ class DataPreprocessingConfig(BaseModel):
                 assert step_info.step_name == "data_preprocessing"
                 assert step_info.workspace_id == "core"
                 assert "script" in step_info.file_components
-                assert "contract" in step_info.file_components
+                # Design B: the package no longer file-scans steps/contracts/ — a step's contract
+                # comes from its .step.yaml interface (ContractSection), not a discovered file. So
+                # a core step's file_components carries no "contract" entry (contract discovery is
+                # interface-first via load_contract_class). Workspace roots may still drop a
+                # *_contract.py, which WOULD appear — but this core step does not.
+                assert "contract" not in step_info.file_components
 
                 # Test US2: Reverse Lookup
                 script_path = (

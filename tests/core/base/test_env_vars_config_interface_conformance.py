@@ -23,11 +23,8 @@ This gate currently RECORDS the baseline (it does not yet hard-fail on the known
 the reconciliation worklist) and FAILS if NEW conflicts appear beyond the recorded baseline.
 """
 
-import importlib
-import inspect
 import logging
 import os
-import pkgutil
 import tempfile
 
 import pytest
@@ -60,20 +57,30 @@ def _sentinel(annotation):
 
 
 def _discover_overriders():
-    """STEP_NAME -> builder class for builders that override _get_environment_variables."""
-    import cursus.steps.builders as B
+    """STEP_NAME -> builder class for steps whose env vars go through _get_environment_variables.
 
+    Builders are now synthesized from the .step.yaml registry — no per-step builder module remains,
+    so the old pkgutil scan over cursus.steps.builders.__path__ finds nothing. Under Design B the
+    env-var behavior is data-driven (the .step.yaml interface declares the names; the config
+    collector resolves their values) and rides the template base's _get_environment_variables rather
+    than a per-step Python override. So we enumerate steps via the catalog, load each synthesized
+    class, and keep every one that exposes _get_environment_variables (inherited from the template
+    base is expected) — the conformance loop below then reconciles each against its interface + config
+    collector.
+    """
+    from cursus.step_catalog.step_catalog import StepCatalog
+
+    cat = StepCatalog()
     out = {}
-    for m in pkgutil.iter_modules(B.__path__):
+    for sn in cat.list_available_steps():
         try:
-            mod = importlib.import_module(f"cursus.steps.builders.{m.name}")
+            obj = cat.load_builder_class(sn)
         except Exception:
             continue
-        for _, obj in inspect.getmembers(mod, inspect.isclass):
-            if "_get_environment_variables" in obj.__dict__:
-                sn = getattr(obj, "STEP_NAME", None)
-                if sn:
-                    out[sn] = obj
+        if obj is None:
+            continue
+        if hasattr(obj, "_get_environment_variables"):
+            out[sn] = obj
     return out
 
 

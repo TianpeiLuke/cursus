@@ -735,18 +735,31 @@ class TestDynamicPipelineTemplate:
 
         base_config = MagicMock(spec=BasePipelineConfig)
         data_config = MagicMock(spec=BasePipelineConfig)
+        preprocess_config = MagicMock(spec=BasePipelineConfig)
+        training_config = MagicMock(spec=BasePipelineConfig)
 
-        configs = {"Base": base_config, "data_loading": data_config}
+        configs = {
+            "Base": base_config,
+            "data_loading": data_config,
+            "preprocessing": preprocess_config,
+            "training": training_config,
+        }
         mock_load_configs.return_value = configs
         mock_template_load_configs.return_value = configs
 
-        # Setup config resolver
-        config_map = {"data_loading": data_config}
+        # Setup config resolver to return a COMPLETE map (one entry per DAG node). The map
+        # must be complete so _create_config_map's completeness assertion passes and control
+        # reaches the builder-resolution loop this test exercises.
+        config_map = {
+            "data_loading": data_config,
+            "preprocessing": preprocess_config,
+            "training": training_config,
+        }
         self.mock_config_resolver.resolve_config_map.return_value = config_map
 
         # Setup step catalog to return empty builder map
         self.mock_step_catalog.get_builder_map.return_value = {}
-        # get_builder_for_config returns None (no builder found)
+        # get_builder_for_config returns None (no builder found) for every config
         self.mock_step_catalog.get_builder_for_config.return_value = None
 
         template = DynamicPipelineTemplate(
@@ -757,10 +770,15 @@ class TestDynamicPipelineTemplate:
             skip_validation=True,
         )
 
-        # Source code shows this should raise RegistryError with missing builders
+        # Missing builders raise RegistryError("Missing step builders..."), which the method's
+        # own outer handler re-wraps as "Step builder mapping failed: <inner>". The wrapped
+        # message still contains the "Missing step builders" cause.
         from cursus.registry.exceptions import RegistryError
 
-        with pytest.raises(RegistryError, match="Missing step builders"):
+        with pytest.raises(
+            RegistryError,
+            match="Step builder mapping failed: Missing step builders",
+        ):
             template._create_step_builder_map()
 
     @patch.object(PipelineTemplateBase, "_load_configs")
@@ -806,18 +824,40 @@ class TestDynamicPipelineTemplate:
         mock_detect_classes.return_value = {"BasePipelineConfig": BasePipelineConfig}
         base_config = MagicMock(spec=BasePipelineConfig)
         data_config = MagicMock(spec=BasePipelineConfig)
+        preprocess_config = MagicMock(spec=BasePipelineConfig)
+        training_config = MagicMock(spec=BasePipelineConfig)
 
-        configs = {"Base": base_config, "data_loading": data_config}
+        configs = {
+            "Base": base_config,
+            "data_loading": data_config,
+            "preprocessing": preprocess_config,
+            "training": training_config,
+        }
         mock_load_configs.return_value = configs
         mock_template_load_configs.return_value = configs
 
-        # Setup config resolver - return empty config_map to avoid builder resolution issues
-        config_map = {}  # Empty to avoid step builder validation
+        # Setup config resolver - return a COMPLETE config_map (one entry per DAG node).
+        # _create_config_map now asserts completeness and raises ConfigurationError on a
+        # partial/empty map, so validation must be given a fully-resolved map to reach the
+        # success path this test intends.
+        config_map = {
+            "data_loading": data_config,
+            "preprocessing": preprocess_config,
+            "training": training_config,
+        }
         self.mock_config_resolver.resolve_config_map.return_value = config_map
 
-        # Setup step catalog - return empty builder map since no configs to resolve
-        builder_map = {}
+        # Setup step catalog - return a builder map and a builder for every config so that
+        # _create_step_builder_map succeeds (no missing builders).
+        mock_builder = MagicMock()
+        mock_builder.__name__ = "MockBuilder"
+        builder_map = {
+            "CradleDataLoading": mock_builder,
+            "TabularPreprocessing": mock_builder,
+            "XGBoostTraining": mock_builder,
+        }
         self.mock_step_catalog.get_builder_map.return_value = builder_map
+        self.mock_step_catalog.get_builder_for_config.return_value = mock_builder
 
         # Setup validation engine - source shows validate_dag_compatibility is called
         mock_validation_result = MagicMock()

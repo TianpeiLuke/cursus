@@ -24,7 +24,9 @@ def cfg(tmp_path):
 
 @pytest.fixture
 def real(cfg):
-    from cursus.steps.builders import XGBoostModelStepBuilder
+    from cursus.step_catalog.step_catalog import StepCatalog
+
+    XGBoostModelStepBuilder = StepCatalog().load_builder_class("XGBoostModel")
 
     return XGBoostModelStepBuilder(config=cfg)
 

@@ -75,12 +75,12 @@ class TestCreateComputeFoundation:
         import tempfile
         from unittest.mock import Mock
 
-        from cursus.steps.builders import (
-            TabularPreprocessingStepBuilder as B,
-        )
+        from cursus.step_catalog.step_catalog import StepCatalog
         from cursus.steps.configs.config_tabular_preprocessing_step import (
             TabularPreprocessingConfig,
         )
+
+        B = StepCatalog().load_builder_class("TabularPreprocessing")
 
         tmp = tempfile.mkdtemp()
         open(os.path.join(tmp, "d.py"), "w").write("#\n")

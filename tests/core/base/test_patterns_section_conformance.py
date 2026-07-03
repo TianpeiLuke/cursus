@@ -11,77 +11,44 @@ builder shell. This gate locks that in:
 """
 
 import ast
-import glob
-import os
 
 import pytest
 
-BUILDERS = "src/cursus/steps/builders"
-# the 4 SDKDelegation builders legitimately keep a code-only sdk_step_class knob (a SAIS class object
-# that can't be serialized to YAML) — the documented exception.
-SDK_BUILDERS = {
-    "builder_cradle_data_loading_step.py", "builder_redshift_data_loading_step.py",
-    "builder_registration_step.py", "builder_data_uploading_step.py",
-}
-MIGRATED_KNOBS = {"output_path_token", "include_job_type_in_path", "direct_input_keys", "use_step_args"}
+# The declarative facts that were migrated out of the (now-deleted) per-step builder shells into the
+# .step.yaml `patterns:`/contract sections. use_step_args is DERIVED from step_assembly and must never
+# be authored anywhere.
+MIGRATED_KNOBS = {"output_path_token", "include_job_type_in_path", "direct_input_keys"}
 
 
-def _class_attrs(path):
-    """Return (has_STEP_ASSEMBLY, set(HANDLER_KNOBS keys)) declared on the builder class."""
-    tree = ast.parse(open(path).read())
-    has_assembly = False
-    knob_keys = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            for b in node.body:
-                if isinstance(b, ast.Assign):
-                    for t in b.targets:
-                        if not isinstance(t, ast.Name):
-                            continue
-                        if t.id == "STEP_ASSEMBLY":
-                            has_assembly = True
-                        if t.id == "HANDLER_KNOBS" and isinstance(b.value, ast.Dict):
-                            for k in b.value.keys:
-                                if isinstance(k, ast.Constant):
-                                    knob_keys.add(k.value)
-    return has_assembly, knob_keys
+def test_step_assembly_lives_on_patterns_section_not_derived_use_step_args():
+    """STEP_ASSEMBLY is authored as PatternsSection.step_assembly; use_step_args is DERIVED from it and
+    must NOT be a field anyone can author. (The per-step builder shells that used to carry STEP_ASSEMBLY /
+    HANDLER_KNOBS in Python are gone — the fact now lives only in the interface, so it cannot drift.)"""
+    from cursus.core.base.step_interface import PatternsSection
+
+    fields = set(PatternsSection.model_fields)
+    assert "step_assembly" in fields, (
+        "step_assembly must be authored on PatternsSection (the .step.yaml patterns: blueprint)."
+    )
+    assert "use_step_args" not in fields, (
+        "use_step_args is DERIVED from step_assembly — it must never be an authorable PatternsSection field."
+    )
 
 
-def test_no_builder_declares_step_assembly_in_python():
-    """STEP_ASSEMBLY moved to patterns.step_assembly — no builder should keep the class attr."""
-    offenders = [
-        os.path.basename(f)
-        for f in glob.glob(f"{BUILDERS}/builder_*_step.py")
-        if _class_attrs(f)[0]
-    ]
-    assert not offenders, f"builders still declare STEP_ASSEMBLY in Python (move to patterns:): {offenders}"
+def test_migrated_knobs_are_patterns_or_contract_data_not_derived():
+    """The migrated declarative knobs live on PatternsSection (include_job_type_in_path, direct_input_keys)
+    or on ContractSection (output_path_token) — never on both, and never as a derived use_step_args knob."""
+    from cursus.core.base.step_interface import ContractSection, PatternsSection
 
-
-def test_no_builder_declares_migrated_knobs():
-    """The declarative knobs (output_path_token / include_job_type_in_path / direct_input_keys) +
-    the derived use_step_args must not live in any builder's HANDLER_KNOBS — they belong in patterns:."""
-    offenders = {}
-    for f in glob.glob(f"{BUILDERS}/builder_*_step.py"):
-        keys = _class_attrs(f)[1] & MIGRATED_KNOBS
-        if keys:
-            offenders[os.path.basename(f)] = sorted(keys)
-    assert not offenders, f"builders still declare migrated knobs in Python (move to patterns:): {offenders}"
-
-
-def test_only_sdk_builders_keep_handler_knobs():
-    """After migration, the ONLY HANDLER_KNOBS left are the 4 SDKDelegation builders' code-only
-    sdk_step_class. Any other builder with a non-empty HANDLER_KNOBS is a migration miss."""
-    offenders = {}
-    for f in glob.glob(f"{BUILDERS}/builder_*_step.py"):
-        base = os.path.basename(f)
-        keys = _class_attrs(f)[1]
-        if not keys:
-            continue
-        if base in SDK_BUILDERS:
-            assert keys == {"sdk_step_class"}, f"{base} SDK builder has unexpected knobs: {keys}"
-        else:
-            offenders[base] = sorted(keys)
-    assert not offenders, f"non-SDK builders still carry HANDLER_KNOBS: {offenders}"
+    patterns_fields = set(PatternsSection.model_fields)
+    contract_fields = set(ContractSection.model_fields)
+    for knob in MIGRATED_KNOBS:
+        assert knob in patterns_fields or knob in contract_fields, (
+            f"migrated knob {knob!r} must live on PatternsSection or ContractSection."
+        )
+    # use_step_args is derived, never authored on either section.
+    assert "use_step_args" not in patterns_fields
+    assert "use_step_args" not in contract_fields
 
 
 @pytest.fixture(scope="module")

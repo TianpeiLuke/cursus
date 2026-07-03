@@ -28,7 +28,9 @@ def cfg():
 
 @pytest.fixture
 def real(cfg):
-    from cursus.steps.builders import BatchTransformStepBuilder
+    from cursus.step_catalog.step_catalog import StepCatalog
+
+    BatchTransformStepBuilder = StepCatalog().load_builder_class("BatchTransform")
 
     return BatchTransformStepBuilder(config=cfg)
 

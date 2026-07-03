@@ -102,18 +102,46 @@ class TestConfigResolver:
     def test_semantic_matching(
         self, resolver, configs, preprocessing_config, training_config, eval_config
     ):
-        """Test the _semantic_matching method."""
-        # Test semantic match with "process" keyword
-        matches = resolver._semantic_matching("process_data", configs)
+        """Test _semantic_matching: keyword pre-filter is necessary but step-type must AGREE.
+
+        Semantic matching no longer matches on loose keyword overlap alone — a keyword hit is
+        just a coarse pre-filter, and the config's real step type (derived from its class via
+        the catalog) must equal the node's base step type for the match to count. We patch
+        ``_config_class_to_step_type`` so the fixture configs map to the node base types under
+        test, then verify that (a) same-step-type keyword hits match and (b) a cross-step-type
+        keyword coincidence is REJECTED.
+        """
+        # Map each fixture config class to the base step type of the node that should match it.
+        step_type_by_class = {
+            "TabularPreprocessingConfig": "preprocessing",
+            "XGBoostTrainingConfig": "training",
+            "XGBoostModelEvalConfig": "evaluation",
+            "CradleDataLoadingConfig": "data_loading",
+        }
+
+        def fake_config_class_to_step_type(config_class_name):
+            return step_type_by_class.get(config_class_name, config_class_name)
+
+        resolver._config_class_to_step_type = fake_config_class_to_step_type
+
+        # "preprocessing" hits the "preprocess" keyword category (config key "preprocessing"
+        # shares it) AND the step-type gate agrees -> TabularPreprocessingConfig matches.
+        matches = resolver._semantic_matching("preprocessing", configs)
         assert any(m[0] == preprocessing_config for m in matches)
 
-        # Test semantic match with "train" keyword
-        matches = resolver._semantic_matching("model_fit", configs)
+        # "training" hits the "train" keyword category and the gate agrees -> training matches.
+        matches = resolver._semantic_matching("training", configs)
         assert any(m[0] == training_config for m in matches)
 
-        # Test semantic match with "evaluate" keyword
-        matches = resolver._semantic_matching("model_test", configs)
+        # "evaluation" hits the "evaluate" keyword category and the gate agrees -> eval matches.
+        matches = resolver._semantic_matching("evaluation", configs)
         assert any(m[0] == eval_config for m in matches)
+
+        # GATE CHECK: a node whose keyword coincides with a config but whose base step type
+        # DISAGREES must NOT match. "evaluation" keyword-hits eval_config, but if we ask about
+        # a node named "training" it must not bind eval_config (step types differ).
+        matches = resolver._semantic_matching("training", configs)
+        assert all(m[0] != eval_config for m in matches)
 
     def test_pattern_matching(
         self, resolver, configs, data_load_config, training_config

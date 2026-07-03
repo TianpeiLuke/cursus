@@ -94,8 +94,10 @@ def tabular_config(tmp_path):
 
 @pytest.fixture
 def real_builder(tabular_config, mock_session):
-    from cursus.steps.builders import (
-        TabularPreprocessingStepBuilder,
+    from cursus.step_catalog.step_catalog import StepCatalog
+
+    TabularPreprocessingStepBuilder = StepCatalog().load_builder_class(
+        "TabularPreprocessing"
     )
 
     return TabularPreprocessingStepBuilder(
@@ -165,9 +167,9 @@ class TestTabularPreprocessingParity:
         before the real builder file is converted.)
         """
         from cursus.core.base.builder_templates import TemplateStepBuilder
-        from cursus.steps.builders import (
-            TabularPreprocessingStepBuilder as RealBuilder,
-        )
+        from cursus.step_catalog.step_catalog import StepCatalog
+
+        RealBuilder = StepCatalog().load_builder_class("TabularPreprocessing")
 
         # A pure shell: TabularPreprocessing is now fully declarative — all per-step factories
         # (env / job-args / inputs / outputs / compute) collapsed into the handler + .step.yaml

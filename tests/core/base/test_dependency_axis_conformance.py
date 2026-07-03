@@ -23,34 +23,12 @@ import os
 import pytest
 import yaml
 
-BUILDERS_DIR = "src/cursus/steps/builders"
 INTERFACES_DIR = "src/cursus/steps/interfaces"
 SCRIPTS_DIR = "src/cursus/steps/scripts"
 
 SAIS_SDK = "secure_ai_sandbox_workflow_python_sdk"
 SAIS_LIB = "secure_ai_sandbox_python_lib"
 PROXY = "com.amazon.secureaisandboxproxyservice"
-
-
-def _module_level_imports(path):
-    """Set of top-level (module-scope) imported root package names in a .py file.
-
-    Only imports at module body scope count — imports nested inside a function/method are lazy and
-    do NOT make the module fatal-on-load, so they are excluded (matches the audit's import_kind).
-    """
-    try:
-        tree = ast.parse(open(path).read())
-    except (OSError, SyntaxError):
-        return set()
-    roots = set()
-    for node in tree.body:  # module body ONLY (not ast.walk) → module-level imports
-        if isinstance(node, ast.Import):
-            for n in node.names:
-                roots.add(n.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            if node.module and node.level == 0:
-                roots.add(node.module.split(".")[0])
-    return roots
 
 
 def _all_imports_any_scope(path):
@@ -90,17 +68,6 @@ def interfaces():
         except Exception:
             continue
     return out
-
-
-def _builder_path_for(step_type):
-    """Map a step_type to its builder file via STEP_NAME (the authoritative class-attr)."""
-    import re
-
-    for f in glob.glob(f"{BUILDERS_DIR}/builder_*_step.py"):
-        m = re.search(r'STEP_NAME\s*=\s*"([^"]+)"', open(f).read())
-        if m and m.group(1) == step_type:
-            return f
-    return None
 
 
 class TestComputeAxisDependency:
@@ -209,13 +176,19 @@ class TestRuntimeAxisDependency:
 
 
 class TestBuildTimeRuntimeSeparation:
-    def test_no_builder_imports_runtime_only_sais_lib_at_module_level(self):
-        """A builder MODULE must never import a RUNTIME-only SAIS package (secure_ai_sandbox_python_lib
-        or the proxy-service models) at module level — those belong to scripts/exe_doc. Prevents a
-        runtime dep leaking into the build-time import surface."""
+    def test_no_interface_declares_runtime_only_sais_lib_as_build_time_dep(self, interfaces):
+        """A RUNTIME-only SAIS package (secure_ai_sandbox_python_lib or the proxy-service models) must
+        never appear in a BUILD-TIME dependency axis (compute.requires / registry.requires) — those
+        belong to the step's SCRIPT via contract.runtime_requires. Under interface-first authoring the
+        per-step builder modules are gone, so the only remaining place a build-time dep is declared is
+        the .step.yaml itself; this re-derives the guard from the interface dependency axes rather than
+        parsing (now-nonexistent) builder module imports."""
+        runtime_only = {SAIS_LIB, PROXY.split(".")[0]}  # secure_ai_sandbox_python_lib / com(.amazon...)
         leaks = []
-        for f in glob.glob(f"{BUILDERS_DIR}/builder_*_step.py"):
-            roots = _module_level_imports(f)
-            if SAIS_LIB in roots or "com" in roots:
-                leaks.append(os.path.basename(f))
-        assert not leaks, f"builder modules leak a runtime-only SAIS import at module level: {leaks}"
+        for st, iface in interfaces.items():
+            compute_req = getattr(iface.compute, "requires", "none")
+            registry_req = getattr(iface.registry, "requires", "none")
+            for axis_name, req in (("compute", compute_req), ("registry", registry_req)):
+                if req and req.split(".")[0] in runtime_only:
+                    leaks.append((st, axis_name, req))
+        assert not leaks, f"interfaces declare a runtime-only SAIS package as a build-time dep: {leaks}"

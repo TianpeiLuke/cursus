@@ -126,21 +126,18 @@ class TestCallSitesAgree:
         for n in ["XGBoostTraining", "PyTorchModel", "LightGBMTraining"]:
             assert sd._canonical_to_script_name(n) == canonical_to_snake(n)
 
-    def test_contract_discovery_matches(self):
-        from cursus.step_catalog.contract_discovery import ContractAutoDiscovery
+    # DELETED (Phase 7): test_contract_discovery_matches — it verified that ContractAutoDiscovery's
+    # _pascal_to_snake_case delegated to naming.canonical_to_snake. That helper was part of the removed
+    # file-based/AST contract discovery path (step-name -> file-name conversion) and no longer exists now
+    # that contracts are views onto the .step.yaml interface keyed by canonical PascalCase step name.
+    # Interface-first discovery does no name conversion, so there is no contract-discovery call site left
+    # to agree.
 
-        cd = ContractAutoDiscovery.__new__(ContractAutoDiscovery)
-        for n in ["XGBoostTraining", "PyTorchTraining", "TensorFlowModel"]:
-            assert cd._pascal_to_snake_case(n) == canonical_to_snake(n)
-
-    def test_builder_discovery_matches(self):
-        from cursus.step_catalog.builder_discovery import BuilderAutoDiscovery
-
-        bd = BuilderAutoDiscovery.__new__(BuilderAutoDiscovery)
-        assert (
-            bd._convert_parts_to_pascal_case_with_special_cases(["xgboost", "training"])
-            == "XGBoostTraining"
-        )
+    # DELETED (Phase E): test_builder_discovery_matches — it verified that BuilderAutoDiscovery's
+    # _convert_parts_to_pascal_case_with_special_cases delegated to naming.parts_to_pascal. That
+    # method was part of the removed file-based/AST discovery path (file-name -> step-name conversion)
+    # and no longer exists now that builders are synthesized from the registry interface. Discovery
+    # no longer does any name conversion, so there is no builder-discovery call site left to agree.
 
     def test_step_catalog_canonical_resolvers_handle_compound_acronyms(self):
         """The two StepCatalog snake->canonical resolvers must route through naming.py so

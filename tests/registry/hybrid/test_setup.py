@@ -181,13 +181,13 @@ class TestWorkspaceStructure(unittest.TestCase):
         """Test creating complete workspace directory structure."""
         create_workspace_structure(str(self.workspace_path))
 
-        # Check all expected directories exist
+        # Check all expected directories exist. Interface-first authoring (Design B): the
+        # step interface (.step.yaml) folder + configs + scripts, not the retired
+        # builders/contracts/specs folders.
         expected_dirs = [
-            "src/cursus_dev/steps/builders",
+            "src/cursus_dev/steps/interfaces",
             "src/cursus_dev/steps/configs",
-            "src/cursus_dev/steps/contracts",
             "src/cursus_dev/steps/scripts",
-            "src/cursus_dev/steps/specs",
             "src/cursus_dev/registry",
             "test/unit",
             "test/integration",
@@ -200,13 +200,22 @@ class TestWorkspaceStructure(unittest.TestCase):
             full_path = self.workspace_path / dir_path
             self.assertTrue(full_path.exists(), f"Directory {dir_path} should exist")
 
+        # Also assert the retired folders are NOT scaffolded.
+        for retired in (
+            "src/cursus_dev/steps/builders",
+            "src/cursus_dev/steps/contracts",
+            "src/cursus_dev/steps/specs",
+        ):
+            self.assertFalse(
+                (self.workspace_path / retired).exists(),
+                f"Retired directory {retired} should not be scaffolded",
+            )
+
         # Check __init__.py files were created in Python packages
         python_dirs = [
-            "src/cursus_dev/steps/builders",
+            "src/cursus_dev/steps/interfaces",
             "src/cursus_dev/steps/configs",
-            "src/cursus_dev/steps/contracts",
             "src/cursus_dev/steps/scripts",
-            "src/cursus_dev/steps/specs",
             "src/cursus_dev/registry",
         ]
 

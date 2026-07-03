@@ -37,13 +37,15 @@ from cursus.steps.configs.utils import merge_and_save_configs, load_configs
 from cursus.core.base.config_base import BasePipelineConfig
 from cursus.steps.configs.config_processing_step_base import ProcessingStepConfigBase
 
-# Import step builders
-from cursus.steps.builders import (
-    TabularPreprocessingStepBuilder,
-    XGBoostModelEvalStepBuilder,
-    DummyTrainingStepBuilder,
-    RiskTableMappingStepBuilder,
+# Import step builders (bound via the catalog — synthesized from the .step.yaml registry)
+from cursus.step_catalog.step_catalog import StepCatalog
+
+TabularPreprocessingStepBuilder = StepCatalog().load_builder_class(
+    "TabularPreprocessing"
 )
+XGBoostModelEvalStepBuilder = StepCatalog().load_builder_class("XGBoostModelEval")
+DummyTrainingStepBuilder = StepCatalog().load_builder_class("DummyTraining")
+RiskTableMappingStepBuilder = StepCatalog().load_builder_class("RiskTableMapping")
 
 # Import hyperparameters
 from cursus.core.base.hyperparameters_base import ModelHyperparameters

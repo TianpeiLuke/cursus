@@ -831,6 +831,44 @@ class TestPipelineDAGResolverEnhanced:
         assert "isolated_nodes" in issues
         assert any("isolated_step" in issue for issue in issues["isolated_nodes"])
 
+    def test_validate_graph_structure_undeclared_edge_nodes(self):
+        """A typo'd edge endpoint (auto-created by add_edge, never add_node'd) is flagged.
+
+        This is the phantom-node case the dangling-dependencies check CANNOT catch: add_edge
+        promotes the typo into ``dag.nodes``, so by validation time it looks declared. Only the
+        declared-vs-edge diff (PipelineDAG.validate_node_declarations, surfaced here as the
+        ``undeclared_edge_nodes`` issue category) detects it.
+        """
+        dag = PipelineDAG(nodes=["step1", "step2"], edges=[("step1", "step2")])
+        # A single edge-name typo: add_edge auto-creates the phantom endpoint AND leaves the real
+        # target ("step2") orphaned. The phantom is now in dag.nodes but was never add_node'd.
+        dag.add_edge("step1", "step_2_typo")
+        resolver = PipelineDAGResolver(dag, validate_on_init=False)
+
+        issues = resolver._validate_graph_structure()
+
+        assert "undeclared_edge_nodes" in issues
+        assert any(
+            "step_2_typo" in issue for issue in issues["undeclared_edge_nodes"]
+        )
+        # It is NOT reported as a dangling dependency (the phantom is in dag.nodes by now).
+        assert not any(
+            "step_2_typo" in issue
+            for issue in issues.get("dangling_dependencies", [])
+        )
+
+    def test_validate_graph_structure_no_undeclared_when_all_declared(self):
+        """A clean DAG (every edge endpoint declared) reports no undeclared_edge_nodes."""
+        clean_dag = PipelineDAG(
+            nodes=["step1", "step2", "step3"],
+            edges=[("step1", "step2"), ("step2", "step3")],
+        )
+        resolver = PipelineDAGResolver(clean_dag, validate_on_init=False)
+
+        issues = resolver._validate_graph_structure()
+
+        assert "undeclared_edge_nodes" not in issues
+
     def test_validate_steps_with_catalog_success(self):
         """Test step validation with catalog when all steps exist."""
         mock_catalog = Mock()

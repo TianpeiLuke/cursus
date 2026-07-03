@@ -99,7 +99,13 @@ class TestStepConfigResolverAdapter:
             assert result["eval_config"] == mock_configs["eval_config"]
 
     def test_resolve_config_map_catalog_fallback(self, mock_configs):
-        """Test resolve_config_map with catalog-based fallback."""
+        """Test resolve_config_map resolves via the catalog class-match (pattern) tier.
+
+        The node has no exact config key, so it must resolve through the pattern tier, which
+        maps the loaded config's class to a step type via the catalog. The node name's base
+        step type ("train") must agree with the class the catalog reports for
+        XGBoostTrainingConfig ("XGBoostTraining"), so the class-match tier binds it.
+        """
         with patch(
             "cursus.step_catalog.adapters.config_resolver.StepCatalog"
         ) as mock_catalog_class:
@@ -107,49 +113,75 @@ class TestStepConfigResolverAdapter:
             mock_step_info = Mock()
             mock_step_info.config_class = "XGBoostTrainingConfig"
             mock_catalog.get_step_info.return_value = mock_step_info
+            # The catalog maps XGBoostTrainingConfig -> "XGBoostTraining", one of the step
+            # types the ".*train.*" pattern resolves to.
+            mock_catalog.list_available_steps.return_value = ["XGBoostTraining"]
             mock_catalog_class.return_value = mock_catalog
 
             adapter = StepConfigResolverAdapter()
 
-            dag_nodes = ["unknown_node"]
+            # "train_model" matches STEP_TYPE_PATTERNS[".*train.*"] -> ["XGBoostTraining", ...]
+            dag_nodes = ["train_model"]
             result = adapter.resolve_config_map(dag_nodes, mock_configs)
 
-            # Should find config by matching config class
+            # Should find config by matching config class via the catalog.
             assert len(result) == 1
-            assert result["unknown_node"] == mock_configs["training_config"]
+            assert result["train_model"] == mock_configs["training_config"]
 
-    def test_resolve_config_map_last_resort(self, mock_configs):
-        """Test resolve_config_map last resort fallback."""
+    def test_resolve_config_map_raises_on_unresolvable(self, mock_configs):
+        """An unresolvable node must RAISE, never bind to a plausible-but-wrong config.
+
+        Guards against the old anti-pattern where resolve_config_map fell back to
+        ``next(iter(available_configs.values()))`` — silently binding an unmatched DAG node
+        to whatever config happened to be first, and thereby compiling a structurally WRONG
+        pipeline. The correct behavior is to raise ResolutionError listing every node that
+        cannot be resolved, so the operator fixes the config rather than shipping garbage.
+        """
+        from cursus.step_catalog.adapters.config_resolver import ResolutionError
+
         with patch(
             "cursus.step_catalog.adapters.config_resolver.StepCatalog"
         ) as mock_catalog_class:
             mock_catalog = Mock()
             mock_catalog.get_step_info.return_value = None
+            mock_catalog.list_available_steps.return_value = []
             mock_catalog_class.return_value = mock_catalog
 
             adapter = StepConfigResolverAdapter()
 
             dag_nodes = ["completely_unknown"]
-            result = adapter.resolve_config_map(dag_nodes, mock_configs)
 
-            # Should use first available config as last resort
-            assert len(result) == 1
-            assert result["completely_unknown"] in mock_configs.values()
+            with pytest.raises(ResolutionError) as exc_info:
+                adapter.resolve_config_map(dag_nodes, mock_configs)
+
+            # The unresolvable node must be named among the failed nodes.
+            assert "completely_unknown" in exc_info.value.failed_nodes
 
     def test_resolve_config_map_error_handling(self, mock_configs):
-        """Test error handling in resolve_config_map."""
+        """A per-node resolution exception is recorded as a failed node → the map RAISES.
+
+        Previously an exception while resolving a node was swallowed and the method returned
+        a silently-partial (or empty) map. Now every node that fails to resolve — including
+        one that raises unexpectedly (catalog error) — is collected into failed_nodes and
+        resolve_config_map raises ResolutionError.
+        """
+        from cursus.step_catalog.adapters.config_resolver import ResolutionError
+
         with patch(
             "cursus.step_catalog.adapters.config_resolver.StepCatalog"
         ) as mock_catalog_class:
             # Create a mock catalog that works for initialization but fails during resolve_config_map
             mock_catalog = Mock()
             mock_catalog.get_step_info.side_effect = Exception("Test error")
+            mock_catalog.list_available_steps.side_effect = Exception("Test error")
             mock_catalog_class.return_value = mock_catalog
 
             adapter = StepConfigResolverAdapter()
-            result = adapter.resolve_config_map(["test_node"], mock_configs)
 
-            assert result == {}
+            with pytest.raises(ResolutionError) as exc_info:
+                adapter.resolve_config_map(["test_node"], mock_configs)
+
+            assert "test_node" in exc_info.value.failed_nodes
 
     def test_direct_name_matching_exact_match(self, mock_configs):
         """Test direct name matching with exact key match."""
@@ -655,7 +687,16 @@ class TestIntegrationScenarios:
             )
 
     def test_mixed_resolution_strategies(self, realistic_configs):
-        """Test scenario using multiple resolution strategies."""
+        """Multiple strategies resolve some nodes, but a partial map is a HARD failure.
+
+        ``xgboost_training`` matches directly and ``train_model_step`` matches the training
+        pattern, but ``data_preprocessing`` has no preprocessing config to bind to (the
+        fixture has no TabularPreprocessing config). resolve_config_map now refuses to return
+        a partial map — it raises ResolutionError naming exactly the node it could not resolve,
+        rather than silently binding it to the first available config.
+        """
+        from cursus.step_catalog.adapters.config_resolver import ResolutionError
+
         with patch("cursus.step_catalog.adapters.config_resolver.StepCatalog"):
             adapter = StepConfigResolverAdapter()
 
@@ -663,35 +704,44 @@ class TestIntegrationScenarios:
             dag_nodes = [
                 "xgboost_training",  # Direct match
                 "train_model_step",  # Pattern match
-                "data_preprocessing",  # Semantic match
+                "data_preprocessing",  # Unresolvable: no preprocessing config in fixture
             ]
 
-            result = adapter.resolve_config_map(dag_nodes, realistic_configs)
+            with pytest.raises(ResolutionError) as exc_info:
+                adapter.resolve_config_map(dag_nodes, realistic_configs)
 
-            # Should resolve at least some nodes using different strategies
-            # The exact number depends on the implementation's ability to match patterns
-            assert len(result) >= 1
-            assert "xgboost_training" in result  # Direct match should always work
+            # Only the genuinely unresolvable node is reported as failed.
+            assert exc_info.value.failed_nodes == ["data_preprocessing"]
 
     def test_error_resilience_in_production_scenario(self, realistic_configs):
-        """Test error resilience in production-like scenario."""
+        """A production-time catalog failure surfaces as a loud ResolutionError, not silence.
+
+        "Resilience" here means never emitting a structurally-wrong pipeline: when a node
+        cannot be resolved (here because the catalog is unavailable AND the node matches no
+        config), resolve_config_map raises ResolutionError naming the node instead of
+        returning an empty/partial map that would silently drop steps.
+        """
+        from cursus.step_catalog.adapters.config_resolver import ResolutionError
+
         with patch(
             "cursus.step_catalog.adapters.config_resolver.StepCatalog"
         ) as mock_catalog_class:
             # Create a mock catalog that works for initialization but fails during resolve_config_map
             mock_catalog = Mock()
             mock_catalog.get_step_info.side_effect = Exception("Catalog unavailable")
+            mock_catalog.list_available_steps.side_effect = Exception(
+                "Catalog unavailable"
+            )
             mock_catalog_class.return_value = mock_catalog
 
             adapter = StepConfigResolverAdapter()
 
             dag_nodes = ["some_node"]
 
-            # Should handle catalog failure gracefully
-            result = adapter.resolve_config_map(dag_nodes, realistic_configs)
+            with pytest.raises(ResolutionError) as exc_info:
+                adapter.resolve_config_map(dag_nodes, realistic_configs)
 
-            # Should return empty dict on error
-            assert result == {}
+            assert "some_node" in exc_info.value.failed_nodes
 
 
 class TestErrorHandlingAndEdgeCases:
@@ -716,13 +766,20 @@ class TestErrorHandlingAndEdgeCases:
         return configs
 
     def test_empty_configs_dict(self):
-        """Test behavior with empty configs dictionary."""
+        """An empty configs dict cannot satisfy any node, so resolution RAISES.
+
+        A node has zero candidate configs to match against — the correct outcome is a loud
+        ResolutionError naming the node, not a silently-empty map masquerading as success.
+        """
+        from cursus.step_catalog.adapters.config_resolver import ResolutionError
+
         with patch("cursus.step_catalog.adapters.config_resolver.StepCatalog"):
             adapter = StepConfigResolverAdapter()
 
-            result = adapter.resolve_config_map(["test_node"], {})
+            with pytest.raises(ResolutionError) as exc_info:
+                adapter.resolve_config_map(["test_node"], {})
 
-            assert result == {}
+            assert "test_node" in exc_info.value.failed_nodes
 
     def test_empty_dag_nodes_list(self, mock_configs):
         """Test behavior with empty DAG nodes list."""

@@ -163,7 +163,9 @@ def test_build_step_empty_inputs_guard():
 def real_builder(tmp_path):
     (tmp_path / "train_xgb.py").write_text("# stub\n")
     from cursus.steps.configs.config_xgboost_training_step import XGBoostTrainingConfig
-    from cursus.steps.builders import XGBoostTrainingStepBuilder
+    from cursus.step_catalog.step_catalog import StepCatalog
+
+    XGBoostTrainingStepBuilder = StepCatalog().load_builder_class("XGBoostTraining")
 
     cfg = XGBoostTrainingConfig(
         author="t", bucket="b", role="arn:aws:iam::123456789012:role/x", region="NA",

@@ -1,563 +1,249 @@
 """
 Unit tests for step_catalog.spec_discovery module.
 
-Tests the SpecAutoDiscovery class that handles specification file discovery
-and loading across package and workspace directories.
+Interface-first: every step specification is a *view* onto a validated
+``StepInterface`` loaded from the step's ``.step.yaml``. The StepInterface is a
+drop-in for the legacy StepSpecification (it exposes ``step_type``, ``node_type``,
+``dependencies`` and ``outputs``). Discovery is driven by the registry's canonical
+step names + the per-step ``variants`` block — there is no directory scan, no AST
+parse and no per-file import. These tests exercise that interface-first model plus
+the pure ``serialize_spec`` serializer and the smart-selection logic (kept verbatim).
 """
 
 import pytest
-import tempfile
-from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from typing import Dict, List, Optional, Any
+from unittest.mock import Mock
 
+import cursus
 from cursus.step_catalog.spec_discovery import SpecAutoDiscovery
 
 
+@pytest.fixture(scope="module")
+def package_root():
+    """Root of the installed cursus package (source of the .step.yaml interfaces)."""
+    return Path(cursus.__file__).resolve().parent
+
+
 class TestSpecAutoDiscoveryInitialization:
-    """Test SpecAutoDiscovery initialization and setup."""
+    """Constructor keeps a stable signature even though discovery is registry-driven."""
 
-    @pytest.fixture
-    def temp_workspace(self):
-        """Create temporary workspace for testing."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            yield Path(temp_dir)
-
-    def test_init_package_only(self, temp_workspace):
+    def test_init_package_only(self, package_root):
         """Test SpecAutoDiscovery initialization with package-only discovery."""
-        package_root = temp_workspace / "cursus"
-        package_root.mkdir()
-
         discovery = SpecAutoDiscovery(package_root, [])
 
         assert discovery.package_root == package_root
         assert discovery.workspace_dirs == []
         assert discovery.logger is not None
 
-    def test_init_with_workspace_dirs(self, temp_workspace):
+    def test_init_with_workspace_dirs(self, package_root):
         """Test SpecAutoDiscovery initialization with workspace directories."""
-        package_root = temp_workspace / "cursus"
-        package_root.mkdir()
-        workspace_dirs = [temp_workspace / "workspace1", temp_workspace / "workspace2"]
-
+        workspace_dirs = [package_root.parent]
         discovery = SpecAutoDiscovery(package_root, workspace_dirs)
 
         assert discovery.package_root == package_root
         assert discovery.workspace_dirs == workspace_dirs
 
 
-class TestSpecDiscovery:
-    """Test specification file discovery functionality."""
+class TestInterfaceFirstDiscovery:
+    """Discovery sources specifications from the registry + .step.yaml interfaces."""
 
     @pytest.fixture
-    def discovery_with_specs(self):
-        """Create discovery instance with mock spec files."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
+    def discovery(self, package_root):
+        return SpecAutoDiscovery(package_root, [package_root.parent])
 
-            # Create specs directory
-            specs_dir = package_root / "steps" / "specs"
-            specs_dir.mkdir(parents=True)
+    def test_discover_spec_classes(self, discovery):
+        """discover_spec_classes returns StepInterfaces keyed by PascalCase step name."""
+        result = discovery.discover_spec_classes()
 
-            # Create test spec files
-            (specs_dir / "test_step_spec.py").write_text("""
-TEST_STEP_SPEC = type('MockSpec', (), {
-    'step_type': 'Processing',
-    'dependencies': {'input_data': 's3://bucket/input'},
-    'outputs': {'output_data': 's3://bucket/output'}
-})()
-""")
+        assert isinstance(result, dict)
+        assert len(result) > 0
+        assert "TabularPreprocessing" in result
 
-            discovery = SpecAutoDiscovery(package_root, [])
-            yield discovery, specs_dir
+    def test_load_spec_class_existing(self, discovery):
+        """Loading an existing step returns its StepInterface (a StepSpecification drop-in)."""
+        spec = discovery.load_spec_class("TabularPreprocessing")
 
-    def test_discover_spec_classes(self, discovery_with_specs):
-        """Test discovery of specification classes."""
-        discovery, specs_dir = discovery_with_specs
+        assert spec is not None
+        assert hasattr(spec, "step_type")
+        assert hasattr(spec, "dependencies")
+        assert hasattr(spec, "outputs")
 
-        # Mock the scan directory method to avoid import issues
-        with patch.object(discovery, "_scan_spec_directory") as mock_scan:
-            mock_scan.return_value = {"test_step_spec": Mock()}
+    def test_load_spec_class_nonexistent(self, discovery):
+        """Loading a step with no interface file returns None."""
+        assert discovery.load_spec_class("NonexistentStep123") is None
 
-            result = discovery.discover_spec_classes()
-
-            assert isinstance(result, dict)
-            mock_scan.assert_called_once()
-
-    def test_load_spec_class_existing(self, discovery_with_specs):
-        """Test loading existing specification class."""
-        discovery, specs_dir = discovery_with_specs
-
-        # Mock the direct import method
-        with patch.object(discovery, "_try_direct_import") as mock_import:
-            mock_spec = Mock()
-            mock_spec.step_type = "Processing"
-            mock_spec.dependencies = {"input_data": "s3://bucket/input"}
-            mock_spec.outputs = {"output_data": "s3://bucket/output"}
-            mock_import.return_value = mock_spec
-
-            result = discovery.load_spec_class("test_step")
-
-            assert result is not None
-            assert hasattr(result, "step_type")
-            assert hasattr(result, "dependencies")
-            assert hasattr(result, "outputs")
-
-    def test_load_spec_class_nonexistent(self, discovery_with_specs):
-        """Test loading non-existent specification class."""
-        discovery, specs_dir = discovery_with_specs
-
-        # Mock both direct import and workspace import to return None
-        with patch.object(discovery, "_try_direct_import", return_value=None):
-            with patch.object(
-                discovery, "_try_workspace_spec_import", return_value=None
-            ):
-                result = discovery.load_spec_class("nonexistent_step")
-
-                assert result is None
-
-    def test_is_spec_instance(self, discovery_with_specs):
-        """Test specification instance validation."""
-        discovery, specs_dir = discovery_with_specs
-
-        # Valid spec instance - must have step_type, dependencies, and outputs
+    def test_is_spec_instance(self, discovery):
+        """_is_spec_instance requires step_type + dependencies + outputs attributes."""
         valid_spec = Mock()
         valid_spec.step_type = "Processing"
         valid_spec.dependencies = {}
         valid_spec.outputs = {}
+        assert discovery._is_spec_instance(valid_spec) is True
 
-        assert discovery._is_spec_instance(valid_spec) == True
-
-        # Invalid spec instance - Mock without the required attributes will raise AttributeError
-        # when hasattr() is called, which the implementation catches and returns False
         invalid_spec = Mock()
         invalid_spec.step_type = "Processing"
-        # Remove the dependencies and outputs attributes completely
         del invalid_spec.dependencies
         del invalid_spec.outputs
-
-        # The actual implementation uses hasattr() which will return False for missing attributes
-        assert discovery._is_spec_instance(invalid_spec) == False
+        assert discovery._is_spec_instance(invalid_spec) is False
 
 
 class TestSpecSerialization:
-    """Test specification serialization functionality."""
+    """serialize_spec is a pure serializer kept verbatim across the migration."""
 
     @pytest.fixture
-    def mock_spec_instance(self):
-        """Create mock specification instance."""
-        spec = Mock()
-        spec.dependencies = {
-            "input_data": "s3://bucket/input",
-            "model_config": "s3://bucket/config",
-        }
-        spec.outputs = {
-            "output_data": "s3://bucket/output",
-            "metrics": "s3://bucket/metrics",
-        }
-        spec.step_name = "test_step"
-        return spec
+    def discovery(self, package_root):
+        return SpecAutoDiscovery(package_root, [package_root.parent])
 
-    def test_serialize_spec(self, mock_spec_instance):
-        """Test specification serialization."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
+    def test_serialize_spec_real_interface(self, discovery):
+        """serialize_spec on a real interface yields the four required keys."""
+        spec = discovery.load_spec_class("TabularPreprocessing")
+        result = discovery.serialize_spec(spec)
 
-            # Mock the spec instance to have the required attributes for serialization
-            mock_spec_instance.step_type = "Processing"
-            mock_spec_instance.node_type = Mock()
-            mock_spec_instance.node_type.value = "Transform"
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {"step_type", "node_type", "dependencies", "outputs"}
+        assert isinstance(result["step_type"], str)
+        assert isinstance(result["node_type"], str)
+        assert isinstance(result["dependencies"], list)
+        assert isinstance(result["outputs"], list)
 
-            # Mock dependencies and outputs as expected by serialize_spec
-            mock_spec_instance.dependencies = {}
-            mock_spec_instance.outputs = {}
-
-            discovery = SpecAutoDiscovery(package_root, [])
-
-            # Mock _is_spec_instance to return True
-            with patch.object(discovery, "_is_spec_instance", return_value=True):
-                result = discovery.serialize_spec(mock_spec_instance)
-
-                assert isinstance(result, dict)
-                assert "dependencies" in result
-                assert "outputs" in result
-                assert "step_type" in result
-                assert result["step_type"] == "Processing"
-
-    def test_serialize_spec_error_handling(self):
-        """Test specification serialization error handling."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
-
-            discovery = SpecAutoDiscovery(package_root, [])
-
-            # Test with invalid spec object
-            result = discovery.serialize_spec(None)
-
-            assert result == {}
+    def test_serialize_spec_error_handling(self, discovery):
+        """serialize_spec returns {} for an invalid spec object."""
+        assert discovery.serialize_spec(None) == {}
 
 
 class TestSpecContractMapping:
-    """Test specification-contract mapping functionality."""
+    """find_specs_by_contract resolves per-step (and per-variant) specifications."""
 
     @pytest.fixture
-    def discovery_with_contract_mapping(self):
-        """Create discovery instance for contract mapping tests."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
+    def discovery(self, package_root):
+        return SpecAutoDiscovery(package_root, [package_root.parent])
 
-            discovery = SpecAutoDiscovery(package_root, [])
-            yield discovery
+    def test_find_specs_by_contract_variant_step(self, discovery):
+        """A step with variants yields one serialized spec per variant, keyed {Step}_{variant}."""
+        result = discovery.find_specs_by_contract("CradleDataLoading")
 
-    def test_find_specs_by_contract(self, discovery_with_contract_mapping):
-        """Test finding specifications by contract name."""
-        discovery = discovery_with_contract_mapping
+        assert isinstance(result, dict)
+        assert len(result) > 0
+        # Keyed by {StepName}_{variant} so job type can be classified per entry.
+        assert all(key.startswith("CradleDataLoading_") for key in result)
+        # Each value is a serialized-spec dict.
+        sample = next(iter(result.values()))
+        assert set(sample.keys()) == {"step_type", "node_type", "dependencies", "outputs"}
 
-        # Mock the actual methods that exist in the implementation
-        with patch.object(
-            discovery, "_find_specs_by_contract_in_dir"
-        ) as mock_find_core:
-            mock_find_core.return_value = {"test_contract_spec": Mock()}
+    def test_find_specs_by_contract_accepts_file_stem(self, discovery):
+        """A file-stem-ish contract name is bridged to the canonical step name."""
+        result = discovery.find_specs_by_contract("tabular_preprocessing_contract")
+        assert isinstance(result, dict)
+        assert len(result) > 0
 
-            with patch.object(
-                discovery, "_find_specs_by_contract_in_workspace"
-            ) as mock_find_workspace:
-                mock_find_workspace.return_value = {}
-
-                result = discovery.find_specs_by_contract("test_contract")
-
-                assert isinstance(result, dict)
-                # Should find specs from core directory
-
-    def test_find_specs_by_contract_error_handling(
-        self, discovery_with_contract_mapping
-    ):
-        """Test error handling in find_specs_by_contract."""
-        discovery = discovery_with_contract_mapping
-
-        # Mock the actual method that exists and make it raise an exception
-        with patch.object(
-            discovery,
-            "_find_specs_by_contract_in_dir",
-            side_effect=Exception("Test error"),
-        ):
-            result = discovery.find_specs_by_contract("test_contract")
-
-            assert result == {}
+    def test_find_specs_by_contract_unknown(self, discovery):
+        """An unresolvable contract name yields an empty dict."""
+        assert discovery.find_specs_by_contract("nonexistent_step_123") == {}
 
 
 class TestJobTypeVariants:
-    """Test job type variant handling."""
+    """Job-type variant keys come from the .step.yaml `variants` block."""
 
     @pytest.fixture
-    def discovery_with_variants(self):
-        """Create discovery instance with job type variants."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            specs_dir = package_root / "steps" / "specs"
-            specs_dir.mkdir(parents=True)
+    def discovery(self, package_root):
+        return SpecAutoDiscovery(package_root, [package_root.parent])
 
-            # Create variant spec files
-            (specs_dir / "data_loading_training_spec.py").write_text("# Training spec")
-            (specs_dir / "data_loading_validation_spec.py").write_text(
-                "# Validation spec"
-            )
-            (specs_dir / "data_loading_testing_spec.py").write_text("# Testing spec")
+    def test_get_job_type_variants(self, discovery):
+        """A multi-variant step returns its variant KEYS (not VariantDecl values)."""
+        variants = discovery.get_job_type_variants("CradleDataLoading")
 
-            discovery = SpecAutoDiscovery(package_root, [])
-            yield discovery, specs_dir
-
-    def test_get_job_type_variants(self, discovery_with_variants):
-        """Test getting job type variants for a step."""
-        discovery, specs_dir = discovery_with_variants
-
-        variants = discovery.get_job_type_variants("data_loading")
-
-        # Should find training, validation, testing variants
+        assert isinstance(variants, list)
         assert len(variants) >= 3
         assert "training" in variants
         assert "validation" in variants
         assert "testing" in variants
 
-    def test_get_job_type_variants_no_variants(self, discovery_with_variants):
-        """Test getting variants for step with no variants."""
-        discovery, specs_dir = discovery_with_variants
-
-        variants = discovery.get_job_type_variants("nonexistent_step")
-
-        assert len(variants) == 0
+    def test_get_job_type_variants_no_variants(self, discovery):
+        """A step with no interface file returns an empty variant list."""
+        assert discovery.get_job_type_variants("NonexistentStep123") == []
 
 
 class TestUnifiedSpecification:
-    """Test unified specification creation functionality."""
+    """create_unified_specification produces the 7-key smart-selection model."""
 
     @pytest.fixture
-    def discovery_with_unified_specs(self):
-        """Create discovery instance for unified specification tests."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
+    def discovery(self, package_root):
+        return SpecAutoDiscovery(package_root, [package_root.parent])
 
-            discovery = SpecAutoDiscovery(package_root, [])
-            yield discovery
+    def test_create_unified_specification(self, discovery):
+        """A real multi-variant step yields the full 7-key unified model."""
+        result = discovery.create_unified_specification("CradleDataLoading")
 
-    def test_create_unified_specification(self, discovery_with_unified_specs):
-        """Test creating unified specification from multiple variants."""
-        discovery = discovery_with_unified_specs
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {
+            "primary_spec",
+            "variants",
+            "unified_dependencies",
+            "unified_outputs",
+            "dependency_sources",
+            "output_sources",
+            "variant_count",
+        }
+        assert result["variant_count"] >= 1
 
-        # Mock multiple spec variants
-        with patch.object(discovery, "find_specs_by_contract") as mock_find:
-            mock_specs = {
-                "training_spec": Mock(
-                    dependencies={"input": "s3://train"},
-                    outputs={"model": "s3://model"},
-                ),
-                "validation_spec": Mock(
-                    dependencies={"model": "s3://model"},
-                    outputs={"metrics": "s3://metrics"},
-                ),
-            }
-            mock_find.return_value = mock_specs
+    def test_create_unified_specification_no_specs(self, discovery):
+        """An unresolvable contract yields the empty unified model (variant_count 0)."""
+        result = discovery.create_unified_specification("nonexistent_contract_123")
 
-            result = discovery.create_unified_specification("test_contract")
+        assert isinstance(result, dict)
+        assert result["variant_count"] == 0
 
-            assert isinstance(result, dict)
-            assert "primary_spec" in result
-            assert "variants" in result
-            assert "unified_dependencies" in result
-            assert "unified_outputs" in result
-
-    def test_create_unified_specification_no_specs(self, discovery_with_unified_specs):
-        """Test creating unified specification when no specs found."""
-        discovery = discovery_with_unified_specs
-
-        with patch.object(discovery, "find_specs_by_contract", return_value={}):
-            result = discovery.create_unified_specification("nonexistent_contract")
-
-            assert isinstance(result, dict)
-            assert result["variant_count"] == 0
+    def test_select_primary_specification_prefers_training(self, discovery):
+        """_select_primary_specification prefers training > generic > first available."""
+        assert discovery._select_primary_specification(
+            {"validation": {"a": 1}, "training": {"b": 2}}
+        ) == {"b": 2}
+        assert discovery._select_primary_specification(
+            {"validation": {"a": 1}, "generic": {"c": 3}}
+        ) == {"c": 3}
+        assert discovery._select_primary_specification({"validation": {"a": 1}}) == {
+            "a": 1
+        }
+        assert discovery._select_primary_specification({}) == {}
 
 
 class TestSmartValidation:
-    """Test smart validation functionality."""
+    """validate_logical_names_smart returns a list of issue dicts."""
 
     @pytest.fixture
-    def discovery_with_smart_validation(self):
-        """Create discovery instance for smart validation tests."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
+    def discovery(self, package_root):
+        return SpecAutoDiscovery(package_root, [package_root.parent])
 
-            discovery = SpecAutoDiscovery(package_root, [])
-            yield discovery
+    def test_validate_logical_names_smart(self, discovery):
+        """Smart validation over a real step returns a list of issues."""
+        contract = {
+            "inputs": {"input_path": "s3://bucket/input"},
+            "outputs": {"output_path": "s3://bucket/output"},
+        }
+        result = discovery.validate_logical_names_smart(contract, "CradleDataLoading")
 
-    def test_validate_logical_names_smart(self, discovery_with_smart_validation):
-        """Test smart validation of logical names."""
-        discovery = discovery_with_smart_validation
+        assert isinstance(result, list)
 
-        # Mock unified specification
-        with patch.object(discovery, "create_unified_specification") as mock_unified:
-            mock_unified.return_value = {
-                "unified_dependencies": {"input_data": {"required": True}},
-                "unified_outputs": {"output_data": {"required": True}},
-                "variants": {"training": Mock(), "validation": Mock()},
-            }
+    def test_validate_logical_names_smart_unknown_contract(self, discovery):
+        """Smart validation against an unresolvable contract still returns a list."""
+        result = discovery.validate_logical_names_smart({}, "nonexistent_contract_123")
 
-            contract = {
-                "inputs": {"input_data": "s3://bucket/input"},
-                "outputs": {"output_data": "s3://bucket/output"},
-            }
-
-            result = discovery.validate_logical_names_smart(contract, "test_contract")
-
-            assert isinstance(result, list)
-            # Validation results depend on implementation details
-
-    def test_validate_logical_names_smart_error_handling(
-        self, discovery_with_smart_validation
-    ):
-        """Test error handling in smart validation."""
-        discovery = discovery_with_smart_validation
-
-        with patch.object(
-            discovery,
-            "create_unified_specification",
-            side_effect=Exception("Test error"),
-        ):
-            result = discovery.validate_logical_names_smart({}, "test_contract")
-
-            assert isinstance(result, list)
-            assert len(result) > 0  # Should contain error information
+        assert isinstance(result, list)
 
 
 class TestAllSpecificationsLoading:
-    """Test loading all specifications functionality."""
+    """load_all_specifications MUST stay populated (empty triggers a dead legacy fallback)."""
 
     @pytest.fixture
-    def discovery_with_all_specs(self):
-        """Create discovery instance for all specifications tests."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            specs_dir = package_root / "steps" / "specs"
-            specs_dir.mkdir(parents=True)
+    def discovery(self, package_root):
+        return SpecAutoDiscovery(package_root, [package_root.parent])
 
-            # Create multiple spec files
-            (specs_dir / "step1_spec.py").write_text("# Step 1 spec")
-            (specs_dir / "step2_spec.py").write_text("# Step 2 spec")
-            (specs_dir / "step3_training_spec.py").write_text("# Step 3 training spec")
+    def test_load_all_specifications_populated(self, discovery):
+        """load_all_specifications returns a non-empty dict of serialized-spec dicts."""
+        result = discovery.load_all_specifications()
 
-            discovery = SpecAutoDiscovery(package_root, [])
-            yield discovery, specs_dir
-
-    def test_load_all_specifications(self, discovery_with_all_specs):
-        """Test loading all specification instances."""
-        discovery, specs_dir = discovery_with_all_specs
-
-        # Mock the discover_spec_classes method which is actually called
-        with patch.object(discovery, "discover_spec_classes") as mock_discover:
-            mock_spec = Mock()
-            mock_spec.step_type = "Processing"
-            mock_spec.dependencies = {"input": "s3://input"}
-            mock_spec.outputs = {"output": "s3://output"}
-
-            mock_discover.return_value = {
-                "step1_spec": mock_spec,
-                "step2_spec": mock_spec,
-                "step3_training_spec": mock_spec,
-            }
-
-            # Mock _is_spec_instance and serialize_spec
-            with patch.object(discovery, "_is_spec_instance", return_value=True):
-                with patch.object(discovery, "serialize_spec") as mock_serialize:
-                    mock_serialize.return_value = {
-                        "step_type": "Processing",
-                        "dependencies": [],
-                        "outputs": [],
-                    }
-
-                    result = discovery.load_all_specifications()
-
-                    assert isinstance(result, dict)
-                    assert len(result) >= 3  # Should have at least 3 specs
-
-    def test_load_all_specifications_error_handling(self, discovery_with_all_specs):
-        """Test error handling in load_all_specifications."""
-        discovery, specs_dir = discovery_with_all_specs
-
-        # Mock the actual method that exists - discover_spec_classes
-        with patch.object(
-            discovery, "discover_spec_classes", side_effect=Exception("Test error")
-        ):
-            result = discovery.load_all_specifications()
-
-            assert result == {}
-
-
-class TestErrorHandlingAndResilience:
-    """Test error handling and resilience features."""
-
-    def test_graceful_degradation_on_import_error(self):
-        """Test graceful degradation when spec imports fail."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
-
-            discovery = SpecAutoDiscovery(package_root, [])
-
-            # Test with non-existent spec
-            result = discovery.load_spec_class("nonexistent_spec")
-
-            assert result is None
-
-    def test_error_logging_in_spec_loading(self):
-        """Test that errors are properly logged during spec loading."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
-
-            discovery = SpecAutoDiscovery(package_root, [])
-
-            with patch.object(discovery.logger, "error") as mock_error:
-                # Force an error condition using actual method
-                with patch.object(
-                    discovery,
-                    "discover_spec_classes",
-                    side_effect=Exception("Test error"),
-                ):
-                    result = discovery.load_all_specifications()
-
-                    assert result == {}
-                    # Error logging should occur when exceptions happen
-
-
-class TestWorkspaceIntegration:
-    """Test workspace integration functionality."""
-
-    @pytest.fixture
-    def discovery_with_workspaces(self):
-        """Create discovery instance with workspace directories."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            package_root = Path(temp_dir) / "cursus"
-            package_root.mkdir()
-
-            # Create workspace directories
-            workspace1 = Path(temp_dir) / "workspace1" / "steps" / "specs"
-            workspace1.mkdir(parents=True)
-            workspace2 = Path(temp_dir) / "workspace2" / "steps" / "specs"
-            workspace2.mkdir(parents=True)
-
-            # Create spec files in workspaces
-            (workspace1 / "workspace1_spec.py").write_text("# Workspace 1 spec")
-            (workspace2 / "workspace2_spec.py").write_text("# Workspace 2 spec")
-
-            discovery = SpecAutoDiscovery(
-                package_root, [workspace1.parent.parent, workspace2.parent.parent]
-            )
-            yield discovery, workspace1, workspace2
-
-    def test_discover_workspace_specs(self, discovery_with_workspaces):
-        """Test discovery of specs in workspace directories."""
-        discovery, workspace1, workspace2 = discovery_with_workspaces
-
-        # Mock the actual workspace discovery method
-        with patch.object(discovery, "_discover_workspace_specs") as mock_discover:
-            mock_discover.return_value = {
-                "workspace1_spec": Mock(),
-                "workspace2_spec": Mock(),
-            }
-
-            result = discovery.discover_spec_classes()
-
-            assert isinstance(result, dict)
-            # Should call workspace discovery for each workspace directory
-
-    def test_load_workspace_specs(self, discovery_with_workspaces):
-        """Test loading specs from workspace directories."""
-        discovery, workspace1, workspace2 = discovery_with_workspaces
-
-        # Mock the actual methods used in load_all_specifications
-        with patch.object(discovery, "discover_spec_classes") as mock_discover:
-            mock_spec = Mock()
-            mock_spec.step_type = "Processing"
-            mock_spec.dependencies = {"input": "s3://workspace/input"}
-            mock_spec.outputs = {"output": "s3://workspace/output"}
-
-            mock_discover.return_value = {"workspace_spec": mock_spec}
-
-            with patch.object(discovery, "_is_spec_instance", return_value=True):
-                with patch.object(discovery, "serialize_spec") as mock_serialize:
-                    mock_serialize.return_value = {
-                        "step_type": "Processing",
-                        "dependencies": [],
-                        "outputs": [],
-                    }
-
-                    result = discovery.load_all_specifications()
-
-                    assert isinstance(result, dict)
-                    # Should include workspace specs
+        assert isinstance(result, dict)
+        assert len(result) > 0
+        assert "TabularPreprocessing" in result
+        sample = result["TabularPreprocessing"]
+        assert set(sample.keys()) == {"step_type", "node_type", "dependencies", "outputs"}

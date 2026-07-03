@@ -150,15 +150,22 @@ class TestExpandedDiscoveryMethods:
         assert len(components) == 1
 
     def test_get_builder_class_path_from_registry(self, catalog_with_test_data):
-        """Test getting builder class path from registry data."""
+        """Test that a step with no builder file component resolves to None.
+
+        The former ``cursus.steps.builders.{name}`` registry-string fallback was
+        deleted in the interface-first migration: under Design B builders are
+        synthesized (there is no per-step builder_*.py module), so a dotted string
+        to a nonexistent module was a lie. With no builder file component and no
+        BuilderAutoDiscovery hit, get_builder_class_path returns None rather than an
+        unimportable path.
+        """
         catalog = catalog_with_test_data
 
         # Test path resolution
         builder_path = catalog.get_builder_class_path("test_step")
 
-        # Should return registry-based path
-        expected_path = "cursus.steps.builders.xgboosttraining.XGBoostTraining"
-        assert builder_path == expected_path
+        # No builder file component + synthesized builders ⇒ None (fallback deleted).
+        assert builder_path is None
 
     def test_get_builder_class_path_from_file(self, mock_workspace_root):
         """Test getting builder class path from file components."""
