@@ -310,12 +310,16 @@ class ProcessingHandler(PatternHandler):
             return []
 
         # The output-destination S3 prefix segment is DERIVED from the step name —
-        # canonical_to_snake(step_type) (the package's PascalCase->snake util, acronyms handled). It
-        # is NOT a declarable knob (FZ 31e1d3f1b): it corresponds to the step name by convention, and
-        # the few historical deviations (model_evaluation / active_sampling / packaging) were
-        # non-standard and removed. include_job_type_in_path STAYS a per-step knob (genuinely
-        # variable: some steps segment the path by job_type, some don't), read knob->contract->default.
-        token = canonical_to_snake(b.spec.step_type)
+        # canonical_to_snake(step_type) (the package's PascalCase->snake util, acronyms handled) — the
+        # convention for ~all steps. OPT-IN override: contract.output_path_token, when set, is used
+        # VERBATIM instead (FZ 31e1d3f1b re-introduced as an escape hatch, default-off) — needed when
+        # an external consumer keys off a fixed S3 folder name that does not match the cursus step name
+        # (e.g. PIPER scans <pipeline>/Model_Metric_Generation_Step/ for .metric files).
+        # include_job_type_in_path STAYS a per-step knob (genuinely variable: some steps segment the
+        # path by job_type, some don't), read knob->contract->default.
+        token = getattr(b.contract, "output_path_token", None) or canonical_to_snake(
+            b.spec.step_type
+        )
         include_job_type = self.knobs.get("include_job_type_in_path")
         if include_job_type is None:
             include_job_type = getattr(b.contract, "include_job_type_in_path", True)
@@ -569,8 +573,8 @@ class TrainingHandler(PatternHandler):
             if output_spec.logical_name in outputs:
                 return outputs[output_spec.logical_name]
         # The output S3 prefix is DERIVED from the step name — canonical_to_snake(step_type), the
-        # CONVENTION (FZ 31e1d3f1b); not a declarable knob.
-        token = (
+        # CONVENTION (FZ 31e1d3f1b). OPT-IN override: contract.output_path_token used verbatim if set.
+        token = getattr(b.contract, "output_path_token", None) or (
             canonical_to_snake(b.spec.step_type)
             if hasattr(b.spec, "step_type")
             else "training"
@@ -822,8 +826,8 @@ class TransformHandler(PatternHandler):
                 return outputs[logical_name]
         base = b._get_base_output_path()
         # The output S3 prefix is DERIVED from the step name — canonical_to_snake(step_type), the
-        # CONVENTION (FZ 31e1d3f1b); not a declarable knob.
-        token = (
+        # CONVENTION (FZ 31e1d3f1b). OPT-IN override: contract.output_path_token used verbatim if set.
+        token = getattr(b.contract, "output_path_token", None) or (
             canonical_to_snake(b.spec.step_type)
             if hasattr(b.spec, "step_type")
             else "batch_transform"

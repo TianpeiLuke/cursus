@@ -90,9 +90,9 @@ def _rules_naming() -> Dict[str, Any]:
 
 
 def _rules_packaging() -> Dict[str, Any]:
-    """The source_dir packaging constraint — a Pydantic field fact (ContractSection.source_dir),
-    NOT a standalone validator. Surfaced honestly as guidance the validator cannot enforce at author
-    time (it is a runtime/build packaging consequence)."""
+    """The source_dir packaging constraint + the output-destination axes — Pydantic field facts on
+    ContractSection, NOT standalone validators. Surfaced honestly as guidance the validator cannot
+    enforce at author time (they are runtime/build consequences)."""
     return {
         "source_dir": {
             "field": "contract.source_dir",
@@ -102,8 +102,30 @@ def _rules_packaging() -> Dict[str, Any]:
             "ScriptProcessor.run has no source_dir.",
             "false": "ships a single `code=` file — the script CANNOT import a new sibling lib.",
         },
-        "caveat": "This is a script-packaging fact derived from the Pydantic field semantics, not a "
-        "standalone packaging validator — choose source_dir before writing imports in the script.",
+        "output_path_token": {
+            "field": "contract.output_path_token",
+            "default": None,
+            "none": "DEFAULT — the output S3 prefix segment is DERIVED from the step name "
+            "(canonical_to_snake(step_type)); the destination is Join(base, <derived_token>, "
+            "[job_type], logical_name). Use this for ~all steps — the folder matches the step name.",
+            "set": "OPT-IN override — the given string is used VERBATIM as that S3 prefix segment "
+            "instead of the derived token. Set this ONLY when an EXTERNAL consumer keys off a fixed "
+            "S3 folder name that does not match the cursus step name (e.g. PIPER scans "
+            "<pipeline>/Model_Metric_Generation_Step/ for .metric files, so PiperMetricGeneration "
+            "sets output_path_token: Model_Metric_Generation_Step).",
+            "caveat": "This changes only the emitted S3 destination, NOT the SageMaker/DAG step name; "
+            "prefer the derived default unless an external contract forces a fixed folder.",
+        },
+        "include_job_type_in_path": {
+            "field": "contract.include_job_type_in_path",
+            "default": True,
+            "true": "config.job_type is a segment of the output destination "
+            "(Join(base, token, job_type, logical_name)) — use for steps that fan out per split.",
+            "false": "omit job_type from the destination (Join(base, token, logical_name)).",
+        },
+        "caveat": "These are script-packaging / output-destination facts derived from the Pydantic "
+        "field semantics, not standalone validators — choose source_dir before writing imports, and "
+        "leave output_path_token unset unless an external consumer requires a fixed folder name.",
         "sais_preamble": "Scripts that carry the SAIS secure-pypi install preamble (USE_SECURE_PYPI "
         "/ CA_REPOSITORY_ARN / CodeArtifact) MUST keep it — it is load-bearing, never remove it.",
     }

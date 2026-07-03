@@ -429,8 +429,14 @@ class ContractSection(BaseModel):
     #: ProcessingHandler reads it as the ``split_source_dir`` switch. Default False (self-contained).
     #: NOTE: a True value requires a FrameworkProcessor (``ScriptProcessor.run`` has no ``source_dir``).
     source_dir: bool = False
-    #: NOTE: ``output_path_token`` was REMOVED (FZ 31e1d3f1b) — the output-destination S3 prefix is
-    #: DERIVED from the step name (``canonical_to_snake(step_type)``), not declarable per step.
+    #: OPT-IN override for the output-destination S3 prefix segment. Default ``None`` ⇒ the segment is
+    #: DERIVED from the step name (``canonical_to_snake(step_type)``), the convention for ~all steps.
+    #: When set to a non-empty string it is used VERBATIM as that segment instead of the derived token
+    #: — needed when an EXTERNAL consumer keys off a fixed S3 folder name that does not match the
+    #: cursus step name (e.g. PIPER scans ``<pipeline>/Model_Metric_Generation_Step/`` for ``.metric``
+    #: files). This re-introduces the field removed in FZ 31e1d3f1b, but as an explicit escape hatch
+    #: (default-off) rather than a routinely-set knob — the derived convention still holds by default.
+    output_path_token: Optional[str] = None
     #: Whether ``config.job_type`` is a segment of the synthesized output destination. The other
     #: ``_get_outputs`` axis: some steps put job_type in the path, some don't. Default True. The
     #: ProcessingHandler reads this as the ``include_job_type_in_path`` knob.

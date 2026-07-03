@@ -338,22 +338,30 @@ def describe_step_patterns(
     }
 
     # --- outputs: sink vs generated-destination token/job_type ---
-    # The S3 prefix token is DERIVED from the step name (canonical_to_snake) — no longer a declarable
-    # field (FZ 31e1d3f1b). Only include_job_type_in_path remains a per-step knob.
+    # The S3 prefix token is DERIVED from the step name (canonical_to_snake) by default, unless the
+    # contract sets an OPT-IN output_path_token override (FZ 31e1d3f1b re-introduced, default-off).
+    # include_job_type_in_path remains a per-step knob.
     if getattr(c, "sink", False):
         out_pattern = "sink (no outputs)"
+        _token = None
+        _token_source = None
     else:
         from ...step_catalog.naming import canonical_to_snake
 
-        token = canonical_to_snake(iface.spec.step_type)
+        _override = getattr(c, "output_path_token", None)
+        _token = _override or canonical_to_snake(iface.spec.step_type)
+        _token_source = (
+            "override: contract.output_path_token"
+            if _override
+            else "derived: canonical_to_snake(step_type)"
+        )
+        token = _token
         jt = getattr(c, "include_job_type_in_path", True)
         out_pattern = f"generated destination Join(base, {token}{', job_type' if jt else ''}, logical_name)"
     patterns["outputs"] = {
         "pattern": out_pattern,
-        "output_path_token": canonical_to_snake(iface.spec.step_type)
-        if not getattr(c, "sink", False)
-        else None,
-        "output_path_token_source": "derived: canonical_to_snake(step_type)",
+        "output_path_token": _token,
+        "output_path_token_source": _token_source,
         "include_job_type_in_path": getattr(c, "include_job_type_in_path", True),
         "sink": getattr(c, "sink", False),
         "custom_override": "_get_outputs" in overridden,
