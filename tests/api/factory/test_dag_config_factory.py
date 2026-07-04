@@ -351,3 +351,135 @@ class TestDAGConfigFactoryEdgeCases:
             ):
                 configs = factory.generate_all_configs()
                 assert configs == []
+
+
+class TestSetStepConfigBareName:
+    """set_step_config accepts the BASE step name too: it finds the config class by base
+    step name and carries the job_type value, resolving to the suffixed DAG node key.
+
+    Regression from the multi-pipeline validation campaign (transportation_risk_mtl):
+    the DAG node is ``PercentileModelCalibration_calibration`` but the notebook/generate_config
+    calls ``set_step_config("PercentileModelCalibration", job_type="calibration", ...)`` — the
+    bare name plus job_type must resolve to that node, not raise "Step not found in DAG".
+    """
+
+    def _make_factory(self, node_map):
+        dag = MockDAG(list(node_map.keys()))
+        with patch.object(
+            DAGConfigFactory, "_map_dag_to_config_classes_robust", return_value=node_map
+        ):
+            factory = DAGConfigFactory(dag)
+        factory.base_config = MockBasePipelineConfig(project_name="test")
+        factory.config_generator = MagicMock()
+        return factory
+
+    def test_resolve_bare_name_plus_job_type(self):
+        factory = self._make_factory({"PercentileModelCalibration_calibration": MockStepConfigA})
+        assert (
+            factory._resolve_step_name_to_node("PercentileModelCalibration", "calibration")
+            == "PercentileModelCalibration_calibration"
+        )
+
+    def test_resolve_bare_name_unique_base_no_job_type(self):
+        # even without job_type, a unique base match resolves
+        factory = self._make_factory({"PercentileModelCalibration_calibration": MockStepConfigA})
+        assert (
+            factory._resolve_step_name_to_node("PercentileModelCalibration", None)
+            == "PercentileModelCalibration_calibration"
+        )
+
+    def test_exact_node_key_unchanged(self):
+        factory = self._make_factory({"PercentileModelCalibration_calibration": MockStepConfigA})
+        assert (
+            factory._resolve_step_name_to_node("PercentileModelCalibration_calibration", "calibration")
+            == "PercentileModelCalibration_calibration"
+        )
+
+    def test_suffixless_node_unchanged(self):
+        # a genuinely suffix-less node (e.g. Package) still matches directly
+        factory = self._make_factory({"Package": MockStepConfigA})
+        assert factory._resolve_step_name_to_node("Package", None) == "Package"
+
+    def test_ambiguous_base_left_unresolved(self):
+        # two nodes share the base → ambiguous → return unchanged (downstream raises clearly)
+        factory = self._make_factory({
+            "TabularPreprocessing_training": MockStepConfigA,
+            "TabularPreprocessing_calibration": MockStepConfigB,
+        })
+        # with an explicit job_type it still disambiguates to the composed key
+        assert (
+            factory._resolve_step_name_to_node("TabularPreprocessing", "training")
+            == "TabularPreprocessing_training"
+        )
+        # without a job_type it's ambiguous → unchanged (not a valid node key)
+        assert factory._resolve_step_name_to_node("TabularPreprocessing", None) == "TabularPreprocessing"
+
+    def test_set_step_config_with_bare_name_stores_under_node_key(self):
+        factory = self._make_factory({"PercentileModelCalibration_calibration": MockStepConfigA})
+        with patch.object(factory, "_validate_prerequisites_for_step"), patch.object(
+            factory, "_create_config_instance_with_inheritance"
+        ) as mock_create:
+            mock_create.return_value = MockStepConfigA(project_name="test", step_param_a="v")
+            factory.set_step_config("PercentileModelCalibration", job_type="calibration", step_param_a="v")
+        # stored under the resolved node key, not the bare name
+        assert "PercentileModelCalibration_calibration" in factory.step_configs
+        assert "PercentileModelCalibration" not in factory.step_configs
+
+
+class TestDagConfigAlignmentValidation:
+    """The DAG↔config invariant + non-silent guard, added from the multi-pipeline validation
+    campaign so step-TYPE drift (e.g. DAG 'BedrockBatchProcessing_training' vs a
+    'BedrockProcessing' config class) fails loudly at generate time instead of at compile time.
+    """
+
+    def _factory(self, node_map):
+        dag = MockDAG(list(node_map.keys()))
+        with patch.object(
+            DAGConfigFactory, "_map_dag_to_config_classes_robust", return_value=node_map
+        ):
+            f = DAGConfigFactory(dag)
+        f.base_config = MockBasePipelineConfig(project_name="test")
+        f.config_generator = MagicMock()
+        return f
+
+    def _instance_with_key(self, derived_key):
+        inst = MagicMock(spec=MockStepConfigA)
+        inst._derive_step_name = lambda: derived_key
+        return inst
+
+    def test_alignment_ok_when_keys_match(self):
+        f = self._factory({"PercentileModelCalibration_calibration": MockStepConfigA})
+        f.step_config_instances = {
+            "PercentileModelCalibration_calibration": self._instance_with_key(
+                "PercentileModelCalibration_calibration"
+            )
+        }
+        assert f.validate_dag_config_alignment(raise_on_error=False) == []
+
+    def test_alignment_flags_step_type_mismatch(self):
+        # DAG node is BedrockBatchProcessing_* but the configured instance serializes as
+        # BedrockProcessing_* → the config is the wrong step type → must be flagged.
+        f = self._factory({"BedrockBatchProcessing_training": MockStepConfigA})
+        f.step_config_instances = {
+            "BedrockBatchProcessing_training": self._instance_with_key(
+                "BedrockProcessing_training"
+            )
+        }
+        errs = f.validate_dag_config_alignment(raise_on_error=False)
+        assert len(errs) == 1 and "BedrockBatchProcessing_training" in errs[0]
+        with pytest.raises(ValueError, match="DAG↔config alignment check failed"):
+            f.validate_dag_config_alignment(raise_on_error=True)
+
+    def test_is_dag_step_bare_and_suffixed(self):
+        f = self._factory({"PercentileModelCalibration_calibration": MockStepConfigA})
+        assert f.is_dag_step("PercentileModelCalibration", "calibration") is True
+        assert f.is_dag_step("PercentileModelCalibration_calibration") is True
+        assert f.is_dag_step("NotAStep") is False
+
+    def test_configure_step_if_present_warns_on_miss(self, caplog):
+        import logging
+        f = self._factory({"Package": MockStepConfigA})
+        with caplog.at_level(logging.WARNING):
+            result = f.configure_step_if_present("TypoStep", job_type="training")
+        assert result is None
+        assert any("resolves to no DAG node" in r.message for r in caplog.records)

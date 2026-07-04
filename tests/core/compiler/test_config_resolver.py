@@ -372,3 +372,112 @@ class TestConfigResolver:
         # Check evaluation node (should be empty)
         assert "evaluation" in preview
         assert len(preview["evaluation"]) == 0
+
+
+class TestJobTypeNoneRobustness:
+    """Regression: a config whose ``job_type`` attribute is present but ``None``
+    (the Pydantic default on e.g. PyTorchTraining / Package / Payload / Registration)
+    must not crash the resolver with ``AttributeError: 'NoneType' ... 'lower'``.
+
+    Before the fix, ``getattr(config, "job_type", "").lower()`` returned ``None`` (not
+    ``""``) when the attribute existed with value ``None`` — so ``.lower()`` raised, and
+    the per-node handler masked a genuine DAG↔config mismatch as an opaque
+    "unresolvable node" instead of a clean ResolutionError naming the node. Surfaced by
+    the multi-pipeline validation campaign (rnr_pytorch_bedrock, transportation_risk_mtl).
+    """
+
+    @pytest.fixture
+    def resolver(self):
+        return StepConfigResolver()
+
+    @pytest.fixture
+    def none_job_type_config(self):
+        """A config exposing job_type=None (attribute present, value None)."""
+        config = MagicMock(spec=BasePipelineConfig)
+        type(config).__name__ = "PyTorchTrainingConfig"
+        config.job_type = None
+        return config
+
+    def test_direct_name_matching_tolerates_none_job_type(self, resolver, none_job_type_config):
+        # node with a suffix drives the _direct_name_matching job_type branch (site 209)
+        configs = {"PyTorchTraining": none_job_type_config}
+        result = resolver._direct_name_matching("PyTorchTraining_training", configs)
+        # must not raise; a None job_type simply doesn't match the "training" suffix here
+        assert result is None or hasattr(result, "job_type")
+
+    def test_job_type_matching_tolerates_none_job_type(self, resolver, none_job_type_config):
+        # site 275
+        configs = {"PyTorchTraining": none_job_type_config}
+        matches = resolver._job_type_matching("PyTorchTraining_training", configs)
+        assert isinstance(matches, list)  # no AttributeError
+
+    def test_calculate_job_type_boost_tolerates_none(self, resolver, none_job_type_config):
+        # site 531
+        boost = resolver._calculate_job_type_boost("PyTorchTraining_training", none_job_type_config)
+        assert boost == 0.0  # None job_type contributes no boost, and does not crash
+
+    def test_job_type_matching_enhanced_tolerates_none(self, resolver, none_job_type_config):
+        # site 765 — signature is (job_type, configs, config_type=None)
+        matches = resolver._job_type_matching_enhanced(
+            "training", {"PyTorchTraining": none_job_type_config}
+        )
+        assert isinstance(matches, list)  # no AttributeError
+
+
+class TestBareStepNameMatching:
+    """We accept a DAG node given WITHOUT a job_type suffix too: a bare step-name node
+    (e.g. "PercentileModelCalibration") resolves to the single config keyed WITH a suffix
+    (e.g. "PercentileModelCalibration_calibration"). Mirror of the suffixed-node case.
+    Surfaced by the multi-pipeline validation campaign (transportation_risk_mtl).
+    """
+
+    @pytest.fixture
+    def resolver(self):
+        return StepConfigResolver()
+
+    def _cfg(self, class_name, job_type=None):
+        c = MagicMock(spec=BasePipelineConfig)
+        type(c).__name__ = class_name
+        c.job_type = job_type
+        return c
+
+    def test_bare_node_matches_single_suffixed_config(self, resolver):
+        configs = {
+            "PercentileModelCalibration_calibration": self._cfg(
+                "PercentileModelCalibrationConfig", "calibration"
+            ),
+        }
+        # patch the class→step-type map so the mock resolves without a live catalog
+        with patch.object(
+            resolver, "_config_class_to_step_type",
+            side_effect=lambda n: "PercentileModelCalibration"
+            if n == "PercentileModelCalibrationConfig" else "",
+        ), patch.object(resolver.catalog, "list_available_steps",
+                        return_value=["PercentileModelCalibration"]):
+            match = resolver._direct_name_matching("PercentileModelCalibration", configs)
+        assert match is configs["PercentileModelCalibration_calibration"]
+
+    def test_bare_node_ambiguous_defers(self, resolver):
+        # two configs sharing the base → ambiguous → no direct match (defer to scored)
+        configs = {
+            "PercentileModelCalibration_calibration": self._cfg(
+                "PercentileModelCalibrationConfig", "calibration"
+            ),
+            "PercentileModelCalibration_testing": self._cfg(
+                "PercentileModelCalibrationConfig", "testing"
+            ),
+        }
+        with patch.object(
+            resolver, "_config_class_to_step_type",
+            side_effect=lambda n: "PercentileModelCalibration"
+            if n == "PercentileModelCalibrationConfig" else "",
+        ), patch.object(resolver.catalog, "list_available_steps",
+                        return_value=["PercentileModelCalibration"]):
+            match = resolver._direct_name_matching("PercentileModelCalibration", configs)
+        assert match is None  # ambiguous → deferred
+
+    def test_exact_key_still_wins(self, resolver):
+        # a bare node that IS an exact config key must still match directly (no regression)
+        configs = {"Package": self._cfg("PackageConfig", None)}
+        match = resolver._direct_name_matching("Package", configs)
+        assert match is configs["Package"]

@@ -190,6 +190,56 @@ class DAGConfigFactory:
             )
             return node_name
 
+    def _resolve_step_name_to_node(
+        self, step_name: str, job_type: Optional[str] = None
+    ) -> str:
+        """Resolve a caller-supplied step name to the actual DAG node key.
+
+        ``set_step_config`` accepts the step given WITH or WITHOUT a job_type suffix — the
+        config class is found by BASE step name, and the job_type value is carried in kwargs.
+        A DAG node is ``{canonical_step_name}[_{job_type}]``, so this maps the caller's name
+        onto whichever node key the DAG actually declared:
+
+        1. Exact node-key match (already suffixed, or a suffix-less node) → use as-is.
+        2. Bare name + explicit ``job_type`` → try composed key ``{step_name}_{job_type}``.
+        3. Bare name → the single node whose canonical base step name equals ``step_name``
+           (unambiguous); if several nodes share the base, keep the name unchanged and let
+           the caller disambiguate (the exact-key check downstream will raise clearly).
+
+        Returns the resolved node key (or the original ``step_name`` if nothing better fits).
+        """
+        # 1. Exact match — nothing to do.
+        if step_name in self._config_class_map:
+            return step_name
+
+        # 2. Bare name + job_type → composed suffix key.
+        if job_type:
+            composed = f"{step_name}_{job_type}"
+            if composed in self._config_class_map:
+                logger.debug(
+                    f"Resolved step '{step_name}' + job_type='{job_type}' → node '{composed}'"
+                )
+                return composed
+
+        # 3. Bare name → unique node whose base canonical step name matches.
+        base_matches = [
+            node
+            for node in self._config_class_map
+            if self._extract_canonical_step_name(node) == step_name
+        ]
+        if len(base_matches) == 1:
+            logger.debug(
+                f"Resolved bare step '{step_name}' → node '{base_matches[0]}' (unique base match)"
+            )
+            return base_matches[0]
+        if len(base_matches) > 1:
+            logger.warning(
+                f"Step '{step_name}' is ambiguous — {len(base_matches)} DAG nodes share this base "
+                f"({base_matches}); pass the full node name (e.g. with its job_type suffix)."
+            )
+
+        return step_name
+
     def _resolve_canonical_name_to_config_class(
         self,
         canonical_step_name: str,
@@ -740,6 +790,12 @@ class DAGConfigFactory:
         Raises:
             ValueError: If configuration is invalid or prerequisites not met
         """
+        # Accept a bare step name too: if the DAG node carries a job_type suffix
+        # (e.g. node "PercentileModelCalibration_calibration") the caller may pass the
+        # base step name "PercentileModelCalibration" together with job_type="calibration".
+        # Resolve such a bare name to the actual DAG node key before lookup.
+        step_name = self._resolve_step_name_to_node(step_name, kwargs.get("job_type"))
+
         if step_name not in self._config_class_map:
             raise ValueError(f"Step '{step_name}' not found in DAG")
 
@@ -772,6 +828,33 @@ class DAGConfigFactory:
             raise ValueError(
                 f"Configuration validation failed for {step_name}: {error_context}"
             )
+
+    def is_dag_step(self, step_name: str, job_type: Optional[str] = None) -> bool:
+        """Return True if ``step_name`` (bare or suffixed, optionally + job_type) is a DAG node.
+
+        Lets callers replace the silent ``if "X" in pending_steps:`` guard with an explicit,
+        resolution-aware check that honours the same bare→suffixed logic as set_step_config.
+        """
+        return self._resolve_step_name_to_node(step_name, job_type) in self._config_class_map
+
+    def configure_step_if_present(self, step_name: str, **kwargs) -> Optional[BaseModel]:
+        """Configure a step, but WARN (not raise) if it is not a DAG node — a non-silent
+        replacement for the ubiquitous ``if "X" in pending_steps: set_step_config("X", ...)``
+        notebook guard.
+
+        The bare guard silently skips a mistyped/renamed step name because ``pending_steps`` is
+        derived from the DAG nodes — hiding real typos (the campaign found leftover template cells
+        in ~7 projects this way). This wrapper resolves the name (bare→suffixed included) and, when
+        it matches no DAG node, logs a WARNING and returns ``None`` instead of quietly doing nothing.
+        """
+        if not self.is_dag_step(step_name, kwargs.get("job_type")):
+            logger.warning(
+                f"⚠️  set_step_config skipped: '{step_name}' resolves to no DAG node "
+                f"(job_type={kwargs.get('job_type')!r}). If this is intentional dead code, remove "
+                f"the cell; otherwise it is likely a typo/renamed step — the config will be MISSING."
+            )
+            return None
+        return self.set_step_config(step_name, **kwargs)
 
     def auto_configure_step_if_possible(self, step_name: str) -> Optional[BaseModel]:
         """
@@ -846,6 +929,57 @@ class DAGConfigFactory:
 
         return status
 
+    def validate_dag_config_alignment(self, raise_on_error: bool = True) -> List[str]:
+        """Assert the DAG↔config invariant: every DAG node resolves to a config whose derived
+        save-key equals the node name, and every configured instance keys back to a DAG node.
+
+        This catches the class of latent drift the multi-pipeline validation campaign found —
+        a DAG node whose step TYPE has no matching config (e.g. DAG ``BedrockBatchProcessing_training``
+        vs config class ``BedrockProcessing``), which otherwise only surfaces at pipeline-compile
+        time as an opaque "no config for node". We check it at generate/save time instead.
+
+        The saved config key is ``{registry_step_name}[_{job_type}]`` (see config ``_derive_step_name``);
+        it MUST equal the DAG node key the factory stored the instance under. A mismatch means the
+        configured config class is the wrong step TYPE for that node.
+
+        Args:
+            raise_on_error: raise ValueError listing all mismatches (default); if False, return them.
+
+        Returns:
+            List of human-readable mismatch strings (empty when aligned).
+        """
+        errors: List[str] = []
+
+        for node_name, instance in self.step_config_instances.items():
+            # The key this config will serialize under (merge_and_save_configs uses this).
+            derived = None
+            if hasattr(instance, "_derive_step_name"):
+                try:
+                    derived = instance._derive_step_name()
+                except Exception as e:  # noqa: BLE001 — a broken derive is itself a finding
+                    errors.append(
+                        f"node '{node_name}': could not derive its saved config key ({e})"
+                    )
+                    continue
+            if derived is not None and derived != node_name:
+                errors.append(
+                    f"node '{node_name}': configured instance serializes under key "
+                    f"'{derived}' (config class {type(instance).__name__}) — the DAG node key "
+                    f"and the saved config key disagree, so the config is the wrong step TYPE "
+                    f"for this node (DAG↔config mismatch)."
+                )
+
+        # Every DAG node must have mapped to a config class at all.
+        for node_name in self._config_class_map:
+            if self._config_class_map.get(node_name) is None:
+                errors.append(f"node '{node_name}': no config class resolved for this DAG node.")
+
+        if errors and raise_on_error:
+            raise ValueError(
+                "DAG↔config alignment check failed:\n  - " + "\n  - ".join(errors)
+            )
+        return errors
+
     def generate_all_configs(self) -> List[BaseModel]:
         """
         Generate final list of config instances.
@@ -867,6 +1001,10 @@ class DAGConfigFactory:
         missing_steps = self.get_pending_steps()
         if missing_steps:
             raise ValueError(f"Missing configuration for steps: {missing_steps}")
+
+        # Enforce the DAG↔config invariant before emitting configs, so a step-type mismatch
+        # (DAG node vs configured config class) fails loudly here instead of at pipeline compile.
+        self.validate_dag_config_alignment(raise_on_error=True)
 
         # If we have pre-validated instances for all steps, return them
         if len(self.step_config_instances) == len(self._config_class_map):

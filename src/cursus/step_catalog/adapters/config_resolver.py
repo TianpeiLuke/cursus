@@ -206,7 +206,7 @@ class StepConfigResolverAdapter:
                             job_type = node_parts[-1].lower()
                             if (
                                 hasattr(config, "job_type")
-                                and getattr(config, "job_type", "").lower() == job_type
+                                and (getattr(config, "job_type", "") or "").lower() == job_type
                             ):
                                 self.logger.info(
                                     f"Found metadata mapping match with job type for node '{node_name}'"
@@ -226,6 +226,42 @@ class StepConfigResolverAdapter:
                     f"Found case-insensitive match for node '{node_name}': {config_name}"
                 )
                 return config
+
+        # Base-step-name match: accept a DAG node given WITHOUT a job_type suffix that maps to
+        # exactly one config keyed WITH a suffix (e.g. node "PercentileModelCalibration" → config
+        # key "PercentileModelCalibration_calibration"). This is the mirror of the suffixed-node
+        # case: we always accept a bare step-name node too. Guarded to be unambiguous — the node
+        # must itself be a base step name (no suffix), and exactly one config whose REAL step type
+        # equals that base may claim it; otherwise we defer to the scored strategies.
+        from ..naming import canonical_key, split_job_type_suffix
+
+        try:
+            known_steps = self.catalog.list_available_steps()
+        except Exception:
+            known_steps = []
+        _, node_suffix = split_job_type_suffix(node_name, known_steps)
+        if node_suffix is None:
+            base_key = canonical_key(node_name)
+            base_type_matches = []
+            for cname, cfg in configs.items():
+                if cname == node_name:
+                    continue
+                cfg_step_type = self._config_class_to_step_type(type(cfg).__name__)
+                if cfg_step_type and canonical_key(cfg_step_type) == base_key:
+                    base_type_matches.append((cname, cfg))
+            if len(base_type_matches) == 1:
+                cname, cfg = base_type_matches[0]
+                self.logger.info(
+                    f"Found base-step-name match for suffix-less node '{node_name}': "
+                    f"'{cname}' (config carries the job_type suffix)"
+                )
+                return cfg
+            elif len(base_type_matches) > 1:
+                self.logger.debug(
+                    f"Node '{node_name}' has no job_type but {len(base_type_matches)} configs share "
+                    f"its base step type ({[c for c, _ in base_type_matches]}) — ambiguous, "
+                    f"deferring to scored matching."
+                )
 
         return None
 
@@ -272,7 +308,7 @@ class StepConfigResolverAdapter:
         # Find configs with matching job_type (legacy logic)
         for config_name, config in configs.items():
             if hasattr(config, "job_type"):
-                config_job_type = getattr(config, "job_type", "").lower()
+                config_job_type = (getattr(config, "job_type", "") or "").lower()
 
                 # Check for job type match (legacy logic)
                 job_type_keywords = self.JOB_TYPE_KEYWORDS.get(detected_job_type, [])
@@ -528,7 +564,7 @@ class StepConfigResolverAdapter:
         if not hasattr(config, "job_type"):
             return 0.0
 
-        config_job_type = getattr(config, "job_type", "").lower()
+        config_job_type = (getattr(config, "job_type", "") or "").lower()
         node_lower = node_name.lower()
 
         # Check for job type keywords in node name (legacy logic)
@@ -762,7 +798,7 @@ class StepConfigResolverAdapter:
 
         for config_name, config in configs.items():
             if hasattr(config, "job_type"):
-                config_job_type = getattr(config, "job_type", "").lower()
+                config_job_type = (getattr(config, "job_type", "") or "").lower()
 
                 # Skip if job types don't match
                 if config_job_type != normalized_job_type:
