@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.9] - 2026-07-04
+
+Ported from amzn-cursus 2.4.11 — config-resolver + DAGConfigFactory robustness (multi-pipeline validation campaign). Backward-compatible; no API removals.
+
+### Fixed
+
+- **`job_type=None` no longer crashes resolution** — `step_catalog/adapters/config_resolver.py`, 4 sites changed to `(getattr(config, "job_type", "") or "").lower()`. A config whose `job_type` is present-but-`None` previously raised `AttributeError`, masking a genuine DAG↔config mismatch as an opaque "unresolvable node".
+
+### Added
+
+- **Bare-step-name resolution (resolver + factory)** — a suffix-less DAG node resolves to the single config keyed with a suffix (node `PercentileModelCalibration` → config `PercentileModelCalibration_calibration`), guarded to be unambiguous. `DAGConfigFactory.set_step_config` accepts the bare base name + `job_type=` via the new `_resolve_step_name_to_node`, instead of raising "Step not found in DAG".
+- **`DAGConfigFactory.validate_dag_config_alignment()`** (called in `generate_all_configs()`) — asserts each configured instance's derived save-key equals its DAG node key, turning step-TYPE drift into a loud build-time error.
+- **`DAGConfigFactory.is_dag_step()` + `configure_step_if_present()`** — non-silent replacement for the `if "X" in pending_steps` guard that hides typos/renamed steps.
+- Regression tests: `TestJobTypeNoneRobustness`, `TestBareStepNameMatching`, `TestSetStepConfigBareName`, `TestDagConfigAlignmentValidation`.
+
 ## [2.5.8] - 2026-07-03
 
 Ported from amzn-cursus 2.4.9 + 2.4.10.
