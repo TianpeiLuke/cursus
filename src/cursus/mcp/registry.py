@@ -84,6 +84,7 @@ _TOOL_MODULES = [
     "validate",
     "execdoc",
     "pipeline_catalog",
+    "project",
     "strategies",
     "steps",
     "author",

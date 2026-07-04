@@ -190,3 +190,78 @@ After the config is generated, the pipeline is compiled + executed by `run_pipel
    `create_secure_session_config` / `PipelineSession`) → `PipelineDAGCompiler.compile_with_report(dag)` →
    `ExecutionDocumentGenerator.fill_execution_document(dag, ...)` →
    `SagemakerPipelineHelper.start_pipeline_execution(...)`.
+
+## `cursus-init-project.js` — scaffold a NEW project (phase-0)
+
+`cursus-configure-pipeline` fills a project's `generate_config.py`; `cursus-author-step` authors a new
+step type. This workflow does the step *before* both: it **stands up a brand-new project package** — the
+skeleton that is byte-identical for every project regardless of framework, DAG, or features, plus the two
+things knowable at creation (the project name and the model framework, so the full name is
+`<name>_<framework>`).
+
+It generates only the **phase-0** files and records everything context-dependent as an action-item ledger:
+
+```
+Consult   → resolve name+framework+target → PLAN (full name, PascalCase class, import prefix,
+            handler filenames, a real reference project to ground against)
+Scaffold  → source-grounded generation (read the reference project, skip-rather-than-invent): write
+            run_pipeline.py (fixed), <name>_<framework>_pipeline.py (the @MODSTemplate class that LOADS
+            pipeline_config/dag.json), generate_config.py (shared DAGConfigFactory skeleton with
+            project_root_folder FILLED + a TODO per-node value-init), an empty dag.json stub, the folder
+            tree, and a README.md in each folder
+Ledger    → write the root README ACTION-ITEM LEDGER: the ordered checklist of what remains (author the
+            DAG, copy scripts/handlers, fill @MODSTemplate metadata, fill config via
+            /cursus-configure-pipeline, generate config, run), each naming its owning downstream workflow
+Verify    → executable gate: py_compile the 3 .py + json.load the dag.json stub + confirm the tree/READMEs
+```
+
+The Scaffold phase does not author a DAG (there is none at t=0) and Verify runs no `compile.preview` — the
+honest ceiling of a phase-0 scaffold is "the files parse and the tree is right." Everything else is the
+ledger's job.
+
+### Run it
+
+```
+args: { "name": "secure_delivery", "framework": "xgboost" }               # → projects/secure_delivery_xgboost/
+args: { "name": "abuse_polygraph", "framework": "pytorch",
+        "target_dir": "src/buyer_abuse_mods_template" }                    # BAMT deploy target (sets the import prefix)
+```
+
+`framework` is one of `xgboost` / `pytorch` / `lightgbmmt` / `bedrock`. `target_dir` defaults to `projects`
+(the AmazonCursus dev location); pass `src/buyer_abuse_mods_template` for a deploy, which also switches the
+import prefix to `buyer_abuse_mods_template.cursus`.
+
+There is also a **deterministic, offline** MCP tool for the same scaffold — `project.init` (namespace
+`project.*`) — which writes versioned package templates directly with no workflow harness. Use the tool
+when you only need the skeleton statelessly; use this workflow when you want the templates grounded against
+a live reference project.
+
+## `cursus-new-project.js` — end-to-end bring-up (auto-chain)
+
+Composes the shipped workflows so a team runs **one** command and ends with a compile-ready project. A thin
+orchestrator over the three pieces (`workflow()` nests one level only, so the chaining lives here, not
+inside `cursus-init-project`):
+
+```
+Scaffold  → workflow('cursus-init-project')  → the phase-0 skeleton + ledger
+SeedDAG   → catalog: pipeline_catalog.recommend + load_dag → pipeline_config/dag.json  (fully automatable)
+            manual:  STOP with the ledger — the human authors dag.json and re-invokes
+GateDAG   → dag.validate_integrity on a non-empty dag.json — an empty/invalid DAG is an explicit STOP,
+            never a silent pass (configure would have nothing to do)
+Configure → workflow('cursus-configure-pipeline', { dag_nodes, project, region, project_root })
+```
+
+The **hard constraint** it respects: init emits an *empty* `dag.json`, but `cursus-configure-pipeline`
+authors one `set_step_config` per DAG node — so a DAG must exist between them. Full end-to-end automation
+exists only for the **catalog** path (a known shared DAG); the **manual** and **new-step-type** paths pause
+at a precise, resumable human handoff.
+
+### Run it
+
+```
+args: { "name": "secure_delivery", "framework": "xgboost" }                       # catalog DAG, full chain
+args: { "name": "new_model", "framework": "pytorch", "dag_source": "manual" }     # scaffold, then human authors the DAG
+```
+
+`dag_source` defaults to `catalog`. The `project.bring_up` MCP tool returns this workflow's invocation for a
+caller that wants the whole chain rather than just the phase-0 skeleton.
