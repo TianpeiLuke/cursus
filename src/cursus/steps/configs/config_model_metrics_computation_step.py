@@ -55,9 +55,13 @@ class ModelMetricsComputationConfig(ProcessingStepConfigBase):
     )
 
     score_field: Optional[str] = Field(
-        default=None,
+        default="prob_class_1",
         description="Name of the score column to evaluate (single-task mode). "
-        "Use this for backward compatibility or when evaluating a single score field.",
+        "Defaults to 'prob_class_1' — the positive-class probability column the upstream "
+        "model-inference step emits (output_df['prob_class_{i}']) and that the metrics script "
+        "auto-detects via the 'prob_class_' prefix. Override for multi-class or a renamed score "
+        "column, or set score_fields for multi-task mode. A single-task binary pipeline that "
+        "omits this (the common case) is now valid without an explicit value.",
     )
 
     score_fields: Optional[List[str]] = Field(

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.10] - 2026-07-04
+
+Ported from amzn-cursus 2.4.12.
+
+### Fixed
+
+- **`ModelMetricsComputationConfig.score_field` default `None` → `"prob_class_1"`.** The v2.2.0 model-validator requires "at least one of `score_field`/`score_fields`", but the field had no default — so `set_step_config("ModelMetricsComputation_*", ...)` raised and saved configs omitting it failed validation on reload. `prob_class_1` is the positive-class column upstream `XGBoostModelInference` emits and `model_metrics_computation.py` auto-detects (`prob_class_` prefix). Single-task binary pipelines are now valid without an explicit value; multi-class/multi-task still overrides via `score_field`/`score_fields`.
+
 ## [2.5.9] - 2026-07-04
 
 Ported from amzn-cursus 2.4.11 — config-resolver + DAGConfigFactory robustness (multi-pipeline validation campaign). Backward-compatible; no API removals.
