@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.6] - 2026-07-03
+
+Ported from amzn-cursus 2.4.7: robust node→base step-name resolution + cross-DAG `compatible_sources` gap closure.
+
+### Changed
+
+- **Node base-step-name resolution is registry-driven, not suffix-list-driven.** `naming.resolve_base_step_name` / `split_job_type_suffix` strip trailing `_segment`s and validate the base against the actual step registry via `canonical_key` (replacing the `JOB_TYPE_SUFFIXES` membership check at `get_step_info`, `get_step_interface`, and `config_resolver._semantic_matching`). Any suffix resolves (job_type is open — `munged`/`sampling`/`tagging`/…); `XGBoostModel` is never mis-stripped.
+
+### Fixed
+
+- **9 `compatible_sources` gaps closed across 8 interfaces** — producer→consumer edges used in shipping BAMT DAGs that the consumer didn't list: `TemporalSplitPreprocessing` → MT training/eval; `XgboostMt`/`LightGBMMT` training → Package; `XgboostMtTraining` → Payload; `XgboostMtModelEval` → ModelCalibration; `PyTorchModelInference` → XGBoostModelInference. Re-audit across all BAMT DAGs: 0 gaps.
+
 ## [2.5.5] - 2026-07-03
 
 Ported from amzn-cursus 2.4.5 + 2.4.6: config-resolver deep-dive Tranche 3 (allow-all job_types).

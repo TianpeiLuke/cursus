@@ -163,18 +163,19 @@ class StepCatalog:
             if result is not None:
                 return result
 
-            # JOB-TYPE-SUFFIX FALLBACK: the index is keyed on canonical base names
-            # (TabularPreprocessing), but DAG nodes arrive job-type-suffixed
-            # (TabularPreprocessing_training) with job_type=None. Without this, a suffixed node
-            # returns None, which silently breaks the config resolver + dependency checks
-            # (deep dive 2026-07-03, Defect B). Mirror the guarded fallback get_step_interface uses:
-            # strip ONLY a known job-type suffix (naming.JOB_TYPE_SUFFIXES) — never a bare rsplit,
-            # so XGBoostModel is not mis-stripped — and retry the base name.
+            # SUFFIX FALLBACK: the index is keyed on canonical base names (TabularPreprocessing),
+            # but DAG nodes arrive suffixed (TabularPreprocessing_training, CradleDataLoading_munged)
+            # with job_type=None. Without this, a suffixed node returns None, which silently breaks
+            # the config resolver + dependency checks (deep dive 2026-07-03, Defect B). Resolve the
+            # base ROBUSTLY against the index keys via naming.resolve_base_step_name — this validates
+            # the base against actual step names (not a hardcoded JOB_TYPE_SUFFIXES list), so ANY
+            # suffix resolves (munged/tagging/sampling/... — job_type is open now) while a base like
+            # XGBoostModel is never mis-stripped (no XGBoost step exists to strip it to).
             if job_type is None and "_" in step_name:
-                from .naming import JOB_TYPE_SUFFIXES
+                from .naming import resolve_base_step_name
 
-                base, _, suffix = step_name.rpartition("_")
-                if base and suffix.lower() in JOB_TYPE_SUFFIXES:
+                base = resolve_base_step_name(step_name, self._step_index.keys())
+                if base and base != step_name:
                     return self._step_index.get(base)
 
             return None
@@ -705,12 +706,13 @@ class StepCatalog:
         are thin views over it, so the job_type-suffix fallback below is written once and
         every consumer inherits it.
 
-        On the first (exact) load miss, if ``job_type`` was not supplied, we strip a trailing
-        ``_<suffix>`` where ``suffix`` is a known job-type suffix and retry as a variant
-        (``ModelCalibration_calibration`` → ``ModelCalibration`` + job_type ``calibration``).
-        This mirrors :func:`naming.is_job_type_variant`. The suffix set is deliberately
-        ``naming.JOB_TYPE_SUFFIXES`` (NOT ``JOB_TYPE_KEYWORDS``, which contains ``"model"``
-        and would mis-strip ``XGBoostModel`` → ``XGBoost``).
+        On the first (exact) load miss, if ``job_type`` was not supplied, we resolve the node's
+        base step name ROBUSTLY (``naming.resolve_base_step_name`` against the registry — validates
+        the base against actual step names, not a hardcoded suffix list) and retry with the trailing
+        segment as the job_type (``ModelCalibration_calibration`` → ``ModelCalibration`` + job_type
+        ``calibration``; ``CradleDataLoading_munged`` → ``CradleDataLoading`` + ``munged``). Because
+        the base is validated against the registry, ANY suffix resolves (job_type is open now) while
+        a base like ``XGBoostModel`` is never mis-stripped (no ``XGBoost`` step exists to strip to).
 
         Args:
             step_name: PascalCase step name (may be a ``Base_variant`` compound).
@@ -726,13 +728,20 @@ class StepCatalog:
         except Exception:
             pass
 
-        # Job-type-suffix fallback: only when the caller did not already pin a job_type,
-        # and only for a trailing suffix in the variant vocabulary (never "model").
+        # Suffix fallback: only when the caller did not already pin a job_type. Resolve the base
+        # against the registry (robust to any suffix), then retry with the trailing segment as the
+        # job_type.
         if job_type is None and "_" in step_name:
-            from .naming import JOB_TYPE_SUFFIXES
+            from .naming import split_job_type_suffix
 
-            base_name, _, suffix = step_name.rpartition("_")
-            if base_name and suffix.lower() in JOB_TYPE_SUFFIXES:
+            try:
+                from ..registry.step_names import get_step_names
+
+                known = get_step_names().keys()
+            except Exception:
+                known = []
+            base_name, suffix = split_job_type_suffix(step_name, known)
+            if suffix:
                 try:
                     return load_interface(base_name, job_type=suffix)
                 except Exception:

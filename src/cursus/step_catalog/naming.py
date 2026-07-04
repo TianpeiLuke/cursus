@@ -25,7 +25,7 @@ normalized directory scan so most new acronyms resolve with no table edit at all
 from __future__ import annotations
 
 import re
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 # Compound acronyms / multi-word tokens whose internal capitalization must be preserved as
 # a single unit when converting between PascalCase and snake_case. Order matters: longer
@@ -136,3 +136,53 @@ def canonical_key(name: str) -> str:
     so a new acronym step still resolves without editing :data:`COMPOUND_ACRONYMS`.
     """
     return "".join(ch for ch in name.lower() if ch.isalnum())
+
+
+def resolve_base_step_name(node_name: str, known_step_names: Iterable[str]) -> Optional[str]:
+    """Resolve a DAG node name to its base registry step name — ROBUSTLY, without a hardcoded
+    suffix list.
+
+    A node is ``<StepName>[_<suffix>...]`` where ``<suffix>`` is an arbitrary label (job_type,
+    data-source tag, split name — e.g. ``_training``, ``_munged``, ``_sampling``, ``_tagging``,
+    ``_baseline``, ``_embedding``). Since job_type is now open (any lowercase-alnum, deep dive
+    Tranche 3), the suffix is NOT drawn from a fixed set, so matching a trailing token against
+    ``JOB_TYPE_SUFFIXES`` misses real nodes. Instead: strip trailing ``_segment`` groups one at a
+    time and return the first prefix that is an actual known step name (matched via
+    :func:`canonical_key`, so compound-acronym casing like ``XgboostMt`` vs ``XGBoostMT`` also
+    resolves). The step registry — not a suffix allowlist — is the authority for what a base name is.
+
+    Returns the canonical known step name, or ``None`` if no prefix matches.
+    """
+    by_key = {}
+    for s in known_step_names:
+        by_key.setdefault(canonical_key(s), s)
+    parts = node_name.split("_")
+    for cut in range(len(parts), 0, -1):
+        hit = by_key.get(canonical_key("_".join(parts[:cut])))
+        if hit is not None:
+            return hit
+    return None
+
+
+def split_job_type_suffix(node_name: str, known_step_names: Iterable[str]) -> tuple:
+    """Split a node into ``(base_step_name, suffix_or_None)`` using the registry (robust).
+
+    ``('TabularPreprocessing_training', [...]) -> ('TabularPreprocessing', 'training')``;
+    ``('CradleDataLoading_munged', [...]) -> ('CradleDataLoading', 'munged')``;
+    ``('CradleDataLoading', [...]) -> ('CradleDataLoading', None)``. Unlike a
+    ``JOB_TYPE_SUFFIXES`` check, this handles ANY suffix because the base is validated against
+    the actual step registry via :func:`resolve_base_step_name`. Returns ``(node_name, None)`` if
+    the node doesn't resolve to a known base.
+    """
+    base = resolve_base_step_name(node_name, known_step_names)
+    if base is None:
+        return node_name, None
+    if canonical_key(base) == canonical_key(node_name):
+        return base, None
+    # The suffix is whatever follows the base's snake prefix in the node name.
+    suffix = node_name[len(base) + 1 :] if node_name.lower().startswith(base.lower()) else None
+    if not suffix:
+        # base matched via canonical_key (casing/separator differ); recover the trailing segment(s)
+        n_base_parts = len(canonical_to_snake(base).split("_"))
+        suffix = "_".join(node_name.split("_")[n_base_parts:]) or None
+    return base, suffix

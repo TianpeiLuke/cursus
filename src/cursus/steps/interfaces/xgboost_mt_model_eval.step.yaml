@@ -73,6 +73,7 @@ spec:
       - LabelRulesetExecution
       - BedrockBatchProcessing
       - BedrockProcessing
+      - TemporalSplitPreprocessing
       semantic_keywords:
       - data
       - evaluation

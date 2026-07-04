@@ -52,6 +52,7 @@ spec:
       - DummyTraining
       - TrainingStep
       - ModelStep
+      - XgboostMtTraining
       semantic_keywords:
       - model
       - artifacts

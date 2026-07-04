@@ -367,11 +367,17 @@ class StepConfigResolverAdapter:
         }
 
         node_lower = node_name.lower()
-        # The node's base step type is its name minus any trailing job-type suffix.
-        from ..naming import JOB_TYPE_SUFFIXES
+        # The node's base step type is its name minus any trailing suffix. Resolve it ROBUSTLY
+        # against the catalog's known steps (not a hardcoded JOB_TYPE_SUFFIXES list), so any suffix
+        # (job_type OR data-source label like munged/sampling) strips correctly while a base like
+        # XGBoostModel is never mis-stripped.
+        from ..naming import resolve_base_step_name
 
-        base, _, suffix = node_name.rpartition("_")
-        node_step_type = base if (base and suffix.lower() in JOB_TYPE_SUFFIXES) else node_name
+        try:
+            known_steps = self.catalog.list_available_steps()
+        except Exception:
+            known_steps = []
+        node_step_type = resolve_base_step_name(node_name, known_steps) or node_name
 
         for config_key, config_instance in configs.items():
             config_lower = config_key.lower()

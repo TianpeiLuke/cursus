@@ -51,6 +51,7 @@ spec:
       - DummyTraining
       - XGBoostModel
       - PyTorchModel
+      - PyTorchModelInference
       semantic_keywords:
       - model
       - artifacts

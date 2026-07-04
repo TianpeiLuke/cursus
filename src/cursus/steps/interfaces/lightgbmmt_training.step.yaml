@@ -69,6 +69,7 @@ spec:
       - StratifiedSampling
       - ProcessingStep
       - DataLoad
+      - TemporalSplitPreprocessing
       semantic_keywords:
       - data
       - input

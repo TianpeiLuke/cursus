@@ -47,6 +47,8 @@ spec:
       - TrainingStep
       - ModelStep
       - PyTorchTraining
+      - XgboostMtTraining
+      - LightGBMMTTraining
       semantic_keywords:
       - model
       - artifacts
