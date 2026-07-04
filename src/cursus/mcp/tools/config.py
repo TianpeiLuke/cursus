@@ -21,6 +21,11 @@ from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
 from .shared import resolve_dag as _build_dag  # canonical DAG resolver
 
+# One-line purpose of this namespace (collected by the registry for config.help).
+NAMESPACE = (
+    "Schema-driven config generation and loading (api.factory + core.config_fields)."
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers (no engine imports at module scope — keep those lazy)
@@ -322,6 +327,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_requirements,
         tags=("planner",),
+        when=(
+            "Call this when you have a pipeline DAG and need to know which config fields "
+            "(base, processing, per-step) must be filled in before compiling."
+        ),
+        examples=(
+            'config.requirements {"dag": {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}}  # fields a 2-step DAG needs',
+            'config.requirements {"dag": {"dag": {"nodes": ["TabularPreprocessing"], "edges": []}}}  # wrapped serializer form, single node',
+        ),
     ),
     ToolDef(
         name="config.field_info",
@@ -347,6 +360,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_field_info,
         tags=("planner",),
+        when=(
+            "Call this when you know a specific config class name and want its full field "
+            "list (types, defaults, required flags) without resolving a whole DAG."
+        ),
+        examples=(
+            'config.field_info {"config_class": "XGBoostTrainingConfig"}  # all fields for XGBoost training config',
+            'config.field_info {"config_class": "TabularPreprocessingConfig", "categorized": true}  # split into required vs optional',
+        ),
     ),
     ToolDef(
         name="config.load",
@@ -368,6 +389,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_load,
         tags=("planner",),
+        when=(
+            "Call this when you have a saved merged-config JSON file on disk and want to "
+            "inspect which shared and per-step fields it holds without loading full values."
+        ),
+        examples=(
+            'config.load {"path": "config/config_xgboost.json"}  # summarize a saved merged-config file',
+            'config.load {"path": "/tmp/pipeline/configs.json"}  # absolute path to a merge_and_save_configs output',
+        ),
     ),
     ToolDef(
         name="config.merge_save",
@@ -388,5 +417,13 @@ TOOLS: List[ToolDef] = [
             "additionalProperties": False,
         },
         handler=_merge_save,
+        when=(
+            "Call this only to confirm that saving merged configs is unsupported over the "
+            "JSON boundary; it always returns an explanatory error pointing at the in-process API."
+        ),
+        examples=(
+            "config.merge_save {}  # returns the 'unsupported' error explaining the in-process path",
+            'config.merge_save {"output_file": "config/config.json"}  # output_file is informational only; still returns unsupported',
+        ),
     ),
 ]

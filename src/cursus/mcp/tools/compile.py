@@ -22,6 +22,9 @@ from .shared import (
     CONFIG_INPUT_PROPS,
 )
 
+# One-line purpose of this namespace (collected by the registry for compile.help).
+NAMESPACE = "Compile/validate/preview a DAG into a SageMaker pipeline (core.compiler)."
+
 
 # ---------------------------------------------------------------------------
 # Helpers (not tools)
@@ -298,6 +301,12 @@ TOOLS: List[ToolDef] = [
         handler=_validate,
         destructive=False,
         tags=("validator",),
+        when="Call this before compiling to confirm every DAG node resolves to a config and a step builder for the given config_file.",
+        examples=(
+            'compile.validate {"config_file": "config/pipeline_config.json", "dag": {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}}  # validate an inline DAG',
+            'compile.validate {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json"}  # validate a DAG loaded from a JSON file',
+            'compile.validate {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json", "role": "arn:aws:iam::123456789012:role/SageMakerRole"}  # validate with an explicit IAM role',
+        ),
     ),
     ToolDef(
         name="compile.preview",
@@ -315,6 +324,11 @@ TOOLS: List[ToolDef] = [
         handler=_preview,
         destructive=False,
         tags=("planner", "validator"),
+        when="Call this to inspect the node->config->builder mapping, confidence scores, and ambiguities before compiling — especially when compile.validate reported unresolved nodes.",
+        examples=(
+            'compile.preview {"config_file": "config/pipeline_config.json", "dag": {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}}  # preview resolution of an inline DAG',
+            'compile.preview {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json"}  # preview resolution of a DAG from file',
+        ),
     ),
     ToolDef(
         name="compile.dag",
@@ -346,6 +360,12 @@ TOOLS: List[ToolDef] = [
         handler=_dag,
         destructive=True,  # the optional upsert path mutates SageMaker state
         tags=("programmer",),
+        when="Call this once validation/preview look good to build the SageMaker pipeline definition; only set upsert=true when you intend to push it to SageMaker.",
+        examples=(
+            'compile.dag {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json"}  # build-only: compile the pipeline definition, no upsert',
+            'compile.dag {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json", "pipeline_name": "xgboost-training"}  # build-only with a name override',
+            'compile.dag {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json", "role": "arn:aws:iam::123456789012:role/SageMakerRole", "upsert": true}  # DESTRUCTIVE: upserts the pipeline into SageMaker (needs role)',
+        ),
     ),
     ToolDef(
         name="compile.with_report",
@@ -369,6 +389,11 @@ TOOLS: List[ToolDef] = [
         handler=_with_report,
         destructive=False,
         tags=("programmer",),
+        when="Call this instead of compile.dag when you want a detailed ConversionReport (per-node resolution_details, avg_confidence, warnings) without any risk of upserting.",
+        examples=(
+            'compile.with_report {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json"}  # compile and return the full ConversionReport',
+            'compile.with_report {"config_file": "config/pipeline_config.json", "dag": {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}, "pipeline_name": "xgboost-training"}  # report for an inline DAG with a name override',
+        ),
     ),
     ToolDef(
         name="compile.single_node",
@@ -409,6 +434,11 @@ TOOLS: List[ToolDef] = [
         handler=_single_node,
         destructive=False,
         tags=("programmer",),
+        when="Call this to re-run a single failed DAG node in isolation by supplying its upstream S3 inputs manually, instead of recompiling the whole pipeline.",
+        examples=(
+            'compile.single_node {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json", "target_node": "XGBoostTraining", "manual_inputs": {"input_path": "s3://my-bucket/run-1/preprocessing/output/"}}  # isolate XGBoostTraining with a manual S3 input',
+            'compile.single_node {"config_file": "config/pipeline_config.json", "dag_file": "config/dag.json", "target_node": "TabularPreprocessing", "manual_inputs": {"data_input": "s3://my-bucket/raw/"}, "pipeline_name": "tab-preproc-isolated", "validate_inputs": false}  # isolate a node, skip input validation, custom name',
+        ),
     ),
     ToolDef(
         name="compile.name",
@@ -440,5 +470,11 @@ TOOLS: List[ToolDef] = [
         handler=_name,
         destructive=False,
         tags=("programmer",),
+        when="Call this to generate a SageMaker-valid pipeline name from a base string, or to sanitize/validate an arbitrary name before using it as pipeline_name.",
+        examples=(
+            'compile.name {"base": "xgboost-training"}  # generate "xgboost-training-1.0-pipeline"',
+            'compile.name {"base": "xgboost training", "version": "2.1"}  # generate with a specific version segment',
+            'compile.name {"sanitize": "My Pipeline!! v3"}  # clean an arbitrary string into a valid name',
+        ),
     ),
 ]

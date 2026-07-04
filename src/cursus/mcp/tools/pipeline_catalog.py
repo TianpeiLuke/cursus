@@ -19,6 +19,10 @@ from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
 
 
+# One-line purpose of this namespace (collected by the registry for <ns>.help).
+NAMESPACE = "Recommend/select/load pre-built shared DAGs (pipeline_catalog)."
+
+
 # ---------------------------------------------------------------------------
 # recommend
 # ---------------------------------------------------------------------------
@@ -247,6 +251,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_recommend,
         tags=("planner",),
+        when="Call when the user describes an ML problem and you need a ranked list of candidate shared-DAG pipelines to choose from.",
+        examples=(
+            "pipeline_catalog.recommend {}  # rank all DAGs against defaults (labeled tabular, GPU on)",
+            'pipeline_catalog.recommend {"data_type": "tabular", "framework": "xgboost"}  # tabular XGBoost candidates',
+            'pipeline_catalog.recommend {"data_type": "text", "needs_llm": true, "framework": "pytorch"}  # LLM-enriched PyTorch text pipelines',
+        ),
     ),
     ToolDef(
         name="pipeline_catalog.get_dag",
@@ -268,6 +278,11 @@ TOOLS: List[ToolDef] = [
         },
         handler=_get_dag,
         tags=("planner",),
+        when="Call after picking a dag_id from recommend/list to inspect that DAG's nodes, edges, input requirements, and constraints.",
+        examples=(
+            'pipeline_catalog.get_dag {"dag_id": "bedrock_pytorch_incremental_edx"}  # inspect an incremental LLM-scoring DAG',
+            'pipeline_catalog.get_dag {"dag_id": "lightgbm_complete_e2e"}  # inspect an end-to-end LightGBM DAG',
+        ),
     ),
     ToolDef(
         name="pipeline_catalog.config_guidance",
@@ -289,6 +304,11 @@ TOOLS: List[ToolDef] = [
         },
         handler=_config_guidance,
         tags=("planner",),
+        when="Call before authoring a config for a chosen DAG to learn its prerequisites, required vs default config fields, and common pitfalls.",
+        examples=(
+            'pipeline_catalog.config_guidance {"dag_id": "bedrock_pytorch_incremental_edx"}  # config prerequisites for the incremental EDX DAG',
+            'pipeline_catalog.config_guidance {"dag_id": "lightgbmmt_complete_e2e"}  # config guidance for a multi-task LightGBM DAG',
+        ),
     ),
     ToolDef(
         name="pipeline_catalog.auto_select",
@@ -324,6 +344,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_auto_select,
         tags=("planner",),
+        when="Call when you want one decisive best-match DAG (or null) instead of a ranked list — e.g. to auto-pick a pipeline for a known framework/task.",
+        examples=(
+            'pipeline_catalog.auto_select {"framework": "xgboost"}  # single best XGBoost DAG at default 0.6 threshold',
+            'pipeline_catalog.auto_select {"framework": "pytorch", "features": ["training", "bedrock_realtime_processing", "edx_uploading"], "task_type": "incremental"}  # target the incremental EDX DAG',
+            'pipeline_catalog.auto_select {"framework": "lightgbm", "min_score": 0.8}  # stricter threshold',
+        ),
     ),
     ToolDef(
         name="pipeline_catalog.list",
@@ -339,6 +365,10 @@ TOOLS: List[ToolDef] = [
         },
         handler=_list,
         tags=("planner",),
+        when="Call to browse the whole catalog when you don't yet know which dag_id exists — returns every shared DAG id with its metadata.",
+        examples=(
+            "pipeline_catalog.list {}  # list every available shared DAG with metadata",
+        ),
     ),
     ToolDef(
         name="pipeline_catalog.load_dag",
@@ -359,5 +389,10 @@ TOOLS: List[ToolDef] = [
         },
         handler=_load_dag,
         tags=("planner",),
+        when="Call to retrieve the concrete node/edge graph of a chosen DAG for compilation or display (lighter than get_dag, no requirements/constraints).",
+        examples=(
+            'pipeline_catalog.load_dag {"dag_id": "bedrock_pytorch_incremental_edx"}  # load nodes+edges for compilation',
+            'pipeline_catalog.load_dag {"dag_id": "lightgbm_complete_e2e"}  # load the end-to-end LightGBM graph',
+        ),
     ),
 ]

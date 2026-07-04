@@ -24,6 +24,9 @@ from typing import Any, Dict, List
 from ..envelope import ToolResult
 from ..registry import ToolDef
 
+# One-line purpose of this namespace (collected by the registry for strategies.help).
+NAMESPACE = "Inspect the builder strategy library — axes and knobs (registry.strategy_registry)."
+
 
 def _list_axes(args: Dict[str, Any]) -> ToolResult:
     from ...registry import strategy_registry as sr
@@ -149,6 +152,8 @@ TOOLS: List[ToolDef] = [
         },
         handler=_list_axes,
         tags=("planner",),
+        when="Call this first when you want an overview of the strategy space — which routing axes exist and how many strategies each carries.",
+        examples=("strategies.list_axes {}  # the routing axes + strategy counts",),
     ),
     ToolDef(
         name="strategies.list",
@@ -168,6 +173,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_list,
         tags=("planner",),
+        when="Call this when you want to enumerate the registered strategies (all axes, or one axis) with their full descriptors.",
+        examples=(
+            "strategies.list {}  # every registered strategy across all axes",
+            'strategies.list {"axis": "sagemaker_step_type"}  # only the step-type strategies (Training, Transform, ...)',
+            'strategies.list {"axis": "step_assembly"}  # only the Processing assembly strategies (code, step_args, delegation)',
+        ),
     ),
     ToolDef(
         name="strategies.show",
@@ -193,6 +204,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_show,
         tags=("planner",),
+        when="Call this when you know a strategy name and want its full descriptor — verb, handler class, and every knob (name/type/default/required/doc).",
+        examples=(
+            'strategies.show {"name": "Training"}  # full descriptor for the Training strategy',
+            'strategies.show {"name": "code", "axis": "step_assembly"}  # disambiguate the Processing "code" assembly strategy by axis',
+            'strategies.show {"name": "Transform"}  # the batch-Transform strategy descriptor',
+        ),
     ),
     ToolDef(
         name="strategies.for_step_type",
@@ -220,6 +237,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_for_step_type,
         tags=("planner",),
+        when="Call this when authoring a step and you need the strategy + knobs the facade would bind for a given sagemaker_step_type — the replacement for reading the builder class.",
+        examples=(
+            'strategies.for_step_type {"sagemaker_step_type": "Training"}  # strategy the facade binds for a Training step',
+            'strategies.for_step_type {"sagemaker_step_type": "Processing", "step_assembly": "code"}  # Processing via the "code" assembly (script-driven)',
+            'strategies.for_step_type {"sagemaker_step_type": "Processing", "step_assembly": "step_args"}  # Processing via the "step_args" assembly',
+        ),
     ),
     ToolDef(
         name="strategies.knobs",
@@ -244,5 +267,10 @@ TOOLS: List[ToolDef] = [
         },
         handler=_knobs,
         tags=("planner",),
+        when="Call this when you already know the (axis, name) of a strategy and just want the declarative knobs its .step.yaml registry block can set.",
+        examples=(
+            'strategies.knobs {"axis": "sagemaker_step_type", "name": "Training"}  # knobs the Training strategy accepts',
+            'strategies.knobs {"axis": "step_assembly", "name": "code"}  # knobs for the Processing "code" assembly strategy',
+        ),
     ),
 ]

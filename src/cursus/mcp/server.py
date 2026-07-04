@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
-from .registry import get_registry, call_tool
+from .registry import get_registry, call_tool, render_description
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def build_server(name: str = "cursus") -> Any:
         return [
             types.Tool(
                 name=td.name,
-                description=td.description,
+                description=render_description(td),
                 inputSchema=td.schema,
             )
             for td in sorted(registry.values(), key=lambda t: t.name)

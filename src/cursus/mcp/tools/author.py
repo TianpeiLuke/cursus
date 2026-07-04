@@ -31,6 +31,9 @@ from typing import Any, Dict, List, Optional
 from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
 
+# One-line purpose of this namespace (collected by the registry for author.help).
+NAMESPACE = "Guardrails + preflight checks for authoring a new step (rules, checklist, preflight)."
+
 # The closed topic set for author.rules — keep in sync with the `_RULES_BUILDERS` dispatch below.
 _RULE_TOPICS = ("naming", "packaging", "sdk_carveout", "reuse_class", "closure")
 
@@ -836,6 +839,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_checklist,
         tags=("planner",),
+        when="Call this first when you are about to author a brand-new cursus step and need the ordered author→validate→integrate SOP for its SageMaker step type.",
+        examples=(
+            'author.checklist {"sagemaker_step_type": "Training"}  # SOP for a new Estimator/Training step',
+            'author.checklist {"sagemaker_step_type": "Processing", "step_assembly": "step_args"}  # Processing step run via FrameworkProcessor step_args',
+            'author.checklist {"sagemaker_step_type": "Processing", "step_assembly": "code"}  # single-file ScriptProcessor Processing step',
+        ),
     ),
     ToolDef(
         name="author.rules",
@@ -861,6 +870,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_rules,
         tags=("validator",),
+        when="Call this when you need the authoring restriction set for a specific topic (naming, packaging, SDK carve-out, reuse class, or triangle-closure) before writing a step's artifacts.",
+        examples=(
+            'author.rules {"topic": "naming"}  # PascalCase step name / Config / StepBuilder + valid sagemaker_step_type set',
+            'author.rules {"topic": "packaging"}  # source_dir + output_path_token + SAIS preamble facts',
+            'author.rules {"topic": "closure"}  # registry-by-construction + contract↔spec alignment rules',
+        ),
     ),
     ToolDef(
         name="author.preflight_step",
@@ -897,6 +912,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_preflight_step,
         tags=("validator",),
+        when="Call this after writing a step's .step.yaml + config + script to prove it is CONSTRUCTIBLE (binds + synthesizes), or with 'all' to run the whole CI merge gate.",
+        examples=(
+            'author.preflight_step {"step_name": "TabularPreprocessing"}  # the four CI gates for one step',
+            'author.preflight_step {"all": true}  # preflight every step (CI merge-gate mode)',
+            'author.preflight_step {"step_name": "XGBoostTraining", "job_type": "training"}  # preflight a job_type variant',
+        ),
     ),
     ToolDef(
         name="author.config_constraints",
@@ -922,6 +943,11 @@ TOOLS: List[ToolDef] = [
         },
         handler=_config_constraints,
         tags=("validator",),
+        when="Call this before writing a step's config VALUES to learn each field's allowed_values / case_sensitivity and which required fields have no default.",
+        examples=(
+            'author.config_constraints {"step_name": "TabularPreprocessing"}  # allowed values + required_no_default fields',
+            'author.config_constraints {"step_name": "XGBoostTraining"}  # enum/case constraints for the training config',
+        ),
     ),
     ToolDef(
         name="author.preflight_config",
@@ -951,6 +977,11 @@ TOOLS: List[ToolDef] = [
         },
         handler=_preflight_config,
         tags=("validator",),
+        when="Call this to validate a concrete {field: value} config set against the step's live config class — catches wrong enum case, invalid enum, wrong type, and missing required fields before a run.",
+        examples=(
+            'author.preflight_config {"step_name": "TabularPreprocessing", "values": {"job_type": "training", "label_name": "label"}}  # validate a config value set',
+            'author.preflight_config {"step_name": "XGBoostTraining", "values": {}}  # empty values surfaces the missing required fields',
+        ),
     ),
     ToolDef(
         name="author.check_script",
@@ -978,5 +1009,10 @@ TOOLS: List[ToolDef] = [
         },
         handler=_check_script,
         tags=("validator",),
+        when="Call this after writing/editing a step's script to verify it aligns with its contract both ways — the builder's CLI args are all parsed and every required env var is actually read.",
+        examples=(
+            'author.check_script {"step_name": "TabularPreprocessing"}  # forward + reverse script↔contract check',
+            'author.check_script {"step_name": "XGBoostModel"}  # script-less step returns status=skipped',
+        ),
     ),
 ]

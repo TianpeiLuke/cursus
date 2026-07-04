@@ -22,6 +22,9 @@ from typing import Any, Dict, List
 from ..envelope import ToolResult
 from ..registry import ToolDef
 
+# One-line purpose of this namespace (collected by the registry for steps.help).
+NAMESPACE = "Per-step connection/I-O view: container paths, property refs, channels."
+
 
 def _io(args: Dict[str, Any]) -> ToolResult:
     step_name = args["step_name"]
@@ -111,6 +114,16 @@ TOOLS: List[ToolDef] = [
         },
         handler=_patterns,
         tags=("planner",),
+        when=(
+            "Call this when you want to see how a step is assembled (its per-axis "
+            "create_step / env-var / job-arg / input / output / compute patterns and its "
+            "3rd-party import footprint) without reading a builder class."
+        ),
+        examples=(
+            'steps.patterns {"step_name": "XGBoostTraining"}  # assembly axes for the XGBoost training step',
+            'steps.patterns {"step_name": "TabularPreprocessing", "job_type": "calibration"}  # resolve the calibration variant',
+            'steps.patterns {"step_name": "ModelCalibration", "job_type": "training"}  # patterns for a specific job_type variant',
+        ),
     ),
     ToolDef(
         name="steps.io",
@@ -140,5 +153,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_io,
         tags=("planner",),
+        when=(
+            "Call this when wiring a step or figuring out where its data lands — you need "
+            "each dependency's container path + training channel fan-out and each output's "
+            "container path + runtime property_path."
+        ),
+        examples=(
+            'steps.io {"step_name": "XGBoostTraining"}  # container paths + channel fan-out + property_paths',
+            'steps.io {"step_name": "BatchTransform"}  # I/O wiring for the batch transform step',
+            'steps.io {"step_name": "TabularPreprocessing", "job_type": "training"}  # resolve the training variant',
+        ),
     ),
 ]

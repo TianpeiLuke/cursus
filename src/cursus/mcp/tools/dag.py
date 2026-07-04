@@ -16,6 +16,10 @@ from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
 
 
+# One-line purpose of this namespace (collected by the registry for dag.help).
+NAMESPACE = "Construct, validate, and serialize pipeline DAGs (api.dag)."
+
+
 # ---------------------------------------------------------------------------
 # Helpers (no engine imports at module scope — keep imports lazy in handlers)
 # ---------------------------------------------------------------------------
@@ -322,6 +326,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_construct,
         tags=("planner",),
+        when=(
+            "Call this when you have a set of step names and their dependency edges and "
+            "need a serialized, round-trippable DAG the other dag.* tools accept."
+        ),
+        examples=(
+            'dag.construct {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}  # minimal two-step DAG',
+            'dag.construct {"nodes": ["TabularPreprocessing", "XGBoostTraining", "XGBoostModelEval"], "edges": [["TabularPreprocessing", "XGBoostTraining"], ["XGBoostTraining", "XGBoostModelEval"]], "metadata": {"pipeline": "xgboost-training", "author": "me"}}  # with embedded metadata',
+        ),
     ),
     ToolDef(
         name="dag.validate_integrity",
@@ -343,6 +355,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_validate_integrity,
         tags=("validator",),
+        when=(
+            "Call this before compiling a DAG into a pipeline to check for cycles, dangling "
+            "edges, isolated nodes, and edge endpoints not declared in `nodes`."
+        ),
+        examples=(
+            'dag.validate_integrity {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}  # expect is_valid true',
+            'dag.validate_integrity {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTrainng"]]}  # typo endpoint surfaces as undeclared_edge_nodes',
+        ),
     ),
     ToolDef(
         name="dag.resolve_plan",
@@ -362,6 +382,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_resolve_plan,
         tags=("planner",),
+        when=(
+            "Call this when you need the topological execution order of a validated DAG "
+            "plus each step's dependencies and data-flow map before running it."
+        ),
+        examples=(
+            'dag.resolve_plan {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}  # execution_order = preprocess then train',
+            'dag.resolve_plan {"nodes": ["TabularPreprocessing", "XGBoostTraining", "XGBoostModelEval"], "edges": [["TabularPreprocessing", "XGBoostTraining"], ["XGBoostTraining", "XGBoostModelEval"]]}  # three-step ordered plan',
+        ),
     ),
     ToolDef(
         name="dag.dependencies",
@@ -385,6 +413,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_dependencies,
         tags=("planner",),
+        when=(
+            "Call this when you need the immediate upstream (must-run-before) and "
+            "downstream (run-after) neighbors of one specific step in the DAG."
+        ),
+        examples=(
+            'dag.dependencies {"step": "XGBoostTraining", "nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}  # dependencies=[TabularPreprocessing]',
+            'dag.dependencies {"step": "XGBoostTraining", "nodes": ["TabularPreprocessing", "XGBoostTraining", "XGBoostModelEval"], "edges": [["TabularPreprocessing", "XGBoostTraining"], ["XGBoostTraining", "XGBoostModelEval"]]}  # also dependents=[XGBoostModelEval]',
+        ),
     ),
     ToolDef(
         name="dag.serialize",
@@ -413,6 +449,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_serialize,
         tags=("planner",),
+        when=(
+            "Call this to persist a DAG to a JSON file (pass 'path') or to get its JSON "
+            "string inline (omit 'path'); it validates the DAG before writing a file."
+        ),
+        examples=(
+            'dag.serialize {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}  # returns pretty JSON inline',
+            'dag.serialize {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]], "path": "/tmp/xgb_dag.json", "pretty": true}  # writes file, returns the path',
+        ),
     ),
     ToolDef(
         name="dag.deserialize",
@@ -433,5 +477,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_deserialize,
         tags=("planner",),
+        when=(
+            "Call this to load a DAG back from a JSON file previously written by "
+            "dag.serialize, recovering its nodes, edges, statistics, and metadata."
+        ),
+        examples=(
+            'dag.deserialize {"path": "/tmp/xgb_dag.json"}  # read a DAG file written by dag.serialize',
+        ),
     ),
 ]

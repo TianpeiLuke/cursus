@@ -38,9 +38,11 @@ from .envelope import ToolResult, ToolError
 from .registry import (
     ToolDef,
     get_registry,
+    get_namespaces,
     list_tools,
     get_tool,
     call_tool,
+    render_description,
     export_openai_tools,
     export_mcp_tools,
 )
@@ -50,9 +52,11 @@ __all__ = [
     "ToolError",
     "ToolDef",
     "get_registry",
+    "get_namespaces",
     "list_tools",
     "get_tool",
     "call_tool",
+    "render_description",
     "export_openai_tools",
     "export_mcp_tools",
 ]

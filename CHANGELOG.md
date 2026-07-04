@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-07-04
+
+Ported from amzn-cursus 2.5.0 — self-documenting MCP toolset. Backward-compatible; additive only.
+
+### Added
+
+- **`tools.help` — the toolset front door.** One call returns a prose overview, the planner/validator/programmer phase taxonomy, and every tool grouped by namespace with its description. Filters: `namespace`, `phase`, `include_schema`. CLI: `cursus mcp help [--namespace --phase --schema --examples --format json]`.
+- **Auto-generated `<namespace>.help` tools** (`compile.help`, `catalog.help`, …) — one per non-meta namespace, built from each module's co-located `NAMESPACE` constant.
+- **`ToolDef.when` + `ToolDef.examples`** on every tool (135 schema-faithful examples). `render_description()` folds them into the exported description so MCP/OpenAI clients see them too.
+- Co-located namespace descriptions via a module-level `NAMESPACE` constant (`registry.get_namespaces()`); `tools.describe_tool` surfaces `when`/`examples`. Tests in `test_registry.py` + `test_info_tools.py`.
+
 ## [2.5.10] - 2026-07-04
 
 Ported from amzn-cursus 2.4.12.

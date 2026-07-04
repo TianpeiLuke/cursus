@@ -19,6 +19,9 @@ from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
 from .shared import resolve_dag as _build_dag  # canonical DAG resolver
 
+# One-line purpose of this namespace (collected by the registry for execdoc.help).
+NAMESPACE = "MODS execution-document generation and validation (mods.exe_doc)."
+
 
 def _generate(args: Dict[str, Any]) -> ToolResult:
     """
@@ -237,6 +240,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_generate,
         tags=("programmer",),
+        when=(
+            "Call when you have a compiled pipeline (DAG + config file) and need to "
+            "produce a runnable MODS execution document to fill its PIPELINE_STEP_CONFIGS."
+        ),
+        examples=(
+            'execdoc.generate {"config_path": "config.json", "dag_file": "pipeline_dag.json"}  # fill from a serialized DAG',
+            'execdoc.generate {"config_path": "config.json", "dag": {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]]}}  # inline DAG',
+            'execdoc.generate {"config_path": "config.json", "dag_file": "pipeline_dag.json", "role": "arn:aws:iam::123456789012:role/SageMakerRole"}  # supply IAM role for full step configs',
+        ),
     ),
     ToolDef(
         name="execdoc.template",
@@ -259,6 +271,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_template,
         tags=("programmer",),
+        when=(
+            "Call to scaffold an empty execution document from a list of step names "
+            "before filling or merging it."
+        ),
+        examples=(
+            'execdoc.template {"step_names": ["TabularPreprocessing", "XGBoostTraining"]}  # scaffold two step configs',
+            'execdoc.template {"step_names": ["XGBoostTraining"]}  # single-step template',
+        ),
     ),
     ToolDef(
         name="execdoc.validate",
@@ -280,6 +300,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_validate,
         tags=("validator",),
+        when=(
+            "Call to check that an execution document is well-formed (has a valid "
+            "PIPELINE_STEP_CONFIGS mapping) before generating or merging."
+        ),
+        examples=(
+            'execdoc.validate {"execution_document": {"PIPELINE_STEP_CONFIGS": {"XGBoostTraining": {"STEP_TYPE": "TrainingStep", "STEP_CONFIG": {}}}}}  # valid document',
+            'execdoc.validate {"execution_document": {"PIPELINE_STEP_CONFIGS": {}}}  # empty-but-valid mapping',
+        ),
     ),
     ToolDef(
         name="execdoc.merge",
@@ -305,5 +333,13 @@ TOOLS: List[ToolDef] = [
         },
         handler=_merge,
         tags=("programmer",),
+        when=(
+            "Call to combine a base execution document with generated or overriding "
+            "step configs, letting 'additional_doc' win on conflicts."
+        ),
+        examples=(
+            'execdoc.merge {"base_doc": {"PIPELINE_STEP_CONFIGS": {"XGBoostTraining": {"STEP_TYPE": "TrainingStep", "STEP_CONFIG": {}}}}, "additional_doc": {"PIPELINE_STEP_CONFIGS": {"XGBoostTraining": {"STEP_TYPE": "TrainingStep", "STEP_CONFIG": {"InstanceType": "ml.m5.xlarge"}}}}}  # additional_doc overrides STEP_CONFIG',
+            'execdoc.merge {"base_doc": {"PIPELINE_STEP_CONFIGS": {"TabularPreprocessing": {"STEP_TYPE": "ProcessingStep", "STEP_CONFIG": {}}}}, "additional_doc": {"PIPELINE_STEP_CONFIGS": {"XGBoostTraining": {"STEP_TYPE": "TrainingStep", "STEP_CONFIG": {}}}}}  # add a new step',
+        ),
     ),
 ]

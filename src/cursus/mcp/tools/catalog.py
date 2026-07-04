@@ -17,6 +17,10 @@ from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
 
 
+# One-line purpose of this namespace (collected by the registry for catalog.help).
+NAMESPACE = "Discover/search steps, configs, and builders (step_catalog + registry)."
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers (not tools)
 # ---------------------------------------------------------------------------
@@ -333,6 +337,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_list_steps,
         tags=("planner",),
+        when=(
+            "Call this first when you need to see what pipeline steps exist before "
+            "planning a DAG or looking up a specific step."
+        ),
+        examples=(
+            "catalog.list_steps {}  # every step known to cursus",
+            'catalog.list_steps {"job_type": "training"}  # only training-variant steps',
+            'catalog.list_steps {"workspace_id": "core", "job_type": "calibration"}  # scope to a workspace + job type',
+        ),
     ),
     ToolDef(
         name="catalog.search",
@@ -357,6 +370,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_search,
         tags=("planner",),
+        when=(
+            "Call when you only know a partial or approximate step name and need "
+            "scored candidate matches to pick the exact canonical name."
+        ),
+        examples=(
+            'catalog.search {"query": "xgboost"}  # all steps whose name matches "xgboost"',
+            'catalog.search {"query": "preprocess"}  # find TabularPreprocessing and friends',
+            'catalog.search {"query": "eval", "job_type": "training"}  # matches scoped to training-variant steps',
+        ),
     ),
     ToolDef(
         name="catalog.step_info",
@@ -381,6 +403,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_step_info,
         tags=("planner",),
+        when=(
+            "Call when you have an exact step name and need its naming metadata "
+            "(config/builder names, SageMaker type, framework, available components)."
+        ),
+        examples=(
+            'catalog.step_info {"step_name": "XGBoostTraining"}  # full metadata for one step',
+            'catalog.step_info {"step_name": "TabularPreprocessing", "job_type": "training"}  # info for a job-type variant',
+        ),
     ),
     ToolDef(
         name="catalog.step_spec",
@@ -403,6 +433,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_step_spec,
         tags=("planner",),
+        when=(
+            "Call before wiring a step into a DAG, when you need its I/O contract — "
+            "the declared dependency (input) ports and output ports, not just its names."
+        ),
+        examples=(
+            'catalog.step_spec {"step_name": "XGBoostTraining"}  # dependencies + outputs for wiring edges',
+            'catalog.step_spec {"step_name": "XGBoostModelEval"}  # ports of the eval step to connect its inputs',
+        ),
     ),
     ToolDef(
         name="catalog.config_fields",
@@ -423,6 +461,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_config_fields,
         tags=("planner", "programmer"),
+        when=(
+            "Call when you need to know which configuration fields a step expects "
+            "(names, types, required flags, defaults) before writing its config."
+        ),
+        examples=(
+            'catalog.config_fields {"step_name": "XGBoostTraining"}  # config schema for the training step',
+            'catalog.config_fields {"step_name": "TabularPreprocessing"}  # fields of the preprocessing config class',
+        ),
     ),
     ToolDef(
         name="catalog.resolve_step",
@@ -443,6 +489,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_resolve_step,
         tags=("programmer",),
+        when=(
+            "Call when you have a step name (canonical or file-style) and need its "
+            "concrete registered classes: config, builder, spec type, SageMaker type."
+        ),
+        examples=(
+            'catalog.resolve_step {"step_name": "XGBoostTraining"}  # resolve a canonical name to its classes',
+            'catalog.resolve_step {"step_name": "model_evaluation_xgb"}  # map a file-style name to XGBoostModelEval',
+        ),
     ),
     ToolDef(
         name="catalog.list_builders",
@@ -466,5 +520,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_list_builders,
         tags=("programmer",),
+        when=(
+            "Call when you want the builder class names available, optionally narrowed "
+            "to a single SageMaker step type (e.g. all Processing builders)."
+        ),
+        examples=(
+            "catalog.list_builders {}  # every builder class, grouped by step name",
+            'catalog.list_builders {"sagemaker_step_type": "Processing"}  # only Processing-step builders',
+            'catalog.list_builders {"sagemaker_step_type": "Training"}  # only Training-step builders',
+        ),
     ),
 ]

@@ -42,6 +42,13 @@ class ToolDef:
         destructive: True if the tool mutates external state (e.g. upserts/starts a
             SageMaker pipeline). Agents/servers may gate these behind confirmation.
         tags: Free-form labels (e.g. ``"planner"``, ``"validator"``) for grouping.
+        when: One-line "call this when …" cue — the trigger condition, complementing the
+            *what* in ``description``. Optional; surfaced by help/describe and exporters.
+        examples: Copy-paste invocation strings showing real calls, e.g.
+            ``'catalog.list_steps {"framework": "xgboost"}  # every XGBoost step'``. Stored
+            as a tuple so this frozen dataclass field is truly immutable (a list could be
+            mutated in place); surfaced by help/describe and folded into exported tool
+            descriptions so external MCP/OpenAI clients see them too.
     """
 
     name: str
@@ -50,6 +57,8 @@ class ToolDef:
     handler: ToolHandler
     destructive: bool = False
     tags: tuple = ()
+    when: str = ""
+    examples: tuple = ()
 
     @property
     def namespace(self) -> str:
@@ -61,58 +70,154 @@ class ToolDef:
 # ---------------------------------------------------------------------------
 
 _REGISTRY: Optional[Dict[str, ToolDef]] = None
+# name -> one-line namespace purpose, collected from each module's ``NAMESPACE`` constant.
+_NAMESPACES: Optional[Dict[str, str]] = None
+
+# The tool modules to import, in registry order. Every ``cursus.mcp.tools.<ns>`` module
+# exposes a module-level ``TOOLS: List[ToolDef]`` and (except the meta ``info`` module) a
+# ``NAMESPACE: str`` one-liner describing what the namespace is for.
+_TOOL_MODULES = [
+    "catalog",
+    "dag",
+    "config",
+    "compile",
+    "validate",
+    "execdoc",
+    "pipeline_catalog",
+    "strategies",
+    "steps",
+    "author",
+    "info",
+]
+
+# Namespaces that do NOT get an auto-generated ``<ns>.help`` tool. ``tools`` is the meta
+# namespace: ``tools.help`` is already its (hand-written, global) front door, so a
+# generated ``tools.help`` would collide with it.
+_NO_AUTO_HELP = {"tools"}
 
 
-def _collect_tooldefs() -> List[ToolDef]:
-    """
-    Import every namespace tool module and collect its ``TOOLS`` list.
+def _collect_modules() -> List[Any]:
+    """Import every namespace tool module, returning the imported module objects.
 
-    Each ``cursus.mcp.tools.<ns>`` module exposes a module-level ``TOOLS: List[ToolDef]``.
     A namespace that fails to import (e.g. an optional engine dependency missing) is
     logged and skipped rather than breaking the whole registry.
     """
     from importlib import import_module
 
-    namespaces = [
-        "catalog",
-        "dag",
-        "config",
-        "compile",
-        "validate",
-        "execdoc",
-        "pipeline_catalog",
-        "strategies",
-        "steps",
-        "author",
-        "info",
-    ]
-    defs: List[ToolDef] = []
-    for ns in namespaces:
+    mods: List[Any] = []
+    for ns in _TOOL_MODULES:
         try:
-            mod = import_module(f"{__package__}.tools.{ns}")
+            mods.append(import_module(f"{__package__}.tools.{ns}"))
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("Skipping MCP tool namespace '%s': %s", ns, exc)
             continue
+    return mods
+
+
+def _make_namespace_help_tool(namespace: str, description: str) -> ToolDef:
+    """Build the auto-generated ``<namespace>.help`` ToolDef.
+
+    Each namespace's help is the same shape as the global ``tools.help`` but pre-scoped
+    to that namespace, so an agent working in (say) the compile space can call
+    ``compile.help`` and get just the compile overview + its tools. The handler delegates
+    to ``tools.help`` with ``namespace`` pinned, so there is exactly one rendering path.
+    """
+
+    def _handler(args: Dict[str, Any]) -> ToolResult:
+        merged = dict(args or {})
+        merged["namespace"] = namespace
+        return call_tool("tools.help", merged)
+
+    return ToolDef(
+        name=f"{namespace}.help",
+        description=(
+            f"Overview of the '{namespace}' tools — {description} Returns each "
+            f"{namespace}.* tool with its description, when to use it, and usage examples. "
+            f"Set include_schema for full JSON input schemas. Start here before using "
+            f"{namespace} tools."
+        ),
+        schema={
+            "type": "object",
+            "properties": {
+                "phase": {
+                    "type": "string",
+                    "enum": ["planner", "validator", "programmer"],
+                    "description": "Restrict to one lifecycle phase.",
+                },
+                "include_schema": {
+                    "type": "boolean",
+                    "description": "Attach each tool's JSON input schema (default false).",
+                },
+            },
+            "required": [],
+            "additionalProperties": False,
+        },
+        handler=_handler,
+        tags=("planner",),
+        when=f"You are about to work with {namespace} tools and want that namespace's overview + examples.",
+        examples=(
+            f"{namespace}.help {{}}  # every {namespace}.* tool with when + examples",
+            f'{namespace}.help {{"include_schema": true}}  # same, plus JSON input schemas',
+        ),
+    )
+
+
+def _build_registry() -> Dict[str, ToolDef]:
+    """Assemble the ``name -> ToolDef`` map from all modules, incl. auto ``<ns>.help``."""
+    modules = _collect_modules()
+
+    # 1) Collect declared tools and, per module, the tool namespace they belong to.
+    #    The namespace key is derived from the tools themselves (the leading segment of
+    #    ``td.name``), NOT the module filename — e.g. ``info.py`` defines ``tools.*``.
+    registry: Dict[str, ToolDef] = {}
+    namespaces: Dict[str, str] = {}
+    for mod in modules:
         ns_tools = getattr(mod, "TOOLS", None)
         if not ns_tools:
-            logger.warning("MCP tool namespace '%s' exposes no TOOLS", ns)
+            logger.warning("MCP tool namespace '%s' exposes no TOOLS", mod.__name__)
             continue
-        defs.extend(ns_tools)
-    return defs
+        for td in ns_tools:
+            if td.name in registry:
+                logger.warning("Duplicate MCP tool name '%s' — keeping first", td.name)
+                continue
+            registry[td.name] = td
+
+        # Associate this module's NAMESPACE description with the namespace its tools use.
+        desc = getattr(mod, "NAMESPACE", None)
+        if isinstance(desc, str) and desc.strip():
+            ns_key = ns_tools[0].namespace
+            namespaces[ns_key] = desc.strip()
+
+    # 3) Auto-generate a ``<ns>.help`` tool for every namespace that declared a
+    #    description (except the meta ``tools`` namespace, whose help is hand-written).
+    #    Skip if a hand-written ``<ns>.help`` already exists.
+    for ns_key, desc in sorted(namespaces.items()):
+        if ns_key in _NO_AUTO_HELP:
+            continue
+        help_name = f"{ns_key}.help"
+        if help_name in registry:
+            continue
+        registry[help_name] = _make_namespace_help_tool(ns_key, desc)
+
+    # Cache the namespace map alongside the registry (they are built together).
+    global _NAMESPACES
+    _NAMESPACES = namespaces
+    return registry
 
 
 def get_registry(force_reload: bool = False) -> Dict[str, ToolDef]:
     """Return the canonical ``name -> ToolDef`` map, building it once and caching."""
     global _REGISTRY
     if _REGISTRY is None or force_reload:
-        registry: Dict[str, ToolDef] = {}
-        for td in _collect_tooldefs():
-            if td.name in registry:
-                logger.warning("Duplicate MCP tool name '%s' — keeping first", td.name)
-                continue
-            registry[td.name] = td
-        _REGISTRY = registry
+        _REGISTRY = _build_registry()
     return _REGISTRY
+
+
+def get_namespaces() -> Dict[str, str]:
+    """Return the ``namespace -> one-line description`` map (built with the registry)."""
+    if _NAMESPACES is None:
+        get_registry()
+    return dict(_NAMESPACES or {})
 
 
 def list_tools(namespace: Optional[str] = None) -> List[ToolDef]:
@@ -212,18 +317,36 @@ def call_tool(name: str, args: Optional[Dict[str, Any]] = None) -> ToolResult:
 # ---------------------------------------------------------------------------
 
 
+def render_description(td: ToolDef) -> str:
+    """Compose a tool's full-text description: description + 'When' + 'Examples'.
+
+    External MCP/OpenAI clients only receive a single description string per tool, so the
+    ``when`` cue and ``examples`` are folded in here (they are otherwise only reachable via
+    the in-process help/describe tools). In-process agents get the fields structured; this
+    keeps external agents from missing the usage guidance.
+    """
+    parts = [td.description]
+    if td.when:
+        parts.append(f"When: {td.when}")
+    if td.examples:
+        example_lines = "\n".join(f"  - {ex}" for ex in td.examples)
+        parts.append(f"Examples:\n{example_lines}")
+    return "\n\n".join(parts)
+
+
 def export_openai_tools(namespace: Optional[str] = None) -> List[Dict[str, Any]]:
     """Export tools in OpenAI / Claude function-calling shape.
 
     The phase ``tags`` (planner/validator/programmer) are surfaced under the function's
     ``metadata`` so an agent can group/route tools by lifecycle phase rather than scanning
-    every description.
+    every description. The ``when``/``examples`` guidance is folded into the description
+    (see :func:`render_description`) so external clients see it too.
     """
     out: List[Dict[str, Any]] = []
     for td in list_tools(namespace):
         fn: Dict[str, Any] = {
             "name": td.name,
-            "description": td.description,
+            "description": render_description(td),
             "parameters": td.schema,
         }
         if td.tags:
@@ -235,13 +358,15 @@ def export_openai_tools(namespace: Optional[str] = None) -> List[Dict[str, Any]]
 def export_mcp_tools(namespace: Optional[str] = None) -> List[Dict[str, Any]]:
     """Export tools in MCP ``list_tools`` shape (name / description / inputSchema).
 
-    Includes the phase ``tags`` so agents can filter by planner/validator/programmer.
+    Includes the phase ``tags`` so agents can filter by planner/validator/programmer, and
+    folds the ``when``/``examples`` guidance into the description (see
+    :func:`render_description`) so external MCP clients see it too.
     """
     out: List[Dict[str, Any]] = []
     for td in list_tools(namespace):
         entry: Dict[str, Any] = {
             "name": td.name,
-            "description": td.description,
+            "description": render_description(td),
             "inputSchema": td.schema,
         }
         if td.tags:

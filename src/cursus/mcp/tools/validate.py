@@ -18,6 +18,11 @@ from typing import Any, Dict, List
 from ..envelope import ToolResult, ToolError
 from ..registry import ToolDef
 
+# One-line purpose of this namespace (collected by the registry for validate.help).
+NAMESPACE = (
+    "Alignment, dependency, and script-execution checks (validation, core.deps)."
+)
+
 
 def _alignment(args: Dict[str, Any]) -> ToolResult:
     """
@@ -444,6 +449,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_alignment,
         tags=("validator",),
+        when=(
+            "Call this before compiling to prove steps are constructible — run all levels "
+            "and get pass/fail counts and critical issues, optionally scoped to a subset."
+        ),
+        examples=(
+            "validate.alignment {}  # validate every discovered step",
+            'validate.alignment {"target_scripts": ["TabularPreprocessing", "XGBoostTraining"]}  # only these two steps',
+            'validate.alignment {"target_scripts": ["XGBoostTraining"], "workspace_dirs": ["/path/to/project"]}  # widen discovery to a project dir',
+        ),
     ),
     ToolDef(
         name="validate.step",
@@ -471,6 +485,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_step,
         tags=("validator",),
+        when=(
+            "Call this to drill into one step's per-level result after a full "
+            "validate.alignment run flagged it, or when iterating on a single step."
+        ),
+        examples=(
+            'validate.step {"step_name": "TabularPreprocessing"}  # per-level result for one step',
+            'validate.step {"step_name": "XGBoostTraining", "workspace_dirs": ["/path/to/project"]}  # widen discovery to a project dir',
+        ),
     ),
     ToolDef(
         name="validate.step_interface",
@@ -506,6 +528,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_step_interface,
         tags=("validator",),
+        when=(
+            "Call this at AUTHOR time right after writing/editing a .step.yaml — the first "
+            "gate before author.preflight_step and validate.alignment; or 'all'=true in CI."
+        ),
+        examples=(
+            'validate.step_interface {"step_name": "XGBoostTraining"}  # validate one step interface',
+            'validate.step_interface {"step_name": "TabularPreprocessing", "job_type": "calibration"}  # a specific job_type variant',
+            'validate.step_interface {"all": true}  # CI mode: validate every .step.yaml',
+        ),
     ),
     ToolDef(
         name="validate.deps_resolve",
@@ -536,6 +567,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_deps_resolve,
         tags=("validator",),
+        when=(
+            "Call this to check whether a set of steps wires up — which required/optional "
+            "dependencies match compatible outputs of the others — before assembling a DAG."
+        ),
+        examples=(
+            "validate.deps_resolve {}  # resolve across every catalog step with a spec",
+            'validate.deps_resolve {"step_names": ["TabularPreprocessing", "XGBoostTraining", "XGBoostModelEval"]}  # just this pipeline',
+            'validate.deps_resolve {"step_names": ["XGBoostTraining"], "workspace_dirs": ["/path/to/project"]}  # widen discovery to a project dir',
+        ),
     ),
     ToolDef(
         name="validate.run_scripts",
@@ -583,6 +623,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_run_scripts,
         tags=("validator",),
+        when=(
+            "Call this to actually run a DAG's step scripts locally against a config file "
+            "(a heavier end-to-end check) once the DAG and configs are ready."
+        ),
+        examples=(
+            'validate.run_scripts {"nodes": ["TabularPreprocessing"], "config_path": "pipeline_config/config.json"}  # run one script',
+            'validate.run_scripts {"nodes": ["TabularPreprocessing", "XGBoostTraining"], "edges": [["TabularPreprocessing", "XGBoostTraining"]], "config_path": "pipeline_config/config.json"}  # run a two-step chain',
+            'validate.run_scripts {"nodes": ["XGBoostTraining"], "config_path": "pipeline_config/config.json", "use_dependency_resolution": false}  # skip two-phase dependency resolution',
+        ),
     ),
     ToolDef(
         name="validate.builder",
@@ -615,6 +664,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_builder,
         tags=("validator",),
+        when=(
+            "Call this to test one step's builder (builder<->config alignment, integration, "
+            "step-creation, quality score) before registering or trusting that builder."
+        ),
+        examples=(
+            'validate.builder {"step_name": "XGBoostTraining"}  # full builder suite with scoring',
+            'validate.builder {"step_name": "TabularPreprocessing", "enable_scoring": false}  # skip the quality score',
+            'validate.builder {"step_name": "XGBoostTraining", "workspace_dirs": ["/path/to/project"]}  # widen discovery to a project dir',
+        ),
     ),
     ToolDef(
         name="validate.deps_explain",
@@ -640,6 +698,14 @@ TOOLS: List[ToolDef] = [
         },
         handler=_deps_explain,
         tags=("validator",),
+        when=(
+            "Call this to debug a dependency match: get the overall + per-component semantic "
+            "similarity score for two names when a deps_resolve match looks wrong or missing."
+        ),
+        examples=(
+            'validate.deps_explain {"name1": "processed_data", "name2": "input_data"}  # why two port names did/did not match',
+            'validate.deps_explain {"name1": "TabularPreprocessing", "name2": "XGBoostTraining"}  # compare two step names',
+        ),
     ),
     ToolDef(
         name="validate.info",
@@ -655,5 +721,12 @@ TOOLS: List[ToolDef] = [
         },
         handler=_info,
         tags=("validator",),
+        when=(
+            "Call this to discover what the validation and script-testing frameworks can do "
+            "(available components, supported user stories, key features) before using them."
+        ),
+        examples=(
+            "validate.info {}  # capability metadata for the validation frameworks",
+        ),
     ),
 ]
