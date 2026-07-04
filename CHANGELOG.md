@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.7] - 2026-07-03
+
+Ported from amzn-cursus 2.4.8: add 2 temporal-split multi-task shared DAGs to the pipeline catalog.
+
+### Added
+
+- **`lightgbmmt_temporal_split_e2e`** (`shared_dags/mtl/temporal_split_e2e.dag.json`) — LightGBMMT MT e2e with `TemporalSplitPreprocessing` + dual testing/calibration eval.
+- **`xgboost_mt_temporal_split_e2e`** (`shared_dags/mtl/xgboost_mt_temporal_split_e2e.dag.json`) — XGBoost-MT temporal-split e2e; adds the new `xgboost_mt` framework to the index.
+
+`catalog_index.json`: `total_dags` 42 → 44, `frameworks` + `xgboost_mt`. Both load via `load_shared_dag` (11 nodes each).
+
 ## [2.5.6] - 2026-07-03
 
 Ported from amzn-cursus 2.4.7: robust node→base step-name resolution + cross-DAG `compatible_sources` gap closure.

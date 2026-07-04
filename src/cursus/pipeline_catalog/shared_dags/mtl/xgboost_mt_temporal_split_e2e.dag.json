@@ -1,0 +1,182 @@
+{
+  "dag": {
+    "description": "XGBoost multi-task end-to-end pipeline with TEMPORAL-SPLIT preprocessing (time-based train split), dual evaluation (testing + calibration paths), model calibration, packaging, and registration.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration",
+      "TemporalSplitPreprocessing_training",
+      "TabularPreprocessing_calibration",
+      "XgboostMtTraining",
+      "XgboostMtModelEval_testing",
+      "XgboostMtModelEval_calibration",
+      "ModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TemporalSplitPreprocessing_training"
+      ],
+      [
+        "TemporalSplitPreprocessing_training",
+        "XgboostMtTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "XgboostMtTraining",
+        "XgboostMtModelEval_calibration"
+      ],
+      [
+        "XgboostMtTraining",
+        "XgboostMtModelEval_testing"
+      ],
+      [
+        "TemporalSplitPreprocessing_training",
+        "XgboostMtModelEval_testing"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XgboostMtModelEval_calibration"
+      ],
+      [
+        "XgboostMtModelEval_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "XgboostMtTraining",
+        "Package"
+      ],
+      [
+        "XgboostMtTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_mt_temporal_split_e2e",
+    "description": "XGBoost multi-task end-to-end pipeline with TEMPORAL-SPLIT preprocessing (time-based train split), dual evaluation (testing + calibration paths), model calibration, packaging, and registration.",
+    "complexity": "comprehensive",
+    "framework": "xgboost_mt",
+    "features": [
+      "temporal_split",
+      "multi_task",
+      "training",
+      "calibration",
+      "testing",
+      "packaging",
+      "registration",
+      "evaluation"
+    ],
+    "node_count": 11,
+    "edge_count": 13,
+    "task_type": "multi_task_temporal_split_end_to_end",
+    "entry_points": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration"
+    ],
+    "exit_points": [
+      "Registration"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular",
+        "temporal"
+      ],
+      "text_support": false,
+      "multi_task": true,
+      "output_type": "multi_label",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "XGBoost multi-task learning (one_output_per_tree) on time-series/temporal data where the train/test boundary MUST be split chronologically (no future data leaks into training). Predict multiple related labels simultaneously with a time-ordered split and a dedicated held-out testing evaluation path.",
+      "when_not_to_use": "Non-temporal data where a random split is appropriate. Single-task XGBoost (use xgboost/complete_e2e). Unrelated tasks (train separately). LightGBM-family MTL (use mtl/temporal_split_e2e).",
+      "differentiators": [
+        "XgboostMt framework — multi-task XGBoost (one_output_per_tree) predicting multiple labels simultaneously",
+        "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing — prevents temporal leakage",
+        "Separate XgboostMtModelEval_testing path (held-out chronological test) in addition to the calibration eval path",
+        "Dual evaluation: testing (from the temporal split) + calibration (from a separate Cradle query)",
+        "CPU-only — no GPU required"
+      ],
+      "prerequisites": [
+        {
+          "check": "Temporal ordering column",
+          "how": "Data has a timestamp/date column to define the chronological train/test boundary"
+        },
+        {
+          "check": "Multiple correlated label columns",
+          "how": "Data has 2+ label columns that benefit from joint training"
+        },
+        {
+          "check": "Tabular features",
+          "how": "Structured data, not raw text"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "task_definitions",
+          "label_columns",
+          "feature_columns",
+          "temporal_split_column",
+          "temporal_split_boundary",
+          "author"
+        ],
+        "safe_defaults": [
+          "n_estimators",
+          "max_depth",
+          "learning_rate",
+          "multi_strategy (one_output_per_tree)"
+        ],
+        "common_pitfalls": [
+          "Temporal split boundary must be set so the test window has enough data for meaningful evaluation",
+          "Do not shuffle across the temporal boundary — that reintroduces leakage",
+          "Tasks must be correlated for MTL benefit — independent tasks train better separately"
+        ]
+      },
+      "decision_tree": {
+        "temporal_data?": {
+          "yes": "USE THIS DAG (chronological split prevents leakage)",
+          "no": "Use xgboost/complete_e2e (single-task) or a random-split MTL DAG"
+        },
+        "multiple_outputs?": {
+          "yes": "USE THIS DAG",
+          "no": "Use single-task xgboost/complete_e2e"
+        },
+        "xgboost_family?": {
+          "yes": "USE THIS DAG",
+          "no": "Use mtl/temporal_split_e2e (LightGBMMT)"
+        }
+      }
+    },
+    "used_by_projects": []
+  }
+}
