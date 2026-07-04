@@ -2303,7 +2303,7 @@
     {
       "id": "pytorch_tsa_complete_e2e",
       "path": "pytorch/tsa_complete_e2e.dag.json",
-      "description": "TSA (Time-Series Aggregation) complete end-to-end pipeline with TSA-specific preprocessing, separate testing and calibration paths, and model calibration.",
+      "description": "TSA (Temporal Self-Attention) complete end-to-end pipeline with TSA-specific preprocessing, separate testing and calibration paths, and model calibration.",
       "framework": "pytorch",
       "complexity": "comprehensive",
       "task_type": "",

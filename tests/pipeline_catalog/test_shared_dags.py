@@ -144,3 +144,60 @@ class TestSearchDags:
     def test_list_dags_by_framework(self):
         py = list_dags_by_framework("pytorch")
         assert py and all(d["framework"] == "pytorch" for d in py)
+
+
+class TestSharedDagResolvability:
+    """Every node of every catalogued shared DAG must resolve to a buildable step.
+
+    Shared DAGs ship no configs, so the meaningful "can this DAG be built" check is
+    CONFIG-FREE routability: each node's step type must resolve to a routable builder via
+    ``StepCatalog.has_builder_provider`` (declarative — registry ``sagemaker_step_type`` +
+    the ``.step.yaml`` ``patterns.step_assembly`` — so it stays True for SDK-delegation steps
+    like CradleDataLoading/Registration even offline, and for job-type/label-suffixed nodes
+    like ``TabularPreprocessing_training`` / ``CradleDataLoading_munged``, which the catalog
+    node resolution strips to their base via ``naming.resolve_base_step_name``).
+
+    This guards against a catalogued DAG referencing a step this package cannot build.
+    """
+
+    # DAGs whose nodes are NOT fully routable in THIS package, with the reason. Kept explicit so
+    # the gap is visible and any NEW unroutable DAG fails the test loudly. Currently EMPTY: every
+    # catalogued DAG fully routes. (bedrock_batch_sopa was the sole exception until SOPAInstructionTuning
+    # was synced into amzn-cursus — the companion stale-guard test below is what flagged it as
+    # now-routable, so it was removed.)
+    KNOWN_UNROUTABLE: set = set()
+
+    def test_every_catalog_dag_node_is_routable(self, catalog_index):
+        from cursus.step_catalog.step_catalog import StepCatalog
+
+        catalog = StepCatalog()
+        failures = []
+        for entry in catalog_index["dags"]:
+            dag_id = entry["id"]
+            dag = load_shared_dag(dag_id)
+            unroutable = [n for n in dag.nodes if not catalog.has_builder_provider(n)]
+            if unroutable and dag_id not in self.KNOWN_UNROUTABLE:
+                failures.append(f"{dag_id}: unroutable nodes {sorted(unroutable)}")
+        assert not failures, (
+            "catalogued shared DAGs with nodes that do not resolve to a buildable step:\n"
+            + "\n".join(failures)
+        )
+
+    def test_known_unroutable_dags_are_still_unroutable(self, catalog_index):
+        """Guard the exception list itself: if a KNOWN_UNROUTABLE DAG becomes fully routable
+        (e.g. SOPA gets ported into this package), drop it from KNOWN_UNROUTABLE so the strict
+        invariant covers it again."""
+        from cursus.step_catalog.step_catalog import StepCatalog
+
+        catalog = StepCatalog()
+        ids = {d["id"] for d in catalog_index["dags"]}
+        stale = []
+        for dag_id in self.KNOWN_UNROUTABLE:
+            if dag_id not in ids:
+                continue  # not in this package's catalog at all — fine
+            dag = load_shared_dag(dag_id)
+            if all(catalog.has_builder_provider(n) for n in dag.nodes):
+                stale.append(dag_id)
+        assert not stale, (
+            "these DAGs are now fully routable — remove from KNOWN_UNROUTABLE: " + ", ".join(stale)
+        )

@@ -2,7 +2,7 @@ step_type: TSAPreprocessing
 node_type: internal
 registry:
   sagemaker_step_type: Processing
-  description: TSA (Temporal Sequence Analysis) data preprocessing step that performs sequence processing with feature transformation and scaling for fraud detection models
+  description: TSA (Temporal Self-Attention) data preprocessing step that performs sequence processing with feature transformation and scaling for fraud detection models
 patterns:
   step_assembly: step_args
   include_job_type_in_path: true

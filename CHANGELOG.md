@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.8] - 2026-07-03
+
+Ported from amzn-cursus 2.4.9 + 2.4.10.
+
+### Added
+
+- **`SOPAInstructionTuning` step** (interface + config, synced from the BAMT vendored copy) — SOPA Stage-2 instruction fine-tuning (BLIP2 Q-Former + Phi-3 LLM); makes the `bedrock_batch_sopa` catalog DAG buildable here.
+- **`TestSharedDagResolvability`** — every catalogued shared-DAG node must resolve to a routable builder (config-free). `KNOWN_UNROUTABLE` is empty (all DAGs route now that SOPA exists).
+
+### Fixed
+
+- **TSA = "Temporal Self-Attention"** corrected across all TSA step interfaces/configs + the `tsa_complete_e2e` catalog DAG (removed the wrong "Temporal Sequence Analysis/Attention", "Time Series Analysis", "Time-Series Aggregation", "Travel & Spend Analytics" expansions).
+
 ## [2.5.7] - 2026-07-03
 
 Ported from amzn-cursus 2.4.8: add 2 temporal-split multi-task shared DAGs to the pipeline catalog.

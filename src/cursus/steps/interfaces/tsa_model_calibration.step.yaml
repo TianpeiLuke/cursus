@@ -2,7 +2,7 @@ step_type: TSAModelCalibration
 node_type: internal
 registry:
   sagemaker_step_type: Processing
-  description: TSA (Time Series Analysis) model calibration step using monotone B-spline calibration for converting raw prediction scores to well-calibrated probabilities for fraud detection
+  description: TSA (Temporal Self-Attention) model calibration step using monotone B-spline calibration for converting raw prediction scores to well-calibrated probabilities for fraud detection
 patterns:
   step_assembly: code
 compute:
@@ -51,7 +51,7 @@ contract:
     scikit-learn: '>=1.0.0'
     matplotlib: '>=3.3.0'
   description: "Contract for TSA model calibration processing step.\n\nThe TSA model calibration step\
-    \ implements monotone B-spline calibration specifically\nfor Time Series Analysis fraud detection\
+    \ implements monotone B-spline calibration specifically\nfor Temporal Self-Attention fraud detection\
     \ models. It converts raw model prediction scores\ninto well-calibrated probabilities using constrained\
     \ optimization, which is essential for\nrisk-based decision-making and reliable fraud detection thresholds.\n\
     \nThis calibration method is based on the generic_rfuge.r approach and uses:\n- B-spline basis functions\

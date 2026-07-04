@@ -1,7 +1,7 @@
 """
 TSA Training Step Configuration with Self-Contained Derivation Logic
 
-This module implements the configuration class for SageMaker TSA (Temporal Sequence Attention)
+This module implements the configuration class for SageMaker TSA (Temporal Self-Attention)
 Training steps using a self-contained design where derived fields are private with read-only properties.
 Fields are organized into three tiers:
 1. Tier 1: Essential User Inputs - fields that users must explicitly provide

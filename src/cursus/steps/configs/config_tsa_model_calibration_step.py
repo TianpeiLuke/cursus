@@ -22,7 +22,7 @@ class TSAModelCalibrationConfig(ProcessingStepConfigBase):
     This class defines the configuration parameters for the TSAModelCalibration step,
     which uses monotone B-spline calibration to convert raw TSA model prediction scores
     into well-calibrated probabilities for fraud detection. The calibration method is
-    specifically designed for Time Series Analysis models with emphasis on high-score
+    specifically designed for Temporal Self-Attention models with emphasis on high-score
     regions important for fraud detection.
 
     Fields are organized into three tiers:

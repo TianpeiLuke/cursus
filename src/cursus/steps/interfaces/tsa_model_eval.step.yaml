@@ -2,7 +2,7 @@ step_type: TSAModelEval
 node_type: internal
 registry:
   sagemaker_step_type: Processing
-  description: TSA (Temporal Sequence Analysis) model evaluation step for dual-task PyTorch models with comprehensive metrics and visualizations
+  description: TSA (Temporal Self-Attention) model evaluation step for dual-task PyTorch models with comprehensive metrics and visualizations
 patterns:
   step_assembly: step_args
 compute:

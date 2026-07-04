@@ -2,7 +2,7 @@
 TSA Data Preprocessing Configuration with Self-Contained Derivation Logic
 
 This module implements the configuration class for SageMaker Processing steps
-for TSA (Temporal Sequence Analysis) data preprocessing, using a self-contained
+for TSA (Temporal Self-Attention) data preprocessing, using a self-contained
 design where each field is properly categorized according to the three-tier design:
 1. Essential User Inputs (Tier 1) - Required fields that must be provided by users
 2. System Fields (Tier 2) - Fields with reasonable defaults that can be overridden

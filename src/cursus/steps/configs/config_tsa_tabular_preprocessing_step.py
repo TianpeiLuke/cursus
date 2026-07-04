@@ -2,7 +2,7 @@
 TSA Tabular Preprocessing Configuration with Self-Contained Derivation Logic
 
 This module implements the configuration class for SageMaker Processing steps
-for TSA (Travel & Spend Analytics) tabular data preprocessing.
+for TSA (Temporal Self-Attention) tabular data preprocessing.
 
 Three-tier field design:
   Tier 1: Essential User Inputs  — required fields provided by the caller.

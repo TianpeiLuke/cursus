@@ -29,7 +29,7 @@ class TSAModelEvalConfig(ProcessingStepConfigBase):
     """
     Configuration for TSA model evaluation step with self-contained derivation logic.
 
-    This class defines the configuration parameters for the TSA (Temporal Sequence Analysis)
+    This class defines the configuration parameters for the TSA (Temporal Self-Attention)
     model evaluation step, which calculates evaluation metrics for trained PyTorch models
     with dual-task learning support. Computes comprehensive metrics including AUC-ROC,
     precision-recall, dollar-weighted metrics, and generates visualizations.

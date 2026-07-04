@@ -2,7 +2,7 @@ step_type: TSATabularPreprocessing
 node_type: internal
 registry:
   sagemaker_step_type: Processing
-  description: TSA-specific tabular preprocessing with explicit output declarations for processed_data and preprocessor artifacts
+  description: TSA (Temporal Self-Attention) tabular preprocessing with explicit output declarations for processed_data and preprocessor artifacts
 patterns:
   step_assembly: step_args
   include_job_type_in_path: true

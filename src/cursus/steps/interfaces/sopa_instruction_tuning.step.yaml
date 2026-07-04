@@ -1,0 +1,188 @@
+step_type: SOPAInstructionTuning
+node_type: internal
+registry:
+  sagemaker_step_type: Training
+  description: SOPA Stage 2 instruction fine-tuning step for BLIP2-based model (Q-Former + Phi-3 LLM) with tabular-to-text instruction following
+compute:
+  kind: estimator
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
+contract:
+  entry_point: SOPA_instruction_tuning.py
+  inputs:
+    data_path:
+      path: /opt/ml/code/training_data
+      required: false
+    llm_model_path:
+      path: /opt/ml/code/model_artifacts/llm_model
+      required: false
+    tabular_encoder_path:
+      path: /opt/ml/code/model_artifacts/tabular_encoder
+      required: false
+    stage1_qformer_path:
+      path: /opt/ml/code/model_artifacts/stage1_qformer
+      required: false
+  outputs:
+    model_output:
+      path: /opt/ml/model
+    checkpoints_output:
+      path: /opt/ml/output/data
+  arguments:
+    data-path: /opt/ml/code/training_data
+    training-data-filename: training_data.csv
+    task: return_risk
+    llm-model-path: /opt/ml/code/model_artifacts/llm_model
+    feature-columns: Account tenure MDR amount Prior enforcement MDR count sugar index
+    use-column-names: 'false'
+    input-size: '5'
+    latent-size: '100'
+    sample-frac: '1.0'
+    seed: '2024'
+    tabular-encoder-path: /opt/ml/code/model_artifacts/tabular_encoder
+    stage1-qformer-path: /opt/ml/code/model_artifacts/stage1_qformer
+    pretrained-qformer: qformer
+    tabular-encoder-filename: autoencoder_model
+    num-query-tokens: '32'
+    max-txt-len: '512'
+    max-output-txt-len: '256'
+    qformer-text-input: 'true'
+    batch-size: '4'
+    epochs: '10'
+    lr: 5e-5
+    min-lr: 2e-6
+    lr-decay: '0.9'
+    num-workers: '0'
+    gpu: '0'
+    output-dir: /opt/ml/model
+    accumulation-steps: '2'
+  env_vars:
+    required: []
+    optional: {}
+  framework_requirements:
+    torch: '>=1.10.0'
+    pandas: '>=1.3.0'
+    transformers: '>=4.28.0'
+    packaging: '>=20.0'
+  description: 'SOPA Stage 2 instruction fine-tuning script for AFN Return MDR model
+    that fine-tunes a BLIP2-based model (Q-Former + Phi-3 LLM) for tabular-to-text
+    instruction following. Loads a pre-trained Phi-3 LLM (frozen), a Stage 0 tabular
+    autoencoder (frozen encoder), and a Stage 1 Q-Former (trainable), then trains a
+    projection layer (llm_proj) and the Q-Former to align tabular embeddings with the
+    LLM input space. Supports three tasks (return_risk, customer_risk, refund_decision)
+    and saves best-only and final model checkpoints (stage2_{task}_best.pth,
+    stage2_{task}_final.pth). All configuration is provided via argparse arguments;
+    no environment variables are required.
+
+    '
+spec:
+  dependencies:
+    data_path:
+      type: training_data
+      required: false
+      compatible_sources:
+      - TabularPreprocessing
+      - ProcessingStep
+      - DataLoad
+      semantic_keywords:
+      - data
+      - input
+      - training
+      - dataset
+      - tabular
+      - csv
+      - instruction
+      - tuning
+      - sopa
+      - return_risk
+      - customer_risk
+      - refund_decision
+      data_type: S3Uri
+      description: Training CSV data S3 location containing tabular features and instruction
+        input/output columns (instruct_input_{task}, instruct_output_{task}) for Stage
+        2 fine-tuning
+    llm_model_path:
+      type: model_artifacts
+      required: false
+      compatible_sources:
+      - ProcessingStep
+      - DataLoad
+      semantic_keywords:
+      - llm
+      - model
+      - phi3
+      - phi-3
+      - language_model
+      - pretrained
+      - causal_lm
+      - tokenizer
+      - transformer
+      data_type: S3Uri
+      description: Pre-trained Phi-3 LLM model directory containing model weights,
+        config.json, and tokenizer files (frozen during training)
+    tabular_encoder_path:
+      type: model_artifacts
+      required: false
+      compatible_sources:
+      - ProcessingStep
+      - DataLoad
+      semantic_keywords:
+      - tabular
+      - encoder
+      - autoencoder
+      - stage0
+      - pretrained
+      - embedding
+      - latent
+      data_type: S3Uri
+      description: Pre-trained tabular autoencoder checkpoint from Stage 0 (Autoencoder
+        with encoder/decoder, frozen encoder used during training)
+    stage1_qformer_path:
+      type: model_artifacts
+      required: false
+      compatible_sources:
+      - ProcessingStep
+      - DataLoad
+      semantic_keywords:
+      - qformer
+      - stage1
+      - pretrained
+      - query_tokens
+      - cross_attention
+      - blip2
+      - bridge
+      data_type: S3Uri
+      description: Pre-trained Q-Former checkpoint directory from Stage 1 containing
+        Q-Former weights and query_tokens (trainable during Stage 2)
+  outputs:
+    model_output:
+      type: model_artifacts
+      property_path: properties.ModelArtifacts.S3ModelArtifacts
+      semantic_keywords: []
+      aliases:
+      - ModelOutputPath
+      - ModelArtifacts
+      - model_data
+      - output_path
+      - model_input
+      - model_artifacts_input
+      - sopa_model
+      - instruction_tuning_model
+      - stage2_model
+      data_type: S3Uri
+      description: Trained SOPA Stage 2 model artifacts containing best and final checkpoints
+        (stage2_{task}_best.pth, stage2_{task}_final.pth)
+    checkpoints_output:
+      type: processing_output
+      property_path: properties.OutputDataConfig.S3OutputPath
+      semantic_keywords: []
+      aliases:
+      - evaluation_data
+      - eval_data
+      - training_output
+      - checkpoint_output
+      - training_artifacts
+      - data_output
+      data_type: S3Uri
+      description: Training evaluation results and intermediate outputs from Stage 2
+        instruction fine-tuning

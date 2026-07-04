@@ -2,7 +2,7 @@ step_type: TSATraining
 node_type: internal
 registry:
   sagemaker_step_type: Training
-  description: TSA (Temporal Sequence Attention) model training step for PyTorch-based temporal attention models
+  description: TSA (Temporal Self-Attention) model training step for PyTorch-based temporal attention models
 patterns:
   direct_input_keys: [input_path]
 compute:
@@ -43,7 +43,7 @@ contract:
     pandas: '>=1.2.0'
     matplotlib: '>=3.0.0'
     pydantic: '>=2.0.0,<3.0.0'
-  description: "\n    TSA (Temporal Sequence Attention) training script for AFN Return\
+  description: "\n    TSA (Temporal Self-Attention) training script for AFN Return\
     \ Kickout model that:\n    1. Loads pre-processed training data from TSA preprocessing\
     \ output (4 numpy arrays)\n    2. Builds temporal attention-based neural network\
     \ model (OrderFeatureAttentionClassifier)\n    3. Supports distributed training\
