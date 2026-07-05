@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.0] - 2026-07-05
+
+Ported from amzn-cursus 2.7.0 — plugin step-pack discovery. A consumer can define its own steps (`interfaces/*.step.yaml` + `configs/` + `scripts/`) in a folder OUTSIDE the pip-installed package and have cursus discover them as NATIVE — no fork, no vendored copy, no package edit. Strictly ADDITIVE: the internal steps are ALWAYS available; a pack can only add steps (shadow-with-warning on clash), never remove or replace one. Reuses the caller hook as the discovery anchor. Backward-compatible; with no pack the registry/catalog are byte-identical to package-only.
+
+### Added
+
+- **External config/hyperparam import by file location** (`step_catalog/config_discovery.py`) — a workspace config module not under `package_root` is imported via `spec_from_file_location` under a unique path-hashed module name (previously AST-detected then silently dropped).
+- **`refresh_registry(pack_interfaces_dir)`** + `merge_pack_registry` — merge a pack's `.step.yaml` rows ON TOP of the package registry (in-place `.update`, never replace), rebuild derived registries, re-sync the hybrid manager. Collisions surfaced via `get_registry_health()['pack_collisions']`.
+- **Ordered interface loader** (`steps/interfaces/__init__.py`) — pack `interfaces/` dirs searched AFTER the package (package always wins) with cache invalidation.
+- **`PipelineDAGCompiler(workspace_dirs=...)`** + `_derive_step_pack_dir` from the resolved `project_root`/`anchor_file`; `set_default_workspace_dirs` so bare `StepCatalog()` sees packs.
+- Regression tests (`tests/step_catalog/test_plugin_pack_additive_invariant.py`) locking the additive invariant.
+
 ## [2.7.0] - 2026-07-05
 
 Ported from amzn-cursus 2.6.0 — `anchor_file=__file__` caller hook + a shared `resolve_anchor()` normalizer. A pipeline's entry module can register its project folder self-documentingly (`anchor_file=__file__`) instead of `project_root=Path(__file__).parent`, and the anchor is threaded through every entry point that resolves docker `source_dir`/`processing_source_dir` paths. Backward-compatible; additive only.

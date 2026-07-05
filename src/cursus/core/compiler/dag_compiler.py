@@ -188,6 +188,7 @@ class PipelineDAGCompiler:
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
         project_root: Optional[Union[str, Path]] = None,
         anchor_file: Optional[Union[str, Path]] = None,
+        workspace_dirs: Optional[Union[str, Path, List[Union[str, Path]]]] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -213,6 +214,13 @@ class PipelineDAGCompiler:
                 hook (``anchor_file=__file__``); it is equivalent to
                 ``project_root=Path(__file__).parent``. If both are given, ``project_root``
                 wins and a warning is logged when they disagree.
+            workspace_dirs: Explicit external step-pack root(s) — each a directory holding
+                ``interfaces/`` + ``configs/`` + ``scripts/`` for the consumer's own steps
+                (e.g. BAMT's TSA/SOPA pack). Their steps are discovered as NATIVE and are
+                strictly ADDITIVE — package steps are always available and are never removed;
+                a pack step that clashes on name shadows with a warning. When omitted, a pack
+                is auto-derived from ``project_root`` (a ``step_pack/`` or ``steps/`` subdir),
+                so the caller usually needs only the anchor. Explicit ``workspace_dirs`` wins.
             **kwargs: Additional arguments for template constructor
         """
         self.config_path = config_path
@@ -234,6 +242,33 @@ class PipelineDAGCompiler:
             except Exception:  # pragma: no cover - resolution is best-effort
                 pass
 
+        # Plugin step-pack discovery: an external pack's interfaces/configs/scripts are
+        # discovered as NATIVE, strictly ON TOP of the package steps (which are always
+        # available — never removed). Explicit workspace_dirs win; otherwise derive a pack
+        # from the resolved project_root. Merging the pack's .step.yaml into the registry
+        # (refresh_registry) is what gives its steps a registry row for the catalog to see.
+        self.workspace_dirs = self._resolve_workspace_dirs(
+            workspace_dirs, self.project_root
+        )
+        if self.workspace_dirs:
+            for pack_dir in self.workspace_dirs:
+                try:
+                    from ...registry.step_names import refresh_registry
+
+                    refresh_registry(Path(pack_dir) / "interfaces")
+                except Exception as e:  # pragma: no cover - never blocks compile
+                    logger.warning(
+                        f"Plugin step-pack registry refresh failed for {pack_dir}: {e}"
+                    )
+            # Push as the process-level default so bare StepCatalog() sites in
+            # validate/author/exec-doc also discover the plugin steps (AI-5).
+            try:
+                from ...step_catalog.step_catalog import set_default_workspace_dirs
+
+                set_default_workspace_dirs(self.workspace_dirs)
+            except Exception:  # pragma: no cover - best-effort
+                pass
+
         # Store pipeline parameters for template creation
         # Use default parameters if none provided
         if pipeline_parameters is None:
@@ -246,9 +281,17 @@ class PipelineDAGCompiler:
         else:
             self.pipeline_parameters = pipeline_parameters
 
-        # Initialize components
+        # Initialize components. Thread the resolved step-pack dirs into the catalog so plugin
+        # steps are discovered as native; with no pack the catalog is package-only (unchanged).
         self.config_resolver = config_resolver or StepConfigResolver()
-        self.step_catalog = step_catalog or StepCatalog()
+        if step_catalog is not None:
+            self.step_catalog = step_catalog
+        elif self.workspace_dirs:
+            self.step_catalog = StepCatalog(
+                workspace_dirs=[Path(d) for d in self.workspace_dirs]
+            )
+        else:
+            self.step_catalog = StepCatalog()
         self.validation_engine = ValidationEngine()
 
         self.logger = logging.getLogger(__name__)
@@ -310,6 +353,48 @@ class PipelineDAGCompiler:
             return str(config_dir)
         except Exception:  # pragma: no cover
             return None
+
+    @staticmethod
+    def _derive_step_pack_dir(project_root: Optional[str]) -> Optional[str]:
+        """Derive an external step-pack root from the project root, or None.
+
+        A pack is a directory holding ``interfaces/`` (its ``.step.yaml`` files) plus
+        ``configs/`` / ``scripts/``. Convention: check ``<project_root>/step_pack`` first, then
+        ``<project_root>`` itself (a project whose own ``interfaces/`` live at its root). Returns
+        the first directory that actually has an ``interfaces/`` subdir, else None (→ package-only).
+        """
+        if not project_root:
+            return None
+        try:
+            root = Path(project_root)
+            for candidate in (root / "step_pack", root):
+                if (candidate / "interfaces").is_dir():
+                    return str(candidate)
+        except (TypeError, ValueError, OSError):
+            # project_root not path-like (e.g. a test Mock) → no pack, package-only.
+            return None
+        return None
+
+    @classmethod
+    def _resolve_workspace_dirs(
+        cls,
+        workspace_dirs: Optional[Union[str, Path, List[Union[str, Path]]]],
+        project_root: Optional[str],
+    ) -> List[str]:
+        """Resolve the external step-pack dirs: explicit wins, else derive from project_root.
+
+        Returns a (possibly empty) list of absolute directory strings. Empty → package-only
+        discovery (the package steps are always available regardless).
+        """
+        if workspace_dirs:
+            if isinstance(workspace_dirs, (str, Path)):
+                items: List[Union[str, Path]] = [workspace_dirs]
+            else:
+                items = list(workspace_dirs)
+            return [str(Path(d).expanduser().resolve()) for d in items]
+
+        derived = cls._derive_step_pack_dir(project_root)
+        return [derived] if derived else []
 
     def validate_dag_compatibility(
         self, dag: Union[PipelineDAG, str]

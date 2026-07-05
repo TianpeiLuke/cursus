@@ -39,6 +39,36 @@ INTERFACES_DIR = Path(__file__).parent
 # Cache loaded interfaces (keyed by step_name:job_type)
 _cache: Dict[str, StepInterface] = {}
 
+# External step-pack interface directories, searched AFTER the package INTERFACES_DIR so a
+# package interface always wins on a name clash (the additive invariant — package steps are
+# always resolvable; a pack only ADDS, or deliberately shadows a name the package does not own).
+# Registered by the DAG compiler when a plugin pack is present (see register_pack_interface_dir).
+_pack_interface_dirs: List[Path] = []
+
+
+def register_pack_interface_dir(interfaces_dir) -> None:
+    """Register an external step-pack ``interfaces/`` dir for interface resolution (add-only).
+
+    Searched AFTER the package dir, so package interfaces are never shadowed unless a pack
+    deliberately ships the same name. Registering a NEW dir invalidates the interface cache so
+    a pack step's interface is picked up. Idempotent; ``None``/missing dirs are ignored.
+    """
+    if not interfaces_dir:
+        return
+    p = Path(interfaces_dir)
+    if not p.is_dir():
+        return
+    p = p.resolve()
+    if p not in _pack_interface_dirs:
+        _pack_interface_dirs.append(p)
+        # A new search root can change what resolves — drop cached (package-only) results.
+        _cache.clear()
+
+
+def _search_dirs() -> List[Path]:
+    """Ordered interface search roots: the package dir FIRST, then registered packs."""
+    return [INTERFACES_DIR, *_pack_interface_dirs]
+
 
 def _step_name_to_filename(step_name: str) -> str:
     """Convert StepName to filename: PyTorchTraining → pytorch_training"""
@@ -76,33 +106,41 @@ def _resolve_interface_path(step_name: str) -> Path:
     normalized scan of the interfaces directory matching on :func:`_canonical_key`. Raises
     ``FileNotFoundError`` only if neither resolves.
     """
-    # 1) Convention-derived filename (the common, fast path).
-    primary = INTERFACES_DIR / (_step_name_to_filename(step_name) + ".step.yaml")
-    if primary.exists():
-        return primary
-
-    # 2) Normalized fallback: match the step name against every interface stem ignoring
-    #    case and separators, so acronym/casing mismatches still resolve.
+    filename = _step_name_to_filename(step_name) + ".step.yaml"
     want = _canonical_key(step_name)
-    matches = [
-        p
-        for p in INTERFACES_DIR.glob("*.step.yaml")
-        if _canonical_key(p.name[: -len(".step.yaml")]) == want
-    ]
-    if len(matches) == 1:
-        logger.debug(
-            "Resolved interface for '%s' via normalized fallback: %s",
-            step_name,
-            matches[0].name,
-        )
-        return matches[0]
-    if len(matches) > 1:
-        raise FileNotFoundError(
-            f"Ambiguous interface for '{step_name}': matched "
-            f"{[m.name for m in matches]}"
-        )
 
-    raise FileNotFoundError(f"No interface file for '{step_name}': {primary}")
+    # Search roots in order: package FIRST, then registered packs — so a package interface
+    # always wins on a name clash (additive invariant).
+    for search_dir in _search_dirs():
+        # 1) Convention-derived filename (the common, fast path).
+        primary = search_dir / filename
+        if primary.exists():
+            return primary
+
+        # 2) Normalized fallback: match the step name against every interface stem in THIS
+        #    dir ignoring case and separators, so acronym/casing mismatches still resolve.
+        matches = [
+            p
+            for p in search_dir.glob("*.step.yaml")
+            if _canonical_key(p.name[: -len(".step.yaml")]) == want
+        ]
+        if len(matches) == 1:
+            logger.debug(
+                "Resolved interface for '%s' via normalized fallback: %s",
+                step_name,
+                matches[0].name,
+            )
+            return matches[0]
+        if len(matches) > 1:
+            raise FileNotFoundError(
+                f"Ambiguous interface for '{step_name}' in {search_dir}: matched "
+                f"{[m.name for m in matches]}"
+            )
+
+    raise FileNotFoundError(
+        f"No interface file for '{step_name}' in any search dir: "
+        f"{[str(d) for d in _search_dirs()]}"
+    )
 
 
 def load_interface(
@@ -154,8 +192,16 @@ def load_step_interface(
 
 
 def list_available_interfaces() -> List[str]:
-    """List all available step interface names."""
-    return [f.stem.replace(".step", "") for f in INTERFACES_DIR.glob("*.step.yaml")]
+    """List all available step interface names (package + registered packs)."""
+    names: List[str] = []
+    seen = set()
+    for search_dir in _search_dirs():
+        for f in search_dir.glob("*.step.yaml"):
+            name = f.stem.replace(".step", "")
+            if name not in seen:
+                seen.add(name)
+                names.append(name)
+    return names
 
 
 def clear_interface_cache() -> None:

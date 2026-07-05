@@ -112,6 +112,11 @@ _global_registry_manager = None
 # invisible to callers — record the failure so it can be surfaced via get_registry_health().
 _registry_init_error: "Optional[str]" = None
 
+# Plugin step-pack collisions: names where an external pack step shadowed an existing package
+# step (plugin-wins). Recorded by refresh_registry so get_registry_health() can surface them —
+# a silent shadow of a core step is a footgun worth flagging to monitoring.
+_pack_collisions: Dict[str, str] = {}
+
 
 def _get_registry_manager():
     """Get or create global registry manager instance."""
@@ -157,7 +162,93 @@ def get_registry_health() -> Dict[str, Any]:
     return {
         "hybrid_active": _registry_init_error is None,
         "init_error": _registry_init_error,
+        # Plugin-pack steps that shadowed a package step (empty = none / clean).
+        "pack_collisions": dict(_pack_collisions),
     }
+
+
+def refresh_registry(pack_interfaces_dir: "Optional[Any]" = None) -> Dict[str, str]:
+    """Merge an external step-pack's ``.step.yaml`` interfaces INTO the step registry (add-only).
+
+    This is the public entry point behind action item AI-2. It enforces the additive invariant:
+    package steps are ALWAYS available; a pack can only ADD steps (and, on a deliberate
+    name-clash, shadow with a warning). It never removes or replaces a package step.
+
+    Mechanism (package-first, never replace):
+      1. Derive the pack's registry rows from ``pack_interfaces_dir/*.step.yaml`` via
+         ``build_registry_from_interfaces(pack_interfaces_dir)``.
+      2. Layer them on top of the live package table with ``step_names_base.merge_pack_registry``
+         (in-place ``STEP_NAMES.update`` — package rows preserved).
+      3. Re-sync the hybrid manager (``reload_core_registry``) so the StepCatalog, which reads
+         ``get_step_names()`` through the manager, sees the plugin steps.
+
+    Args:
+        pack_interfaces_dir: directory of the pack's ``*.step.yaml`` files (e.g.
+            ``<project_root>/step_pack/interfaces``). ``None`` is a no-op returning ``{}``.
+
+    Returns:
+        ``{name: "collision"}`` for pack names that shadowed an existing package step (already
+        logged as warnings here); empty when every pack step is new.
+    """
+    if pack_interfaces_dir is None:
+        return {}
+
+    from pathlib import Path
+    from .interface_registry_loader import build_registry_from_interfaces, _EXTRAS
+    from . import step_names_base
+
+    pack_dir = Path(pack_interfaces_dir)
+    if not pack_dir.exists():
+        logger.warning(
+            f"refresh_registry: pack interfaces dir does not exist: {pack_dir}"
+        )
+        return {}
+
+    # Derive ONLY the pack rows (its own .step.yaml files). merge_pack_registry layers these on
+    # top of the package table — build_registry_from_interfaces is a REPLACE primitive, so we
+    # must never let its result stand alone as the registry.
+    pack_rows = build_registry_from_interfaces(interfaces_dir=pack_dir)
+    # Drop the interface-less _EXTRAS rows (Base/Processing/HyperparameterPrep) that
+    # build_registry_from_interfaces always seeds — they are package concerns, already present,
+    # and re-merging them is a harmless no-op but semantically they are not "pack" rows.
+    pack_rows = {name: row for name, row in pack_rows.items() if name not in _EXTRAS}
+
+    collisions = step_names_base.merge_pack_registry(pack_rows)
+
+    # Register the pack's interfaces/ with the interface loader (searched after the package,
+    # so builder synthesis can load a plugin step's .step.yaml). Best-effort.
+    try:
+        from ..steps.interfaces import register_pack_interface_dir
+
+        register_pack_interface_dir(pack_dir)
+    except Exception as e:  # pragma: no cover - best-effort
+        logger.debug(f"refresh_registry: could not register pack interface dir: {e}")
+
+    if collisions:
+        global _pack_collisions
+        _pack_collisions.update(collisions)
+        logger.warning(
+            f"refresh_registry: {len(collisions)} pack step(s) shadow existing package steps "
+            f"(plugin-wins): {sorted(collisions)}. Rename the pack step(s) to avoid shadowing a "
+            f"core step. (Surfaced via get_registry_health()['pack_collisions'].)"
+        )
+
+    # Re-sync the manager so get_step_names() (and thus the StepCatalog) sees the plugin steps.
+    try:
+        manager = _get_registry_manager()
+        if hasattr(manager, "reload_core_registry"):
+            manager.reload_core_registry()
+    except Exception as e:  # pragma: no cover - best-effort resync
+        logger.warning(f"refresh_registry: failed to resync registry manager: {e}")
+
+    # Refresh this module's own snapshot globals so direct STEP_NAMES readers see the merge too.
+    _refresh_module_variables()
+
+    logger.info(
+        f"refresh_registry: merged {len(pack_rows)} pack step(s) from {pack_dir} "
+        f"({len(collisions)} collision(s))"
+    )
+    return collisions
 
 
 def _create_fallback_manager():

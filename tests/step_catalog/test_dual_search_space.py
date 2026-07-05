@@ -11,8 +11,22 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 from typing import Dict, List, Optional, Type, Any
 
-from cursus.step_catalog.step_catalog import StepCatalog
+from cursus.step_catalog.step_catalog import StepCatalog, set_default_workspace_dirs
 from cursus.step_catalog.config_discovery import ConfigAutoDiscovery
+
+
+@pytest.fixture(autouse=True)
+def _reset_default_workspace_dirs():
+    """Reset the process-global step-pack default around every test.
+
+    ``set_default_workspace_dirs`` (plugin step-pack discovery, FZ 18g3h2e2 / AI-5) is a
+    process-level default that a bare ``StepCatalog()`` falls back to. A compiler test elsewhere
+    in the run can leave it set; these tests assert the *no-default* (package-only) contract, so
+    they must guarantee it is clear.
+    """
+    set_default_workspace_dirs(None)
+    yield
+    set_default_workspace_dirs(None)
 
 
 class TestDualSearchSpaceArchitecture:

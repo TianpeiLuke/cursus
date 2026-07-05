@@ -7,7 +7,9 @@ Extended to include hyperparameter class discovery.
 """
 
 import ast
+import hashlib
 import importlib
+import importlib.util
 import logging
 from pathlib import Path
 from typing import Dict, Type, Optional, List
@@ -221,7 +223,11 @@ class ConfigAutoDiscovery:
                             node
                         ):
                             try:
-                                # Import the class using relative import pattern
+                                # Import the class. Package files import via the relative
+                                # dotted path; external (workspace/plugin) files — which are
+                                # NOT under package_root, so the relative path is None — import
+                                # by file location instead, so a plugin config is no longer
+                                # silently dropped.
                                 relative_module_path = (
                                     self._file_to_relative_module_path(py_file)
                                 )
@@ -230,13 +236,14 @@ class ConfigAutoDiscovery:
                                         relative_module_path, package=__package__
                                     )
                                     class_type = getattr(module, node.name)
+                                else:
+                                    class_type = self._import_class_from_file(
+                                        py_file, node.name
+                                    )
+                                if class_type is not None:
                                     config_classes[node.name] = class_type
                                     self.logger.debug(
                                         f"Found config class: {node.name} in {py_file}"
-                                    )
-                                else:
-                                    self.logger.warning(
-                                        f"Could not determine relative module path for {py_file}"
                                     )
                             except Exception as e:
                                 self.logger.warning(
@@ -366,6 +373,50 @@ class ConfigAutoDiscovery:
             )
             return None
 
+    def _import_class_from_file(
+        self, file_path: Path, class_name: str
+    ) -> Optional[Type]:
+        """Import ``class_name`` from a file NOT under the cursus package (a plugin/workspace
+        step-pack config or hyperparameter module), by file location.
+
+        Package files import via the relative dotted path (see the callers); this is the
+        fallback for external files, where the relative path cannot be formed. Uses
+        ``importlib.util.spec_from_file_location`` under a UNIQUE synthetic module name so two
+        packs each shipping e.g. ``config_xgboost_step.py`` do not collide in ``sys.modules``:
+        the name is derived from the absolute path hash. Re-imports are cached by that name.
+
+        Returns the class object, or ``None`` if the module cannot be loaded (logged by the
+        caller's ``except``; a load failure never raises out of discovery).
+        """
+        import sys
+
+        abs_path = str(file_path.resolve())
+        # Unique, deterministic module name keyed on the absolute path — collision-free across
+        # packs, and stable so repeated discovery reuses the already-imported module.
+        digest = hashlib.md5(abs_path.encode("utf-8")).hexdigest()[:12]
+        module_name = f"cursus._pack_configs.{file_path.stem}_{digest}"
+
+        if module_name in sys.modules:
+            return getattr(sys.modules[module_name], class_name, None)
+
+        spec = importlib.util.spec_from_file_location(module_name, abs_path)
+        if spec is None or spec.loader is None:
+            self.logger.warning(
+                f"Could not create import spec for external config file {file_path}"
+            )
+            return None
+
+        module = importlib.util.module_from_spec(spec)
+        # Register BEFORE exec so intra-module references resolve during execution.
+        sys.modules[module_name] = module
+        try:
+            spec.loader.exec_module(module)
+        except Exception:
+            # Roll back the partial registration so a later retry re-runs cleanly.
+            sys.modules.pop(module_name, None)
+            raise
+        return getattr(module, class_name, None)
+
     def _file_to_module_path(self, file_path: Path) -> str:
         """
         Convert file path to Python module path (legacy method for compatibility).
@@ -422,7 +473,10 @@ class ConfigAutoDiscovery:
                             node, ast.ClassDef
                         ) and self._is_hyperparameter_class(node):
                             try:
-                                # Import the class using relative import pattern
+                                # Package files import via the relative dotted path; external
+                                # (workspace/plugin) files import by file location (see
+                                # _scan_config_directory) so a plugin hyperparameter class is
+                                # not silently dropped.
                                 relative_module_path = (
                                     self._file_to_relative_module_path(py_file)
                                 )
@@ -431,13 +485,14 @@ class ConfigAutoDiscovery:
                                         relative_module_path, package=__package__
                                     )
                                     class_type = getattr(module, node.name)
+                                else:
+                                    class_type = self._import_class_from_file(
+                                        py_file, node.name
+                                    )
+                                if class_type is not None:
                                     hyperparam_classes[node.name] = class_type
                                     self.logger.debug(
                                         f"Found hyperparameter class: {node.name} in {py_file}"
-                                    )
-                                else:
-                                    self.logger.warning(
-                                        f"Could not determine relative module path for {py_file}"
                                     )
                             except Exception as e:
                                 self.logger.warning(

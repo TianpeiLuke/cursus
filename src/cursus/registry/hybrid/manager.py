@@ -139,6 +139,20 @@ class UnifiedRegistryManager:
                 raise
             raise RegistryLoadError(f"Failed to load core registry: {str(e)}")
 
+    def reload_core_registry(self):
+        """Re-snapshot the core registry from ``step_names_base.STEP_NAMES`` and drop caches.
+
+        Called after an external step-pack merges rows into ``step_names_base`` (see
+        :func:`cursus.registry.step_names.refresh_registry`) so the manager's ``_core_steps``
+        snapshot and its legacy/definition caches reflect the plugin steps. Additive by
+        construction — it re-reads the (already package-first-merged) base table.
+        """
+        with self._lock:
+            self._core_steps.clear()
+            self._core_loaded = False
+            self._load_core_registry()
+            self._invalidate_all_caches()
+
     def _discover_and_load_workspaces(self):
         """Auto-discover and load workspace registries using step catalog."""
         # Avoid circular imports by checking if we're already in a step catalog context

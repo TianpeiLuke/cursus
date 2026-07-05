@@ -761,8 +761,11 @@ class TestRegistryHealth:
 
     def test_health_shape(self):
         health = get_registry_health()
-        assert set(health) == {"hybrid_active", "init_error"}
+        # pack_collisions added for plugin step-pack discovery (AI-6): surfaces any external
+        # pack step that shadowed a package step. Empty dict when no pack / no collision.
+        assert set(health) == {"hybrid_active", "init_error", "pack_collisions"}
         assert isinstance(health["hybrid_active"], bool)
+        assert isinstance(health["pack_collisions"], dict)
 
     def test_health_consistent_with_is_hybrid_active(self):
         assert get_registry_health()["hybrid_active"] == is_hybrid_active()

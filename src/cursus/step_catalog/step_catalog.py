@@ -44,6 +44,31 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+# Process-level default step-pack dirs, pushed by the pipeline entry point (the compiler) the
+# same way set_project_root pushes the caller hook. A bare ``StepCatalog()`` — the many
+# author/validate/exec-doc sites that construct one without threading workspace_dirs — picks
+# these up so plugin steps are discovered there too. Package steps are ALWAYS discovered
+# regardless (the package scan is unconditional); this only ADDS the pack roots. An explicit
+# ``StepCatalog(workspace_dirs=...)`` argument always overrides this default.
+_default_workspace_dirs: List[Path] = []
+
+
+def set_default_workspace_dirs(dirs: Optional[List[Union[str, Path]]]) -> None:
+    """Push process-level default step-pack dirs for bare ``StepCatalog()`` construction.
+
+    Called by the DAG compiler when a plugin pack is resolved, so validate/author/exec-doc
+    sites that build a bare catalog also see the plugin steps. Pass ``None``/empty to clear.
+    Additive only — never suppresses package discovery.
+    """
+    global _default_workspace_dirs
+    _default_workspace_dirs = [Path(d) for d in dirs] if dirs else []
+
+
+def get_default_workspace_dirs() -> List[Path]:
+    """Return the current process-level default step-pack dirs (may be empty)."""
+    return list(_default_workspace_dirs)
+
+
 class StepCatalog:
     """
     Unified step catalog addressing all validated user stories (US1-US5).
@@ -1133,7 +1158,9 @@ class StepCatalog:
             List of Path objects
         """
         if workspace_dirs is None:
-            return []
+            # No explicit arg → fall back to the process-level default pushed by the compiler
+            # (plugin step-pack dirs). Empty when no pack is active → package-only, unchanged.
+            return get_default_workspace_dirs()
         elif isinstance(workspace_dirs, Path):
             return [workspace_dirs]
         else:
