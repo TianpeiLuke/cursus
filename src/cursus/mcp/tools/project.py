@@ -717,14 +717,15 @@ TOOLS: List[ToolDef] = [
         },
         handler=_init,
         destructive=True,  # creates a new folder tree on disk
-        tags=("scaffolder",),
+        tags=("planner",),
         when=(
             "Call at the very start of a new pipeline project, before any DAG or config exists, "
             "to lay down the standard package skeleton + the checklist of what to do next."
         ),
         examples=(
             'project.init {"name": "secure_delivery", "framework": "xgboost"}  # -> projects/secure_delivery_xgboost/',
-            'project.init {"name": "abuse_polygraph", "framework": "pytorch", "target_dir": "src/buyer_abuse_mods_template"}  # BAMT deploy target',
+            'project.init {"name": "abuse_polygraph", "framework": "pytorch", "target_dir": "src/buyer_abuse_mods_template"}  # BAMT deploy target (sets import prefix)',
+            'project.init {"name": "fraud_scan", "framework": "lightgbmmt", "overwrite": true}  # write into an existing folder',
         ),
     ),
     ToolDef(
@@ -773,6 +774,7 @@ TOOLS: List[ToolDef] = [
         examples=(
             'project.bring_up {"name": "secure_delivery", "framework": "xgboost"}  # catalog DAG, full chain',
             'project.bring_up {"name": "new_model", "framework": "pytorch", "dag_source": "manual"}  # scaffold, then human authors the DAG',
+            'project.bring_up {"name": "eu_risk", "framework": "bedrock", "region": "EU"}  # EU config target',
         ),
     ),
 ]

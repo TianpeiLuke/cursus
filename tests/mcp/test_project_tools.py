@@ -9,9 +9,8 @@ invocation. Input validation and the overwrite guard are covered too.
 
 import json
 import py_compile
+import re
 from pathlib import Path
-
-import pytest
 
 from cursus.mcp import call_tool
 
@@ -214,3 +213,70 @@ class TestProjectNamespaceRegistered:
 
         names = {t.name for t in list_tools(namespace="project")}
         assert {"project.init", "project.bring_up"} <= names
+
+
+class TestProjectMetadata:
+    """Lock in the description/when/examples convention shared with every other namespace."""
+
+    _KNOWN_PHASES = {"planner", "validator", "programmer"}
+
+    def _project_defs(self):
+        from cursus.mcp import list_tools
+
+        # Exclude the auto-generated project.help; assert on the hand-written tools.
+        return [
+            td for td in list_tools(namespace="project") if td.name != "project.help"
+        ]
+
+    def test_every_tool_has_when_and_examples(self):
+        for td in self._project_defs():
+            assert td.when, f"{td.name} missing 'when'"
+            assert td.examples, f"{td.name} missing 'examples'"
+            assert isinstance(td.examples, tuple)
+            assert len(td.description) >= 40, f"{td.name} description too thin"
+
+    def test_every_tool_uses_a_known_phase_tag(self):
+        # A non-standard tag (e.g. 'scaffolder') would make the tool invisible to
+        # tools.by_phase and drop it from the tools.help phase counts.
+        for td in self._project_defs():
+            assert td.tags, f"{td.name} has no phase tag"
+            for tag in td.tags:
+                assert tag in self._KNOWN_PHASES, (
+                    f"{td.name} uses non-standard tag {tag!r} — invisible to tools.by_phase"
+                )
+
+    def test_project_init_reachable_via_by_phase(self):
+        r = call_tool("tools.by_phase", {"phase": "planner"})
+        assert r.ok
+        assert "project.init" in {t["name"] for t in r.data["tools"]}
+
+    def test_project_help_counts_every_tool(self):
+        r = call_tool("project.help", {})
+        assert r.ok
+        # All three project tools (init, bring_up, help) are planner-tagged.
+        assert r.data["shown"] == 3
+        assert r.data["phases"]["planner"]["count"] == 3
+
+    def test_examples_are_schema_faithful(self):
+        # Every example ("<tool> {json}  # note") must be a valid call against that
+        # tool's own schema: correct tool name, required keys present, no unknown keys,
+        # enum values respected.
+        pattern = re.compile(r"^(\S+)\s*(\{.*\})?\s*(?:#.*)?$")
+        for td in self._project_defs():
+            props = td.schema.get("properties", {})
+            required = td.schema.get("required", [])
+            addl = td.schema.get("additionalProperties", True)
+            for ex in td.examples:
+                m = pattern.match(ex.strip())
+                assert m, f"{td.name}: unparseable example {ex!r}"
+                assert m.group(1) == td.name, f"{td.name}: example names {m.group(1)!r}"
+                args = json.loads(m.group(2)) if m.group(2) else {}
+                for key in required:
+                    assert key in args, f"{td.name}: example missing required {key!r}"
+                if addl is False:
+                    for key in args:
+                        assert key in props, f"{td.name}: example unknown key {key!r}"
+                for key, val in args.items():
+                    enum = props.get(key, {}).get("enum")
+                    if enum is not None:
+                        assert val in enum, f"{td.name}: {key}={val!r} not in {enum}"
