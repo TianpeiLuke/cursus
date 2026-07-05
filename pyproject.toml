@@ -114,11 +114,16 @@ dev = [
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
 ]
-# Documentation dependencies
+# Documentation toolchain — see docs/conf.py and
+# slipbox/2_project_planning/2026-07-05_comprehensive_code_documentation_publishing_plan.md
 docs = [
-    "sphinx>=6.0.0",
-    "sphinx-rtd-theme>=1.2.0",
-    "myst-parser>=2.0.0",
+    "sphinx>=7.2,<9",
+    "furo>=2024.8.6",           # theme
+    "myst-parser>=2.0.0",       # Markdown (MyST) authoring
+    "linkify-it-py>=2.0",       # required by the MyST "linkify" extension enabled in conf.py
+    "sphinx-click>=6.0",        # CLI reference from the live Click app
+    "jinja2>=3.1",              # used by docs/_ext/gen_reference.py
+    "pyyaml>=6.0",              # step-interface catalog generation
 ]
 # Full installation (all user-facing optional dependencies)
 all = [
@@ -130,7 +135,7 @@ cursus = "cursus.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/TianpeiLuke/cursus"
-Documentation = "https://github.com/TianpeiLuke/cursus/blob/main/README.md"
+Documentation = "https://cursus.readthedocs.io/en/stable/"
 Repository = "https://github.com/TianpeiLuke/cursus"
 Issues = "https://github.com/TianpeiLuke/cursus/issues"
 Changelog = "https://github.com/TianpeiLuke/cursus/blob/main/CHANGELOG.md"

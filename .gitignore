@@ -221,3 +221,6 @@ __marimo__/
 
 # Internal development files - never publish
 .internal/
+# Auto-generated reference pages (emitted by docs/_ext/gen_reference.py at build)
+docs/reference/generated/
+docs/api/generated/

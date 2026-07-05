@@ -1,0 +1,30 @@
+# Read the Docs build configuration for the Cursus documentation.
+# Docs: https://docs.readthedocs.io/en/stable/config-file/v2.html
+#
+# Hosting: connect this repo at https://readthedocs.org (Import a Project), and RTD will
+# build the docs on every push/tag via webhook. `stable` tracks the newest SemVer tag;
+# `latest` tracks `main`. No secrets required for a public repo.
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.12"
+
+sphinx:
+  configuration: docs/conf.py
+  # Keep false until the docstring-warning backlog is triaged, then tighten to fail on new warnings.
+  fail_on_warning: false
+
+# Install the package + its docs extra so autosummary/sphinx-click can import `cursus`
+# and the builder-inited generator can read the live registry / interfaces / catalog.
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
+
+# Optional downloadable formats. Drop this block to speed up builds if you don't need them.
+formats:
+  - pdf

@@ -1,0 +1,55 @@
+name: Documentation
+
+# Build the Sphinx docs on every push/PR (as a check) and, on main/tags, deploy to
+# GitHub Pages. This is an ALTERNATIVE to Read the Docs (.readthedocs.yaml) — use one or
+# the other. For GitHub Pages: repo Settings -> Pages -> Source: "GitHub Actions".
+# Published at: https://tianpeiluke.github.io/cursus/
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package + docs toolchain
+        run: pip install ".[docs]"
+      - name: Build HTML
+        # The builder-inited generator (docs/_ext/gen_reference.py) emits the MCP/step/catalog
+        # pages during this build. Heavy deps are mocked in conf.py so import works.
+        run: python -m sphinx -b html docs docs/_build/html
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/html
+
+  deploy:
+    # Only publish from main / tags, never from PRs.
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
