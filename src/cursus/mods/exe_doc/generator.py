@@ -6,7 +6,8 @@ the generation of execution documents from PipelineDAG and configuration data.
 """
 
 import logging
-from typing import Dict, List, Any, Optional
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Union
 
 from sagemaker.workflow.pipeline_context import PipelineSession
 
@@ -39,6 +40,8 @@ class ExecutionDocumentGenerator:
         sagemaker_session: Optional[PipelineSession] = None,
         role: Optional[str] = None,
         config_resolver: Optional[StepConfigResolver] = None,
+        project_root: Optional[Union[str, Path]] = None,
+        anchor_file: Optional[Union[str, Path]] = None,
     ):
         """
         Initialize execution document generator.
@@ -48,12 +51,36 @@ class ExecutionDocumentGenerator:
             sagemaker_session: SageMaker session for AWS operations
             role: IAM role for AWS operations
             config_resolver: Custom config resolver for step name resolution
+            project_root: Absolute path to the user's project **folder**, used as the
+                highest-priority anchor (the "caller hook", Strategy 0) for resolving step
+                ``source_dir``/``processing_source_dir``. Matters for exec-doc-only flows
+                (CLI/MCP) where no ``PipelineDAGCompiler`` runs first to push the root.
+                When omitted, it is inferred from ``config_path``.
+            anchor_file: A **file** inside the project folder — pass ``__file__`` and the
+                project root is derived as its parent directory. Self-documenting form of
+                the caller hook; equivalent to ``project_root=Path(__file__).parent``.
+                ``project_root`` wins if both are given and they disagree.
         """
         self.config_path = config_path
         self.sagemaker_session = sagemaker_session
         self.role = role
         self.config_resolver = config_resolver or StepConfigResolver()
         self.logger = logging.getLogger(__name__)
+
+        # Caller hook: push the project root for path resolution (Strategy 0) BEFORE configs
+        # are loaded below, so their source_dir/processing_source_dir resolve against it. An
+        # explicit anchor (project_root folder or anchor_file=__file__) wins; otherwise infer
+        # from the config file's location (config-anchored fallback).
+        self.project_root = self._resolve_project_root(
+            project_root, config_path, anchor_file=anchor_file
+        )
+        if self.project_root:
+            try:
+                from ...core.utils.hybrid_path_resolution import set_project_root
+
+                set_project_root(self.project_root)
+            except Exception:  # pragma: no cover - resolution is best-effort
+                pass
 
         # Initialize helpers directly - no loose coupling
         from .cradle_helper import CradleDataLoadingHelper
@@ -79,6 +106,24 @@ class ExecutionDocumentGenerator:
 
         self.logger.info(
             f"Initialized ExecutionDocumentGenerator with {len(self.configs)} configurations"
+        )
+
+    @staticmethod
+    def _resolve_project_root(
+        project_root: Optional[Union[str, Path]],
+        config_path: str,
+        anchor_file: Optional[Union[str, Path]] = None,
+    ) -> Optional[str]:
+        """Resolve the project-root anchor for path resolution.
+
+        Delegates to :meth:`PipelineDAGCompiler._resolve_project_root` so the caller-hook
+        precedence (explicit ``project_root`` > ``anchor_file`` > config-anchored inference)
+        is identical to the compiler's — one source of truth for anchor resolution.
+        """
+        from ...core.compiler.dag_compiler import PipelineDAGCompiler
+
+        return PipelineDAGCompiler._resolve_project_root(
+            project_root, config_path, anchor_file=anchor_file
         )
 
     def fill_execution_document(

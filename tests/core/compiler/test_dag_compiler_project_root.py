@@ -33,7 +33,9 @@ class TestResolveProjectRoot:
     """_resolve_project_root is a pure staticmethod — test its inference directly."""
 
     def test_explicit_wins(self):
-        out = PipelineDAGCompiler._resolve_project_root("/abs/proj", "/x/pipeline_config/c.json")
+        out = PipelineDAGCompiler._resolve_project_root(
+            "/abs/proj", "/x/pipeline_config/c.json"
+        )
         assert out == str(Path("/abs/proj"))
 
     def test_infer_from_pipeline_config_dir(self):
@@ -57,6 +59,31 @@ class TestResolveProjectRoot:
             out = PipelineDAGCompiler._resolve_project_root(None, str(cfg))
             assert out == str(proj.resolve())
 
+    def test_anchor_file_resolves_to_parent(self):
+        with tempfile.TemporaryDirectory() as d:
+            proj = Path(d) / "myproj"
+            proj.mkdir()
+            template = proj / "myproj_pipeline.py"
+            template.write_text("# entry module")
+            # anchor_file=__file__ (a file) -> its parent is the project root.
+            out = PipelineDAGCompiler._resolve_project_root(
+                None, "/x/pipeline_config/c.json", anchor_file=str(template)
+            )
+            assert out == str(proj.resolve())
+
+    def test_project_root_wins_over_anchor_file_when_disagree(self):
+        # Explicit project_root (a dir) takes precedence over anchor_file.
+        out = PipelineDAGCompiler._resolve_project_root(
+            "/abs/proj", "/x/pipeline_config/c.json", anchor_file="/other/tpl.py"
+        )
+        assert out == str(Path("/abs/proj").resolve())
+
+    def test_anchor_file_only_used_when_no_project_root(self):
+        out = PipelineDAGCompiler._resolve_project_root(
+            None, "/x/pipeline_config/c.json", anchor_file="/some/proj/tpl.py"
+        )
+        assert out == str(Path("/some/proj").resolve())
+
 
 class TestCompilerPushesProjectRoot:
     def test_explicit_project_root_is_pushed(self):
@@ -79,3 +106,13 @@ class TestCompilerPushesProjectRoot:
             cfg = _write_config(proj / "pipeline_config")
             c = PipelineDAGCompiler(config_path=str(cfg), project_root=str(proj))
             assert c.project_root == str(proj.resolve())
+
+    def test_anchor_file_is_pushed(self):
+        """anchor_file=__file__ (a file in the project) pushes the project folder."""
+        with tempfile.TemporaryDirectory() as d:
+            proj = Path(d) / "myproj"
+            cfg = _write_config(proj / "pipeline_config")
+            template = proj / "myproj_pipeline.py"
+            template.write_text("# entry module")
+            PipelineDAGCompiler(config_path=str(cfg), anchor_file=str(template))
+            assert get_project_root() == str(proj.resolve())

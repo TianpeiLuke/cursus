@@ -60,6 +60,22 @@ def exec_doc_cli():
     help="IAM role ARN for AWS operations (optional)",
 )
 @click.option(
+    "--project-root",
+    type=click.Path(),
+    help=(
+        "Project folder used to anchor step source_dir resolution (the caller hook, "
+        "Strategy 0). When omitted, inferred from the config file's location."
+    ),
+)
+@click.option(
+    "--anchor-file",
+    type=click.Path(),
+    help=(
+        "A file inside the project folder (e.g. the template module); its parent "
+        "directory is used as the project root. Alternative to --project-root."
+    ),
+)
+@click.option(
     "--verbose",
     "-v",
     is_flag=True,
@@ -72,6 +88,8 @@ def generate_exec_doc(
     template: Optional[str],
     format: str,
     role: Optional[str],
+    project_root: Optional[str],
+    anchor_file: Optional[str],
     verbose: bool,
 ):
     """
@@ -157,6 +175,8 @@ def generate_exec_doc(
             generator = ExecutionDocumentGenerator(
                 config_path=config_file,
                 role=role,
+                project_root=project_root,
+                anchor_file=anchor_file,
             )
 
             config_count = len(generator.configs)

@@ -157,6 +157,7 @@ def compile_pipeline(dag, config_path, ps, role):
             SECURITY_GROUP_ID,
             VPC_SUBNET,
         ],
+        anchor_file=__file__,  # caller hook: anchor dockers/ paths to this project folder
     )
     pipeline, report = compiler.compile_with_report(dag=dag)
     logger.info(f"Pipeline '{{pipeline.name}}' compiled. Avg confidence: {{report.avg_confidence:.2f}}")
@@ -185,7 +186,12 @@ def main():
     if args.preview:
         from {PREFIX}.core.compiler.dag_compiler import PipelineDAGCompiler
 
-        compiler = PipelineDAGCompiler(config_path=str(config_path), sagemaker_session=None, role=None)
+        compiler = PipelineDAGCompiler(
+            config_path=str(config_path),
+            sagemaker_session=None,
+            role=None,
+            anchor_file=__file__,  # caller hook: anchor dockers/ paths to this project folder
+        )
         preview = compiler.preview_resolution(dag)
         for node, config_type in preview.node_config_map.items():
             logger.info(f"  {{node}} -> {{config_type}}")
@@ -206,7 +212,7 @@ def main():
 
     default_doc = SagemakerPipelineHelper.get_pipeline_default_execution_document(pipeline)
     exe_doc = ExecutionDocumentGenerator(
-        config_path=str(config_path), sagemaker_session=ps, role=role
+        config_path=str(config_path), sagemaker_session=ps, role=role, anchor_file=__file__
     ).fill_execution_document(dag=dag, execution_document=default_doc)
 
     if args.save_exe_doc:
@@ -294,6 +300,7 @@ class {CLASS}:
             sagemaker_session=self.sagemaker_session,
             role=self.execution_role,
             pipeline_parameters=self.pipeline_parameters,
+            anchor_file=__file__,  # caller hook: anchor dockers/ paths to this project folder
         )
         logger.info("Initialized DAG compiler")
 
@@ -367,7 +374,8 @@ from {PREFIX}.api.dag import import_dag_from_json
 from {PREFIX}.api.factory.dag_config_factory import DAGConfigFactory
 
 dag = import_dag_from_json(str(Path(__file__).parent / "pipeline_config" / "dag.json"))
-factory = DAGConfigFactory(dag)
+# caller hook: anchor dockers/ paths to this project folder (Strategy 0)
+factory = DAGConfigFactory(dag, anchor_file=__file__)
 config_map = factory.get_config_class_map()
 print(f"DAG Node -> Config Class map ({{len(config_map)}} steps):")
 for node_name, config_class in config_map.items():

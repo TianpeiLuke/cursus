@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-07-05
+
+Ported from amzn-cursus 2.6.0 — `anchor_file=__file__` caller hook + a shared `resolve_anchor()` normalizer. A pipeline's entry module can register its project folder self-documentingly (`anchor_file=__file__`) instead of `project_root=Path(__file__).parent`, and the anchor is threaded through every entry point that resolves docker `source_dir`/`processing_source_dir` paths. Backward-compatible; additive only.
+
+### Added
+
+- **`resolve_anchor(anchor)` in `core/utils/hybrid_path_resolution.py`** — the single shared normalizer that collapses a file (`__file__` → its parent), a directory (used as-is), or a nonexistent file-shaped path (→ its parent) into one project-root string. Exported from `core.utils`; `set_project_root` routes through it.
+- **`anchor_file` parameter** on `PipelineDAGCompiler` and `SingleNodeCompiler` — `anchor_file=__file__` is equivalent to `project_root=Path(__file__).parent`. Precedence: explicit `project_root` > `anchor_file` > config-anchored inference, with a warning when the two disagree.
+- **`project_root` / `anchor_file` on `ExecutionDocumentGenerator`** (pushes the root before configs load; matters for exec-doc-only CLI/MCP flows), plumbed through the `exec-doc generate` CLI (`--project-root` / `--anchor-file`) and the `execdoc.generate` MCP tool.
+- **`project_root` / `anchor_file` on `DAGConfigFactory`** — config-only generation anchors correctly.
+- **`project.init` scaffold emits `anchor_file=__file__`** in the generated `@MODSTemplate` class, `run_pipeline.py`, and `generate_config.py`.
+- Tests: `resolve_anchor`, `set_project_root` file-vs-dir parity, `anchor_file` wiring + precedence.
+
 ## [2.6.0] - 2026-07-04
 
 Ported from amzn-cursus 2.5.0 — self-documenting MCP toolset. Backward-compatible; additive only.

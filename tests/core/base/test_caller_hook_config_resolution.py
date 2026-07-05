@@ -35,9 +35,14 @@ _REQ = dict(
 
 @pytest.fixture
 def project_tree():
-    """Temp project: <proj>/dockers/scripts/train.py."""
+    """Temp project: <proj>/dockers/scripts/train.py.
+
+    Yields the fully-resolved path: ``set_project_root`` canonicalizes its anchor via
+    ``resolve_anchor`` (matching the compiler), so on platforms where the temp dir is a
+    symlink (e.g. macOS ``/var`` -> ``/private/var``) the resolved root is what gets pushed.
+    """
     with tempfile.TemporaryDirectory() as d:
-        proj = Path(d) / "my_pipeline_project"
+        proj = (Path(d) / "my_pipeline_project").resolve()
         scripts = proj / "dockers" / "scripts"
         scripts.mkdir(parents=True)
         (scripts / "train.py").write_text("# script")

@@ -13,6 +13,7 @@ from .hybrid_path_resolution import (
     HybridResolutionConfig,
     set_project_root,
     get_project_root,
+    resolve_anchor,
 )
 
 from .generic_path_discovery import (
@@ -36,6 +37,7 @@ __all__ = [
     "HybridResolutionConfig",
     "set_project_root",
     "get_project_root",
+    "resolve_anchor",
     "find_project_folder_generic",
     "get_generic_discovery_metrics",
     "discover_pipeline_projects",

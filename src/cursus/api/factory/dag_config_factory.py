@@ -11,7 +11,8 @@ Key Components:
 - Interactive workflow management and validation
 """
 
-from typing import Dict, List, Type, Any, Optional
+from pathlib import Path
+from typing import Dict, List, Type, Any, Optional, Union
 from pydantic import BaseModel
 import logging
 
@@ -42,14 +43,56 @@ class DAGConfigFactory:
     4. Generate final config instances with inheritance
     """
 
-    def __init__(self, dag):
+    def __init__(
+        self,
+        dag,
+        project_root: Optional[Union[str, Path]] = None,
+        anchor_file: Optional[Union[str, Path]] = None,
+    ):
         """
         Initialize factory with DAG analysis using robust canonical step name extraction.
 
         Args:
             dag: Pipeline DAG object to create configurations for
+            project_root: Absolute path to the user's project **folder**, used as the
+                highest-priority anchor (the "caller hook", Strategy 0) so generated configs
+                resolve their step ``source_dir``/``processing_source_dir`` against it. A
+                MODSTemplate author who only builds configs (never compiles) should pass
+                ``Path(__file__).parent``.
+            anchor_file: A **file** inside the project folder — pass ``__file__`` and the
+                project root is derived as its parent directory. Self-documenting form of the
+                caller hook; ``project_root`` wins if both are given and they disagree.
         """
         logger.info("🔧 Initializing DAGConfigFactory...")
+
+        # Caller hook: push the project root for path resolution (Strategy 0) so config
+        # generation anchors correctly even without a compiler running first.
+        self.project_root: Optional[str] = None
+        if project_root or anchor_file:
+            try:
+                from ...core.utils.hybrid_path_resolution import (
+                    resolve_anchor,
+                    set_project_root,
+                )
+
+                resolved_root = resolve_anchor(project_root)
+                resolved_anchor = resolve_anchor(anchor_file)
+                if (
+                    resolved_root
+                    and resolved_anchor
+                    and resolved_root != resolved_anchor
+                ):
+                    logger.warning(
+                        "DAGConfigFactory received both project_root (%s) and anchor_file "
+                        "(-> %s) that disagree; using project_root.",
+                        resolved_root,
+                        resolved_anchor,
+                    )
+                self.project_root = resolved_root or resolved_anchor
+                if self.project_root:
+                    set_project_root(self.project_root)
+            except Exception:  # pragma: no cover - resolution is best-effort
+                pass
 
         self.dag = dag
         self.config_generator = None  # Initialized after base configs are set
@@ -835,9 +878,14 @@ class DAGConfigFactory:
         Lets callers replace the silent ``if "X" in pending_steps:`` guard with an explicit,
         resolution-aware check that honours the same bare→suffixed logic as set_step_config.
         """
-        return self._resolve_step_name_to_node(step_name, job_type) in self._config_class_map
+        return (
+            self._resolve_step_name_to_node(step_name, job_type)
+            in self._config_class_map
+        )
 
-    def configure_step_if_present(self, step_name: str, **kwargs) -> Optional[BaseModel]:
+    def configure_step_if_present(
+        self, step_name: str, **kwargs
+    ) -> Optional[BaseModel]:
         """Configure a step, but WARN (not raise) if it is not a DAG node — a non-silent
         replacement for the ubiquitous ``if "X" in pending_steps: set_step_config("X", ...)``
         notebook guard.
@@ -972,7 +1020,9 @@ class DAGConfigFactory:
         # Every DAG node must have mapped to a config class at all.
         for node_name in self._config_class_map:
             if self._config_class_map.get(node_name) is None:
-                errors.append(f"node '{node_name}': no config class resolved for this DAG node.")
+                errors.append(
+                    f"node '{node_name}': no config class resolved for this DAG node."
+                )
 
         if errors and raise_on_error:
             raise ValueError(

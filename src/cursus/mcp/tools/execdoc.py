@@ -58,6 +58,8 @@ def _generate(args: Dict[str, Any]) -> ToolResult:
         generator = ExecutionDocumentGenerator(
             config_path=config_path,
             role=args.get("role"),
+            project_root=args.get("project_root"),
+            anchor_file=args.get("anchor_file"),
         )
     except ExecutionDocumentGenerationError as exc:
         raise ToolError(f"failed to initialize generator: {exc}", code="invalid_input")
@@ -232,6 +234,21 @@ TOOLS: List[ToolDef] = [
                     "description": (
                         "Optional IAM role ARN for AWS operations. Without it (and a SageMaker "
                         "session), some helpers may produce limited step configs."
+                    ),
+                },
+                "project_root": {
+                    "type": "string",
+                    "description": (
+                        "Optional project folder used to anchor step source_dir resolution "
+                        "(the caller hook, Strategy 0). When omitted, inferred from 'config_path'."
+                    ),
+                },
+                "anchor_file": {
+                    "type": "string",
+                    "description": (
+                        "Optional file inside the project folder (e.g. the template module); "
+                        "its parent directory is used as the project root. Alternative to "
+                        "'project_root'."
                     ),
                 },
             },

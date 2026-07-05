@@ -187,6 +187,7 @@ class PipelineDAGCompiler:
         step_catalog: Optional[StepCatalog] = None,
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
         project_root: Optional[Union[str, Path]] = None,
+        anchor_file: Optional[Union[str, Path]] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -199,13 +200,19 @@ class PipelineDAGCompiler:
             config_resolver: Custom config resolver (optional)
             step_catalog: Custom step catalog (optional)
             pipeline_parameters: Pipeline parameters to pass to template (optional)
-            project_root: Absolute path to the user's project folder, used as the
+            project_root: Absolute path to the user's project **folder**, used as the
                 highest-priority anchor for resolving step ``source_dir``/``processing_source_dir``
-                across deployment scenarios (the "caller hook"). Pipelines should pass
+                across deployment scenarios (the "caller hook"). Pipelines may pass
                 ``Path(__file__).parent`` from the module that defines ``generate_pipeline()``.
                 When omitted, it is inferred from ``config_path`` (the project directory that
                 contains the config file). Pushed process-wide so configs resolve against it
                 without needing ``CURSUS_PROJECT_BASE`` or a ``project_root_folder`` field.
+            anchor_file: A **file** inside the project folder — pass ``__file__`` from the
+                module that defines ``generate_pipeline()`` and cursus derives the project
+                root as its parent directory. This is the self-documenting form of the caller
+                hook (``anchor_file=__file__``); it is equivalent to
+                ``project_root=Path(__file__).parent``. If both are given, ``project_root``
+                wins and a warning is logged when they disagree.
             **kwargs: Additional arguments for template constructor
         """
         self.config_path = config_path
@@ -213,9 +220,12 @@ class PipelineDAGCompiler:
         self.role = role
         self.template_kwargs = kwargs
 
-        # Caller hook: push the project root for path resolution (Strategy 0). Explicit value
-        # wins; otherwise infer from the config file's location (config-anchored fallback).
-        self.project_root = self._resolve_project_root(project_root, config_path)
+        # Caller hook: push the project root for path resolution (Strategy 0). An explicit
+        # anchor (project_root folder or anchor_file=__file__) wins; otherwise infer from the
+        # config file's location (config-anchored fallback).
+        self.project_root = self._resolve_project_root(
+            project_root, config_path, anchor_file=anchor_file
+        )
         if self.project_root:
             try:
                 from ..utils.hybrid_path_resolution import set_project_root
@@ -253,23 +263,40 @@ class PipelineDAGCompiler:
 
     @staticmethod
     def _resolve_project_root(
-        project_root: Optional[Union[str, Path]], config_path: str
+        project_root: Optional[Union[str, Path]],
+        config_path: str,
+        anchor_file: Optional[Union[str, Path]] = None,
     ) -> Optional[str]:
         """Resolve the project-root anchor for path resolution.
 
         Priority:
-        1. Explicit ``project_root`` (the caller hook — typically ``Path(__file__).parent``).
-        2. Inferred from ``config_path``: walk up from the config file to the nearest project
+        1. Explicit ``project_root`` (the caller hook — a project **directory**, typically
+           ``Path(__file__).parent``).
+        2. Explicit ``anchor_file`` (a **file** inside the project, typically ``__file__``);
+           its parent directory becomes the project root.
+        3. Inferred from ``config_path``: walk up from the config file to the nearest project
            directory, treating a ``pipeline_config``/``pipeline_configs`` parent as the config
            dir and using its parent as the project root; otherwise the config file's directory.
 
+        Both explicit forms are normalized by the shared ``resolve_anchor`` helper so a file
+        and a directory collapse to the same project root. If both ``project_root`` and
+        ``anchor_file`` are given and disagree, ``project_root`` wins and a warning is logged.
+
         Returns an absolute path string, or None if nothing usable.
         """
-        if project_root:
-            try:
-                return str(Path(project_root).expanduser().resolve())
-            except Exception:  # pragma: no cover
-                return str(project_root)
+        if project_root or anchor_file:
+            from ..utils.hybrid_path_resolution import resolve_anchor
+
+            resolved_root = resolve_anchor(project_root)
+            resolved_anchor = resolve_anchor(anchor_file)
+            if resolved_root and resolved_anchor and resolved_root != resolved_anchor:
+                logger.warning(
+                    "PipelineDAGCompiler received both project_root (%s) and anchor_file "
+                    "(-> %s) that disagree; using project_root.",
+                    resolved_root,
+                    resolved_anchor,
+                )
+            return resolved_root or resolved_anchor
 
         try:
             config_dir = Path(config_path).expanduser().resolve().parent

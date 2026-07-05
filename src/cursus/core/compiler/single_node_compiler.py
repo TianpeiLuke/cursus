@@ -158,6 +158,8 @@ class SingleNodeCompiler:
         role: Optional[str] = None,
         step_catalog: Optional[StepCatalog] = None,
         pipeline_parameters: Optional[List[Union[str, ParameterString]]] = None,
+        project_root: Optional[Union[str, Path]] = None,
+        anchor_file: Optional[Union[str, Path]] = None,
         **kwargs: Any,
     ):
         """
@@ -170,11 +172,35 @@ class SingleNodeCompiler:
             step_catalog: Optional custom step catalog
             pipeline_parameters: Pipeline parameters to pass to assembler.
                 If None, uses default parameters (EXECUTION_S3_PREFIX, KMS_KEY, etc.)
+            project_root: Absolute path to the user's project **folder**, used as the
+                highest-priority anchor (the "caller hook", Strategy 0) for resolving step
+                ``source_dir``/``processing_source_dir``. When omitted, inferred from
+                ``config_path``. Pass ``Path(__file__).parent`` from the caller module.
+            anchor_file: A **file** inside the project folder — pass ``__file__`` and the
+                project root is derived as its parent directory. Self-documenting form of the
+                caller hook; ``project_root`` wins if both are given and they disagree.
             **kwargs: Additional arguments
         """
         self.config_path = config_path
         self.sagemaker_session = sagemaker_session
         self.role = role
+
+        # Caller hook: push the project root for path resolution (Strategy 0) before the
+        # StepCatalog / configs are touched. Reuses PipelineDAGCompiler's resolver so the
+        # precedence (explicit project_root > anchor_file > config-anchored) is identical.
+        from .dag_compiler import PipelineDAGCompiler
+
+        self.project_root = PipelineDAGCompiler._resolve_project_root(
+            project_root, config_path, anchor_file=anchor_file
+        )
+        if self.project_root:
+            try:
+                from ..utils.hybrid_path_resolution import set_project_root
+
+                set_project_root(self.project_root)
+            except Exception:  # pragma: no cover - resolution is best-effort
+                pass
+
         self.step_catalog = step_catalog or StepCatalog()
         self.kwargs = kwargs
 

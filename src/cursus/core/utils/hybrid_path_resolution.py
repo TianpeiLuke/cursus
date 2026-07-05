@@ -10,7 +10,7 @@ The hybrid approach uses two complementary strategies:
 2. Working Directory Discovery (Fallback) - Uses Path.cwd() for traversal
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from pathlib import Path
 import logging
 import time
@@ -128,16 +128,55 @@ _hybrid_resolution_metrics = HybridResolutionMetrics()
 _pushed_project_root: "Optional[str]" = None
 
 
-def set_project_root(project_root: "Optional[str]") -> None:
-    """Push the project folder for caller-hook (Strategy 0) path resolution.
+def resolve_anchor(anchor: "Optional[Union[str, Path]]") -> "Optional[str]":
+    """Normalize a file-or-directory anchor into a project-root path string.
+
+    This is the single shared normalizer used by every entry point (the DAG
+    compiler, ExecutionDocumentGenerator, DAGConfigFactory, the scaffold, ...)
+    so ``anchor_file=__file__`` and ``project_root=<dir>`` collapse to the same
+    project root and resolve identically everywhere.
+
+    - A **file** (e.g. ``__file__`` of the module defining ``generate_pipeline()``)
+      resolves to its parent directory — the project folder.
+    - A **directory** (e.g. ``Path(__file__).parent``) resolves to itself.
+    - A path that does not exist yet but is "file-shaped" (has a suffix) is
+      treated as a file and reduced to its parent, so ``anchor_file=__file__``
+      works even before the module is materialized on disk.
 
     Args:
-        project_root: Absolute path to the user's project folder (typically
-            ``Path(__file__).parent`` of the module defining ``generate_pipeline()``),
-            or ``None`` to clear it.
+        anchor: A file path, a directory path, or ``None``.
+
+    Returns:
+        Absolute path string of the project root, or ``None`` if ``anchor`` is falsy.
+    """
+    if not anchor:
+        return None
+    try:
+        p = Path(anchor).expanduser().resolve()
+    except Exception:  # pragma: no cover - normalization is best-effort
+        return str(anchor)
+    if p.is_file():
+        return str(p.parent)
+    if not p.exists() and p.suffix:
+        # Nonexistent but file-shaped (e.g. a ``.py`` path) -> treat as a file.
+        return str(p.parent)
+    return str(p)
+
+
+def set_project_root(project_root: "Optional[Union[str, Path]]") -> None:
+    """Push the project folder for caller-hook (Strategy 0) path resolution.
+
+    Accepts either a project **directory** (``Path(__file__).parent``) or a
+    **file** (``__file__``) — both are normalized to the project root via
+    :func:`resolve_anchor`, so callers may push whichever they have on hand.
+
+    Args:
+        project_root: Path to the user's project folder or a file inside it
+            (typically ``Path(__file__).parent`` or ``__file__`` of the module
+            defining ``generate_pipeline()``), or ``None`` to clear it.
     """
     global _pushed_project_root
-    _pushed_project_root = str(project_root) if project_root else None
+    _pushed_project_root = resolve_anchor(project_root)
 
 
 def get_project_root() -> "Optional[str]":
