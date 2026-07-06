@@ -1,0 +1,18 @@
+# docs/images/ — plots & figures for the cursus documentation
+#
+# Put raster plots (PNG/JPG) and SVG figures here. Reference them from a doc
+# page with a RELATIVE link, e.g. from docs/architecture/compile-pipeline.md:
+#     ![Compile pipeline flow](../images/compile-pipeline.png)
+#
+# This serves BOTH doc surfaces from one source:
+#   - MkDocs (code.amazon.com Releases-tab site) renders the relative link directly.
+#   - The wiki: scripts/transform_docs.py (in AmazonCursusWikiDocsCDK) copies these
+#     files into lib/assets/wiki/images/ and auto-injects the WaC `attachments:`
+#     front matter per page so w.amazon.com uploads them.
+#
+# WaC limits (per page): <= 20 attachments, <= 1.9 MB each, <= 2.5 MB total.
+# Prefer mermaid fenced code blocks for flow/arch/sequence diagrams — they render
+# natively on both surfaces with no attachment plumbing and no size limits.
+#
+# This .gitkeep keeps the folder tracked; it is NOT a *.md file, so neither MkDocs
+# nor the transform treats it as a page. Delete it once real images live here.
