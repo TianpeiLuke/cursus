@@ -1,9 +1,9 @@
 # Read the Docs build configuration for the Cursus documentation.
 # Docs: https://docs.readthedocs.io/en/stable/config-file/v2.html
 #
-# Hosting: connect this repo at https://readthedocs.org (Import a Project), and RTD will
-# build the docs on every push/tag via webhook. `stable` tracks the newest SemVer tag;
-# `latest` tracks `main`. No secrets required for a public repo.
+# Hosting: connect this repo at https://app.readthedocs.org (dashboard -> "Add project"),
+# and RTD builds the docs on every push/tag via webhook. `stable` tracks the newest SemVer
+# tag; `latest` tracks `main`. No secrets required for a public repo.
 version: 2
 
 build:
@@ -25,6 +25,7 @@ python:
       extra_requirements:
         - docs
 
-# Optional downloadable formats. Drop this block to speed up builds if you don't need them.
-formats:
-  - pdf
+# HTML only. (PDF/epub add a LaTeX build that commonly fails on large auto-generated API
+# docs even when HTML is green, and it roughly doubles build time/memory. Re-enable with
+# `formats: [pdf]` only if you specifically need downloadable builds.)
+formats: []
