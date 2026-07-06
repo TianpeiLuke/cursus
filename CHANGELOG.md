@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.2] - 2026-07-06
+
+### Docs
+
+- **Documentation site hosting finalized.** Read the Docs is now the canonical docs home (**https://cursus.readthedocs.io/**), with GitHub Pages (https://tianpeiluke.github.io/cursus/) as a mirror; the README and `[project.urls] Documentation` point at Read the Docs. Fixes the Read the Docs `stable` build: the `.readthedocs.yaml` PDF/LaTeX output (which fails on large auto-generated API docs) is dropped, and — because `stable` tracks the newest release tag — that fix only takes effect once it lands in a tag (this release). No package/code changes.
+
 ## [2.8.1] - 2026-07-05
 
 ### Fixed
