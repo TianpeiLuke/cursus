@@ -5,347 +5,194 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Documentation](https://img.shields.io/badge/docs-tianpeiluke.github.io%2Fcursus-blue.svg)](https://tianpeiluke.github.io/cursus/)
 
-**Transform pipeline graphs into production-ready SageMaker pipelines automatically.**
+**Turn a pipeline graph plus a JSON config into a complete, production-ready SageMaker pipeline — automatically.**
 
-Cursus is an intelligent pipeline generation system that automatically creates complete SageMaker pipelines from user-provided pipeline graphs. Simply define your ML workflow as a graph structure, and Cursus handles all the complex SageMaker implementation details, dependency resolution, and configuration management automatically.
+Cursus is a specification-driven pipeline generation system for Amazon SageMaker. You describe your ML workflow as a **DAG of step names**; Cursus resolves the dependencies between steps, wires their inputs and outputs, looks up each step's declarative interface, and assembles a runnable `sagemaker.workflow.pipeline.Pipeline`. You say *what* the pipeline is — Cursus figures out *how* to build it.
 
-## 🚀 Quick Start
+> **📖 Full documentation:** **[tianpeiluke.github.io/cursus](https://tianpeiluke.github.io/cursus/)** — getting-started, tutorials, concepts & architecture, and the complete API / CLI / MCP / step-catalog reference.
 
-### Installation
+---
 
-```bash
-# Core installation
-pip install cursus
+## Installation
 
-# With ML frameworks
-pip install cursus[pytorch,gbm]
-
-# Full installation with all features
-pip install cursus[all]
-```
-
-> **SageMaker SDK compatibility:** The current `cursus` 1.x line targets **SageMaker SDK 2.x**. Pin `pip install "cursus<2"` to stay on this line. The `2.x` line (forthcoming) will target SageMaker SDK 3.x; that work happens on `main` and is published from there once ready.
-
-### 30-Second Example
-
-```python
-from cursus.core import compile_dag_to_pipeline
-from cursus.api import PipelineDAG
-from sagemaker.workflow.pipeline_context import PipelineSession
-
-# Create a simple DAG
-dag = PipelineDAG()
-dag.add_node("CradleDataLoading_training")
-dag.add_node("TabularPreprocessing_training") 
-dag.add_node("XGBoostTraining")
-dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
-dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
-
-# Set up SageMaker session
-pipeline_session = PipelineSession()
-role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
-
-# Compile to SageMaker pipeline automatically
-pipeline = compile_dag_to_pipeline(
-    dag=dag,
-    config_path="config.json",
-    sagemaker_session=pipeline_session,
-    role=role,
-    pipeline_name="fraud-detection"
-)
-pipeline.upsert()  # Deploy and run!
-```
-
-### Command Line Interface
-
-The `cursus` CLI is organized into focused command groups (run `cursus --help` to see them all):
-
-```bash
-# Compile a DAG + config into a SageMaker pipeline definition
-cursus compile -d dag.json -c config.json -o pipeline.json
-
-# Dry-run validation with a resolution report (no upsert)
-cursus compile -d dag.json -c config.json --validate-only --show-report
-
-# Compile and deploy in one step
-cursus compile -d dag.json -c config.json --upsert --start
-
-# Discover and inspect local pipeline projects
-cursus projects list
-cursus projects show my-project
-
-# Browse / recommend pre-built DAGs from the pipeline catalog
-cursus pipeline-catalog list
-cursus pipeline-catalog recommend --framework xgboost --features calibration
-
-# Run scripts offline against a DAG (data flow resolved automatically)
-cursus validate run-scripts dag.json --config-file config.json
-
-# Expose the engine to LLM agents over MCP
-cursus mcp list-tools
-cursus mcp serve
-```
-
-Other groups: `catalog`, `dag`, `config`, `registry`, `alignment`, `exec-doc`.
-
-## ✨ Key Features
-
-### 🎯 **Graph-to-Pipeline Automation**
-- **Input**: Simple pipeline graph with step types and connections
-- **Output**: Complete SageMaker pipeline with all dependencies resolved
-- **Magic**: Intelligent analysis of graph structure with automatic step builder selection
-
-### ⚡ **10x Faster Development**
-- **Before**: 2-4 weeks of manual SageMaker configuration
-- **After**: 10-30 minutes from graph to working pipeline
-- **Result**: 95% reduction in development time
-
-### 🧠 **Intelligent Dependency Resolution**
-- Automatic step connections and data flow
-- Smart configuration matching and validation
-- Type-safe specifications with compile-time checks
-- Semantic compatibility analysis
-
-### 🛡️ **Production Ready**
-- Built-in quality gates and validation
-- Enterprise governance and compliance
-- Comprehensive error handling and debugging
-- Stable, production-deployed, and published on PyPI
-
-### 🤖 **Agent-Ready (MCP)**
-- A framework-neutral `cursus.mcp` tool surface (JSON in / JSON out) exposes the
-  whole engine — catalog, DAG, config, compile, validate, exec-doc, and the
-  pipeline catalog — to LLM agents
-- Run it as an MCP server with `cursus mcp serve` (or `python -m cursus.mcp.server`)
-
-## 📊 Proven Results
-
-Based on production deployments across enterprise environments:
-
-| Component | Code Reduction | Lines Eliminated | Key Benefit |
-|-----------|----------------|------------------|-------------|
-| **Processing Steps** | 60% | 400+ lines | Automatic input/output resolution |
-| **Training Steps** | 60% | 300+ lines | Intelligent hyperparameter handling |
-| **Model Steps** | 47% | 380+ lines | Streamlined model creation |
-| **Registration Steps** | 66% | 330+ lines | Simplified deployment workflows |
-| **Overall System** | **~55%** | **1,650+ lines** | **Intelligent automation** |
-
-## 🏗️ Architecture
-
-Cursus follows a layered, specification-driven architecture. A `PipelineDAG`
-(nodes + edges) and a config file flow down through these layers to a finished
-SageMaker pipeline:
-
-- **🎯 DAG Compiler** (`core/compiler`): `compile_dag_to_pipeline` / `PipelineDAGCompiler` — the public entry point, plus validation, preview, and naming
-- **🧩 Dynamic Template** (`core/compiler`): binds each DAG node to its typed config and step-builder class via the step catalog and registry — no per-pipeline template class required
-- **🏗️ Pipeline Assembler** (`core/assembler`): instantiates each step builder in topological order and wires them together
-- **🔗 Dependency Resolver** (`core/deps`): matches each step's declared inputs to upstream outputs by semantic compatibility scoring, producing SageMaker property references
-- **🛠️ Step Builders** (`steps/builders`): turn a config + resolved inputs into a concrete SageMaker `ProcessingStep` / `TrainingStep` / `ModelStep`
-- **📋 Specification Layer** (`steps/interfaces`): one declarative `.step.yaml` per step — a unified `StepInterface` carrying both the script contract (I/O paths) and the dependency/output spec the resolver matches on
-- **📚 Registry & Step Catalog** (`registry`, `step_catalog`): the canonical step-name registry and auto-discovery that map names → builders, configs, and interfaces
-
-## 📚 Usage Examples
-
-### Basic Pipeline
-
-```python
-from cursus.core import compile_dag_to_pipeline
-from cursus.api import PipelineDAG
-from sagemaker.workflow.pipeline_context import PipelineSession
-
-# Create DAG
-dag = PipelineDAG()
-dag.add_node("CradleDataLoading_training")
-dag.add_node("XGBoostTraining")
-dag.add_edge("CradleDataLoading_training", "XGBoostTraining")
-
-# Set up SageMaker session
-pipeline_session = PipelineSession()
-role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
-
-# Compile to SageMaker pipeline
-pipeline = compile_dag_to_pipeline(
-    dag=dag,
-    config_path="config.json",
-    sagemaker_session=pipeline_session,
-    role=role,
-    pipeline_name="my-ml-pipeline"
-)
-```
-
-### Advanced Configuration
-
-```python
-from cursus.core import compile_dag_to_pipeline, PipelineDAGCompiler
-from cursus.api import PipelineDAG
-from sagemaker.workflow.pipeline_context import PipelineSession
-
-# Create DAG with more complex workflow
-dag = PipelineDAG()
-dag.add_node("CradleDataLoading_training")
-dag.add_node("TabularPreprocessing_training")
-dag.add_node("XGBoostTraining")
-dag.add_node("CradleDataLoading_calibration")
-dag.add_node("TabularPreprocessing_calibration")
-dag.add_node("XGBoostModelEval_calibration")
-
-# Add edges for training flow
-dag.add_edge("CradleDataLoading_training", "TabularPreprocessing_training")
-dag.add_edge("TabularPreprocessing_training", "XGBoostTraining")
-
-# Add edges for calibration flow
-dag.add_edge("CradleDataLoading_calibration", "TabularPreprocessing_calibration")
-dag.add_edge("XGBoostTraining", "XGBoostModelEval_calibration")
-dag.add_edge("TabularPreprocessing_calibration", "XGBoostModelEval_calibration")
-
-# Set up SageMaker session
-pipeline_session = PipelineSession()
-role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
-
-# Compile with validation and reporting
-compiler = PipelineDAGCompiler(
-    config_path="config.json",
-    sagemaker_session=pipeline_session,
-    role=role
-)
-
-# Validate DAG before compilation
-validation = compiler.validate_dag_compatibility(dag)
-if validation.is_valid:
-    print(f"✅ DAG validation passed! Confidence: {validation.avg_confidence:.2f}")
-    
-    # Compile with detailed report
-    pipeline, report = compiler.compile_with_report(
-        dag=dag,
-        pipeline_name="advanced-ml-pipeline"
-    )
-    print(f"📊 Pipeline compiled: {report.summary()}")
-else:
-    print("❌ DAG validation failed:", validation.config_errors)
-```
-
-### Using the Pre-built Pipeline Catalog
-
-The pipeline catalog is **data-driven**: 40+ ready-made DAGs ship as `*.dag.json`
-files (indexed by `catalog_index.json`) and are loaded by ID — no per-pipeline
-classes. Discover, load, and compile them through `cursus.pipeline_catalog`:
-
-```python
-from cursus.pipeline_catalog import recommend_dag, load_shared_dag, get_all_shared_dags
-from cursus.core import compile_dag_to_pipeline
-from sagemaker.workflow.pipeline_context import PipelineSession
-
-# Discover a DAG that matches your needs (ranked, scored)
-for hit in recommend_dag(framework="xgboost", features=["calibration"]):
-    print(hit["id"], hit["score"])
-
-# ...or list everything in the catalog
-get_all_shared_dags()  # {dag_id: metadata, ...}
-
-# Load a ready-made DAG by ID and compile it
-dag = load_shared_dag("xgboost_simple")
-
-pipeline_session = PipelineSession()
-role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
-
-pipeline = compile_dag_to_pipeline(
-    dag=dag,
-    config_path="config.json",
-    sagemaker_session=pipeline_session,
-    role=role,
-    pipeline_name="xgboost-simple",
-)
-pipeline.upsert()  # Deploy and run!
-```
-
-For a one-call build straight from files, use `build_and_compile`:
-
-```python
-from cursus.pipeline_catalog import build_and_compile
-
-pipeline, report = build_and_compile(
-    dag_path="src/cursus/pipeline_catalog/shared_dags/xgboost/simple.dag.json",
-    config_path="config.json",
-    sagemaker_session=pipeline_session,
-    role=role,
-)
-```
-
-### Using the Compiler Class Directly
-
-```python
-from cursus.core import PipelineDAGCompiler
-from cursus.pipeline_catalog import load_shared_dag
-from sagemaker.workflow.pipeline_context import PipelineSession
-
-# Load a ready-made DAG from the catalog (or build your own PipelineDAG)
-dag = load_shared_dag("xgboost_simple")
-
-# Set up SageMaker session
-pipeline_session = PipelineSession()
-role = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
-
-# Use compiler for more control
-compiler = PipelineDAGCompiler(
-    config_path="config.json",
-    sagemaker_session=pipeline_session,
-    role=role
-)
-
-# Preview resolution before compilation
-preview = compiler.preview_resolution(dag)
-for node, config_type in preview.node_config_map.items():
-    confidence = preview.resolution_confidence.get(node, 0.0)
-    print(f"   {node} → {config_type} (confidence: {confidence:.2f})")
-
-# Compile the pipeline
-pipeline = compiler.compile(dag, pipeline_name="my-pipeline")
-```
-
-## 🔧 Installation Options
-
-### Core Installation
 ```bash
 pip install cursus
 ```
-Includes basic DAG compilation and SageMaker integration.
 
-### Framework-Specific
+Requires **Python 3.9+** and targets the **SageMaker Python SDK 2.x** (`sagemaker>=2.248.0,<3`).
+
+Optional extras keep heavy ML/data libraries out of the core install — pull in only what your steps run:
+
 ```bash
-pip install cursus[pytorch]    # PyTorch Lightning models
-pip install cursus[gbm]        # GBM training pipelines (XGBoost + LightGBM)
-pip install cursus[nlp]        # NLP models and processing
-pip install cursus[processing] # Advanced data processing
+pip install "cursus[processing]"   # pandas / numpy data-processing utilities
+pip install "cursus[pytorch]"      # PyTorch / Lightning
+pip install "cursus[gbm]"          # XGBoost / LightGBM
+pip install "cursus[nlp]"          # tokenizers / transformers
+pip install "cursus[all]"          # everything
 ```
 
-### Development
+Verify:
+
 ```bash
-pip install cursus[dev]        # Development tools
-pip install cursus[docs]       # Documentation tools
-pip install cursus[all]        # Everything included
+cursus --version
+python -c "import cursus; print(cursus.__version__)"
 ```
 
-## 🎯 Who Should Use Cursus?
+---
 
-### **Data Scientists & ML Practitioners**
-- Focus on model development, not infrastructure complexity
-- Rapid experimentation with 10x faster iteration
-- Business-focused interface eliminates SageMaker expertise requirements
+## Quick Start
 
-### **Platform Engineers & ML Engineers**  
-- 60% less code to maintain and debug
-- Specification-driven architecture prevents common errors
-- Universal patterns enable faster team onboarding
+There are three ways in, highest-level first. They all compile through the same engine, so the same DAG + config produces the same pipeline.
 
-### **Organizations**
-- Accelerated innovation with faster pipeline development
-- Reduced technical debt through clean architecture
-- Built-in governance and compliance frameworks
+Every path needs two ingredients: a **DAG** (step names + edges) and a **config JSON** whose `metadata.config_types` maps each node to a configuration class. Compilation is offline; you only need AWS credentials to *deploy* (`--upsert`) or *run* (`--start`).
+
+### 1. Start from the pre-built pipeline catalog
+
+Cursus ships **44 validated DAGs** across 8 frameworks. Let the router recommend one and build it:
+
+```python
+from cursus.pipeline_catalog import recommend_dag, load_shared_dag
+from cursus import PipelineDAGCompiler
+
+# recommend_dag returns a ranked list of matches (dicts with 'id', 'score', ...)
+recommendations = recommend_dag(framework="xgboost", task_type="end_to_end")
+dag = load_shared_dag(recommendations[0]["id"])
+
+pipeline, report = PipelineDAGCompiler(config_path="config.json").compile_with_report(dag)
+print(pipeline.name, "-", len(pipeline.steps), "steps")
+```
+
+### 2. Compile from the command line
+
+Reproducible, no-glue path — point it at a DAG JSON and a config JSON:
+
+```bash
+# compile only (writes the SageMaker pipeline definition to a file)
+cursus compile -d my_dag.json -c my_config.json -o pipeline.json
+
+# validate DAG <-> config alignment without compiling
+cursus compile -d my_dag.json -c my_config.json --validate-only
+
+# compile, deploy to SageMaker, and start an execution
+cursus compile -d my_dag.json -c my_config.json \
+    --upsert --start --role arn:aws:iam::123456789012:role/MySageMakerRole
+```
+
+### 3. Build a DAG in Python
+
+```python
+from cursus.api import PipelineDAG
+from cursus.core import compile_dag_to_pipeline
+
+# Nodes are step names; edges are data dependencies
+dag = PipelineDAG()
+for node in ["CradleDataLoading", "TabularPreprocessing", "XGBoostTraining"]:
+    dag.add_node(node)
+dag.add_edge("CradleDataLoading", "TabularPreprocessing")
+dag.add_edge("TabularPreprocessing", "XGBoostTraining")
+
+# config.json maps each node -> a config class (metadata.config_types)
+pipeline = compile_dag_to_pipeline(dag=dag, config_path="config.json")
+
+# Deploy / run when ready
+pipeline.upsert(role_arn="arn:aws:iam::123456789012:role/MySageMakerRole")
+pipeline.start()
+```
+
+See the [Quickstart guide](https://tianpeiluke.github.io/cursus/getting_started/quickstart.html) for the full walkthrough.
+
+---
+
+## Key Features
+
+- **🎯 Graph-to-pipeline automation** — a DAG of step names compiles straight to a SageMaker pipeline; the SageMaker step objects, wiring, and naming are generated for you.
+- **🧠 Intelligent dependency resolution** — Cursus infers step connections and data flow by matching each step's declared outputs to the next step's declared inputs (semantic scoring), instead of hand-wiring `properties` paths.
+- **📄 Declarative, data-driven steps** — every step is a single `<step>.step.yaml` interface unifying the script contract (I/O, env vars, job arguments) and the dependency spec; step builders are synthesized at runtime, with no hand-written builder classes to maintain.
+- **📦 A pre-built pipeline catalog** — 44 ready-to-use DAGs across XGBoost, PyTorch, LightGBM, Bedrock and more, discoverable by framework, task type, and complexity.
+- **🧩 Extensible via step packs** — define your own steps in a folder *outside* the installed package and Cursus discovers them as native, strictly additively (built-in steps are never removed).
+- **🛡️ Built-in validation** — DAG↔config alignment, interface conformance, and dependency resolution are checked before you deploy (`cursus validate`, `cursus alignment`, `--validate-only`).
+- **🤖 Agent-ready (MCP)** — a framework-neutral, self-documenting tool surface of **70 JSON-in/JSON-out tools** across 12 namespaces mirrors the CLI/API for LLM agents (`python -m cursus.mcp.server` or `cursus mcp help`).
+
+---
+
+## How It Works
+
+A DAG + config flows through layered subsystems to a SageMaker pipeline:
+
+| Subsystem | Package | Responsibility |
+|---|---|---|
+| **DAG model** | `cursus.api.dag` | `PipelineDAG` — nodes (step names) + edges (dependencies) |
+| **Compiler** | `cursus.core.compiler` | `PipelineDAGCompiler` / `compile_dag_to_pipeline` — validate → resolve → build → assemble |
+| **Assembler** | `cursus.core.assembler` | Turns resolved steps into a `sagemaker` `Pipeline` |
+| **Dependency resolver** | `cursus.core.deps` | Matches producer outputs to consumer inputs (semantic scoring) |
+| **Step interfaces** | `cursus.core.base` + `cursus.steps.interfaces` | Declarative `<step>.step.yaml`; builders synthesized at runtime |
+| **Registry & discovery** | `cursus.registry` + `cursus.step_catalog` | Canonical step table, derived interface-first; step-pack discovery |
+| **Config system** | `cursus.core.config_fields` + `cursus.api.factory` | Pydantic config classes; `metadata.config_types` node→class map |
+| **Pipeline catalog** | `cursus.pipeline_catalog` | Pre-built shared DAGs + router (`recommend_dag` / `load_shared_dag`) |
+| **Validation** | `cursus.validation` | Alignment / interface / dependency checks |
+| **Agent surface** | `cursus.mcp` | The MCP tool surface |
+| **CLI** | `cursus.cli` | 13 command groups |
+
+Read the [Architecture & Design](https://tianpeiluke.github.io/cursus/concepts/index.html) docs for the full picture.
+
+---
+
+## What's Included
+
+| | Count | |
+|---|---|---|
+| **Step types** | 57 registered (54 declarative `.step.yaml` interfaces) | data loading, preprocessing, training, eval, calibration, registration, … |
+| **Pre-built DAGs** | 44 across 8 frameworks | XGBoost, PyTorch, LightGBM, LightGBM-MT, XGBoost-MT, Bedrock, TSA, Dummy |
+| **CLI command groups** | 13 | `compile`, `dag`, `config`, `catalog`, `steps`, `strategies`, `pipeline-catalog`, `validate`, `alignment`, `registry`, `projects`, `exec-doc`, `mcp` |
+| **MCP agent tools** | 70 across 12 namespaces | discover, construct, validate, compile, author — for LLM agents |
+
+---
+
+## Command-Line Interface
+
+```bash
+cursus compile -d dag.json -c config.json -o pipeline.json   # DAG + config -> pipeline
+cursus compile -d dag.json -c config.json --validate-only    # dry-run alignment report
+cursus pipeline-catalog recommend --framework xgboost        # discover a pre-built DAG
+cursus pipeline-catalog get-dag xgboost_complete_e2e         # inspect a catalog DAG
+cursus catalog list                                          # browse available step types
+cursus steps io XGBoostTraining                              # a step's declared I/O
+cursus dag resolve TabularPreprocessing XGBoostTraining      # score dependency edges
+cursus validate step-interface --all                         # validate every interface
+cursus projects list                                         # discover pipeline projects
+cursus mcp help                                              # explore the agent tool surface
+```
+
+Every group, subcommand, and flag is in the [CLI reference](https://tianpeiluke.github.io/cursus/cli.html).
+
+---
+
+## Installation Options
+
+| Extra | Installs | For |
+|---|---|---|
+| *(core)* | DAG model, compiler, catalog, CLI, MCP | everything except heavy ML/data libs |
+| `processing` | pandas, numpy | data-processing utilities & scripts |
+| `pytorch` | torch, lightning | PyTorch training/eval steps |
+| `gbm` | xgboost, lightgbm | gradient-boosting steps |
+| `nlp` | tokenizers, transformers | text steps |
+| `jupyter` | notebook tooling | interactive development |
+| `viz` | plotting libraries | reports/visualizations |
+| `docs` | sphinx, furo, sphinx-click, … | building this documentation |
+| `dev` | test/lint toolchain | contributing |
+| `all` | pytorch + gbm + nlp + processing + jupyter + viz | full runtime install |
+
+```bash
+pip install "cursus[all]"          # full ML runtime
+pip install "cursus[dev]"          # contributor toolchain
+```
+
+---
 
 ## 📖 Documentation
 
 ### 🌐 [Hosted Documentation → tianpeiluke.github.io/cursus](https://tianpeiluke.github.io/cursus/)
-**The full, versioned documentation site** — auto-generated from the source on every release:
+**The full, auto-generated documentation site** — rebuilt from the source on every release:
 [Getting Started](https://tianpeiluke.github.io/cursus/getting_started/index.html) ·
 [Tutorials](https://tianpeiluke.github.io/cursus/tutorials/index.html) ·
 [Concepts & Architecture](https://tianpeiluke.github.io/cursus/concepts/index.html) ·
@@ -356,47 +203,41 @@ pip install cursus[all]        # Everything included
 [Step Catalog](https://tianpeiluke.github.io/cursus/reference/generated/step_catalog.html) ·
 [Pipeline Catalog](https://tianpeiluke.github.io/cursus/reference/generated/pipeline_catalog.html)
 
-### 📚 [Complete Documentation Hub](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/README.md)
-**Your gateway to all Cursus documentation - start here for comprehensive navigation**
-
-### Knowledge Management Philosophy
-- **[Zettelkasten Principles](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/6_resources/zettelkasten_knowledge_management_principles.md)** - The knowledge management principles behind our slipbox documentation system, explaining how we organize and connect information for maximum discoverability and organic growth
-
-### Core Documentation
-- **[Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/README.md)** - Comprehensive guide for developing new pipeline steps and extending Cursus
-- **[Design Documentation](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/1_design/README.md)** - Detailed architectural documentation and design principles
-- **[Pipeline Catalog](https://github.com/TianpeiLuke/cursus/tree/main/src/cursus/pipeline_catalog/README.md)** - Comprehensive collection of prebuilt pipeline templates organized by framework and task
-- **[API Reference](https://github.com/TianpeiLuke/cursus/tree/main/src/cursus/)** - Detailed API documentation including core, api, steps, and other components
-- **[Examples](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/examples/)** - Ready-to-use pipeline blueprints and examples
-
-### Quick Links
-- **[Getting Started](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/adding_new_pipeline_step.md)** - Start here for adding new pipeline steps
-- **[Design Principles](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/design_principles.md)** - Core architectural principles
-- **[Best Practices](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/best_practices.md)** - Recommended development practices
-- **[Component Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/component_guide.md)** - Overview of key components
-- **[Validation System](https://github.com/TianpeiLuke/cursus/tree/main/src/cursus/validation/)** - Comprehensive validation framework for pipeline alignment and quality assurance
-
-## 🤝 Contributing
-
-We welcome contributions! See our [Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/README.md) for comprehensive details on:
-
-- **[Prerequisites](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/prerequisites.md)** - What you need before starting development
-- **[Creation Process](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/creation_process.md)** - Step-by-step process for adding new pipeline steps
-- **[Validation Checklist](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/validation_checklist.md)** - Comprehensive checklist for validating implementations
-- **[Common Pitfalls](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/common_pitfalls.md)** - Common mistakes to avoid
-
-For architectural insights and design decisions, see the [Design Documentation](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/1_design/README.md).
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/TianpeiLuke/cursus/blob/main/LICENSE) file for details.
-
-## 🔗 Links
-
-- **GitHub**: https://github.com/TianpeiLuke/cursus
-- **Issues**: https://github.com/TianpeiLuke/cursus/issues
-- **PyPI**: https://pypi.org/project/cursus/
+### Design & developer notes (in-repo)
+- **[Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/README.md)** — developing new pipeline steps and extending Cursus
+- **[Design Documentation](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/1_design/README.md)** — architectural design docs and principles
+- **[Pipeline Catalog](https://github.com/TianpeiLuke/cursus/tree/main/src/cursus/pipeline_catalog/README.md)** — the prebuilt-DAG collection
+- **[Changelog](https://github.com/TianpeiLuke/cursus/blob/main/CHANGELOG.md)** — release history
 
 ---
 
-**Cursus**: Making SageMaker pipeline development 10x faster through intelligent automation. 🚀
+## Who Should Use Cursus?
+
+- **Data scientists & ML practitioners** — go from a workflow sketch to a running SageMaker pipeline without writing SageMaker step glue; start from a catalog template and customize.
+- **Platform & ML engineers** — standardize pipeline construction, enforce DAG↔config alignment in CI, and extend the step library with your own step packs.
+- **Organizations** — a consistent, validated, reproducible path from graph to production pipeline, with less bespoke SageMaker code to maintain.
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! See the [Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/README.md) for:
+
+- **[Prerequisites](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/prerequisites.md)** — what you need before starting
+- **[Creation Process](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/creation_process.md)** — adding a new pipeline step
+- **[Validation Checklist](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/validation_checklist.md)** — validating an implementation
+- **[Common Pitfalls](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/common_pitfalls.md)** — mistakes to avoid
+
+Or author a step the guided way with the [`cursus mcp`](https://tianpeiluke.github.io/cursus/tutorials/author_a_step.html) agent tools.
+
+## 📄 License
+
+Licensed under the MIT License — see [LICENSE](https://github.com/TianpeiLuke/cursus/blob/main/LICENSE).
+
+## 🔗 Links
+
+- **Documentation**: https://tianpeiluke.github.io/cursus/
+- **GitHub**: https://github.com/TianpeiLuke/cursus
+- **PyPI**: https://pypi.org/project/cursus/
+- **Issues**: https://github.com/TianpeiLuke/cursus/issues
+- **Changelog**: https://github.com/TianpeiLuke/cursus/blob/main/CHANGELOG.md
