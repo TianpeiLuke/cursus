@@ -135,7 +135,7 @@ cursus = "cursus.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/TianpeiLuke/cursus"
-Documentation = "https://tianpeiluke.github.io/cursus/"
+Documentation = "https://cursus.readthedocs.io/"
 Repository = "https://github.com/TianpeiLuke/cursus"
 Issues = "https://github.com/TianpeiLuke/cursus/issues"
 Changelog = "https://github.com/TianpeiLuke/cursus/blob/main/CHANGELOG.md"
