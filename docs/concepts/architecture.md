@@ -12,6 +12,16 @@ resolver wire them into a real SageMaker pipeline — everything else (the step
 library, the catalog, the registry, validation, MCP, CLI) exists to make that
 one transformation discoverable, correct, and automatable.**
 
+```{figure} ../images/cursus_system_structure.png
+:alt: Cursus subsystems — a Pipeline DAG feeds the Compiler API and Assembler, which use the Step Catalog/Registry and Step Library, the Dependency Resolver, and the Validation System.
+:width: 100%
+
+The Cursus subsystems. A **Pipeline DAG** enters the **Compiler API + Assembler** (1);
+the **Step Catalog** and **Step Registry** resolve each node to a step from the **Step
+Library** (2); the **Dependency Resolver** (3) wires producer outputs to consumer
+inputs; and the **Validation System** (4) checks alignment and runtime behavior.
+```
+
 ## The 10,000-foot view
 
 ```

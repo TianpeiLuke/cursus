@@ -15,6 +15,16 @@ compiles to the same pipeline structure, regardless of who calls it or how. You
 never hand-write a SageMaker step; you declare *what* steps exist and *how they
 depend on each other*, and the compiler figures out the rest.
 
+```{figure} ../images/cursus_compilation_structure.png
+:alt: Compilation flow — the user supplies a Pipeline DAG and a Pipeline Config; PipelineDAGCompiler turns them into a SageMaker Pipeline, while the ExecutionDocument Generator produces an execution document; both feed execution.
+:width: 100%
+
+Compilation flow. You supply a **Pipeline DAG** and a **Pipeline Config**;
+`PipelineDAGCompiler` compiles them into a **SageMaker Pipeline**, while the
+`ExecutionDocument` generator turns the same config into an execution document — both
+of which feed the final **Execute** step.
+```
+
 Related reading: [Dependency resolution](dependency_resolution.md),
 [Step interfaces](step_interfaces.md), [Config system](config_system.md),
 [Registry & discovery](registry_and_discovery.md), and the
