@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.3] - 2026-07-06
+
+Public MCP server: installable extra + two stdio-server fixes.
+
+### Added
+
+- **`pip install "cursus[mcp]"` and a `cursus-mcp` console script.** The MCP server was already documented (`cursus mcp serve` / `python -m cursus.mcp.server`), but the `mcp`/`anyio` SDK had no install path and no stable launch command. `cursus[mcp]` now pulls the SDK (kept optional so a plain `pip install cursus` stays lean), `cursus-mcp` launches the stdio server, and `cursus[all]` includes it.
+
+### Fixed
+
+- **stdio MCP protocol corruption.** `sagemaker.config` attaches a `StreamHandler(stdout)` and logs two INFO lines ("Not applying SDK defaults from location: …") the moment sagemaker is imported (cursus pulls it in transitively). Because a stdio MCP server frames JSON-RPC on **stdout**, the client failed with "Failed to parse JSONRPC message". Fixed at the source: `cursus/__init__.py` raises the `sagemaker.config` logger to WARNING *before* the core import, so the noise never reaches stdout; the server adds a defense-in-depth stdout scrub for anything else that logs at runtime.
+- **`serverInfo` reported the wrong version.** The MCP server was constructed without a version, so it advertised the **mcp SDK's** version as its own. It now reports `cursus.__version__`.
+
 ## [2.8.2] - 2026-07-06
 
 ### Docs

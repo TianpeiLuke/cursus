@@ -25,8 +25,9 @@ logger = logging.getLogger(__name__)
 
 _SDK_HINT = (
     "The MCP server requires the optional 'mcp' SDK, which is not installed. "
-    "Install it (e.g. `pip install mcp`) — the cursus.mcp tool functions, schemas, "
-    "and registry work without it; only this server adapter needs it."
+    'Install it with `pip install "cursus[mcp]"` (or `pip install mcp anyio`) — the '
+    "cursus.mcp tool functions, schemas, and registry work without it; only this server "
+    "adapter needs it."
 )
 
 
@@ -41,6 +42,21 @@ def _require_sdk():
         raise RuntimeError(_SDK_HINT) from exc
 
 
+def _cursus_version() -> str:
+    """Best-effort cursus version for the MCP ``serverInfo`` (never the SDK's version).
+
+    Without an explicit ``version``, ``Server`` reports the ``mcp`` SDK's version as the
+    server's version — misleading to clients. Read the real cursus version, falling back
+    to ``"0"`` if the package metadata can't be resolved (e.g. an odd source checkout).
+    """
+    try:
+        from cursus import __version__  # type: ignore
+
+        return str(__version__ or "0")
+    except Exception:  # pragma: no cover - defensive
+        return "0"
+
+
 def build_server(name: str = "cursus") -> Any:
     """
     Build an MCP ``Server`` exposing every registered cursus tool.
@@ -51,7 +67,7 @@ def build_server(name: str = "cursus") -> Any:
     """
     Server, types = _require_sdk()
     registry = get_registry()
-    server = Server(name)
+    server = Server(name, version=_cursus_version())
 
     @server.list_tools()
     async def _list_tools():  # type: ignore[misc]
@@ -75,9 +91,39 @@ def build_server(name: str = "cursus") -> Any:
     return server
 
 
+def _protect_stdout_for_stdio() -> None:
+    """Keep ``sys.stdout`` reserved for JSON-RPC framing.
+
+    A stdio MCP server frames every protocol message on ``stdout``; any other byte written
+    there corrupts the stream and the client fails with "Failed to parse JSONRPC message".
+
+    The primary offender — ``sagemaker.config`` attaching a ``StreamHandler(stdout)`` and
+    logging INFO the moment sagemaker is imported — is neutralized at the source in
+    ``cursus/__init__.py`` (its logger is raised to WARNING before that import). This function
+    is the defense-in-depth for anything ELSE that might log to stdout at runtime: it points
+    our own logging at ``stderr`` and repoints any lingering stdout-bound ``StreamHandler``.
+    """
+    import sys
+
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stderr)
+
+    def _retarget(handler: logging.Handler) -> None:
+        stream = getattr(handler, "stream", None)
+        if isinstance(handler, logging.StreamHandler) and stream in (sys.stdout, sys.__stdout__):
+            handler.setStream(sys.stderr)
+
+    root = logging.getLogger()
+    for h in list(root.handlers):
+        _retarget(h)
+    # A stdout handler may live on any named logger (not just root), so sweep the registry too.
+    manager = getattr(logging.Logger, "manager", None)
+    for lg in list(getattr(manager, "loggerDict", {}).values()):
+        for h in list(getattr(lg, "handlers", []) or []):
+            _retarget(h)
+
+
 def main() -> int:
     """Entry point: run the cursus MCP server over stdio."""
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     try:
         import anyio  # type: ignore
         from mcp.server.stdio import stdio_server  # type: ignore
@@ -86,7 +132,10 @@ def main() -> int:
         # (matches _require_sdk's `raise ... from exc` pattern).
         raise RuntimeError(_SDK_HINT) from exc
 
+    # Scrub stdout (belt-and-suspenders; the sagemaker root-cause fix is in cursus/__init__.py)
+    # then build + run the server.
     server = build_server()
+    _protect_stdout_for_stdio()
 
     async def _run() -> None:
         async with stdio_server() as (read, write):

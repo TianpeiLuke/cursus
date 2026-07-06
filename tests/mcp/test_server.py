@@ -39,3 +39,26 @@ def test_build_server_raises_actionable_error_without_sdk():
 def test_build_server_constructs_when_sdk_present():
     srv = mcp_server.build_server(name="cursus-test")
     assert srv is not None
+
+
+def test_sdk_hint_points_at_public_extra():
+    # The public install path is `pip install "cursus[mcp]"` — never an internal package name.
+    assert "cursus[mcp]" in mcp_server._SDK_HINT
+
+
+def test_cursus_version_is_not_the_sdk_version():
+    # serverInfo.version must report cursus's version, not the mcp SDK's. Without an explicit
+    # version, mcp.server.Server defaults to the SDK version — a real bug we fixed. Assert the
+    # helper returns cursus's own version string.
+    import cursus
+
+    assert mcp_server._cursus_version() == str(cursus.__version__)
+
+
+@pytest.mark.skipif(not _HAS_MCP_SDK, reason="mcp SDK not installed")
+def test_build_server_reports_cursus_version():
+    import cursus
+
+    srv = mcp_server.build_server()
+    # The mcp SDK stores the constructor's version on the Server instance.
+    assert getattr(srv, "version", None) == str(cursus.__version__)

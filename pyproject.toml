@@ -125,13 +125,25 @@ docs = [
     "jinja2>=3.1",              # used by docs/_ext/gen_reference.py
     "pyyaml>=6.0",              # step-interface catalog generation
 ]
+# MCP (Model Context Protocol) server — exposes the 70-tool cursus surface to AI
+# assistants (Claude, Cursor, Kiro, ...) over stdio. The adapter (cursus/mcp/server.py)
+# imports these lazily, so a plain `pip install cursus` (compile pipelines only) never
+# pulls the MCP SDK. Install `cursus[mcp]`, then run `cursus mcp serve` or
+# `python -m cursus.mcp.server` (or the `cursus-mcp` console script).
+mcp = [
+    "mcp>=1.0.0",
+    "anyio>=4.0.0",
+]
 # Full installation (all user-facing optional dependencies)
 all = [
-    "cursus[pytorch,gbm,nlp,processing,jupyter,viz]"
+    "cursus[pytorch,gbm,nlp,processing,jupyter,viz,mcp]"
 ]
 
 [project.scripts]
 cursus = "cursus.cli:main"
+# Stable launch command for the stdio MCP server (equivalent to `python -m cursus.mcp.server`
+# and `cursus mcp serve`). Requires the `mcp` extra above.
+cursus-mcp = "cursus.mcp.server:main"
 
 [project.urls]
 Homepage = "https://github.com/TianpeiLuke/cursus"

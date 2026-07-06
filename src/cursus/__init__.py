@@ -30,6 +30,20 @@ Advanced Usage:
 """
 
 
+# Keep stdout clean for programmatic consumers (must run BEFORE the core imports below,
+# which pull in sagemaker). On import, ``sagemaker.config`` attaches a StreamHandler bound
+# to *stdout* and logs INFO lines ("Not applying SDK defaults from location: ...config.yaml").
+# Anything that frames a protocol on stdout — notably the stdio MCP server
+# (``python -m cursus.mcp.server`` / ``cursus mcp serve``), or any `... | jq`/subprocess-captured
+# use — then chokes on those non-JSON lines ("Failed to parse JSONRPC message"). Raising just
+# that one logger's level to WARNING before sagemaker is imported drops the noise at the source
+# while leaving every other sagemaker logger untouched. Consumers who want it back can lower it
+# after importing cursus.
+import logging as _logging
+
+_logging.getLogger("sagemaker.config").setLevel(_logging.WARNING)
+
+
 # Package metadata — pyproject.toml is the single source of truth.
 # - Title / version / description / author are read from importlib.metadata, which
 #   picks them up from pyproject.toml at install time. Nothing is hardcoded here, so

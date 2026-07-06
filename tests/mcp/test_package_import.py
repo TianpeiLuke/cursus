@@ -56,3 +56,19 @@ def test_top_level_api_is_real_not_stub():
     proc = _run(code)
     assert proc.returncode == 0, f"top-level API is the degraded stub:\n{proc.stderr}"
     assert "ok" in proc.stdout
+
+
+def test_import_cursus_writes_nothing_to_stdout():
+    # A stdio MCP server (`python -m cursus.mcp.server` / `cursus mcp serve`) frames JSON-RPC
+    # on stdout, so ANY stray byte written there on import corrupts the protocol ("Failed to
+    # parse JSONRPC message"). The known offender is sagemaker.config, which attaches a
+    # StreamHandler(stdout) and logs INFO on import; cursus/__init__.py raises that logger to
+    # WARNING before the import to prevent it. This asserts the invariant the server relies on:
+    # importing cursus emits nothing on stdout. (Logging to stderr is fine and not checked here.)
+    code = f"import sys; sys.path.insert(0, {_SRC!r}); import cursus"
+    proc = _run(code)
+    assert proc.returncode == 0, f"import cursus failed:\n{proc.stderr}"
+    assert proc.stdout == "", (
+        "import cursus wrote to stdout, which breaks the stdio MCP protocol.\n"
+        f"STDOUT:\n{proc.stdout}"
+    )
