@@ -3,13 +3,13 @@
 [![PyPI version](https://badge.fury.io/py/cursus.svg)](https://badge.fury.io/py/cursus)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Documentation](https://img.shields.io/badge/docs-tianpeiluke.github.io%2Fcursus-blue.svg)](https://tianpeiluke.github.io/cursus/)
+[![Documentation Status](https://readthedocs.org/projects/cursus/badge/?version=latest)](https://cursus.readthedocs.io/en/latest/)
 
 **Turn a pipeline graph plus a JSON config into a complete, production-ready SageMaker pipeline — automatically.**
 
 Cursus is a specification-driven pipeline generation system for Amazon SageMaker. You describe your ML workflow as a **DAG of step names**; Cursus resolves the dependencies between steps, wires their inputs and outputs, looks up each step's declarative interface, and assembles a runnable `sagemaker.workflow.pipeline.Pipeline`. You say *what* the pipeline is — Cursus figures out *how* to build it.
 
-> **📖 Full documentation:** **[tianpeiluke.github.io/cursus](https://tianpeiluke.github.io/cursus/)** — getting-started, tutorials, concepts & architecture, and the complete API / CLI / MCP / step-catalog reference.
+> **📖 Full documentation:** **[cursus.readthedocs.io](https://cursus.readthedocs.io/en/latest/)** (mirror: [tianpeiluke.github.io/cursus](https://tianpeiluke.github.io/cursus/)) — getting-started, tutorials, concepts & architecture, and the complete API / CLI / MCP / step-catalog reference.
 
 ---
 
@@ -99,7 +99,7 @@ pipeline.upsert(role_arn="arn:aws:iam::123456789012:role/MySageMakerRole")
 pipeline.start()
 ```
 
-See the [Quickstart guide](https://tianpeiluke.github.io/cursus/getting_started/quickstart.html) for the full walkthrough.
+See the [Quickstart guide](https://cursus.readthedocs.io/en/latest/getting_started/quickstart.html) for the full walkthrough.
 
 ---
 
@@ -133,7 +133,7 @@ A DAG + config flows through layered subsystems to a SageMaker pipeline:
 | **Agent surface** | `cursus.mcp` | The MCP tool surface |
 | **CLI** | `cursus.cli` | 13 command groups |
 
-Read the [Architecture & Design](https://tianpeiluke.github.io/cursus/concepts/index.html) docs for the full picture.
+Read the [Architecture & Design](https://cursus.readthedocs.io/en/latest/concepts/index.html) docs for the full picture.
 
 ---
 
@@ -163,7 +163,7 @@ cursus projects list                                         # discover pipeline
 cursus mcp help                                              # explore the agent tool surface
 ```
 
-Every group, subcommand, and flag is in the [CLI reference](https://tianpeiluke.github.io/cursus/cli.html).
+Every group, subcommand, and flag is in the [CLI reference](https://cursus.readthedocs.io/en/latest/cli.html).
 
 ---
 
@@ -191,17 +191,17 @@ pip install "cursus[dev]"          # contributor toolchain
 
 ## 📖 Documentation
 
-### 🌐 [Hosted Documentation → tianpeiluke.github.io/cursus](https://tianpeiluke.github.io/cursus/)
-**The full, auto-generated documentation site** — rebuilt from the source on every release:
-[Getting Started](https://tianpeiluke.github.io/cursus/getting_started/index.html) ·
-[Tutorials](https://tianpeiluke.github.io/cursus/tutorials/index.html) ·
-[Concepts & Architecture](https://tianpeiluke.github.io/cursus/concepts/index.html) ·
-[How-to Guides](https://tianpeiluke.github.io/cursus/guides/index.html) ·
-[API Reference](https://tianpeiluke.github.io/cursus/api/index.html) ·
-[CLI Reference](https://tianpeiluke.github.io/cursus/cli.html) ·
-[MCP Tools](https://tianpeiluke.github.io/cursus/reference/generated/mcp_tools.html) ·
-[Step Catalog](https://tianpeiluke.github.io/cursus/reference/generated/step_catalog.html) ·
-[Pipeline Catalog](https://tianpeiluke.github.io/cursus/reference/generated/pipeline_catalog.html)
+### 🌐 [Hosted Documentation → cursus.readthedocs.io](https://cursus.readthedocs.io/en/latest/)
+**The full, auto-generated documentation site** — rebuilt from the source on every release (also mirrored at [tianpeiluke.github.io/cursus](https://tianpeiluke.github.io/cursus/)):
+[Getting Started](https://cursus.readthedocs.io/en/latest/getting_started/index.html) ·
+[Tutorials](https://cursus.readthedocs.io/en/latest/tutorials/index.html) ·
+[Concepts & Architecture](https://cursus.readthedocs.io/en/latest/concepts/index.html) ·
+[How-to Guides](https://cursus.readthedocs.io/en/latest/guides/index.html) ·
+[API Reference](https://cursus.readthedocs.io/en/latest/api/index.html) ·
+[CLI Reference](https://cursus.readthedocs.io/en/latest/cli.html) ·
+[MCP Tools](https://cursus.readthedocs.io/en/latest/reference/generated/mcp_tools.html) ·
+[Step Catalog](https://cursus.readthedocs.io/en/latest/reference/generated/step_catalog.html) ·
+[Pipeline Catalog](https://cursus.readthedocs.io/en/latest/reference/generated/pipeline_catalog.html)
 
 ### Design & developer notes (in-repo)
 - **[Developer Guide](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/README.md)** — developing new pipeline steps and extending Cursus
@@ -228,7 +228,7 @@ Contributions are welcome! See the [Developer Guide](https://github.com/TianpeiL
 - **[Validation Checklist](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/validation_checklist.md)** — validating an implementation
 - **[Common Pitfalls](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/0_developer_guide/common_pitfalls.md)** — mistakes to avoid
 
-Or author a step the guided way with the [`cursus mcp`](https://tianpeiluke.github.io/cursus/tutorials/author_a_step.html) agent tools.
+Or author a step the guided way with the [`cursus mcp`](https://cursus.readthedocs.io/en/latest/tutorials/author_a_step.html) agent tools.
 
 ## 📄 License
 
@@ -236,7 +236,7 @@ Licensed under the MIT License — see [LICENSE](https://github.com/TianpeiLuke/
 
 ## 🔗 Links
 
-- **Documentation**: https://tianpeiluke.github.io/cursus/
+- **Documentation**: https://cursus.readthedocs.io/ (mirror: https://tianpeiluke.github.io/cursus/)
 - **GitHub**: https://github.com/TianpeiLuke/cursus
 - **PyPI**: https://pypi.org/project/cursus/
 - **Issues**: https://github.com/TianpeiLuke/cursus/issues
