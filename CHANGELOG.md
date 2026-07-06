@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`from cursus import PipelineDAG` was broken.** The top-level package did `from .api.dag import EnhancedPipelineDAG, PipelineDAG`, but `EnhancedPipelineDAG` had been removed from `cursus.api.dag` — so the whole import raised `ImportError` and the `except` bound a broken **`PipelineDAG` stub** that raised `"DAG functionality not available"` on instantiation. `PipelineDAG` is now imported independently, so `from cursus import PipelineDAG` yields the real class again. The dead `EnhancedPipelineDAG` name is removed from the public surface (`__init__` and `__all__`); use `PipelineDAG`.
+
+### Docs
+
+- Published a comprehensive documentation site (Sphinx + Furo; auto-generated API/CLI/MCP/step-catalog/pipeline-catalog reference + tutorials/concepts/guides), hosted at **https://tianpeiluke.github.io/cursus/**; `[project.urls] Documentation` now points there.
+
 ## [2.8.0] - 2026-07-05
 
 Ported from amzn-cursus 2.7.0 — plugin step-pack discovery. A consumer can define its own steps (`interfaces/*.step.yaml` + `configs/` + `scripts/`) in a folder OUTSIDE the pip-installed package and have cursus discover them as NATIVE — no fork, no vendored copy, no package edit. Strictly ADDITIVE: the internal steps are ALWAYS available; a pack can only add steps (shadow-with-warning on clash), never remove or replace one. Reuses the caller hook as the discovery anchor. Backward-compatible; with no pack the registry/catalog are byte-identical to package-only.

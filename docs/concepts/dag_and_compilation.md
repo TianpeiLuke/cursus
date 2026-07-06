@@ -131,10 +131,9 @@ these JSON files.
 
 ### A note on `EnhancedPipelineDAG`
 
-The name `EnhancedPipelineDAG` appears in the top-level `cursus` package's public
-surface, but it is currently a **placeholder** — there is no concrete
-implementation in `cursus.api.dag`, and instantiating it raises `ImportError`. For
-all real work, use `PipelineDAG`; the intelligent, spec-based enhancement it hints
+Older versions exposed an `EnhancedPipelineDAG` name in the top-level `cursus`
+package, but there was never a concrete implementation, so it has been removed from
+the public surface. Use `PipelineDAG` for all work; the intelligent, spec-based enhancement it hints
 at is provided at *compile* time by the dependency resolver (see
 [Dependency resolution](dependency_resolution.md)), not by a separate DAG class.
 

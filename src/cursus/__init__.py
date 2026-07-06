@@ -22,8 +22,7 @@ Basic Usage:
     >>> pipeline = compiler.compile(my_dag, pipeline_name="fraud-detection")
 
 Advanced Usage:
-    >>> from cursus.core.dag import PipelineDAG
-    >>> from cursus.api import compile_dag_to_pipeline
+    >>> from cursus import PipelineDAG, compile_dag_to_pipeline
     >>>
     >>> dag = PipelineDAG()
     >>> # ... build your DAG
@@ -102,20 +101,17 @@ except ImportError as e:
 
 
 # Core data structures
+# Import PipelineDAG independently so a single unavailable name can't take the whole
+# top-level DAG surface down with it (EnhancedPipelineDAG was removed from the package;
+# importing the two together used to fail and bind a broken PipelineDAG stub).
 try:
-    from .api.dag import EnhancedPipelineDAG, PipelineDAG
+    from .api.dag import PipelineDAG
 except ImportError:
 
     class PipelineDAG:
         def __init__(self, *args, **kwargs):
             raise ImportError(
                 "DAG functionality not available. Please install with: pip install cursus[all]"
-            )
-
-    class EnhancedPipelineDAG:
-        def __init__(self, *args, **kwargs):
-            raise ImportError(
-                "Enhanced DAG functionality not available. Please install with: pip install cursus[all]"
             )
 
 
@@ -153,7 +149,6 @@ __all__ = [
     # Core classes
     "PipelineDAGCompiler",
     "PipelineDAG",
-    "EnhancedPipelineDAG",
     "DynamicPipelineTemplate",
 ]
 
