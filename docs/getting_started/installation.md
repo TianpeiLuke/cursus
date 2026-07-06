@@ -43,11 +43,22 @@ package metadata, so they can never drift).
 ## Optional: the MCP server
 
 Cursus ships a framework-neutral **agent tool surface** (70 tools). To expose it over
-the Model Context Protocol for an LLM agent:
+the Model Context Protocol for an LLM agent, install the optional MCP SDK and launch the
+stdio server:
 
 ```bash
-python -m cursus.mcp.server        # requires the optional MCP SDK
-cursus mcp help                    # or just inspect the tools from the CLI
+pip install "cursus[mcp]"          # pulls the MCP SDK (mcp, anyio)
+
+cursus-mcp                         # stable launch command, or:
+python -m cursus.mcp.server        # equivalent module entry point, or:
+cursus mcp serve                   # equivalent via the CLI
+cursus mcp help                    # inspect the tools without starting the server
+```
+
+Point your MCP client at any of the three launch commands (all stdio). Example client config:
+
+```json
+{"mcpServers": {"cursus": {"command": "cursus-mcp", "transportType": "stdio"}}}
 ```
 
 See the [MCP Tool Reference](../reference/generated/mcp_tools.md) for the full toolset.
