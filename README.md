@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/cursus.svg)](https://badge.fury.io/py/cursus)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation](https://img.shields.io/badge/docs-tianpeiluke.github.io%2Fcursus-blue.svg)](https://tianpeiluke.github.io/cursus/)
 
 **Transform pipeline graphs into production-ready SageMaker pipelines automatically.**
 
@@ -342,6 +343,18 @@ pip install cursus[all]        # Everything included
 - Built-in governance and compliance frameworks
 
 ## 📖 Documentation
+
+### 🌐 [Hosted Documentation → tianpeiluke.github.io/cursus](https://tianpeiluke.github.io/cursus/)
+**The full, versioned documentation site** — auto-generated from the source on every release:
+[Getting Started](https://tianpeiluke.github.io/cursus/getting_started/index.html) ·
+[Tutorials](https://tianpeiluke.github.io/cursus/tutorials/index.html) ·
+[Concepts & Architecture](https://tianpeiluke.github.io/cursus/concepts/index.html) ·
+[How-to Guides](https://tianpeiluke.github.io/cursus/guides/index.html) ·
+[API Reference](https://tianpeiluke.github.io/cursus/api/index.html) ·
+[CLI Reference](https://tianpeiluke.github.io/cursus/cli.html) ·
+[MCP Tools](https://tianpeiluke.github.io/cursus/reference/generated/mcp_tools.html) ·
+[Step Catalog](https://tianpeiluke.github.io/cursus/reference/generated/step_catalog.html) ·
+[Pipeline Catalog](https://tianpeiluke.github.io/cursus/reference/generated/pipeline_catalog.html)
 
 ### 📚 [Complete Documentation Hub](https://github.com/TianpeiLuke/cursus/tree/main/slipbox/README.md)
 **Your gateway to all Cursus documentation - start here for comprehensive navigation**
