@@ -8,7 +8,6 @@ name: Documentation
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -43,7 +42,7 @@ jobs:
           path: docs/_build/html
 
   deploy:
-    # Only publish from main / tags, never from PRs.
+    # Only publish from main pushes (and manual dispatch), never from PRs or tags.
     if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
