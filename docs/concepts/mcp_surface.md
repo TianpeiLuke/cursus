@@ -26,7 +26,8 @@ object in memory the way a script can. It needs capabilities that are:
 - **discoverable** — it can ask "what can I do?" and "how do I call this?" in-band;
 - **uniform** — every call returns the same success/error shape, so the agent's control
   loop never has to special-case a stack trace or a printed message;
-- **safe** — a tool call never crashes the caller, and state-mutating tools are flagged;
+- **safe** — a tool call never crashes the caller; state-mutating tools declare their side
+  effects, and the public server is read-only by default (mutation is opt-in);
 - **portable** — the same tool definitions feed an MCP server, an OpenAI tool list, and a
   Claude tool list without rewriting.
 
@@ -87,15 +88,27 @@ class ToolDef:
     description: str           # what + when, for the agent
     schema: Dict[str, Any]     # JSON Schema (draft-07 object) for the arguments
     handler: ToolHandler       # (validated arg dict) -> ToolResult
-    destructive: bool = False  # True if it mutates external state (SageMaker upsert, disk)
+    destructive: bool = False  # mutates external/persistent state (SageMaker upsert)
     tags: tuple = ()           # lifecycle phase(s): "planner" / "validator" / "programmer"
     when: str = ""             # one-line "call this when …" trigger cue
     examples: tuple = ()       # copy-paste invocation strings
+    writes: bool = False       # writes to the local filesystem
+    exec_code: bool = False    # runs arbitrary code / installs packages
+    network: bool = False      # reaches the network / AWS (open-world)
 
     @property
     def namespace(self) -> str:      # leading segment of name → "compile"
         return self.name.split(".", 1)[0]
+
+    @property
+    def wire_name(self) -> str:      # host-legal name: "compile.dag" → "compile__dag"
+        return self.name.replace(".", "__")
 ```
+
+The four capability flags (`destructive`, `writes`, `exec_code`, `network`) are what let the
+server run **read-only by default** and attach MCP tool annotations — see
+[Safety: read-only by default](#safety-read-only-by-default). `wire_name` exists because host
+tool-calling APIs reject the `.` in names — see [MCP server adapter](#mcp-server-adapter).
 
 Three fields are what make the surface self-teaching:
 
@@ -124,7 +137,7 @@ Public accessors:
 | `get_registry(force_reload=False)` | The canonical `name -> ToolDef` map (built once, cached). |
 | `get_namespaces()` | `namespace -> one-line description` map (built with the registry). |
 | `list_tools(namespace=None)` | All `ToolDef`s, sorted by name, optionally filtered to one namespace. |
-| `get_tool(name)` | One `ToolDef` or `None`. |
+| `get_tool(name)` | One `ToolDef` or `None`. Accepts either the dotted name (`compile.dag`) or the on-the-wire name (`compile__dag`), so callers can resolve a tool by whichever form they hold. |
 
 ### Invocation: `call_tool`
 
@@ -189,14 +202,26 @@ alignment/dependencies/integrity, then compile the DAG into a SageMaker pipeline
 generate the execution document. The phase tags are not just documentation — `tools.by_phase`
 filters the live registry by tag, so "give me the validator tools" is a single query.
 
-### Destructive tools
+### Safety: read-only by default
 
-Two shipped tools carry `destructive=True` and an agent host may gate them behind
-confirmation:
+A public MCP server is an LLM-reachable RPC surface, so the shipped server is **read-only by
+default**. Every tool declares its side effects with the capability flags above, and the
+server refuses to expose (or run) a side-effecting tool unless the operator opts in with an
+environment variable:
 
-- `compile.dag` — its optional `upsert=true` path mutates SageMaker state (build-only is
-  the default and is non-destructive).
-- `project.init` — creates a new project folder tree on disk.
+| Env var | Enables | Tools |
+| --- | --- | --- |
+| *(none — the default)* | the read-only surface (~66 tools) | discovery, inspection, validation-analysis, help |
+| `CURSUS_MCP_ENABLE_DESTRUCTIVE=1` | filesystem writes + AWS upserts (`destructive` / `writes`) | `compile.dag` (upsert), `project.init`, `dag.serialize` |
+| `CURSUS_MCP_ALLOW_SCRIPT_EXEC=1` | running step scripts locally, which may `pip install` (`exec_code`) | `validate.run_scripts` |
+| `CURSUS_MCP_PROJECT_ROOT=/path` | confinement root for `project.init` writes (defaults to the server's working dir) | — |
+
+The gate is enforced **twice**: gated tools are omitted from `list_tools`, *and* rejected at
+`call_tool` (a client cannot reach a hidden tool by guessing its name — it gets a
+`tool_disabled` error). `project.init` additionally confines its writes: `name` may not
+contain path separators, `target_dir` may not contain `..`, and under `CURSUS_MCP_PROJECT_ROOT`
+the resolved write path may not escape that root. In-process / CLI callers (which are trusted)
+are unaffected by the gating; it applies to the MCP server surface.
 
 ## Self-documenting design
 
@@ -275,10 +300,28 @@ actionable error points at the extra to install.
 python -m cursus.mcp.server      # run the cursus tools as a stdio MCP server
 ```
 
-`build_server(name="cursus")` wires the server's `list_tools` from the registry (each entry
-uses `render_description(td)` and `td.schema`), and routes `call_tool` **straight through**
-`registry.call_tool`, serializing the returned envelope as a JSON `TextContent` block. So
-the MCP server and in-process callers share exactly one code path and one result contract.
+`build_server(name="cursus")` wires the server's `list_tools` from the registry and routes
+`call_tool` **straight through** `registry.call_tool`, so the MCP server and in-process
+callers share exactly one code path and one result contract. Four details make that surface
+host-safe and host-usable:
+
+- **Host-legal names.** Each listed tool is exposed under its `wire_name` (`compile.dag` →
+  `compile__dag`). MCP hosts forward tool names to the Anthropic / OpenAI tool-calling APIs,
+  whose name pattern (`^[a-zA-Z0-9_-]{1,64}$`) rejects the `.`; the dotted names would fail
+  the moment a model invoked one. Incoming calls resolve back to the dotted name via
+  `get_tool`, and human-facing help keeps the readable dotted form.
+- **Tool annotations.** Each `types.Tool` carries `ToolAnnotations`
+  (`readOnlyHint` / `destructiveHint` / `openWorldHint`) derived from the capability flags,
+  so a host can auto-approve the read-only tools and prompt before the mutating ones.
+- **`isError` signaling.** A failed call returns a `CallToolResult` with `isError=True`
+  (rather than a success envelope with `ok:false` buried in text), so hosts and models can
+  tell failure from success at the protocol level.
+- **Correct `serverInfo` + clean stdout.** The server reports `cursus.__version__` (not the
+  SDK's), and reserves stdout for JSON-RPC framing (logs go to stderr) so nothing corrupts
+  the stream. Install the SDK with `pip install "cursus[mcp]"` (needs `mcp>=1.2.0`); the
+  `cursus-mcp` console script, `python -m cursus.mcp.server`, and `cursus mcp serve` are
+  equivalent launchers. See the [MCP server README](https://github.com/TianpeiLuke/cursus/blob/main/src/cursus/mcp/README.md)
+  for host wiring (Claude Desktop / Cursor / Kiro).
 
 ### Framework exporters
 
@@ -289,8 +332,9 @@ Two pure functions generate tool lists for other agent frameworks from the same 
 | `export_openai_tools(namespace=None)` | OpenAI / Claude function-calling shape — `{"type": "function", "function": {"name", "description", "parameters"}}`, with phase `tags` under `function.metadata`. |
 | `export_mcp_tools(namespace=None)` | MCP `list_tools` shape — `{"name", "description", "inputSchema"}`, with phase `tags` alongside. |
 
-Both fold the `when` / `examples` guidance into the description via `render_description`, so
-external OpenAI/Claude/MCP clients see the same usage hints an in-process agent gets.
+Both emit the host-legal `wire_name` (dots → `__`) as `name`, and fold the `when` / `examples`
+guidance into the description via `render_description`, so external OpenAI/Claude/MCP clients
+get a name their tool-calling API accepts and the same usage hints an in-process agent gets.
 
 ### Mirroring the CLI and API
 

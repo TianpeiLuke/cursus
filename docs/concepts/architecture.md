@@ -315,7 +315,11 @@ validated per tool — for example `catalog.list_steps` accepts only
 `workspace_id` / `job_type` filters, while `catalog.search` requires a `query`.
 
 Because a step is now one `.step.yaml` + one config (no builder file), an agent
-can author a step and configure a pipeline entirely by tool-calling. See the
+can author a step and configure a pipeline entirely by tool-calling. The optional
+stdio server (`pip install "cursus[mcp]"`, then `cursus-mcp`) is **read-only by
+default** — state-changing tools are opt-in via env vars — and exposes host-legal
+tool names (dots become `__`) with per-tool safety annotations. See
+[the agent (MCP) tool surface](mcp_surface.md) and the
 [MCP tools reference](../reference/generated/mcp_tools.md).
 
 ### CLI

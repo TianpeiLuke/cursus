@@ -61,8 +61,17 @@ def _gen_mcp_tools() -> str:
     )
     out.append(
         "Invoke tools programmatically with `cursus.mcp.registry.call_tool(name, args)`, "
-        "over the MCP server (`python -m cursus.mcp.server`), or inspect them with "
-        "`cursus mcp help` / the `tools.help` tool.\n"
+        "over the MCP server (`cursus-mcp` / `python -m cursus.mcp.server`), or inspect them "
+        "with `cursus mcp help` / the `tools.help` tool.\n"
+    )
+    out.append(
+        "On an MCP host, each tool is exposed under a **host-legal wire name** (dots become "
+        "`__`, e.g. `catalog__list_steps`) because host tool-calling APIs reject `.`; the "
+        "dotted names below are the human-facing form, and both resolve to the same tool. "
+        "The server is **read-only by default** — tools marked *destructive* / *writes* / "
+        "*exec_code* below are exposed only when the operator opts in with "
+        "`CURSUS_MCP_ENABLE_DESTRUCTIVE=1` (filesystem writes + AWS upserts) or "
+        "`CURSUS_MCP_ALLOW_SCRIPT_EXEC=1` (running step scripts).\n"
     )
 
     by_ns = {}
@@ -76,12 +85,21 @@ def _gen_mcp_tools() -> str:
             out.append(f"{desc}\n")
         for t in sorted(by_ns[ns], key=lambda x: x.name):
             out.append(f"\n### `{t.name}`\n")
+            wire = getattr(t, "wire_name", None)
+            if wire and wire != t.name:
+                out.append(f"*MCP wire name: `{wire}`*\n")
             body = (render_description(t) or t.description or "").strip()
             if body:
                 out.append(body + "\n")
             meta = []
             if getattr(t, "destructive", False):
                 meta.append("**destructive**")
+            if getattr(t, "writes", False):
+                meta.append("**writes**")
+            if getattr(t, "exec_code", False):
+                meta.append("**exec_code**")
+            if getattr(t, "network", False):
+                meta.append("network")
             if getattr(t, "tags", None):
                 meta.append("tags: " + ", ".join(f"`{x}`" for x in t.tags))
             if meta:
