@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.4] - 2026-07-06
+
+Make the MCP server production-ready for **public** use. A public-readiness review found the
+2.8.3 server connected fine but tools failed the moment a model invoked them, and the surface
+was unsafe by default under an LLM. This release fixes both.
+
+### Fixed
+
+- **Tool calls failed from every host (blocker).** All ~70 tool names used a dotted namespace
+  (`catalog.list_steps`). MCP hosts relay tool names to the Anthropic/OpenAI tool-calling APIs,
+  whose name pattern (`^[a-zA-Z0-9_-]{1,64}$`) rejects the `.`, so calls 400'd. Tools are now
+  exposed on the wire with `__` in place of the dot (`catalog__list_steps`) and round-trip back
+  to the dotted name; human-facing help still shows the dotted names. Both forms are callable.
+- **`mcp` version floor.** The server calls `Server(name, version=…)`, a kwarg added in mcp
+  1.2.0 (1.0/1.1 raised `TypeError`). The extra is now `mcp>=1.2.0,<2`.
+- **Import-time stdout leak.** The server now builds with stdout redirected to stderr and sets
+  a confinement root, closing a window where an import-time log line could corrupt JSON-RPC.
+- Corrected the `cursus.mcp` package docstring example (it used an argument the schema rejects).
+
+### Added
+
+- **Safe by default.** The public server is **read-only** unless the operator opts in:
+  `CURSUS_MCP_ENABLE_DESTRUCTIVE=1` enables filesystem writes + AWS upserts (`compile.dag`,
+  `project.init`, `dag.serialize`); `CURSUS_MCP_ALLOW_SCRIPT_EXEC=1` enables running step
+  scripts (`validate.run_scripts`). Gated tools are neither listed nor callable otherwise.
+- **`project.init` write confinement.** `name` may not contain path separators, `target_dir`
+  may not contain `..`, and under a server (`CURSUS_MCP_PROJECT_ROOT`, defaulting to the
+  server's working dir) writes cannot escape that root — closing a path-traversal write.
+- **MCP tool annotations** (`readOnlyHint` / `destructiveHint` / `openWorldHint`) on every
+  tool, so hosts can auto-approve read-only calls and confirm mutating ones.
+- **`isError` signaling.** Failed tool calls now set the protocol `isError` flag instead of
+  returning a success envelope with the error buried in text.
+- **`src/cursus/mcp/README.md`** — onboarding for Claude Desktop / Cursor / Kiro with
+  paste-ready configs (absolute launcher path, AWS env passthrough, the safety matrix), plus
+  refreshed `installation.md` / README MCP sections.
+
 ## [2.8.3] - 2026-07-06
 
 Public MCP server: installable extra + two stdio-server fixes.

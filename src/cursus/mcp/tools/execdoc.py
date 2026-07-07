@@ -256,6 +256,7 @@ TOOLS: List[ToolDef] = [
             "additionalProperties": False,
         },
         handler=_generate,
+        network=True,  # may reach AWS to fill execution-document fields
         tags=("programmer",),
         when=(
             "Call when you have a compiled pipeline (DAG + config file) and need to "

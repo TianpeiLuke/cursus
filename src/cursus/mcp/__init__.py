@@ -24,7 +24,7 @@ Quick start::
 
     reg = get_registry()                       # name -> ToolDef
     reg["catalog.list_steps"].schema           # JSON schema for the tool
-    result = call_tool("catalog.list_steps", {"framework": "xgboost"})
+    result = call_tool("catalog.list_steps", {})   # or {"job_type": "training"}
     result.ok                                  # True / False
     result.data                                # JSON-serializable payload
 

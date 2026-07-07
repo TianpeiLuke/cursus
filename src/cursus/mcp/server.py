@@ -17,11 +17,35 @@ extra to install. Everything else in ``cursus.mcp`` works without it.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+import os
+from typing import Any, Dict, Optional
 
-from .registry import get_registry, call_tool, render_description
+from .envelope import ToolResult
+from .registry import get_registry, get_tool, call_tool, render_description
 
 logger = logging.getLogger(__name__)
+
+# --- Safe-by-default gating ------------------------------------------------------------
+# A PUBLIC MCP server is READ-ONLY by default. Tools that mutate persistent state (AWS
+# upserts, filesystem writes) or execute code are neither listed nor callable unless the
+# operator opts in via these environment variables.
+_ENABLE_MUTATION = "CURSUS_MCP_ENABLE_DESTRUCTIVE"  # AWS upserts + filesystem writes
+_ALLOW_SCRIPT_EXEC = "CURSUS_MCP_ALLOW_SCRIPT_EXEC"  # runs step scripts / pip installs
+
+
+def _gate_env(td: Any) -> Optional[str]:
+    """The env var that must be truthy to expose/allow this tool, or None if always safe."""
+    if getattr(td, "exec_code", False):
+        return _ALLOW_SCRIPT_EXEC
+    if td.destructive or getattr(td, "writes", False):
+        return _ENABLE_MUTATION
+    return None
+
+
+def _tool_enabled(td: Any) -> bool:
+    gate = _gate_env(td)
+    return gate is None or bool(os.getenv(gate))
+
 
 _SDK_HINT = (
     "The MCP server requires the optional 'mcp' SDK, which is not installed. "
@@ -69,24 +93,63 @@ def build_server(name: str = "cursus") -> Any:
     registry = get_registry()
     server = Server(name, version=_cursus_version())
 
+    # Safe by default: only expose tools whose gate (if any) is enabled.
+    exposed = sorted(
+        (td for td in registry.values() if _tool_enabled(td)), key=lambda t: t.name
+    )
+
+    def _annotations(td: Any):
+        read_only = not (
+            td.destructive
+            or getattr(td, "writes", False)
+            or getattr(td, "exec_code", False)
+        )
+        return types.ToolAnnotations(
+            title=td.name,  # the human-facing dotted name (the wire name uses '__')
+            readOnlyHint=read_only,
+            destructiveHint=bool(td.destructive),
+            openWorldHint=bool(
+                getattr(td, "network", False) or getattr(td, "exec_code", False)
+            ),
+        )
+
     @server.list_tools()
     async def _list_tools():  # type: ignore[misc]
         return [
             types.Tool(
-                name=td.name,
+                name=td.wire_name,  # host APIs reject the dotted internal name
                 description=render_description(td),
                 inputSchema=td.schema,
+                annotations=_annotations(td),
             )
-            for td in sorted(registry.values(), key=lambda t: t.name)
+            for td in exposed
         ]
 
     @server.call_tool()
     async def _call_tool(name: str, arguments: Dict[str, Any]):  # type: ignore[misc]
-        result = call_tool(name, arguments or {})
-        # MCP returns content blocks; serialize the envelope as JSON text.
+        # Enforce the gate at the boundary too (a client could call a hidden tool by name).
+        td = get_tool(name)
+        if td is not None and not _tool_enabled(td):
+            gate = _gate_env(td)
+            result: ToolResult = ToolResult.failure(
+                f"tool '{td.name}' is disabled on this server; set {gate}=1 to enable it "
+                f"(it mutates state or executes code)",
+                code="tool_disabled",
+                details={"env_var": gate},
+            )
+        else:
+            result = call_tool(
+                name, arguments or {}
+            )  # get_tool maps wire -> dotted name
+
+        # Serialize the envelope as JSON text and signal protocol-level success/failure so
+        # hosts and models can tell a failed call from a successful one.
         import json
 
-        return [types.TextContent(type="text", text=json.dumps(result.to_dict()))]
+        return types.CallToolResult(
+            content=[types.TextContent(type="text", text=json.dumps(result.to_dict()))],
+            isError=not result.ok,
+        )
 
     return server
 
@@ -105,11 +168,16 @@ def _protect_stdout_for_stdio() -> None:
     """
     import sys
 
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stderr)
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stderr
+    )
 
     def _retarget(handler: logging.Handler) -> None:
         stream = getattr(handler, "stream", None)
-        if isinstance(handler, logging.StreamHandler) and stream in (sys.stdout, sys.__stdout__):
+        if isinstance(handler, logging.StreamHandler) and stream in (
+            sys.stdout,
+            sys.__stdout__,
+        ):
             handler.setStream(sys.stderr)
 
     root = logging.getLogger()
@@ -132,9 +200,18 @@ def main() -> int:
         # (matches _require_sdk's `raise ... from exc` pattern).
         raise RuntimeError(_SDK_HINT) from exc
 
-    # Scrub stdout (belt-and-suspenders; the sagemaker root-cause fix is in cursus/__init__.py)
-    # then build + run the server.
-    server = build_server()
+    # Build the server with stdout redirected to stderr, so any import-time write (a
+    # StreamHandler logging during the heavy tool-module imports) can't corrupt the
+    # JSON-RPC stream before the handlers are repointed. Then install the runtime guard.
+    import contextlib
+    import sys
+
+    # Confine filesystem-writing tools (e.g. project.init, when enabled) to the server's
+    # working directory unless the operator picked an explicit root.
+    os.environ.setdefault("CURSUS_MCP_PROJECT_ROOT", os.getcwd())
+
+    with contextlib.redirect_stdout(sys.stderr):
+        server = build_server()
     _protect_stdout_for_stdio()
 
     async def _run() -> None:

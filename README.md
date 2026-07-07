@@ -112,7 +112,7 @@ See the [Quickstart guide](https://cursus.readthedocs.io/en/latest/getting_start
 - **📦 A pre-built pipeline catalog** — 44 ready-to-use DAGs across XGBoost, PyTorch, LightGBM, Bedrock and more, discoverable by framework, task type, and complexity.
 - **🧩 Extensible via step packs** — define your own steps in a folder *outside* the installed package and Cursus discovers them as native, strictly additively (built-in steps are never removed).
 - **🛡️ Built-in validation** — DAG↔config alignment, interface conformance, and dependency resolution are checked before you deploy (`cursus validate`, `cursus alignment`, `--validate-only`).
-- **🤖 Agent-ready (MCP)** — a framework-neutral, self-documenting tool surface of **70 JSON-in/JSON-out tools** across 12 namespaces mirrors the CLI/API for LLM agents. `pip install "cursus[mcp]"`, then `cursus-mcp` (or `python -m cursus.mcp.server` / `cursus mcp serve`); `cursus mcp help` to inspect the tools.
+- **🤖 Agent-ready (MCP)** — a framework-neutral, self-documenting tool surface of **70 JSON-in/JSON-out tools** across 12 namespaces mirrors the CLI/API for LLM agents. `pip install "cursus[mcp]"`, then wire `cursus-mcp` into any MCP host (Claude Desktop, Cursor, Kiro). **Read-only by default** — state-changing tools are opt-in via env vars — with per-tool safety annotations. See the [MCP server guide](src/cursus/mcp/README.md); `cursus mcp help` to inspect the tools.
 
 ---
 

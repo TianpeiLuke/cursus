@@ -59,10 +59,25 @@ class ToolDef:
     tags: tuple = ()
     when: str = ""
     examples: tuple = ()
+    # --- Public-server safety markers (drive gating + MCP tool annotations) ---
+    writes: bool = False  # writes to the local filesystem
+    exec_code: bool = False  # runs arbitrary code / installs packages
+    network: bool = False  # reaches the network / AWS (open-world)
 
     @property
     def namespace(self) -> str:
         return self.name.split(".", 1)[0]
+
+    @property
+    def wire_name(self) -> str:
+        """The on-the-wire tool name for MCP hosts (dotted ``.`` -> ``__``).
+
+        Host tool-calling APIs (Anthropic ``^[a-zA-Z0-9_-]{1,128}$``, OpenAI
+        ``^[a-zA-Z0-9_-]+$``) reject the ``.`` in the internal dotted names, so every
+        externally-exposed name uses ``__`` instead. It round-trips unambiguously — no
+        tool or namespace name contains a literal ``__`` — via :func:`get_tool`.
+        """
+        return self.name.replace(".", "__")
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +245,12 @@ def list_tools(namespace: Optional[str] = None) -> List[ToolDef]:
 
 
 def get_tool(name: str) -> Optional[ToolDef]:
-    return get_registry().get(name)
+    """Look up a tool by its internal dotted name OR its on-the-wire ``__`` name."""
+    reg = get_registry()
+    td = reg.get(name)
+    if td is None and "__" in name:
+        td = reg.get(name.replace("__", "."))
+    return td
 
 
 # ---------------------------------------------------------------------------
@@ -346,7 +366,7 @@ def export_openai_tools(namespace: Optional[str] = None) -> List[Dict[str, Any]]
     out: List[Dict[str, Any]] = []
     for td in list_tools(namespace):
         fn: Dict[str, Any] = {
-            "name": td.name,
+            "name": td.wire_name,  # host APIs reject the dotted internal name
             "description": render_description(td),
             "parameters": td.schema,
         }
@@ -366,7 +386,7 @@ def export_mcp_tools(namespace: Optional[str] = None) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for td in list_tools(namespace):
         entry: Dict[str, Any] = {
-            "name": td.name,
+            "name": td.wire_name,  # host APIs reject the dotted internal name
             "description": render_description(td),
             "inputSchema": td.schema,
         }

@@ -448,6 +448,7 @@ TOOLS: List[ToolDef] = [
             "additionalProperties": False,
         },
         handler=_serialize,
+        writes=True,  # writes JSON to 'path' when provided
         tags=("planner",),
         when=(
             "Call this to persist a DAG to a JSON file (pass 'path') or to get its JSON "

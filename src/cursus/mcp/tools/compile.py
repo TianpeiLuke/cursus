@@ -359,6 +359,7 @@ TOOLS: List[ToolDef] = [
         },
         handler=_dag,
         destructive=True,  # the optional upsert path mutates SageMaker state
+        network=True,  # upsert/start reach AWS SageMaker
         tags=("programmer",),
         when="Call this once validation/preview look good to build the SageMaker pipeline definition; only set upsert=true when you intend to push it to SageMaker.",
         examples=(

@@ -131,7 +131,9 @@ docs = [
 # pulls the MCP SDK. Install `cursus[mcp]`, then run `cursus mcp serve` or
 # `python -m cursus.mcp.server` (or the `cursus-mcp` console script).
 mcp = [
-    "mcp>=1.0.0",
+    # >=1.2.0: the Server(name, version=...) kwarg used by cursus.mcp.server was added in
+    # mcp 1.2.0 (1.0.x/1.1.x raise TypeError). <2: the low-level Server API is 1.x-only.
+    "mcp>=1.2.0,<2",
     "anyio>=4.0.0",
 ]
 # Full installation (all user-facing optional dependencies)

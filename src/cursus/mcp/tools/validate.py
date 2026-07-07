@@ -581,8 +581,10 @@ TOOLS: List[ToolDef] = [
         name="validate.run_scripts",
         description=(
             "Execute a DAG's step scripts locally against a pipeline config file and return "
-            "per-script success/error and execution order. Heavy: it imports and runs each "
-            "script (and may pip-install their imports). Non-destructive — runs locally only."
+            "per-script success/error and execution order. Heavy and SIDE-EFFECTING: it "
+            "imports and RUNS each step script as local code and may pip-install their "
+            "imports, so it can read/write local files and reach the network. On a public "
+            "MCP server it is disabled unless CURSUS_MCP_ALLOW_SCRIPT_EXEC=1."
         ),
         schema={
             "type": "object",
@@ -622,6 +624,8 @@ TOOLS: List[ToolDef] = [
             "additionalProperties": False,
         },
         handler=_run_scripts,
+        exec_code=True,  # imports + runs step scripts as local code
+        network=True,  # may pip-install imports
         tags=("validator",),
         when=(
             "Call this to actually run a DAG's step scripts locally against a config file "

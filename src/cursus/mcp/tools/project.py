@@ -536,7 +536,44 @@ def _init(args: Dict[str, Any]) -> ToolResult:
     overwrite = bool(args.get("overwrite", False))
 
     project = f"{name}_{framework}"
+
+    # --- Public-server hardening: confine the scaffold to a safe base directory ---
+    # 'name' must be a bare identifier, and 'target_dir' must not traverse upward or
+    # resolve outside the project root (the cwd by default; override with
+    # CURSUS_MCP_PROJECT_ROOT). This blocks the absolute-target_dir and '..'-in-name
+    # write-escape verified in review (an arbitrary-file-write primitive under an LLM).
+    import os
+
+    # 'name' is a folder identifier, never a path; 'target_dir' must not traverse upward.
+    if os.sep in name or (os.altsep and os.altsep in name) or name in (".", ".."):
+        raise ToolError(
+            "'name' must be a bare project name (no path separators or '..')",
+            code="invalid_input",
+            details={"got": name},
+        )
+    if ".." in Path(target_dir).parts:
+        raise ToolError(
+            "'target_dir' must not contain '..'",
+            code="invalid_input",
+            details={"got": target_dir},
+        )
+
     root = Path(target_dir) / project
+    # When a confinement root is set (the MCP server sets CURSUS_MCP_PROJECT_ROOT to its
+    # working dir), every write is forced to stay within it, so an LLM-supplied target_dir
+    # cannot escape onto the wider filesystem. Trusted in-process / CLI callers that don't
+    # set it keep the original behavior (they may target an absolute path they chose).
+    confine = os.environ.get("CURSUS_MCP_PROJECT_ROOT")
+    if confine:
+        base = Path(confine).resolve()
+        root = (base / target_dir / project).resolve()
+        if not root.is_relative_to(base):
+            raise ToolError(
+                f"refusing to write outside the confined project root {base}: "
+                "'target_dir' resolves outside it",
+                code="invalid_input",
+                details={"resolved_target": str(root), "base": str(base)},
+            )
     pascal_class = _pascal(name) + "Pipeline"
     # Import prefix: the vendored BAMT copy vs the AmazonCursus dev package.
     prefix = (
@@ -725,6 +762,7 @@ TOOLS: List[ToolDef] = [
         },
         handler=_init,
         destructive=True,  # creates a new folder tree on disk
+        writes=True,  # writes a scaffold to the local filesystem
         tags=("planner",),
         when=(
             "Call at the very start of a new pipeline project, before any DAG or config exists, "

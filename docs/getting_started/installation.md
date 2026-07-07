@@ -55,13 +55,29 @@ cursus mcp serve                   # equivalent via the CLI
 cursus mcp help                    # inspect the tools without starting the server
 ```
 
-Point your MCP client at any of the three launch commands (all stdio). Example client config:
+Point your MCP host at `cursus-mcp`. **Use the absolute path** (`which cursus-mcp`) — GUI
+hosts like Claude Desktop and Cursor don't inherit your shell `PATH`, so a bare
+`"cursus-mcp"` usually fails with `ENOENT` — and pass any needed AWS env explicitly, since
+hosts don't inherit your shell env either:
 
 ```json
-{"mcpServers": {"cursus": {"command": "cursus-mcp", "transportType": "stdio"}}}
+{
+  "mcpServers": {
+    "cursus": {
+      "command": "/absolute/path/to/cursus-mcp",
+      "args": [],
+      "env": { "AWS_PROFILE": "default", "AWS_REGION": "us-east-1" }
+    }
+  }
+}
 ```
 
-See the [MCP Tool Reference](../reference/generated/mcp_tools.md) for the full toolset.
+The server is **read-only by default**; opt into state-changing tools with
+`CURSUS_MCP_ENABLE_DESTRUCTIVE=1` (filesystem writes + AWS upserts) or
+`CURSUS_MCP_ALLOW_SCRIPT_EXEC=1` (running step scripts) in that `env` block. Per-host config
+locations, the safety matrix, and troubleshooting are in the
+[MCP server README](https://github.com/TianpeiLuke/cursus/blob/main/src/cursus/mcp/README.md);
+the [MCP Tool Reference](../reference/generated/mcp_tools.md) lists the full toolset.
 
 ## AWS setup
 

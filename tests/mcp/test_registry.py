@@ -193,35 +193,37 @@ class TestCallToolErrorHandling:
 
 class TestExporters:
     def test_openai_shape_and_tags(self, fake_registry):
+        # Exporters emit the on-the-wire name (dots -> '__') so host tool-calling APIs accept it.
         tools = export_openai_tools()
-        ok = next(t for t in tools if t["function"]["name"] == "demo.ok")
+        ok = next(t for t in tools if t["function"]["name"] == "demo__ok")
         assert ok["type"] == "function"
         assert "parameters" in ok["function"]
         assert ok["function"]["metadata"]["tags"] == ["planner"]
         # a tool with no tags carries no metadata key
-        crash = next(t for t in tools if t["function"]["name"] == "demo.crash")
+        crash = next(t for t in tools if t["function"]["name"] == "demo__crash")
         assert "metadata" not in crash["function"]
 
     def test_mcp_shape_and_tags(self, fake_registry):
         tools = export_mcp_tools()
-        ok = next(t for t in tools if t["name"] == "demo.ok")
+        ok = next(t for t in tools if t["name"] == "demo__ok")
         assert "inputSchema" in ok
         assert ok["tags"] == ["planner"]
-        crash = next(t for t in tools if t["name"] == "demo.crash")
+        crash = next(t for t in tools if t["name"] == "demo__crash")
         assert "tags" not in crash
 
     def test_namespace_filter(self, fake_registry):
         names = {t["name"] for t in export_mcp_tools(namespace="demo")}
-        assert names == set(FAKE_TOOLS)
+        assert names == {n.replace(".", "__") for n in FAKE_TOOLS}
 
     def test_exporters_fold_when_and_examples_into_description(self, fake_registry):
         # External clients only get a description string — when/examples must be folded in.
         oai = next(
-            t for t in export_openai_tools() if t["function"]["name"] == "demo.rich"
+            t for t in export_openai_tools() if t["function"]["name"] == "demo__rich"
         )
         assert "When:" in oai["function"]["description"]
         assert "Examples:" in oai["function"]["description"]
-        mcp = next(t for t in export_mcp_tools() if t["name"] == "demo.rich")
+        mcp = next(t for t in export_mcp_tools() if t["name"] == "demo__rich")
+        # Examples stay human-readable with the dotted name (the callable name is demo__rich).
         assert 'demo.rich {"x": "y"}' in mcp["description"]
 
 
