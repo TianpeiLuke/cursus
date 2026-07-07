@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.8.5] - 2026-07-06
+
+Robustness: keep `stdout` clean **at import time** so the stdio MCP server can't be corrupted by import-time logging, without any external wrapper.
+
+### Fixed
+
+- **Import-time stdout guard** (`cursus/__init__.py`). Raising the `sagemaker.config` logger to WARNING before the core import (2.8.3) is enough in most environments, but on a host where a `StreamHandler` bound to `stdout` is already attached before that line runs, `sagemaker.config INFO` lines still reach `stdout` during `import cursus` and corrupt a stdio JSON-RPC stream. The sagemaker-pulling `core.compiler` import now additionally runs inside a `redirect_stdout(sys.stderr)` guard, so **any** import-time byte (a pre-attached stdout handler, a warning, a stray print) lands on `stderr` and can never corrupt a stdout protocol stream. Set `CURSUS_KEEP_IMPORT_STDOUT=1` to opt out; graceful-degradation on a missing dependency is preserved (a real `ImportError` still propagates).
+
 ## [2.8.4] - 2026-07-06
 
 Make the MCP server production-ready for **public** use. A public-readiness review found the

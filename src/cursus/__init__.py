@@ -35,13 +35,31 @@ Advanced Usage:
 # to *stdout* and logs INFO lines ("Not applying SDK defaults from location: ...config.yaml").
 # Anything that frames a protocol on stdout — notably the stdio MCP server
 # (``python -m cursus.mcp.server`` / ``cursus mcp serve``), or any `... | jq`/subprocess-captured
-# use — then chokes on those non-JSON lines ("Failed to parse JSONRPC message"). Raising just
-# that one logger's level to WARNING before sagemaker is imported drops the noise at the source
-# while leaving every other sagemaker logger untouched. Consumers who want it back can lower it
-# after importing cursus.
+# use — then chokes on those non-JSON lines ("Failed to parse JSONRPC message").
+#
+# Two layers of defense (the second makes an external wrapper script unnecessary, incl. on hosts
+# where a stdout ``StreamHandler`` is already attached before this line runs):
+#   1. Raise ``sagemaker.config`` to WARNING before sagemaker is imported — drops the noise at
+#      the source while leaving every other sagemaker logger untouched.
+#   2. Hard-redirect stdout -> stderr for the duration of the sagemaker-pulling core import, so
+#      ANY import-time byte (a pre-attached stdout handler, a warning, a stray print) lands on
+#      stderr and can never corrupt a stdout JSON-RPC stream. Set ``CURSUS_KEEP_IMPORT_STDOUT=1``
+#      to opt out.
+# Consumers who want the sagemaker.config logger back can lower it after importing cursus.
 import logging as _logging
 
 _logging.getLogger("sagemaker.config").setLevel(_logging.WARNING)
+
+
+def _import_stdout_guard():
+    """Context manager that sends stdout to stderr during import (opt-out via env)."""
+    import contextlib
+    import os as _os
+    import sys as _sys
+
+    if _os.environ.get("CURSUS_KEEP_IMPORT_STDOUT"):
+        return contextlib.nullcontext()
+    return contextlib.redirect_stdout(_sys.stderr)
 
 
 # Package metadata — pyproject.toml is the single source of truth.
@@ -84,13 +102,16 @@ def _resolve_metadata():
 __title__, __version__, __description__, __author__ = _resolve_metadata()
 
 # Core API exports - main user interface
+# The core.compiler import is what transitively pulls in sagemaker (the stdout emitter), so it
+# runs under the import-stdout guard. A real ImportError still propagates and degrades below.
 try:
-    from .core.compiler import (
-        DynamicPipelineTemplate,
-        PipelineDAGCompiler,
-        compile_dag_to_pipeline,
-    )
-    from .core.compiler import compile_dag_to_pipeline as compile_dag
+    with _import_stdout_guard():
+        from .core.compiler import (
+            DynamicPipelineTemplate,
+            PipelineDAGCompiler,
+            compile_dag_to_pipeline,
+        )
+        from .core.compiler import compile_dag_to_pipeline as compile_dag
 except ImportError as e:
     # Graceful degradation if dependencies are missing
     import warnings
