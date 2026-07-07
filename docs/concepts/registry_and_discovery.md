@@ -14,11 +14,6 @@ PascalCase canonical names and snake_case file stems round-trip, the health sign
 surface a degraded registry, and the separate **strategy registry** that maps a step to its
 builder handler.
 
-```{contents}
-:local:
-:depth: 2
-```
-
 ## The shape of a registry row
 
 Every step in the registry is one row keyed by its **canonical name** (PascalCase). The row

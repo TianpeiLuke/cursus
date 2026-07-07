@@ -16,11 +16,6 @@ Both read the same underlying engine — the unified
 CLI and the agent can never disagree about what a step actually does. This guide pairs
 each command with its tool equivalent so you can move between the two freely.
 
-```{contents}
-:local:
-:depth: 2
-```
-
 ## The five discovery surfaces at a glance
 
 | CLI group | MCP namespace | What it answers |

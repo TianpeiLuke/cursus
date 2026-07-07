@@ -11,11 +11,6 @@ Cursus's declarative step model, the interface *is* the registration. Writing th
 from a shared facade. Three files in, and your step is discoverable, buildable, and
 wireable into any DAG.
 
-```{contents} On this page
-:local:
-:depth: 2
-```
-
 ## What a step is made of
 
 A Cursus step is authored as exactly **three files**, all sharing one snake_case

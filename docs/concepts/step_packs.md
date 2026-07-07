@@ -18,11 +18,6 @@ If you are new to how cursus turns a DAG into a pipeline, read
 [Registry and discovery](../concepts/registry_and_discovery.md) first — step packs plug into
 exactly those two subsystems.
 
-```{contents}
-:local:
-:depth: 2
-```
-
 ## The shape of a pack
 
 A pack mirrors the layout the package itself uses. It is a directory containing three

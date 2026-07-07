@@ -13,11 +13,6 @@ envelope every tool returns, the 12 tool namespaces, the self-documenting `help`
 the optional MCP server adapter and its exporters, and the shipped dynamic-workflow
 orchestrators plus the Kiro runtime that runs them.
 
-```{contents}
-:local:
-:depth: 2
-```
-
 ## Why a tool surface
 
 An agent cannot import Python modules, read tracebacks, or hold a live `PipelineDAG`

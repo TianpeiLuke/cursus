@@ -21,11 +21,6 @@ Because all three read one registry, the CLI, the in-process API, and the MCP se
 never drift apart — and the surface is **self-documenting**: one tool describes all the
 others.
 
-```{contents}
-:local:
-:depth: 2
-```
-
 ## The shape of a tool
 
 Every tool is declared once as a `ToolDef` (see `cursus.mcp.registry`):

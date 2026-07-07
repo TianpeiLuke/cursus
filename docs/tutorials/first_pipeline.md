@@ -16,11 +16,6 @@ By the end you will understand the two input artifacts (a **DAG JSON** and a
 builder, how to read the **compilation report**, and how to (optionally) deploy the
 compiled pipeline to SageMaker.
 
-```{contents}
-:local:
-:depth: 2
-```
-
 ## What "compile" actually means
 
 Cursus separates *structure* from *configuration*:
