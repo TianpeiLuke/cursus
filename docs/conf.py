@@ -18,6 +18,49 @@ import sys
 sys.path.insert(0, os.path.abspath("../src"))
 sys.path.insert(0, os.path.abspath("_ext"))
 
+# -- Neutralize import-time package installs during the docs build -----------
+# Several runnable step scripts (``cursus.steps.scripts.*``) call ``install_packages(...)``
+# at *module import* time — they are SageMaker container entry points, not library code.
+# When autodoc imports them to document them, that fires a real ``pip install`` subprocess
+# which tries to *compile* packages (freetype/matplotlib, ...), adding minutes to the build
+# and pushing it past Read the Docs' 900s build-time limit (the cause of flaky RTD timeouts).
+# Skip only pip-install subprocesses for the docs build; everything else passes through.
+import subprocess as _subprocess  # noqa: E402
+
+_orig_check_call, _orig_call, _orig_run = (
+    _subprocess.check_call,
+    _subprocess.call,
+    _subprocess.run,
+)
+
+
+def _is_pip_install(cmd):
+    if not isinstance(cmd, (list, tuple)):
+        return False
+    parts = [str(x) for x in cmd]
+    return "install" in parts and any("pip" in p for p in parts)
+
+
+def _skip_check_call(cmd, *a, **k):
+    return 0 if _is_pip_install(cmd) else _orig_check_call(cmd, *a, **k)
+
+
+def _skip_call(cmd, *a, **k):
+    return 0 if _is_pip_install(cmd) else _orig_call(cmd, *a, **k)
+
+
+def _skip_run(cmd, *a, **k):
+    return (
+        _subprocess.CompletedProcess(cmd, 0, "", "")
+        if _is_pip_install(cmd)
+        else _orig_run(cmd, *a, **k)
+    )
+
+
+_subprocess.check_call = _skip_check_call
+_subprocess.call = _skip_call
+_subprocess.run = _skip_run
+
 # -- Version (single source of truth: the installed package) -----------------
 try:
     import cursus
