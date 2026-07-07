@@ -59,7 +59,7 @@ Object-form construction for Processing/Training/Transform/CreateModel is DEPREC
 
 **Why CI missed it:** the unit tests mock `ProcessingStep`, so `__init__` never ran the XOR check. It failed only at real pipeline execution in SAIS (FZ `31e1d3j2`).
 
-**The fix (commit `47bfc035`, AmazonCursus mainline):** `processor` was removed from `common`. The `common` dict now holds only `name` / `depends_on` / `cache_config` (lines 405-409). The 2B branch passes `step_args` ONLY — `ProcessingStep(step_args=step_args, **common)` (line 433). The 2A branch passes the processor explicitly — `ProcessingStep(processor=processor, inputs=..., outputs=..., code=..., job_arguments=..., **common)` (lines 436-443). The XOR rationale is documented inline at lines 399-404.
+**The fix (commit `47bfc035`, upstream mainline):** `processor` was removed from `common`. The `common` dict now holds only `name` / `depends_on` / `cache_config` (lines 405-409). The 2B branch passes `step_args` ONLY — `ProcessingStep(step_args=step_args, **common)` (line 433). The 2A branch passes the processor explicitly — `ProcessingStep(processor=processor, inputs=..., outputs=..., code=..., job_arguments=..., **common)` (lines 436-443). The XOR rationale is documented inline at lines 399-404.
 
 ## Injection Allowlist
 

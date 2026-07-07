@@ -2,7 +2,7 @@
 Discover and summarize Cursus pipeline *projects* under a root directory.
 
 A "pipeline project" here is a deployable Cursus pipeline directory — e.g. the
-``projects/*`` folders under the AmazonCursus root (``atoz_xgboost``,
+``projects/*`` folders under the Cursus dev root (``atoz_xgboost``,
 ``rnr_pytorch_bedrock``, ...) or the per-pipeline folders under a consumer repo such
 as BuyerAbuseModsTemplate. Such a project is recognized by a configuration directory
 (``pipeline_config`` or ``pipeline_configs``) holding one or more config JSON files,

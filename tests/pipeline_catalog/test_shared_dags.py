@@ -163,7 +163,7 @@ class TestSharedDagResolvability:
     # DAGs whose nodes are NOT fully routable in THIS package, with the reason. Kept explicit so
     # the gap is visible and any NEW unroutable DAG fails the test loudly. Currently EMPTY: every
     # catalogued DAG fully routes. (bedrock_batch_sopa was the sole exception until SOPAInstructionTuning
-    # was synced into amzn-cursus — the companion stale-guard test below is what flagged it as
+    # was synced into upstream — the companion stale-guard test below is what flagged it as
     # now-routable, so it was removed.)
     KNOWN_UNROUTABLE: set = set()
 

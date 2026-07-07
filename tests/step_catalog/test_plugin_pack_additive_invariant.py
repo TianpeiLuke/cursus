@@ -1,7 +1,7 @@
 """
 Regression tests for the plugin step-pack ADDITIVE INVARIANT (FZ 18g3h2e2).
 
-The hard requirement: the internal steps under amzn-cursus are ALWAYS available — a consumer's
+The hard requirement: the internal steps under upstream are ALWAYS available — a consumer's
 external step pack is a strictly ADDITIVE overlay. A pack can only ADD steps (and, on a
 deliberate name-clash, shadow with a warning); it can NEVER remove or replace a package step,
 and with no pack the registry/catalog is byte-identical to package-only.

@@ -9,7 +9,7 @@ on demand into a SageMaker `Pipeline` by the single `PipelineDAGCompiler`. A sma
 > (one `pipelines/<name>.py` class per pipeline, a parallel `mods_api.py` MODS
 > layer, and a Zettelkasten "connection graph / recommendation engine" discovery
 > layer) into the DAG-store design below. The companion change is the
-> [StepInterface migration](https://code.amazon.com/packages/AmazonCursus) that
+> [StepInterface migration](https://github.com/TianpeiLuke/cursus) that
 > unified each step's contract+spec into one `.step.yaml`. Together they make the
 > whole pipeline-definition layer data-driven.
 

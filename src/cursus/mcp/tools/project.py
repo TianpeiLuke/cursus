@@ -575,7 +575,7 @@ def _init(args: Dict[str, Any]) -> ToolResult:
                 details={"resolved_target": str(root), "base": str(base)},
             )
     pascal_class = _pascal(name) + "Pipeline"
-    # Import prefix: the vendored BAMT copy vs the AmazonCursus dev package.
+    # Import prefix: the vendored BAMT copy vs the Cursus dev package.
     prefix = (
         "buyer_abuse_mods_template.cursus"
         if "buyer_abuse_mods_template" in target_dir
@@ -750,7 +750,7 @@ TOOLS: List[ToolDef] = [
                 },
                 "target_dir": {
                     "type": "string",
-                    "description": "Directory to create <name>_<framework>/ under. Default 'projects' (AmazonCursus dev); pass 'src/buyer_abuse_mods_template' for a BAMT deploy (also sets the import prefix).",
+                    "description": "Directory to create <name>_<framework>/ under. Default 'projects' (dev); pass 'src/buyer_abuse_mods_template' for a BAMT deploy (also sets the import prefix).",
                 },
                 "overwrite": {
                     "type": "boolean",

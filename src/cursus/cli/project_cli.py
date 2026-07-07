@@ -3,7 +3,7 @@ CLI command for discovering and inspecting Cursus pipeline projects.
 
 The ``cursus projects`` command group answers "what pipeline projects exist under this
 root, and what does each contain?" — for the ``projects/*`` folders under the
-AmazonCursus root, or the per-pipeline folders under a consumer repo such as
+Cursus dev root, or the per-pipeline folders under a consumer repo such as
 BuyerAbuseModsTemplate.
 
 A pipeline project is the standard deployable Cursus layout: a configuration directory

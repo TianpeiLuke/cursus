@@ -80,7 +80,7 @@ Public MCP server: installable extra + two stdio-server fixes.
 
 ## [2.8.0] - 2026-07-05
 
-Ported from amzn-cursus 2.7.0 — plugin step-pack discovery. A consumer can define its own steps (`interfaces/*.step.yaml` + `configs/` + `scripts/`) in a folder OUTSIDE the pip-installed package and have cursus discover them as NATIVE — no fork, no vendored copy, no package edit. Strictly ADDITIVE: the internal steps are ALWAYS available; a pack can only add steps (shadow-with-warning on clash), never remove or replace one. Reuses the caller hook as the discovery anchor. Backward-compatible; with no pack the registry/catalog are byte-identical to package-only.
+Ported from upstream 2.7.0 — plugin step-pack discovery. A consumer can define its own steps (`interfaces/*.step.yaml` + `configs/` + `scripts/`) in a folder OUTSIDE the pip-installed package and have cursus discover them as NATIVE — no fork, no vendored copy, no package edit. Strictly ADDITIVE: the internal steps are ALWAYS available; a pack can only add steps (shadow-with-warning on clash), never remove or replace one. Reuses the caller hook as the discovery anchor. Backward-compatible; with no pack the registry/catalog are byte-identical to package-only.
 
 ### Added
 
@@ -92,7 +92,7 @@ Ported from amzn-cursus 2.7.0 — plugin step-pack discovery. A consumer can def
 
 ## [2.7.0] - 2026-07-05
 
-Ported from amzn-cursus 2.6.0 — `anchor_file=__file__` caller hook + a shared `resolve_anchor()` normalizer. A pipeline's entry module can register its project folder self-documentingly (`anchor_file=__file__`) instead of `project_root=Path(__file__).parent`, and the anchor is threaded through every entry point that resolves docker `source_dir`/`processing_source_dir` paths. Backward-compatible; additive only.
+Ported from upstream 2.6.0 — `anchor_file=__file__` caller hook + a shared `resolve_anchor()` normalizer. A pipeline's entry module can register its project folder self-documentingly (`anchor_file=__file__`) instead of `project_root=Path(__file__).parent`, and the anchor is threaded through every entry point that resolves docker `source_dir`/`processing_source_dir` paths. Backward-compatible; additive only.
 
 ### Added
 
@@ -105,7 +105,7 @@ Ported from amzn-cursus 2.6.0 — `anchor_file=__file__` caller hook + a shared 
 
 ## [2.6.0] - 2026-07-04
 
-Ported from amzn-cursus 2.5.0 — self-documenting MCP toolset. Backward-compatible; additive only.
+Ported from upstream 2.5.0 — self-documenting MCP toolset. Backward-compatible; additive only.
 
 ### Added
 
@@ -116,7 +116,7 @@ Ported from amzn-cursus 2.5.0 — self-documenting MCP toolset. Backward-compati
 
 ## [2.5.10] - 2026-07-04
 
-Ported from amzn-cursus 2.4.12.
+Ported from upstream 2.4.12.
 
 ### Fixed
 
@@ -124,7 +124,7 @@ Ported from amzn-cursus 2.4.12.
 
 ## [2.5.9] - 2026-07-04
 
-Ported from amzn-cursus 2.4.11 — config-resolver + DAGConfigFactory robustness (multi-pipeline validation campaign). Backward-compatible; no API removals.
+Ported from upstream 2.4.11 — config-resolver + DAGConfigFactory robustness (multi-pipeline validation campaign). Backward-compatible; no API removals.
 
 ### Fixed
 
@@ -139,7 +139,7 @@ Ported from amzn-cursus 2.4.11 — config-resolver + DAGConfigFactory robustness
 
 ## [2.5.8] - 2026-07-03
 
-Ported from amzn-cursus 2.4.9 + 2.4.10.
+Ported from upstream 2.4.9 + 2.4.10.
 
 ### Added
 
@@ -152,7 +152,7 @@ Ported from amzn-cursus 2.4.9 + 2.4.10.
 
 ## [2.5.7] - 2026-07-03
 
-Ported from amzn-cursus 2.4.8: add 2 temporal-split multi-task shared DAGs to the pipeline catalog.
+Ported from upstream 2.4.8: add 2 temporal-split multi-task shared DAGs to the pipeline catalog.
 
 ### Added
 
@@ -163,7 +163,7 @@ Ported from amzn-cursus 2.4.8: add 2 temporal-split multi-task shared DAGs to th
 
 ## [2.5.6] - 2026-07-03
 
-Ported from amzn-cursus 2.4.7: robust node→base step-name resolution + cross-DAG `compatible_sources` gap closure.
+Ported from upstream 2.4.7: robust node→base step-name resolution + cross-DAG `compatible_sources` gap closure.
 
 ### Changed
 
@@ -175,7 +175,7 @@ Ported from amzn-cursus 2.4.7: robust node→base step-name resolution + cross-D
 
 ## [2.5.5] - 2026-07-03
 
-Ported from amzn-cursus 2.4.5 + 2.4.6: config-resolver deep-dive Tranche 3 (allow-all job_types).
+Ported from upstream 2.4.5 + 2.4.6: config-resolver deep-dive Tranche 3 (allow-all job_types).
 
 ### Changed
 
@@ -190,7 +190,7 @@ Verified: complete `munged_address_pytorch` DAG resolves 15/15 + validates clean
 
 ## [2.5.4] - 2026-07-03
 
-Ported from amzn-cursus 2.4.4: test-suite + offline-collection hardening (test/fixture/conftest only — no `src` behavior change).
+Ported from upstream 2.4.4: test-suite + offline-collection hardening (test/fixture/conftest only — no `src` behavior change).
 
 ### Fixed
 
@@ -199,7 +199,7 @@ Ported from amzn-cursus 2.4.4: test-suite + offline-collection hardening (test/f
 
 ## [2.5.3] - 2026-07-03
 
-Ported from amzn-cursus 2.4.3: second tranche of the silent-misresolution deep dive + validation hardening.
+Ported from upstream 2.4.3: second tranche of the silent-misresolution deep dive + validation hardening.
 
 ### Fixed
 
@@ -210,11 +210,11 @@ Ported from amzn-cursus 2.4.3: second tranche of the silent-misresolution deep d
 - **Validation module flags misresolutions as errors**: `validate_dag_compatibility` records a `config_errors` entry (→ `is_valid=False`) for a node bound to a config of a different step type, accepts `metadata` so explicit `metadata.config_types` mappings are exempt, and consults `has_builder_provider` so routable SDK-delegation steps (CradleDataLoading/Registration) are no longer false-flagged as unresolvable offline. `compile()` honors an explicit `skip_validation`.
 - **`preview_resolution` consumers read the real `node_resolution` shape** (was `candidates[0]` → KeyError → empty preview).
 
-Verified against `munged_address_pytorch/dag_NA.json`: complete config resolves 15/15 and validates clean; a partial 3-config subset raises `ResolutionError` naming all 13 unsatisfiable nodes. The 5 corresponding test files are synced from amzn-cursus.
+Verified against `munged_address_pytorch/dag_NA.json`: complete config resolves 15/15 and validates clean; a partial 3-config subset raises `ResolutionError` naming all 13 unsatisfiable nodes. The 5 corresponding test files are synced from upstream.
 
 ## [2.5.2] - 2026-07-03
 
-Correctness bugfix (ported from amzn-cursus 2.4.2): the config resolver no longer silently compiles a wrong pipeline from an incomplete config.
+Correctness bugfix (ported from upstream 2.4.2): the config resolver no longer silently compiles a wrong pipeline from an incomplete config.
 
 ### Fixed
 
@@ -227,11 +227,11 @@ Verified against `munged_address_pytorch/dag_NA.json` (15 nodes): complete confi
 
 ## [2.5.1] - 2026-07-03
 
-Completes the 2.5.0 discovery migration to full parity with the internal `amzn-cursus` source, and fixes the compound-acronym / snake-case name-resolution drift the migration surfaced.
+Completes the 2.5.0 discovery migration to full parity with the internal `upstream` source, and fixes the compound-acronym / snake-case name-resolution drift the migration surfaced.
 
 ### Fixed
 
-- **`builder_discovery.py` collapsed to synthesis-only (940 → 420 lines).** The 2.5.0 tranche deleted `steps/builders/` but had left the old AST/file-scan `BuilderAutoDiscovery` in place (it still referenced the deleted directory; harmless only because scanning a missing dir returns empty). It is now the registry-interface synthesizer that `amzn-cursus` ships — no dead file-scan code.
+- **`builder_discovery.py` collapsed to synthesis-only (940 → 420 lines).** The 2.5.0 tranche deleted `steps/builders/` but had left the old AST/file-scan `BuilderAutoDiscovery` in place (it still referenced the deleted directory; harmless only because scanning a missing dir returns empty). It is now the registry-interface synthesizer that `upstream` ships — no dead file-scan code.
 - **Robust interface-derived step-name resolution.** `BuilderAutoDiscovery` builds a normalized (`canonical_key`) index of registry keys, and `_resolve_to_canonical_name_for_indexing` gains a `canonical_key` fallback, so a compound-acronym name resolves under any casing: `load_builder_class("XGBoostMTTraining")` and `("XgboostMtTraining")` return the same synthesized class, and a config/script discovered as `tsa_training` / `xgboost_mt_training` / `package` folds into its canonical registry row instead of creating a phantom duplicate index entry (index 67 → 57). The registry keys ARE the authored `.step.yaml` `step_type` values, so this needs no hand-maintained `COMPOUND_ACRONYMS` edit and can't drift.
 - **TSA configs standardized.** `config_tsa_model_eval_step.py` / `config_tsa_preprocessing_step.py` / `config_tsa_model_calibration_step.py` drop their module-level `load_step_interface(...)` + `get_script_contract()` override and inherit the Design-B contract-from-interface path from the base config (matching ModelCalibration / XGBoostModelEval / TabularPreprocessing); `TSAPreprocessingConfig.job_type` now defaults to `"training"`.
 
@@ -463,7 +463,7 @@ Post-1.8.0 step-catalog hardening, a new MCP tool, and two CLI bug fixes found w
 
 ### Fixed
 
-- **`cursus --version` crashed** with `RuntimeError: 'amzn-cursus' is not installed`. The CLI's `version_option` looked up the internal distribution name; the published distribution is `cursus`. Now looks up `cursus` (matching the 1.8.0 `__version__` fix), and the last `amzn-cursus` reference in the package (a comment) was removed — `cursus --version` now prints `cursus 1.8.0`.
+- **`cursus --version` crashed** with `RuntimeError: 'upstream' is not installed`. The CLI's `version_option` looked up the internal distribution name; the published distribution is `cursus`. Now looks up `cursus` (matching the 1.8.0 `__version__` fix), and the last `upstream` reference in the package (a comment) was removed — `cursus --version` now prints `cursus 1.8.0`.
 - **`cursus pipeline-catalog recommend --framework X` returned unrelated DAGs** (e.g. `--framework xgboost` surfaced bedrock/pytorch/dummy). `recommend_for_agent()` ignored framework, ranked, and truncated to top-5; `agent_tool` then post-filtered with an `... or results[:3]` fallback, so when the truncated set held no framework match it fell back to unrelated DAGs. `framework` is now a **hard filter inside `recommend_for_agent`, applied before scoring/truncation**, and the misleading fallback is gone. Also fixes the MCP `pipeline_catalog` recommend tool and the LLM `agent_tool`, which share that path. (The weak `test_recommend_framework_filter` that missed this was strengthened to assert every result matches the requested framework.)
 - **Compound-acronym name resolution.** A latent `contract_discovery` bug resolved `PyTorchTraining` → `py_torch_training`, silently breaking contract imports for compound-acronym step types (PyTorch, XGBoost, LightGBM). Fixed via the centralized `naming.py`.
 - **Hardened `step_name → .step.yaml` resolution** with a normalized fallback scan (`steps/interfaces/__init__.py`) so interface lookup tolerates naming variants.
@@ -519,7 +519,7 @@ This release completes the **specification-unification** and **agent-enablement*
 ### Fixed
 
 - **Packaged the runtime data files.** `tool.setuptools.package-data` used a non-recursive `cursus = ["*.yaml", "*.json", …]` glob that only matched the top-level package directory, so the new `steps/interfaces/*.step.yaml` (45), `pipeline_catalog/shared_dags/**/*.dag.json` (42) + `catalog_index.json`, and `registry/step_names.yaml` were **silently omitted from the wheel** — a clean `pip install cursus==1.8.0` would have failed at runtime the moment a builder called `load_step_interface()`. Switched to a per-sub-package `"*"` key and added a matching `recursive-include src/cursus *.yaml *.yml *.json` to `MANIFEST.in` so the data ships in both the wheel and the sdist. (New gap: these data files did not exist in 1.7.1.)
-- **`cursus.__version__` no longer resolves to `None` on the installed package.** `_resolve_metadata()` looked up `importlib.metadata.metadata("amzn-cursus")`, but the distribution published to PyPI is named **`cursus`**; that lookup failed and, with no `VERSION` file present in `site-packages`, `__version__` fell through to `None`. Now looks up `cursus`.
+- **`cursus.__version__` no longer resolves to `None` on the installed package.** `_resolve_metadata()` looked up `importlib.metadata.metadata("upstream")`, but the distribution published to PyPI is named **`cursus`**; that lookup failed and, with no `VERSION` file present in `site-packages`, `__version__` fell through to `None`. Now looks up `cursus`.
 
 ### Notes
 
@@ -602,7 +602,7 @@ This release completes the **specification-unification** and **agent-enablement*
 
 ### Fixed
 
-- **`cursus.__version__` regression** — the metadata block in `src/cursus/__init__.py` had been temporarily switched to look up `importlib.metadata.version("amzn-cursus")` with a hardcoded `"1.4.1"` fallback. On the public PyPI distribution (`name = "cursus"`) the lookup always raised, so `cursus.__version__` reported `"1.4.1"` for every installed user. Restored the prior `VERSION`-file + `importlib.metadata.metadata("cursus")` resolution so `__version__` tracks the actual installed/working-tree version.
+- **`cursus.__version__` regression** — the metadata block in `src/cursus/__init__.py` had been temporarily switched to look up `importlib.metadata.version("upstream")` with a hardcoded `"1.4.1"` fallback. On the public PyPI distribution (`name = "cursus"`) the lookup always raised, so `cursus.__version__` reported `"1.4.1"` for every installed user. Restored the prior `VERSION`-file + `importlib.metadata.metadata("cursus")` resolution so `__version__` tracks the actual installed/working-tree version.
 - **README install commands** — two `pip install cursus[xgboost]` references corrected to `cursus[gbm]` (the actual declared extra; `xgboost` is not an extra group). Users copy-pasting from the README got `WARNING: cursus does not provide the extra xgboost` and silently ended up without xgboost installed.
 
 ## [1.5.2] - 2026-05-14

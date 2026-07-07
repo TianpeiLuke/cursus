@@ -5,7 +5,7 @@
 **Source**: FZ 29d16 (DAG synthesis) + children (29d16a–h, 29d14b–g) from AmazonBuyerAbuseSlipboxAgent
 **Owner**: bjjin
 **Effort**: ~5-8 days (Tier C migration)
-**Project location**: `AmazonCursus/projects/munged_address_pytorch/`
+**Project location**: `projects/munged_address_pytorch/`
 
 ## Overview
 
@@ -139,7 +139,7 @@ CradleDataLoading_normal (parallel) ──────────────�
 #### Task 3.2: Configure EdxUploading_tagging
 **Ref**: FZ 29d16h (supersedes 29d16f)
 
-- [x] EdxUploading step created in AmazonCursus (FZ 18g3i) ✅ DONE
+- [x] EdxUploading step created in the dev repo (FZ 18g3i) ✅ DONE
 - [x] DAG updated: `EdxUploading_tagging` replaces `DataUploading_tagging` ✅ DONE
 - [x] Alignment verified: resolution score 1.00/1.00 (FZ 29d16g) ✅ DONE
 - [ ] Add to config_NA.json:

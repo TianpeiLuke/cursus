@@ -2,7 +2,7 @@
 
 Saved **Claude Code dynamic-workflow** scripts that orchestrate the cursus MCP tools into a
 deterministic, resumable, batch-capable sequence. They are shipped with the package (FZ 31e1d3f5a)
-so any consumer of `amzn-cursus` — not just this workspace — can drive the flow.
+so any consumer of `upstream` — not just this workspace — can drive the flow.
 
 These are JavaScript orchestration scripts for the Claude Code `Workflow` runtime (the
 `export const meta = {...}` header + the `agent()` / `parallel()` / `pipeline()` / `phase()`
@@ -154,7 +154,7 @@ args: { "project": "munged_address_pytorch", "region": "NA",
 ### Project folder layout
 
 A pipeline project is a self-contained folder with the **same relative layout** wherever it lives —
-`AmazonCursus/projects/<project>/` (dev) or `BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/<project>/`
+`projects/<project>/` (dev) or `BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/<project>/`
 (deployed). Canonical worked examples: `munged_address_pytorch`, `neat_spam_pytorch`.
 
 ```
@@ -228,7 +228,7 @@ args: { "name": "abuse_polygraph", "framework": "pytorch",
 ```
 
 `framework` is one of `xgboost` / `pytorch` / `lightgbmmt` / `bedrock`. `target_dir` defaults to `projects`
-(the AmazonCursus dev location); pass `src/buyer_abuse_mods_template` for a deploy, which also switches the
+(the Cursus dev location); pass `src/buyer_abuse_mods_template` for a deploy, which also switches the
 import prefix to `buyer_abuse_mods_template.cursus`.
 
 There is also a **deterministic, offline** MCP tool for the same scaffold — `project.init` (namespace
