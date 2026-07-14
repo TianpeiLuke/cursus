@@ -33,13 +33,13 @@ Environment Variables:
 Note: Multi-class multi-task calibration is not currently supported.
 """
 
-import os
 import json
-import sys
-
-from subprocess import check_call
-import boto3
 import logging
+import os
+import sys
+from subprocess import check_call
+
+import boto3
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -70,7 +70,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -83,7 +83,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         logger.info("Successfully retrieved secure PyPI access token")
@@ -124,7 +125,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [
@@ -211,18 +212,18 @@ install_packages(required_packages)
 
 print("***********************Package Installation Complete*********************")
 
-import logging
-import traceback
 import argparse
-from typing import Dict, List, Any, Optional, Tuple
+import logging
+import pickle as pkl
+import traceback
+from typing import Any, Dict, List, Optional, Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import pickle as pkl
-import matplotlib.pyplot as plt
+from sklearn.calibration import calibration_curve
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
-from sklearn.calibration import calibration_curve
 from sklearn.metrics import brier_score_loss, roc_auc_score
 
 # Import pygam for GAM implementation if available
@@ -744,9 +745,9 @@ def extract_and_load_nested_tarball_data(
     Raises:
         FileNotFoundError: If necessary tar.gz files or prediction data not found
     """
+    import shutil
     import tarfile
     import tempfile
-    import shutil
 
     input_dir = config.input_data_path
     log_section("NESTED TARBALL EXTRACTION")

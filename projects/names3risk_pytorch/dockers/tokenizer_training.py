@@ -11,14 +11,14 @@ References:
     - HuggingFace Tokenizers: https://github.com/huggingface/tokenizers
 """
 
-import os
-import json
 import argparse
+import json
 import logging
+import os
 import sys
 import traceback
 from pathlib import Path
-from typing import List, Dict, Optional, Callable
+from typing import Callable, Dict, List, Optional
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -31,6 +31,7 @@ USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "false").lower() == "true"
 
 # Logging setup for installation
 from subprocess import check_call
+
 import boto3
 
 
@@ -49,7 +50,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -62,7 +63,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         print("✓ Successfully retrieved secure PyPI access token")
@@ -103,7 +105,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [

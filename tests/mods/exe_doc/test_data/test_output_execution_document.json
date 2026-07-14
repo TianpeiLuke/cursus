@@ -295,7 +295,7 @@
           "legacy-score": "NUMERIC"
         },
         "source_model_region": "us-east-1",
-        "model_owner": "amzn1.abacus.team.djmdvixm5abr3p75c5ca",
+        "model_owner": "amzn1.abacus.team.EXAMPLETEAMID00000000",
         "model_registration_region": "NA",
         "source_model_environment_variable_map": {
           "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
@@ -304,7 +304,7 @@
           "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code"
         },
         "load_testing_info_map": {
-          "sample_payload_s3_bucket": "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
+          "sample_payload_s3_bucket": "example-team-share-bucket",
           "expected_tps": 2,
           "max_latency_in_millisecond": 800,
           "max_acceptable_error_rate": 0.2,

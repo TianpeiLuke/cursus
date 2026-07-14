@@ -10,21 +10,21 @@ Produces: projects/munged_address_pytorch/pipeline_config/config_NA.json
 import sys
 from pathlib import Path
 
-from cursus.api.factory.dag_config_factory import DAGConfigFactory
-from cursus.steps.configs.utils import merge_and_save_configs
-from cursus.steps.configs.config_cradle_data_loading_step import (
-    CradleJobSpecificationConfig,
-    DataSourcesSpecificationConfig,
-    DataSourceConfig,
-    MdsDataSourceConfig,
-    EdxDataSourceConfig,
-    AndesDataSourceConfig,
-    TransformSpecificationConfig,
-    JobSplitOptionsConfig,
-    OutputSpecificationConfig,
-)
-
 from munged_address_pytorch_na import create_munged_address_training_dag
+
+from cursus.api.factory.dag_config_factory import DAGConfigFactory
+from cursus.steps.configs.config_cradle_data_loading_step import (
+    AndesDataSourceConfig,
+    CradleJobSpecificationConfig,
+    DataSourceConfig,
+    DataSourcesSpecificationConfig,
+    EdxDataSourceConfig,
+    JobSplitOptionsConfig,
+    MdsDataSourceConfig,
+    OutputSpecificationConfig,
+    TransformSpecificationConfig,
+)
+from cursus.steps.configs.utils import merge_and_save_configs
 
 # ============================================================================
 # Shared Constants — EDX datasets (must match between producer and consumer)
@@ -56,8 +56,8 @@ for node, cls in config_map.items():
 # Step 3: Base Config (shared across all steps)
 # ============================================================================
 
-BUCKET = "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um"
-ROLE = "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1"
+BUCKET = "example-team-share-bucket"
+ROLE = "arn:aws:iam::123456789012:role/SandboxRole-example-us-east-1"
 
 factory.set_base_config(
     bucket=BUCKET,
@@ -65,7 +65,7 @@ factory.set_base_config(
     region="NA",
     aws_region="us-east-1",
     # author="bjjin",  # Production owner
-    author="lukexie",  # Testing — revert to bjjin before production
+    author="example-author",
     service_name="MungedAddressDetection",
     pipeline_version="1.0.0",
     model_class="pytorch",
@@ -327,7 +327,7 @@ factory.set_step_config(
     processing_entry_point="bedrock_processing.py",
     use_large_processing_instance=True,
     bedrock_primary_model_id="anthropic.claude-3-5-haiku-20241022-v1:0",
-    bedrock_inference_profile_arn="arn:aws:bedrock:us-east-1:601857636239:inference-profile/us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    bedrock_inference_profile_arn="arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-3-5-haiku-20241022-v1:0",
     bedrock_use_structured_output=True,
     bedrock_use_converse_api=False,
     bedrock_concurrency_mode="concurrent",
@@ -470,7 +470,7 @@ factory.set_step_config(
     inference_instance_type="ml.m5.2xlarge",
     model_domain="FORTRESS_RETAIL",
     model_objective="BRMungedAddressModel",
-    model_owner="amzn1.abacus.team.xkuchlojq7lt4nir5uma",
+    model_owner="amzn1.abacus.team.EXAMPLETEAMID00000002",
     source_model_inference_content_types=["application/json"],
     source_model_inference_response_types=["application/json"],
     source_model_inference_input_variable_list=[["saddr", "TEXT"]],

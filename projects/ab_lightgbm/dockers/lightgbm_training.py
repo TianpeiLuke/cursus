@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
+import logging
 import os
 import sys
-
 from subprocess import check_call
-import logging
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -37,7 +36,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -50,7 +49,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         logger.info("Successfully retrieved secure PyPI access token")
@@ -91,7 +91,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [
@@ -185,23 +185,22 @@ print("***********************Package Installation Complete*********************
 import argparse
 import json
 import logging
+import pickle as pkl
+import tarfile
 import traceback
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import pandas as pd
-import numpy as np
-import pickle as pkl
 import lightgbm as lgb  # Import LightGBM instead of XGBoost
-
-import tarfile
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from sklearn.metrics import (
-    roc_auc_score,
     average_precision_score,
     f1_score,
-    roc_curve,
     precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
 )
 
 
@@ -334,13 +333,14 @@ def get_effective_feature_columns(
     return selected_features, True
 
 
+from processing.categorical.dictionary_encoding_processor import (
+    DictionaryEncodingProcessor,
+)
+
 # -------------------------------------------------------------------------
 # Assuming the processor is in a directory that can be imported
 # -------------------------------------------------------------------------
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor
-from processing.categorical.dictionary_encoding_processor import (
-    DictionaryEncodingProcessor,
-)
 from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
@@ -383,11 +383,12 @@ def setup_logging() -> logging.Logger:
 # Initialize logger
 logger = setup_logging()
 
+from hyperparams.hyperparameters_lightgbm import LightGBMModelHyperparameters
+
 # -------------------------------------------------------------------------
 # Pydantic V2 model for all hyperparameters
 # -------------------------------------------------------------------------
 from pydantic import BaseModel, Field, model_validator
-from hyperparams.hyperparameters_lightgbm import LightGBMModelHyperparameters
 
 
 class LightGBMConfig(LightGBMModelHyperparameters):

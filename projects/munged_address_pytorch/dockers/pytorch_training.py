@@ -11,15 +11,14 @@ Output: /opt/ml/model/ (model.pth, model.onnx, tokenizer/, hyperparameters.json)
         /opt/ml/output/data/ (predictions, metrics, tensorboard)
 """
 
-import os
-import sys
+import argparse
 import json
 import logging
-import argparse
+import os
+import sys
 import traceback
-from typing import Dict
-
 from subprocess import check_call
+from typing import Dict
 
 # ============================================================================
 # PACKAGE INSTALLATION
@@ -40,7 +39,7 @@ def _get_secure_pypi_access_token() -> str:
     sts = boto3.client("sts", region_name="us-east-1")
     caller_identity = sts.get_caller_identity()
     assumed_role_object = sts.assume_role(
-        RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+        RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
         + caller_identity["Account"],
         RoleSessionName="SecurePypiReadRole",
     )
@@ -53,7 +52,8 @@ def _get_secure_pypi_access_token() -> str:
         region_name="us-west-2",
     )
     token = code_artifact_client.get_authorization_token(
-        domain="amazon", domainOwner="149122183214"
+        domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+        domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
     )["authorizationToken"]
     return token
 
@@ -76,7 +76,7 @@ def install_packages():
 
     if USE_SECURE_PYPI:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
         check_call(
             [
                 sys.executable,
@@ -110,17 +110,16 @@ else:
 # IMPORTS (after installation)
 # ============================================================================
 
+import lightning.pytorch as pl
 import numpy as np
 import pandas as pd
 import torch
+from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import lightning.pytorch as pl
-from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
-from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
-
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 # ============================================================================
 # DATASET
@@ -329,8 +328,10 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
     log_rank0(f"Loaded hyperparameters from {hparam_file}")
     log_rank0(f"Region: {region}")
     log_rank0(f"Model: {config.get('tokenizer')}, classes: {config.get('num_classes')}")
-    log_rank0(f"Training: epochs={config.get('max_epochs')}, lr={config.get('lr')}, "
-              f"batch={config.get('batch_size')}, fp16={config.get('fp16')}")
+    log_rank0(
+        f"Training: epochs={config.get('max_epochs')}, lr={config.get('lr')}, "
+        f"batch={config.get('batch_size')}, fp16={config.get('fp16')}"
+    )
 
     # Paths
     data_root = input_paths["input_path"]
@@ -352,9 +353,13 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
     val_df = load_split(find_data_file(os.path.join(data_root, "val")))
     test_df = load_split(find_data_file(os.path.join(data_root, "test")))
 
-    log_rank0(f"Data loaded — Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
+    log_rank0(
+        f"Data loaded — Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}"
+    )
     log_rank0(f"Columns: {list(train_df.columns)}")
-    log_rank0(f"Label distribution (train): {train_df[label_col].value_counts().to_dict()}")
+    log_rank0(
+        f"Label distribution (train): {train_df[label_col].value_counts().to_dict()}"
+    )
 
     # Tokenizer (rank 0 downloads, others use cache)
     log_rank0(f"Loading tokenizer: {config['tokenizer']}")
@@ -377,12 +382,16 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
     )
     val_loader = DataLoader(val_dataset, batch_size=batch_size * 2, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=batch_size * 2, num_workers=0)
-    log_rank0(f"DataLoaders: batch_size={batch_size}, "
-              f"train={len(train_loader)} batches, val={len(val_loader)}, test={len(test_loader)}")
+    log_rank0(
+        f"DataLoaders: batch_size={batch_size}, "
+        f"train={len(train_loader)} batches, val={len(val_loader)}, test={len(test_loader)}"
+    )
 
     # Model
     model = MungedAddressBERT(config)
-    log_rank0(f"Model initialized: MungedAddressBERT (class_weights={config.get('class_weights', [1.0, 1.0])})")
+    log_rank0(
+        f"Model initialized: MungedAddressBERT (class_weights={config.get('class_weights', [1.0, 1.0])})"
+    )
 
     # Trainer
     callbacks = [
@@ -397,10 +406,14 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
     gpu_count = torch.cuda.device_count() if torch.cuda.is_available() else 0
     log_rank0("=" * 70)
     log_rank0(f"Trainer setup: {gpu_count} GPU(s), accelerator=auto, devices=auto")
-    log_rank0(f"Precision: {'16-mixed' if config.get('fp16', True) else '32'}, "
-              f"gradient_clip={config.get('gradient_clip_val', 1.0)}")
-    log_rank0(f"Early stopping: metric={config.get('early_stop_metric', 'val/f1_score')}, "
-              f"patience={config.get('early_stop_patience', 2)}")
+    log_rank0(
+        f"Precision: {'16-mixed' if config.get('fp16', True) else '32'}, "
+        f"gradient_clip={config.get('gradient_clip_val', 1.0)}"
+    )
+    log_rank0(
+        f"Early stopping: metric={config.get('early_stop_metric', 'val/f1_score')}, "
+        f"patience={config.get('early_stop_patience', 2)}"
+    )
     if gpu_count > 1:
         log_rank0(f"Multi-GPU DDP: {gpu_count} GPUs (torchrun-managed)")
     elif gpu_count == 1:
@@ -424,7 +437,9 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
     # Train
     log_rank0("Starting training...")
     trainer.fit(model, train_loader, val_loader)
-    log_rank0(f"Training complete — best model: {trainer.checkpoint_callback.best_model_path}")
+    log_rank0(
+        f"Training complete — best model: {trainer.checkpoint_callback.best_model_path}"
+    )
     log_rank0(f"Best val/f1_score: {trainer.checkpoint_callback.best_model_score}")
 
     # Synchronize all ranks after training (required for DDP multi-GPU)
@@ -445,7 +460,9 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = model.to(device)
-        logger.info(f"Running inference on val ({len(val_df)}) and test ({len(test_df)}) sets...")
+        logger.info(
+            f"Running inference on val ({len(val_df)}) and test ({len(test_df)}) sets..."
+        )
         val_preds, val_labels = predict(model, val_loader, device)
         test_preds, test_labels = predict(model, test_loader, device)
 
@@ -459,7 +476,9 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
 
         logger.info("-" * 40)
         logger.info(f"Val  — AUC: {val_auc:.4f}, F1: {val_f1:.4f}")
-        logger.info(f"Test — AUC: {test_auc:.4f}, F1: {test_f1:.4f}, Acc: {test_acc:.4f}")
+        logger.info(
+            f"Test — AUC: {test_auc:.4f}, F1: {test_f1:.4f}, Acc: {test_acc:.4f}"
+        )
         logger.info("-" * 40)
 
         # ================================================================
@@ -554,7 +573,9 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
                 },
                 opset_version=14,
             )
-            logger.info(f"  model.onnx ({os.path.getsize(onnx_path) / 1024 / 1024:.1f} MB)")
+            logger.info(
+                f"  model.onnx ({os.path.getsize(onnx_path) / 1024 / 1024:.1f} MB)"
+            )
         except Exception as e:
             logger.warning(f"ONNX export failed (non-fatal): {e}")
 

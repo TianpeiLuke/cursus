@@ -120,7 +120,7 @@ None strictly required - all configuration via hyperparameters.json
 | `USE_SECURE_PYPI` | `"false"` | Use secure AWS CodeArtifact PyPI instead of public PyPI | Enterprise deployments requiring secure package sources for compliance |
 
 **Secure PyPI Configuration**:
-- When `USE_SECURE_PYPI=true`, script uses AWS CodeArtifact at `amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com`
+- When `USE_SECURE_PYPI=true`, script uses AWS CodeArtifact at `amazon-222222222222.d.codeartifact.us-west-2.amazonaws.com`
 - Automatically retrieves access token via AWS STS role assumption
 - Falls back to public PyPI if token retrieval fails
 - Reads package list from `requirements-secure.txt`

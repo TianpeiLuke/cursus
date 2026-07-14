@@ -1,14 +1,14 @@
-import os
 import json
-import traceback
-from io import StringIO, BytesIO
-from pathlib import Path
 import logging
-from typing import List, Union, Dict, Tuple, Optional, Any, TYPE_CHECKING
+import os
 import pickle as pkl
 import sys
 import time
+import traceback
 from contextlib import contextmanager
+from io import BytesIO, StringIO
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 # Type checking imports (not loaded at runtime)
 if TYPE_CHECKING:
@@ -26,6 +26,7 @@ USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "true").lower() == "true"
 
 # Logging setup for installation (uses logger configured below)
 from subprocess import check_call
+
 import boto3
 
 
@@ -44,7 +45,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -57,7 +58,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         print("✓ Successfully retrieved secure PyPI access token")
@@ -98,7 +100,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [
@@ -174,6 +176,7 @@ def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None
 
 import fcntl
 import hashlib
+
 import torch  # Import torch early to check CUDA availability
 
 
@@ -328,41 +331,38 @@ except Exception as e:
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader
-
-from transformers import AutoTokenizer
-from tokenizers import Tokenizer
-
-from processing.processors import (
-    Processor,
+from lightning_models.utils.dist_utils import get_rank, is_main_process
+from lightning_models.utils.pl_train import (
+    load_artifacts,
+    load_model,
+    load_onnx_model,
+    model_inference,
+    model_online_inference,
 )
-from processing.text.dialogue_processor import (
-    HTMLNormalizerProcessor,
-    EmojiRemoverProcessor,
-    TextNormalizationProcessor,
-    DialogueSplitterProcessor,
-    DialogueChunkerProcessor,
-)
-from processing.text.bert_tokenize_processor import BertTokenizeProcessor
 from processing.categorical.categorical_label_processor import CategoricalLabelProcessor
 from processing.categorical.multiclass_label_processor import MultiClassLabelProcessor
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from processing.dataloaders.pipeline_dataloader import build_collate_batch
+from processing.datasets.pipeline_datasets import PipelineDataset
 from processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
 )
 from processing.processor_registry import build_text_pipeline_from_steps
-from processing.datasets.pipeline_datasets import PipelineDataset
-from processing.dataloaders.pipeline_dataloader import build_collate_batch
-
-from lightning_models.utils.pl_train import (
-    model_inference,
-    model_online_inference,
-    load_model,
-    load_artifacts,
-    load_onnx_model,
+from processing.processors import (
+    Processor,
 )
-from lightning_models.utils.dist_utils import get_rank, is_main_process
+from processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from processing.text.dialogue_processor import (
+    DialogueChunkerProcessor,
+    DialogueSplitterProcessor,
+    EmojiRemoverProcessor,
+    HTMLNormalizerProcessor,
+    TextNormalizationProcessor,
+)
 from pydantic import BaseModel, Field, model_validator
+from tokenizers import Tokenizer
+from torch.utils.data import DataLoader
+from transformers import AutoTokenizer
 
 # =================== Logging Setup =================================
 logger = logging.getLogger(__name__)

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
+import logging
 import os
 import sys
-
 from subprocess import check_call
-import logging
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -26,7 +25,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -39,7 +38,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
         logger.info("Successfully retrieved secure PyPI access token")
         return token
@@ -66,7 +66,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
     logger.info(f"Packages: {packages}")
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
         check_call(
             [
                 sys.executable,
@@ -125,28 +125,29 @@ install_packages(required_packages)
 
 print("***********************Package Installation Complete*********************")
 
-import json
 import argparse
-import pandas as pd
-import numpy as np
+import json
 import pickle as pkl
-from pathlib import Path
-from sklearn.metrics import (
-    roc_auc_score,
-    average_precision_score,
-    precision_recall_curve,
-    roc_curve,
-    f1_score,
-)
-from scipy import stats
-from scipy.stats import pearsonr, spearmanr
-import lightgbm as lgb  # Import LightGBM instead of XGBoost
-import matplotlib.pyplot as plt
-import time
 import sys
 import tarfile
+import time
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple, Union
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import lightgbm as lgb  # Import LightGBM instead of XGBoost
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy import stats
+from scipy.stats import pearsonr, spearmanr
+from sklearn.metrics import (
+    average_precision_score,
+    f1_score,
+    precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
+)
 
 # Embedded processor classes to remove external dependencies
 
@@ -954,15 +955,15 @@ def compute_comparison_metrics(
                 "new_model_auc": new_auc,
                 "previous_model_auc": prev_auc,
                 "auc_delta": new_auc - prev_auc,
-                "auc_lift_percent": ((new_auc - prev_auc) / prev_auc) * 100
-                if prev_auc > 0
-                else 0,
+                "auc_lift_percent": (
+                    ((new_auc - prev_auc) / prev_auc) * 100 if prev_auc > 0 else 0
+                ),
                 "new_model_ap": new_ap,
                 "previous_model_ap": prev_ap,
                 "ap_delta": new_ap - prev_ap,
-                "ap_lift_percent": ((new_ap - prev_ap) / prev_ap) * 100
-                if prev_ap > 0
-                else 0,
+                "ap_lift_percent": (
+                    ((new_ap - prev_ap) / prev_ap) * 100 if prev_ap > 0 else 0
+                ),
             }
         )
 

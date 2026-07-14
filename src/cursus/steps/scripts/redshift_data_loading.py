@@ -36,7 +36,7 @@ def _get_codeartifact_index_url():
     sts = boto3.client("sts", region_name="us-east-1")
     caller_identity = sts.get_caller_identity()
     assumed_role_object = sts.assume_role(
-        RoleArn=f"arn:aws:iam::675292366480:role/SecurePyPIReadRole_{caller_identity['Account']}",
+        RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_{caller_identity['Account']}",
         RoleSessionName="SecurePypiReadRole",
     )
     credentials = assumed_role_object["Credentials"]
@@ -48,9 +48,10 @@ def _get_codeartifact_index_url():
         region_name="us-west-2",
     )
     token = code_artifact_client.get_authorization_token(
-        domain="amazon", domainOwner="149122183214"
+        domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+        domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
     )["authorizationToken"]
-    return f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+    return f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
 
 def _install_package(package_name):

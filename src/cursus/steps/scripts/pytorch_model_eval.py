@@ -14,21 +14,22 @@ Features:
 - Comparison mode support
 """
 
-import os
-import json
 import argparse
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Tuple, Union
-import sys
-import tarfile
-import logging
-from datetime import datetime
-import time
 import fcntl
 import hashlib
+import json
+import logging
+import os
+import sys
+import tarfile
 import tempfile
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+import pandas as pd
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -41,6 +42,7 @@ USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "false").lower() == "true"
 
 # Logging setup for installation (uses logger configured below)
 from subprocess import check_call
+
 import boto3
 
 
@@ -59,7 +61,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -72,7 +74,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         print("✓ Successfully retrieved secure PyPI access token")
@@ -113,7 +116,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [
@@ -217,14 +220,14 @@ except Exception as e:
 # IMPORT INSTALLED PACKAGES (AFTER INSTALLATION)
 # ============================================================================
 
+import warnings
+
 import torch
 import torch.distributed as dist
-from torch.utils.data import DataLoader
 from torch import nn
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-
 from transformers import AutoTokenizer
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -233,31 +236,31 @@ sys.path.insert(
     0, os.path.join(os.path.dirname(__file__), "../../../projects/bsm_pytorch/docker")
 )
 
-from ...processing.text.dialogue_processor import (
-    HTMLNormalizerProcessor,
-    EmojiRemoverProcessor,
-    TextNormalizationProcessor,
-    DialogueSplitterProcessor,
-    DialogueChunkerProcessor,
-)
-from ...processing.text.bert_tokenize_processor import BertTokenizeProcessor
 from ...processing.categorical.multiclass_label_processor import (
     MultiClassLabelProcessor,
 )
 from ...processing.categorical.risk_table_processor import RiskTableMappingProcessor
+from ...processing.dataloaders.pipeline_dataloader import (
+    build_collate_batch,
+    build_trimodal_collate_batch,
+)
+from ...processing.datasets.pipeline_datasets import PipelineDataset
+from ...processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
 from ...processing.numerical.numerical_imputation_processor import (
     NumericalVariableImputationProcessor,
+)
+from ...processing.processor_registry import build_text_pipeline_from_steps
+from ...processing.text.bert_tokenize_processor import BertTokenizeProcessor
+from ...processing.text.dialogue_processor import (
+    DialogueChunkerProcessor,
+    DialogueSplitterProcessor,
+    EmojiRemoverProcessor,
+    HTMLNormalizerProcessor,
+    TextNormalizationProcessor,
 )
 from ...processing.validation import (
     validate_categorical_fields,
     validate_numerical_fields,
-)
-from ...processing.processor_registry import build_text_pipeline_from_steps
-from ...processing.datasets.pipeline_datasets import PipelineDataset
-from ...processing.datasets.pipeline_iterable_datasets import PipelineIterableDataset
-from ...processing.dataloaders.pipeline_dataloader import (
-    build_collate_batch,
-    build_trimodal_collate_batch,
 )
 
 # ============================================================================
@@ -295,16 +298,16 @@ from ...processing.dataloaders.pipeline_dataloader import (
 # — a missing user-supplied dependency, not a bug.
 # ============================================================================
 try:
-    from lightning_models.utils.pl_train import (
-        model_inference,
-        load_model,
-        load_artifacts,
-    )
     from lightning_models.utils.dist_utils import is_main_process
     from lightning_models.utils.pl_model_plots import (
         compute_metrics,
-        roc_metric_plot,
         pr_metric_plot,
+        roc_metric_plot,
+    )
+    from lightning_models.utils.pl_train import (
+        load_artifacts,
+        load_model,
+        model_inference,
     )
 except ImportError as _e:  # pragma: no cover - user must supply lightning_models
     raise ImportError(

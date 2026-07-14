@@ -2,7 +2,7 @@
   "configuration": {
     "shared": {
       "author": "lukexie",
-      "bucket": "sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um",
+      "bucket": "example-team-share-bucket",
       "current_date": "2025-11-02",
       "enable_caching": false,
       "framework_version": "1.7-1",
@@ -11,7 +11,7 @@
       "project_root_folder": "mods_pipeline_adapter",
       "py_version": "py3",
       "region": "NA",
-      "role": "arn:aws:iam::601857636239:role/SandboxRole-lukexie-us-east-1",
+      "role": "arn:aws:iam::123456789012:role/SandboxRole-example-us-east-1",
       "service_name": "AtoZ",
       "source_dir": "dockers/xgboost_atoz"
     },
@@ -433,11 +433,11 @@
             "tag_date",
             "transactionDate"
           ],
-          "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1"
+          "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1"
         },
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "transform_spec": {
           "__model_type__": "TransformSpecificationConfig",
           "job_split_options": {
@@ -866,11 +866,11 @@
             "tag_date",
             "transactionDate"
           ],
-          "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1"
+          "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1"
         },
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "transform_spec": {
           "__model_type__": "TransformSpecificationConfig",
           "job_split_options": {
@@ -901,7 +901,7 @@
         "num_classes": 2,
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "processing_entry_point": "model_calibration.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -921,7 +921,7 @@
         "effective_source_dir": "dockers/xgboost_atoz/scripts",
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "processing_entry_point": "package.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -944,7 +944,7 @@
         "max_latency_in_millisecond": 800,
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "processing_entry_point": "payload.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -970,10 +970,10 @@
         "inference_instance_type": "ml.m5.large",
         "model_domain": "AtoZ",
         "model_objective": "AtoZ_Claims_SM_Model_NA",
-        "model_owner": "amzn1.abacus.team.djmdvixm5abr3p75c5ca",
+        "model_owner": "amzn1.abacus.team.EXAMPLETEAMID00000000",
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "source_model_inference_content_types": [
           "text/csv"
         ],
@@ -1537,7 +1537,7 @@
         "label_name": "is_abuse",
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "processing_entry_point": "tabular_preprocessing.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -1560,7 +1560,7 @@
         "label_name": "is_abuse",
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "processing_entry_point": "tabular_preprocessing.py",
         "processing_framework_version": "1.2-1",
         "processing_instance_count": 1,
@@ -1591,7 +1591,7 @@
         "label_name": "is_abuse",
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "previous_score_field": "",
         "processing_entry_point": "xgboost_model_eval.py",
         "processing_framework_version": "1.2-1",
@@ -1609,10 +1609,10 @@
         "__model_type__": "XGBoostTrainingConfig",
         "aws_region": "us-east-1",
         "effective_source_dir": "/home/ec2-user/SageMaker/BuyerAbuseModsTemplate/src/buyer_abuse_mods_template/mods_pipeline_adapter/dockers/xgboost_atoz",
-        "hyperparameter_file": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1/hyperparameters/NA_hyperparameters.json",
+        "hyperparameter_file": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1/hyperparameters/NA_hyperparameters.json",
         "pipeline_description": "AtoZ xgboost Model NA",
         "pipeline_name": "lukexie-AtoZ-xgboost-NA",
-        "pipeline_s3_loc": "s3://sandboxdependency-abuse-secureaisandboxteamshare-1l77v9am252um/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
+        "pipeline_s3_loc": "s3://example-team-share-bucket/MODS/lukexie-AtoZ-xgboost-NA_1.3.1",
         "skip_hyperparameters_s3_uri": true,
         "training_entry_point": "xgboost_training.py",
         "training_instance_count": 1,

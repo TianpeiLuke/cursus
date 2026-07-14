@@ -43,7 +43,7 @@ contract:
       USE_PRECOMPUTED_FEATURES: 'false'
       USE_NATIVE_CATEGORICAL: 'true'
       REGION: NA
-      CA_REPOSITORY_ARN: arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi
+      CA_REPOSITORY_ARN: arn:aws:codeartifact:us-west-2:222222222222:repository/amazon/secure-pypi
   framework_requirements:
     lightgbm: '>=3.0.0'
     scikit-learn: '>=0.23.2,<1.0.0'

@@ -10,11 +10,11 @@ Input:  model_input/ (model.pth + hyperparameters.json)
 Output: eval_output/predictions.csv (with prob_class_0, prob_class_1)
 """
 
-import os
-import sys
+import argparse
 import json
 import logging
-import argparse
+import os
+import sys
 from typing import Dict, List
 
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +36,7 @@ def _get_secure_pypi_access_token() -> str:
     sts = boto3.client("sts", region_name="us-east-1")
     caller_identity = sts.get_caller_identity()
     assumed_role_object = sts.assume_role(
-        RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+        RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
         + caller_identity["Account"],
         RoleSessionName="SecurePypiReadRole",
     )
@@ -49,7 +49,8 @@ def _get_secure_pypi_access_token() -> str:
         region_name="us-west-2",
     )
     return code_artifact_client.get_authorization_token(
-        domain="amazon", domainOwner="149122183214"
+        domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+        domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
     )["authorizationToken"]
 
 
@@ -72,7 +73,7 @@ def install_packages():
     if USE_SECURE_PYPI:
         token = _get_secure_pypi_access_token()
         index_url = (
-            f"https://aws:{token}@amazon-149122183214.d.codeartifact."
+            f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact."
             f"us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
         )
         check_call(
@@ -99,13 +100,12 @@ install_packages()
 # IMPORTS (after installation)
 # ============================================================================
 
+import lightning.pytorch as pl
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import lightning.pytorch as pl
-
+from torch.utils.data import DataLoader, Dataset
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 # ============================================================================
 # DATASET

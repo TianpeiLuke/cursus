@@ -1,8 +1,9 @@
-from pydantic import Field, model_validator, field_validator
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from ...core.base.hyperparameters_base import ModelHyperparameters
+from pydantic import Field, field_validator, model_validator
+
 from ...core.base.config_base import BasePipelineConfig
+from ...core.base.hyperparameters_base import ModelHyperparameters
 
 
 class PyTorchTrainingConfig(BasePipelineConfig):
@@ -43,7 +44,7 @@ class PyTorchTrainingConfig(BasePipelineConfig):
     )
 
     ca_repository_arn: str = Field(
-        default="arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        default="arn:aws:codeartifact:us-west-2:123456789012:repository/amazon/secure-pypi",
         description="CodeArtifact repository ARN for secure PyPI access. Only used when use_secure_pypi=True.",
     )
 

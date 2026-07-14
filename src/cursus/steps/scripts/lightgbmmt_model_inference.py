@@ -6,10 +6,10 @@ Generates multi-task predictions using trained LightGBM models.
 Pure inference only - NO evaluation, NO metrics, NO plots.
 """
 
+import logging
 import os
 import sys
 from subprocess import check_call
-import logging
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -30,7 +30,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -43,7 +43,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         logger.info("Successfully retrieved secure PyPI access token")
@@ -70,7 +71,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
     logger.info(f"Installing {len(packages)} packages from secure PyPI")
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
         check_call(
             [
                 sys.executable,
@@ -127,16 +128,18 @@ install_packages(required_packages)
 
 print("***********************Package Installation Complete*********************")
 
+import argparse
+
 # Now import packages after installation
 import json
-import argparse
-import pandas as pd
-import numpy as np
 import pickle as pkl
-from pathlib import Path
 import tarfile
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple, Union
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+import pandas as pd
 
 # ============================================================================
 # OPEN SECTION — USER-SUPPLIED MODEL + HYPERPARAMS PACKAGES (`models`, `hyperparams`)
@@ -168,9 +171,9 @@ from typing import Dict, Any, Optional, List, Tuple, Union
 # missing user dependency, not a bug.
 # ============================================================================
 try:
-    from models.implementations.mtgbm_model import MtgbmModel
-    from models.factory.model_factory import ModelFactory
     from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
+    from models.factory.model_factory import ModelFactory
+    from models.implementations.mtgbm_model import MtgbmModel
 except ImportError as _e:  # pragma: no cover - user must supply models/hyperparams
     raise ImportError(
         "MTGBM model inference requires user-supplied `models` "

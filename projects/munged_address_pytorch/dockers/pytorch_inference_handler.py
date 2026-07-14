@@ -13,16 +13,16 @@ Artifacts consumed (from PyTorchTraining + PercentileModelCalibration):
   /opt/ml/model/calibration/percentile_score.pkl — List[Tuple[float, float]] from PercentileModelCalibration
 """
 
-import os
-import sys
-import json
-import time
-import logging
-import hashlib
 import fcntl
+import hashlib
+import json
+import logging
+import os
 import pickle as pkl
-from typing import List, Tuple, Optional
+import sys
+import time
 from subprocess import check_call
+from typing import List, Optional, Tuple
 
 import boto3
 
@@ -39,7 +39,7 @@ def _get_secure_pypi_access_token() -> str:
     sts = boto3.client("sts", region_name="us-east-1")
     caller_identity = sts.get_caller_identity()
     assumed_role_object = sts.assume_role(
-        RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+        RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
         + caller_identity["Account"],
         RoleSessionName="SecurePypiReadRole",
     )
@@ -52,22 +52,35 @@ def _get_secure_pypi_access_token() -> str:
         region_name="us-west-2",
     )
     return code_artifact_client.get_authorization_token(
-        domain="amazon", domainOwner="149122183214"
+        domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+        domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
     )["authorizationToken"]
 
 
 def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI) -> None:
     """Install packages from public or secure PyPI."""
-    print(f"Installing {len(packages)} packages from "
-          f"{'SECURE (CodeArtifact)' if use_secure else 'PUBLIC'} PyPI")
+    print(
+        f"Installing {len(packages)} packages from "
+        f"{'SECURE (CodeArtifact)' if use_secure else 'PUBLIC'} PyPI"
+    )
 
     if use_secure:
         token = _get_secure_pypi_access_token()
         index_url = (
-            f"https://aws:{token}@amazon-149122183214.d.codeartifact."
+            f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact."
             f"us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
         )
-        check_call([sys.executable, "-m", "pip", "install", "--index-url", index_url, *packages])
+        check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "--index-url",
+                index_url,
+                *packages,
+            ]
+        )
     else:
         check_call([sys.executable, "-m", "pip", "install", *packages])
 
@@ -101,7 +114,9 @@ def install_packages_once(requirements_file: str, use_secure: bool = USE_SECURE_
 
     with open(requirements_file, "rb") as f:
         req_hash = hashlib.sha256(f.read()).hexdigest()[:16]
-    marker_file = os.path.join(secure_temp_dir, f".packages_installed_{req_hash}.marker")
+    marker_file = os.path.join(
+        secure_temp_dir, f".packages_installed_{req_hash}.marker"
+    )
 
     if os.path.exists(marker_file):
         print(f"Packages already installed (marker: {marker_file})")
@@ -131,7 +146,8 @@ def install_packages_once(requirements_file: str, use_secure: bool = USE_SECURE_
 
             with open(requirements_file, "r") as f:
                 required_packages = [
-                    line.strip() for line in f
+                    line.strip()
+                    for line in f
                     if line.strip() and not line.strip().startswith("#")
                 ]
 
@@ -150,9 +166,13 @@ def install_packages_once(requirements_file: str, use_secure: bool = USE_SECURE_
 
 # Select requirements file based on CUDA availability
 if torch.cuda.is_available():
-    _requirements_file = os.path.join(os.path.dirname(__file__), "requirements-gpu-secure.txt")
+    _requirements_file = os.path.join(
+        os.path.dirname(__file__), "requirements-gpu-secure.txt"
+    )
 else:
-    _requirements_file = os.path.join(os.path.dirname(__file__), "requirements-secure.txt")
+    _requirements_file = os.path.join(
+        os.path.dirname(__file__), "requirements-secure.txt"
+    )
 
 try:
     install_packages_once(_requirements_file, USE_SECURE_PYPI)
@@ -184,7 +204,9 @@ PERCENTILE_SCORE_FILE = "percentile_score.pkl"
 # ============================================================================
 
 
-def _interpolate_score(raw_score: float, lookup_table: List[Tuple[float, float]]) -> float:
+def _interpolate_score(
+    raw_score: float, lookup_table: List[Tuple[float, float]]
+) -> float:
     """Linear interpolation on percentile lookup table."""
     if raw_score <= lookup_table[0][0]:
         return lookup_table[0][1]
@@ -218,8 +240,10 @@ def model_fn(model_dir):
     max_sen_len = config.get("max_sen_len", 128)
     address_delimiter = config.get("address_delimiter", "|||")
 
-    logger.info(f"Config: tokenizer={tokenizer_name}, classes={num_classes}, "
-                f"max_len={max_sen_len}, delimiter='{address_delimiter}'")
+    logger.info(
+        f"Config: tokenizer={tokenizer_name}, classes={num_classes}, "
+        f"max_len={max_sen_len}, delimiter='{address_delimiter}'"
+    )
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     model = AutoModelForSequenceClassification.from_pretrained(
@@ -238,7 +262,9 @@ def model_fn(model_dir):
             calibrator = pkl.load(f)
         logger.info(f"Loaded percentile calibration ({len(calibrator)} entries)")
     else:
-        logger.warning("No calibration found — score-percentile will equal legacy-score")
+        logger.warning(
+            "No calibration found — score-percentile will equal legacy-score"
+        )
 
     return {
         "model": model,

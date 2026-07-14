@@ -305,7 +305,7 @@ def validate_provider(cls, v: str) -> str:
     if not uuid_pattern.match(v.lower()):
         raise ValueError(
             "provider must be 'booker' or valid UUID. "
-            f"Verify at: https://datacentral.a2z.com/hoot/providers/{v}"
+            f"Verify at: https://example-internal-catalog/providers/{v}"
         )
     
     return v

@@ -48,7 +48,7 @@ USE_SECURE_PYPI = os.environ.get("USE_SECURE_PYPI", "false").lower() == "true"
 # Secure CodeArtifact installation
 def install_packages_from_secure_pypi(packages: list) -> None:
     token = _get_secure_pypi_access_token()
-    index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+    index_url = f"https://aws:{token}@amazon-222222222222.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
     check_call([sys.executable, "-m", "pip", "install", "--index-url", index_url, *packages])
 ```
 

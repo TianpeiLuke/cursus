@@ -10,17 +10,17 @@ Author: Cursus Framework
 Date: 2025-10-25
 """
 
-import os
-import sys
 import argparse
 import json
 import logging
-import traceback
-import time
+import os
 import shutil
+import sys
+import time
+import traceback
 from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple, Union
 from subprocess import check_call
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -53,7 +53,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -66,7 +66,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         logger_install.info("Successfully retrieved secure PyPI access token")
@@ -107,7 +108,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [
@@ -198,27 +199,27 @@ print("***********************Package Installation Complete*********************
 # MAIN SCRIPT IMPORTS
 # ============================================================================
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+from sklearn.ensemble import (
+    ExtraTreesClassifier,
+    ExtraTreesRegressor,
+    RandomForestClassifier,
+    RandomForestRegressor,
+)
 from sklearn.feature_selection import (
-    mutual_info_classif,
-    mutual_info_regression,
+    RFE,
     SelectKBest,
     chi2,
     f_classif,
     f_regression,
-    RFE,
+    mutual_info_classif,
+    mutual_info_regression,
 )
-from sklearn.ensemble import (
-    RandomForestClassifier,
-    RandomForestRegressor,
-    ExtraTreesClassifier,
-    ExtraTreesRegressor,
-)
-from sklearn.svm import SVC, SVR
-from sklearn.linear_model import LogisticRegression, LinearRegression, Lasso, LassoCV
-from sklearn.preprocessing import StandardScaler
 from sklearn.inspection import permutation_importance
+from sklearn.linear_model import Lasso, LassoCV, LinearRegression, LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC, SVR
 
 
 # -------------------------------------------------------------------------

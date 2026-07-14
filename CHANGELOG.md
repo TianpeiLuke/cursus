@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.4] - 2026-07-14
+
+**Repository hygiene (internal-identifier scrub) + generic `BedrockProcessing` routed-rule injection.**
+
+### Security / hygiene
+
+- **Scrubbed Amazon-internal infrastructure identifiers repo-wide** (shipped `src/`, `projects/`, notebook output, config JSON, tests). Real AWS account IDs, IAM/KMS/Step-Functions ARNs, internal S3 buckets, team IDs, subnets/SGs, and internal wiki URLs were replaced with placeholders. **No functional change**: the CodeArtifact/SecurePyPI install bootstrap is now driven by env vars (`SECURE_PYPI_ROLE_ACCOUNT`, `SECURE_PYPI_DOMAIN`, `SECURE_PYPI_DOMAIN_OWNER`, `SECURE_PYPI_REPOSITORY`) with a `123456789012` placeholder fallback; that path is opt-in (`USE_SECURE_PYPI=false` default → public PyPI), so the placeholder is never used unless an operator sets the env vars. Load-bearing tokens (step types, imports, data-source enums) were intentionally left unchanged.
+- **Added `Agent.md`** at the repo root: a transfer-hygiene checklist reminding any agent to scrub internal identifiers (sweeping the *whole* repo, not just `src/`) before pushing, with the env-var-indirection pattern and a list of what must never be renamed.
+
+### Added
+
+- **`scripts/bedrock_processing.py`** — generic per-record routed-rule injection: `_adapt_ruleset_templates` (detects an upstream `{ruleset, rules}` shape, adds a `{routed_rules}` slot), `_render_routed_rules`, `_parse_output_column_map` + `canonicalize_output_columns` (config-driven output-column rename). `{routed_rules}` is threaded per record via the config's `routed_rules_column`. No domain field names hardcoded.
+- **`configs/config_bedrock_processing_step.py`** — `bedrock_output_column_map` (`BEDROCK_OUTPUT_COLUMN_MAP`) + `bedrock_routed_rules_column` (`BEDROCK_ROUTED_RULES_COLUMN`), enumerated in `get_public_init_fields()`.
+- **`interfaces/bedrock_processing.step.yaml`** — the 2 new optional env vars.
+- **`shared_dags/bedrock/bedrock_slipbox_routing_pytorch_incremental.dag.json`** — two-source incremental training catalog pipeline (`SlipboxKnowledgeRouting` → Bedrock → EDX anti-join + write-back).
+
+### Notes
+
+- Purely additive for the Bedrock change (empty map ⇒ no rename; `{routed_rules}` injected only when the template carries the slot). Mirrors internal AmazonCursus 2.9.4. All edited `.py` compile; all edited `.json`/`.ipynb`/`.yaml` parse.
+
 ## [2.9.2] - 2026-07-13
 
 **`SlipboxKnowledgeRouting` — script↔interface↔config alignment pass.** A three-way alignment audit of the step surfaced several gaps, fixed here: `knowledge_corpus` is now an optional input with a guaranteed in-container bundled default and a sanctioned S3 override path, and the full runtime config (including the corpus-default + index paths) flows through declared env vars.

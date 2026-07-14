@@ -160,7 +160,7 @@ model_config = ModelConfig(
 )
 
 registration_config = RegistrationConfig(
-    model_owner="amzn1.abacus.team.djmdvixm5abr3p75c5ca",
+    model_owner="amzn1.abacus.team.EXAMPLETEAMID00000000",
     model_registration_domain="AtoZ",
     expected_tps=2,
     max_latency_ms=800,

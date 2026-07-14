@@ -381,7 +381,7 @@ The script accepts evaluation data in multiple formats and packaging structures:
 1. Set AWS_STS_REGIONAL_ENDPOINTS to "regional"
 2. Create STS client for us-east-1
 3. Get caller identity to obtain current account
-4. Assume SecurePyPIReadRole in account 675292366480
+4. Assume SecurePyPIReadRole in account 111111111111
    Role format: "SecurePyPIReadRole_{current_account}"
 5. Extract temporary credentials from assumed role
 6. Create CodeArtifact client with temporary credentials

@@ -6,12 +6,12 @@ and validation schemas from the Bedrock Prompt Template Generation step.
 Supports template-driven response processing with dynamic Pydantic model creation.
 """
 
+import logging
 import os
 import sys
-
 from subprocess import check_call
+
 import boto3
-import logging
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -42,7 +42,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -55,7 +55,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         logger.info("Successfully retrieved secure PyPI access token")
@@ -106,7 +107,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [
@@ -195,22 +196,23 @@ install_packages(required_packages)
 
 print("***********************Package Installation Complete*********************")
 
-import json
 import argparse
-import pandas as pd
-import boto3
-import traceback
-import re
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Callable
-import logging
-from datetime import datetime
-from pydantic import BaseModel, ValidationError, create_model, Field
-from tenacity import retry, stop_after_attempt, wait_exponential
 import glob
+import json
+import logging
+import re
 import threading
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+import boto3
+import pandas as pd
+from pydantic import BaseModel, Field, ValidationError, create_model
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Configure logging
 logging.basicConfig(
@@ -1478,9 +1480,9 @@ def process_split_directory(
                 "failed": failed_count,
                 "validation_passed": validation_passed_count,
                 "success_rate": success_count / len(df) if len(df) > 0 else 0,
-                "validation_rate": validation_passed_count / len(df)
-                if len(df) > 0
-                else 0,
+                "validation_rate": (
+                    validation_passed_count / len(df) if len(df) > 0 else 0
+                ),
             }
         )
 
@@ -1724,9 +1726,9 @@ def main(
 
                     processing_stats["successful_records"] += success_count
                     processing_stats["failed_records"] += failed_count
-                    processing_stats["validation_passed_records"] += (
-                        validation_passed_count
-                    )
+                    processing_stats[
+                        "validation_passed_records"
+                    ] += validation_passed_count
                     processing_stats["files_processed"].append(
                         {
                             "filename": input_file.name,
@@ -1734,12 +1736,12 @@ def main(
                             "successful": success_count,
                             "failed": failed_count,
                             "validation_passed": validation_passed_count,
-                            "success_rate": success_count / len(df)
-                            if len(df) > 0
-                            else 0,
-                            "validation_rate": validation_passed_count / len(df)
-                            if len(df) > 0
-                            else 0,
+                            "success_rate": (
+                                success_count / len(df) if len(df) > 0 else 0
+                            ),
+                            "validation_rate": (
+                                validation_passed_count / len(df) if len(df) > 0 else 0
+                            ),
                         }
                     )
 
@@ -1846,9 +1848,9 @@ def main(
                         "failed": failed_count,
                         "validation_passed": validation_passed_count,
                         "success_rate": success_count / len(df) if len(df) > 0 else 0,
-                        "validation_rate": validation_passed_count / len(df)
-                        if len(df) > 0
-                        else 0,
+                        "validation_rate": (
+                            validation_passed_count / len(df) if len(df) > 0 else 0
+                        ),
                     }
                 )
 
@@ -1891,10 +1893,12 @@ def main(
             "total_truncations": processor.truncation_stats["total_truncations"],
             "truncated_records": processor.truncation_stats["truncated_records"],
             "truncated_fields": processor.truncation_stats["truncated_fields"],
-            "truncation_rate": processor.truncation_stats["truncated_records"]
-            / processing_stats["total_records"]
-            if processing_stats["total_records"] > 0
-            else 0,
+            "truncation_rate": (
+                processor.truncation_stats["truncated_records"]
+                / processing_stats["total_records"]
+                if processing_stats["total_records"] > 0
+                else 0
+            ),
         }
 
         # Save processing summary

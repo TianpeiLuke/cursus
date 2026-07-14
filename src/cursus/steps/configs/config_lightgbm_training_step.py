@@ -9,8 +9,9 @@ Fields are organized into three tiers:
 3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
 """
 
-from pydantic import Field, model_validator, field_validator, PrivateAttr
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
+
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from ...core.base.config_base import BasePipelineConfig
 
@@ -62,7 +63,7 @@ class LightGBMTrainingConfig(BasePipelineConfig):
     )
 
     ca_repository_arn: str = Field(
-        default="arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        default="arn:aws:codeartifact:us-west-2:123456789012:repository/amazon/secure-pypi",
         description="CodeArtifact repository ARN for secure PyPI access. Only used when use_secure_pypi=True.",
     )
 

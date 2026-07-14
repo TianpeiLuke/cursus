@@ -27,12 +27,12 @@ Output: /opt/ml/processing/output/data (original data + llm_* prefixed columns)
         /opt/ml/processing/output/summary (processing_summary_*.json)
 """
 
+import logging
 import os
 import sys
-
 from subprocess import check_call
+
 import boto3
-import logging
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -63,7 +63,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -76,7 +76,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         logger.info("Successfully retrieved secure PyPI access token")
@@ -127,7 +128,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [
@@ -216,20 +217,21 @@ install_packages(required_packages)
 
 print("***********************Package Installation Complete*********************")
 
-import json
 import argparse
-import pandas as pd
-import traceback
-import re
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Callable
+import json
 import logging
-from datetime import datetime
-from pydantic import ValidationError, create_model, Field
-from tenacity import retry, stop_after_attempt, wait_exponential
+import re
 import threading
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
+import pandas as pd
+from pydantic import Field, ValidationError, create_model
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # Configure logging
 logging.basicConfig(
@@ -426,6 +428,48 @@ def load_dataframe_with_format(file_path: Path) -> tuple:
         raise RuntimeError(f"Unsupported format: {detected_format}")
 
     return df, detected_format
+
+
+def _parse_output_column_map(raw) -> Dict[str, str]:
+    """Parse BEDROCK_OUTPUT_COLUMN_MAP into a {produced: canonical} dict. Accepts a JSON object
+    string or an 'a:b,c:d' shorthand; empty → {} (no rename). Generic; no domain names.
+    """
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        out = {}
+        for pair in str(raw).split(","):
+            if ":" in pair:
+                k, v = pair.split(":", 1)
+                out[k.strip()] = v.strip()
+        return out
+
+
+def canonicalize_output_columns(
+    df: pd.DataFrame,
+    column_map: Optional[Dict[str, str]],
+    log: Callable[[str], None] = None,
+) -> pd.DataFrame:
+    """Rename output columns to a downstream consumer's canonical vocabulary before write.
+
+    ``column_map`` is a config-driven {produced_name: canonical_name} map, so the step's output
+    matches whatever schema the downstream consumer reads. Generic: no column names are hardcoded
+    here — the map is supplied by config (BEDROCK_OUTPUT_COLUMN_MAP). Empty map → no-op.
+    """
+    if not column_map:
+        return df
+    present = {
+        k: v for k, v in column_map.items() if k in df.columns and v not in df.columns
+    }
+    if present:
+        df = df.rename(columns=present)
+        if log:
+            log(f"Canonicalized output columns: {present}")
+    return df
 
 
 def save_dataframe_with_format(
@@ -942,6 +986,21 @@ class BedrockProcessor:
 
         # Start with the template
         formatted_prompt = self.config["user_prompt_template"]
+
+        # Per-record routed-rule injection (generic): if the template carries a {routed_rules} slot
+        # and this record has a per-record selected-rule list (from a rule-driven routing step),
+        # render the routed rule definitions into the body. The row column name is config-driven
+        # (routed_rules_column, default "selected_rule_names"); no domain names hardcoded.
+        rules_by_name = self.config.get("_rules_by_name")
+        if "{routed_rules}" in formatted_prompt:
+            if rules_by_name:
+                rr_col = self.config.get("routed_rules_column", "selected_rule_names")
+                routed_block = _render_routed_rules(
+                    truncated_data.get(rr_col), rules_by_name
+                )
+            else:
+                routed_block = ""
+            formatted_prompt = formatted_prompt.replace("{routed_rules}", routed_block)
 
         # Replace each placeholder with its value using string replacement
         # This avoids issues with curly braces in JSON examples being interpreted as placeholders
@@ -1631,21 +1690,118 @@ class BedrockProcessor:
         return results_df
 
 
+def _render_routed_rules(selected_rule_names, rules_by_name: Dict[str, Any]) -> str:
+    """Render a record's routed rules into a prompt block (generic, domain-agnostic).
+
+    A rule-driven upstream step (e.g. a knowledge-routing step) may emit prompts.json in a
+    ``{"ruleset": {...}, "rules": [{...}]}`` shape and attach a per-record list of selected rule
+    names. This renders the selected rules' definitions (whatever fields each rule dict carries —
+    description / conditions / etc.) into the prompt body so the routing signal reaches the model.
+    No field names are hardcoded: it walks the rule dict generically. Empty selection → a neutral
+    fallback line.
+    """
+    names = selected_rule_names
+    if isinstance(names, str):
+        try:
+            names = json.loads(names)
+        except (ValueError, TypeError):
+            names = [n.strip() for n in names.split(",") if n.strip()]
+    names = names or []
+    if not names:
+        return "No specific rules were routed for this record; classify using the general guidance above."
+    blocks = []
+    for name in names:
+        r = rules_by_name.get(name)
+        if not r:
+            blocks.append(
+                f"=== RULE: {name} ===\n(definition unavailable)\n=== END RULE ==="
+            )
+            continue
+        lines = [f"=== RULE: {r.get('rule_name', name)} ==="]
+        # Render each remaining field generically (skip the name we already used as the header).
+        for key, val in r.items():
+            if key == "rule_name" or val in (None, "", [], {}):
+                continue
+            if isinstance(val, (list, tuple)):
+                rendered = "\n".join(f"- {item}" for item in val)
+                lines.append(f"{key}:\n{rendered}")
+            else:
+                lines.append(f"{key}: {val}")
+        lines.append("=== END RULE ===")
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
+def _adapt_ruleset_templates(
+    json_templates: Dict[str, Any], log: Callable[[str], None]
+) -> Dict[str, Any]:
+    """Adapt a ``{"ruleset": {...}, "rules": [...]}`` prompts.json into the flat template shape.
+
+    Generic support for a rule-driven upstream step (the flat BedrockPromptTemplateGeneration shape
+    is handled directly by ``load_prompt_templates``). Maps the ruleset envelope onto
+    system_prompt / user_prompt_template / input_placeholders, folds any analysis_instructions /
+    classification_guidelines into the system layer, adds a ``{routed_rules}`` slot to the user
+    template, and exposes ``_rule_names`` (the category set) + ``_rules_by_name`` (consumed per
+    record by ``_render_routed_rules``). No domain field names are hardcoded.
+    """
+    ruleset = json_templates.get("ruleset", {}) or {}
+    rules = json_templates.get("rules", []) or []
+    placeholders = ruleset.get("input_placeholders", []) or []
+
+    sys_parts = [ruleset.get("system_prompt", "") or ""]
+    for k in ("analysis_instructions", "classification_guidelines"):
+        v = ruleset.get(k)
+        if v:
+            sys_parts.append(
+                f"## {k.replace('_', ' ').title()}\n"
+                + (v if isinstance(v, str) else json.dumps(v, indent=2))
+            )
+    system_prompt = "\n\n".join(p for p in sys_parts if p).strip()
+
+    user_tmpl = ruleset.get("user_prompt_template")
+    if not user_tmpl:
+        evidence = [f"{p}:\n{{{p}}}" for p in placeholders] or ["Input:\n{input_data}"]
+        user_tmpl = (
+            "Applicable rules for this record:\n{routed_rules}\n\nEvidence:\n"
+            + "\n\n".join(evidence)
+        )
+    elif "{routed_rules}" not in user_tmpl:
+        user_tmpl = "Applicable rules for this record:\n{routed_rules}\n\n" + user_tmpl
+
+    rule_names = [r.get("rule_name") for r in rules if r.get("rule_name")]
+    rules_by_name = {r["rule_name"]: r for r in rules if r.get("rule_name")}
+    log(
+        f"Adapted rule-driven ruleset prompts.json: {len(rule_names)} rule categories, "
+        f"{len(placeholders)} placeholders, routed-rule injection enabled"
+    )
+    return {
+        "system_prompt": system_prompt,
+        "user_prompt_template": user_tmpl,
+        "input_placeholders": placeholders,
+        "_rule_names": rule_names,
+        "_rules_by_name": rules_by_name,
+    }
+
+
 def load_prompt_templates(
     templates_path: str, log: Callable[[str], None]
 ) -> Dict[str, Any]:
     """
-    Load prompt templates from Bedrock Prompt Template Generation step output.
+    Load prompt templates from the upstream step output.
 
-    Expected file structure from Template Generation step:
-    - prompts.json: JSON file containing system_prompt, user_prompt_template, and input_placeholders
+    Two supported prompts.json shapes:
+    - Flat (BedrockPromptTemplateGeneration): {system_prompt, user_prompt_template, input_placeholders}
+    - Ruleset (a rule-driven routing step): {"ruleset": {...}, "rules": [...]} — auto-adapted to the
+      flat shape via ``_adapt_ruleset_templates`` (adds a ``{routed_rules}`` slot + ``_rules_by_name``
+      / ``_rule_names`` for per-record rule injection). Generic; no domain field names.
 
     Args:
-        templates_path: Path to templates directory from Template Generation step
+        templates_path: Path to templates directory from the upstream step
         log: Logger function
 
     Returns:
-        Dictionary with 'system_prompt', 'user_prompt_template', and 'input_placeholders' keys
+        Dictionary with 'system_prompt', 'user_prompt_template', 'input_placeholders' (plus
+        '_rule_names' / '_rules_by_name' for the ruleset shape).
     """
     templates = {}
     templates_dir = Path(templates_path)
@@ -1659,6 +1815,11 @@ def load_prompt_templates(
         try:
             with open(prompts_file, "r", encoding="utf-8") as f:
                 json_templates = json.load(f)
+
+            # Rule-driven ruleset shape → adapt to the flat template shape.
+            if "ruleset" in json_templates and "rules" in json_templates:
+                log(f"Detected rule-driven ruleset shape in {prompts_file}; adapting")
+                return _adapt_ruleset_templates(json_templates, log)
 
             if "system_prompt" in json_templates:
                 templates["system_prompt"] = json_templates["system_prompt"]
@@ -1896,9 +2057,9 @@ def process_split_directory(
                 "failed": failed_count,
                 "validation_passed": validation_passed_count,
                 "success_rate": success_count / len(df) if len(df) > 0 else 0,
-                "validation_rate": validation_passed_count / len(df)
-                if len(df) > 0
-                else 0,
+                "validation_rate": (
+                    validation_passed_count / len(df) if len(df) > 0 else 0
+                ),
             }
         )
 
@@ -1911,6 +2072,11 @@ def process_split_directory(
                 log(
                     f"Skipped {skipped_count} error records from output for {input_file.name}"
                 )
+
+        # Canonicalize output columns to the downstream vocabulary before write (config-driven).
+        result_df = canonicalize_output_columns(
+            result_df, config.get("output_column_map"), log
+        )
 
         # Save results with simple channel-based naming
         output_base = split_output_path / f"{split_name}_processed_data"
@@ -2007,6 +2173,16 @@ def main(
                 "user_prompt_template", "Analyze: {input_data}"
             ),
             "input_placeholders": templates.get("input_placeholders", []),
+            # Per-record routed-rule injection (generic): the rule definitions from a rule-driven
+            # ruleset prompts.json, keyed by name, consumed by _format_prompt's {routed_rules} slot.
+            "_rules_by_name": templates.get("_rules_by_name", {}),
+            "routed_rules_column": environ_vars.get(
+                "BEDROCK_ROUTED_RULES_COLUMN", "selected_rule_names"
+            ),
+            # Output column canonicalization map (config-driven; no domain names hardcoded).
+            "output_column_map": _parse_output_column_map(
+                environ_vars.get("BEDROCK_OUTPUT_COLUMN_MAP", "")
+            ),
             # Validation schema for response processing
             "validation_schema": validation_schema,
             # API configuration
@@ -2156,9 +2332,9 @@ def main(
 
                     processing_stats["successful_records"] += success_count
                     processing_stats["failed_records"] += failed_count
-                    processing_stats["validation_passed_records"] += (
-                        validation_passed_count
-                    )
+                    processing_stats[
+                        "validation_passed_records"
+                    ] += validation_passed_count
                     processing_stats["files_processed"].append(
                         {
                             "filename": input_file.name,
@@ -2166,12 +2342,12 @@ def main(
                             "successful": success_count,
                             "failed": failed_count,
                             "validation_passed": validation_passed_count,
-                            "success_rate": success_count / len(df)
-                            if len(df) > 0
-                            else 0,
-                            "validation_rate": validation_passed_count / len(df)
-                            if len(df) > 0
-                            else 0,
+                            "success_rate": (
+                                success_count / len(df) if len(df) > 0 else 0
+                            ),
+                            "validation_rate": (
+                                validation_passed_count / len(df) if len(df) > 0 else 0
+                            ),
                         }
                     )
 
@@ -2184,6 +2360,11 @@ def main(
                             log(
                                 f"Skipped {skipped_count} error records from output for {input_file.name}"
                             )
+
+                    # Canonicalize output columns to the downstream vocabulary (config-driven).
+                    result_df = canonicalize_output_columns(
+                        result_df, config.get("output_column_map"), log
+                    )
 
                     # Save results with simple channel-based naming
                     output_base = output_path / f"{job_type}_processed_data"
@@ -2293,9 +2474,9 @@ def main(
                         "failed": failed_count,
                         "validation_passed": validation_passed_count,
                         "success_rate": success_count / len(df) if len(df) > 0 else 0,
-                        "validation_rate": validation_passed_count / len(df)
-                        if len(df) > 0
-                        else 0,
+                        "validation_rate": (
+                            validation_passed_count / len(df) if len(df) > 0 else 0
+                        ),
                     }
                 )
 
@@ -2308,6 +2489,11 @@ def main(
                         log(
                             f"Skipped {skipped_count} error records from output for {input_file.name}"
                         )
+
+                # Canonicalize output columns to the downstream vocabulary (config-driven).
+                result_df = canonicalize_output_columns(
+                    result_df, config.get("output_column_map"), log
+                )
 
                 # Save results following Cursus convention: {job_type}/{job_type}_processed_data.{ext}
                 job_type_output_dir = output_path / job_type
@@ -2340,10 +2526,12 @@ def main(
             "total_truncations": processor.truncation_stats["total_truncations"],
             "truncated_records": processor.truncation_stats["truncated_records"],
             "truncated_fields": processor.truncation_stats["truncated_fields"],
-            "truncation_rate": processor.truncation_stats["truncated_records"]
-            / processing_stats["total_records"]
-            if processing_stats["total_records"] > 0
-            else 0,
+            "truncation_rate": (
+                processor.truncation_stats["truncated_records"]
+                / processing_stats["total_records"]
+                if processing_stats["total_records"] > 0
+                else 0
+            ),
         }
 
         # Save processing summary
@@ -2448,6 +2636,12 @@ if __name__ == "__main__":
             "BEDROCK_MAX_RETRIES": os.environ.get("BEDROCK_MAX_RETRIES", "3"),
             "BEDROCK_OUTPUT_COLUMN_PREFIX": os.environ.get(
                 "BEDROCK_OUTPUT_COLUMN_PREFIX", "llm_"
+            ),
+            "BEDROCK_OUTPUT_COLUMN_MAP": os.environ.get(
+                "BEDROCK_OUTPUT_COLUMN_MAP", ""
+            ),
+            "BEDROCK_ROUTED_RULES_COLUMN": os.environ.get(
+                "BEDROCK_ROUTED_RULES_COLUMN", "selected_rule_names"
             ),
             "BEDROCK_SKIP_ERROR_RECORDS": os.environ.get(
                 "BEDROCK_SKIP_ERROR_RECORDS", "false"

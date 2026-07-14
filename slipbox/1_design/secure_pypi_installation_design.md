@@ -86,7 +86,7 @@ flowchart TD
     end
     
     subgraph "🔐 Amazon CodeArtifact"
-        SecurePyPI["Secure PyPI Repository<br/>arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi"]
+        SecurePyPI["Secure PyPI Repository<br/>arn:aws:codeartifact:us-west-2:222222222222:repository/amazon/secure-pypi"]
         TokenAuth["Token-based Authentication"]
         STSRole["STS Role Assumption:<br/>SecurePyPIReadRole_{AccountId}"]
         CAClient["CodeArtifact Client"]
@@ -118,7 +118,7 @@ Training containers built with `sagemaker-training-toolkit` have **built-in supp
    ```python
    # In builder (e.g., builder_pytorch_training_step.py)
    env_vars = {
-       "CA_REPOSITORY_ARN": "arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi"
+       "CA_REPOSITORY_ARN": "arn:aws:codeartifact:us-west-2:222222222222:repository/amazon/secure-pypi"
    }
    ```
 
@@ -142,7 +142,7 @@ class PyTorchTrainingConfig(BasePipelineConfig):
     """Configuration for PyTorch training with secure PyPI support."""
     
     ca_repository_arn: str = Field(
-        default="arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        default="arn:aws:codeartifact:us-west-2:222222222222:repository/amazon/secure-pypi",
         description="CodeArtifact repository ARN for secure PyPI access. "
                    "Only used when use_secure_pypi=True."
     )
@@ -263,7 +263,7 @@ def _get_secure_pypi_access_token() -> str:
         account_id = caller_identity["Account"]
         
         # Step 3: Assume SecurePyPIReadRole in current account
-        role_arn = f"arn:aws:iam::{account_id}:role/SecurePyPIReadRole_675292366480"
+        role_arn = f"arn:aws:iam::{account_id}:role/SecurePyPIReadRole_111111111111"
         assumed_role_object = sts.assume_role(
             RoleArn=role_arn,
             RoleSessionName="SecurePypiReadRole"
@@ -282,7 +282,7 @@ def _get_secure_pypi_access_token() -> str:
         # Step 5: Get authorization token for CodeArtifact domain
         token = code_artifact_client.get_authorization_token(
             domain="amazon",
-            domainOwner="149122183214"
+            domainOwner="222222222222"
         )["authorizationToken"]
         
         print("✓ Successfully retrieved secure PyPI access token")
@@ -315,7 +315,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
         
         # Construct authenticated index URL
         index_url = (
-            f"https://aws:{token}@amazon-149122183214.d.codeartifact."
+            f"https://aws:{token}@amazon-222222222222.d.codeartifact."
             f"us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
         )
         
@@ -530,7 +530,7 @@ flowchart LR
     end
     
     subgraph "CodeArtifact"
-        CA["CodeArtifact<br/>Domain: amazon<br/>Owner: 149122183214"]
+        CA["CodeArtifact<br/>Domain: amazon<br/>Owner: 222222222222"]
         GetToken["GetAuthorizationToken"]
     end
     
@@ -569,8 +569,8 @@ flowchart LR
         "codeartifact:ReadFromRepository"
       ],
       "Resource": [
-        "arn:aws:codeartifact:us-west-2:149122183214:domain/amazon",
-        "arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi"
+        "arn:aws:codeartifact:us-west-2:222222222222:domain/amazon",
+        "arn:aws:codeartifact:us-west-2:222222222222:repository/amazon/secure-pypi"
       ]
     },
     {
@@ -843,7 +843,7 @@ class PyTorchTrainingConfig(BasePipelineConfig):
     
     # Tier 2: System Inputs with Defaults
     ca_repository_arn: str = Field(
-        default="arn:aws:codeartifact:us-west-2:149122183214:repository/amazon/secure-pypi",
+        default="arn:aws:codeartifact:us-west-2:222222222222:repository/amazon/secure-pypi",
         description="CodeArtifact repository ARN for secure PyPI access."
     )
     
@@ -916,7 +916,7 @@ def _get_secure_pypi_access_token() -> str:
     caller_identity = sts.get_caller_identity()
     
     assumed_role = sts.assume_role(
-        RoleArn=f"arn:aws:iam::{caller_identity['Account']}:role/SecurePyPIReadRole_675292366480",
+        RoleArn=f"arn:aws:iam::{caller_identity['Account']}:role/SecurePyPIReadRole_111111111111",
         RoleSessionName="SecurePypiReadRole"
     )
     
@@ -930,14 +930,14 @@ def _get_secure_pypi_access_token() -> str:
     
     return ca_client.get_authorization_token(
         domain="amazon",
-        domainOwner="149122183214"
+        domainOwner="222222222222"
     )["authorizationToken"]
 
 def install_packages(packages: list, use_secure: bool = USE_SECURE_PYPI):
     """Install packages from appropriate PyPI source."""
     if use_secure:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@amazon-222222222222.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
         check_call([sys.executable, "-m", "pip", "install", "--index-url", index_url, *packages])
     else:
         check_call([sys.executable, "-m", "pip", "install", *packages])

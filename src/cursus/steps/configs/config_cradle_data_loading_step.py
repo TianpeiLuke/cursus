@@ -1,15 +1,16 @@
 # File: pipeline_steps/config_cradle_data_load.py
 
-from typing import List, Optional, Dict, Any, Set
 import re
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Set
+
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
+    PrivateAttr,
     field_validator,
     model_validator,
-    ConfigDict,
-    PrivateAttr,
 )
 
 from ...core.base.config_base import BasePipelineConfig
@@ -436,7 +437,7 @@ class AndesDataSourceConfig(BaseCradleComponentConfig):
                 "provider must be either 'booker' or a valid 32-digit UUID "
                 "(8-4-4-4-12 format). "
                 "Verify provider validity at: "
-                f"https://datacentral.a2z.com/hoot/providers/{v}"
+                f"https://example-internal-catalog/providers/{v}"
             )
 
         return v

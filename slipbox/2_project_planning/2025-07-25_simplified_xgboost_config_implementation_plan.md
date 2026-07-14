@@ -295,7 +295,7 @@ training_config = TrainingParamsConfig(
 
 # Step 4: Define registration parameters
 registration_config = RegistrationParamsConfig(
-    model_owner="amzn1.abacus.team.djmdvixm5abr3p75c5ca"
+    model_owner="amzn1.abacus.team.EXAMPLETEAMID00000000"
 )
 
 # Step 5: Create pipeline configuration

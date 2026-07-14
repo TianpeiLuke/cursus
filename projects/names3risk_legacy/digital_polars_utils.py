@@ -4,18 +4,15 @@ import re
 import uuid
 from collections import defaultdict
 
-
 import boto3
-import redshift_connector
 import polars as pl
-from scipy.stats import ks_2samp
-from pyarrow.parquet import ParquetFile
-
-
-from secure_ai_sandbox_python_lib.session import Session
+import redshift_connector
 from com.amazon.secureaisandboxproxyservice.models.createcradlemdsdataloadjobrequest import (
     CreateCradleMDSDataLoadJobRequest,
 )
+from pyarrow.parquet import ParquetFile
+from scipy.stats import ks_2samp
+from secure_ai_sandbox_python_lib.session import Session
 
 TRANSACTION_DATE_REGEX = r"^[A-Z][a-z]{2}\s[A-Z][a-z]{2}\s[0-3][0-9]\s[0-2][0-9]:[0-5][0-9]:[0-5][0-9]\sUTC\s\d{4}$"
 ORDER_DATE_REGEX = r"^\d+$"
@@ -31,19 +28,19 @@ def query(query: str, cluster: str = "1"):
             "cluster_id": "trmsml-rs-01",
             "db_name": "trmsmlprod",
             "endpoint": "vpce-svc-0d214190d5b3f7c10.us-east-1.vpce.amazonaws.com",
-            "arn": "arn:aws:iam::359048081192:role/SecureAISandbox_Role_Andes3",
+            "arn": "arn:aws:iam::444444444444:role/SecureAISandbox_Role_Andes3",
         },
         "2": {
             "cluster_id": "trmsml-rs-02",
             "db_name": "trmsmlprod2",
             "endpoint": "vpce-svc-0e3212a137fbe2ae3.us-east-1.vpce.amazonaws.com",
-            "arn": "arn:aws:iam::359048081192:role/SecureAISandbox_Role_Andes3",
+            "arn": "arn:aws:iam::444444444444:role/SecureAISandbox_Role_Andes3",
         },
         "adhoc": {
             "cluster_id": "trmsdw-rs-adhoc",
             "db_name": "trmsopsadhoc",
             "endpoint": "vpce-svc-00fc97a9cb28c8be0.us-east-1.vpce.amazonaws.com",
-            "arn": "arn:aws:iam::084474670698:role/Secure_AI_Sandbox_Andes30",
+            "arn": "arn:aws:iam::555555555555:role/Secure_AI_Sandbox_Andes30",
         },
     }
 
@@ -330,7 +327,7 @@ class MDSDataJob:
 
         self.data_load_job = self.data_loader.create_mds_data_load_job(
             CreateCradleMDSDataLoadJobRequest(
-                # Your service name and org id can be found https://unified-ml-catalog.ctps.amazon.dev/list-mds-datasets
+                # Your service name and org id can be found https://example-internal-ml-catalog/list-mds-datasets
                 service_name=self.service,
                 org_id={"EU": "2", "NA": "1", "FE": "9"}[self.region],
                 # org_id=9001,
@@ -342,7 +339,7 @@ class MDSDataJob:
                 end_date=self.end_date.strftime("%Y-%m-%dT%H:%M:%S"),
                 # output path currently only support s3, format should be 's3://bucket/key_prefix'
                 output_path=self.s3_path,
-                # output schema is a list of field names,  use this tool to query your MDS data set signature: https://unified-ml-catalog.ctps.amazon.dev/query-mds-signature, and then select variables you like.
+                # output schema is a list of field names,  use this tool to query your MDS data set signature: https://example-internal-ml-catalog/query-mds-signature, and then select variables you like.
                 output_schema=self.features,
                 # output format can be CSV, UNESCAPED_TSV, JSON, ION, PARQUET. CSV is the default format if you don't specify it
                 output_format="PARQUET",
@@ -350,16 +347,16 @@ class MDSDataJob:
                 cluster_type=self.cluster_type,
                 # dedup type can be 'NONE'/'KEEP_FIRST'/'KEEP_LAST'
                 dedup_type=self.dedup,
-                # Each aws account have different account permission, check here to check the cradle account you can use: https://secure-ai-sandbox.ctps.amazon.dev/account
+                # Each aws account have different account permission, check here to check the cradle account you can use: https://example-internal-sandbox/account
                 cradle_account="BRP-ML-Payment-Generate-Data",
                 # Filter condition's item should be in output_schema so we can do the filtering correctly
                 filter_conditions=self.sql_filter,
                 # You can just pass the SQL by yourself without using generated SQL by MDSDataLoader if you are familiar with SQL. it's suggested to use this so you can make it more efficient.
                 # Example: 'select 'customerId' from INPUT where object!=null'
                 customized_sql="",
-                # Auto Tag pulls the tags from fraud tags  Andes table: https://hoot.corp.amazon.com/providers/26b27bde-3847-49c6-a07c-0289c17d9c33/tables/fraud-tags-na
+                # Auto Tag pulls the tags from fraud tags  Andes table: https://example-internal-catalog/providers/EXAMPLE/tables/example-tags
                 auto_tag=True,
-                # Add more tag fields here: https://hoot.corp.amazon.com/providers/26b27bde-3847-49c6-a07c-0289c17d9c33/tables/fraud-tags-na
+                # Add more tag fields here: https://example-internal-catalog/providers/EXAMPLE/tables/example-tags
                 auto_tag_schema=["IS_FRD", "HAS_CB", "IS_QUEUED"],
                 # You can provide a EDX Arn as tag file input, EDX ARN could be manifest, manifest prefix, or manifest_range.
                 # The tag file format can be text/csv, text/tsv, application/x-amzn-unescaped-tsv.

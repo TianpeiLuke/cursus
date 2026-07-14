@@ -1,0 +1,168 @@
+{
+  "dag": {
+    "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock forced-tool-use scoring, EDX anti-join, and EDX write-back. Two-source: baseline reads the scored-EDX label cache; delta reads live MDS anti-joined vs that cache.",
+    "nodes": [
+      "CradleDataLoading_baseline",
+      "CradleDataLoading_delta",
+      "TabularPreprocessing_delta",
+      "SlipboxKnowledgeRouting_delta",
+      "BedrockProcessing_delta",
+      "EdxUploading_scored",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelEval_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      ["CradleDataLoading_delta", "TabularPreprocessing_delta"],
+      ["TabularPreprocessing_delta", "SlipboxKnowledgeRouting_delta"],
+      ["SlipboxKnowledgeRouting_delta", "BedrockProcessing_delta"],
+      ["BedrockProcessing_delta", "EdxUploading_scored"],
+      ["BedrockProcessing_delta", "TabularPreprocessing_training"],
+      ["CradleDataLoading_baseline", "TabularPreprocessing_training"],
+      ["TabularPreprocessing_training", "PyTorchTraining"],
+      ["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
+      ["PyTorchTraining", "PyTorchModelEval_calibration"],
+      ["TabularPreprocessing_calibration", "PyTorchModelEval_calibration"],
+      ["PyTorchModelEval_calibration", "PercentileModelCalibration_calibration"],
+      ["PercentileModelCalibration_calibration", "Package"],
+      ["PyTorchTraining", "Package"],
+      ["PyTorchTraining", "Payload"],
+      ["Package", "Registration"],
+      ["Payload", "Registration"]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_slipbox_routing_pytorch_incremental",
+    "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock forced-tool-use scoring, EDX anti-join, and EDX write-back.",
+    "complexity": "comprehensive",
+    "framework": "pytorch",
+    "features": [
+      "cradle_data_loading",
+      "tabular_preprocessing",
+      "slipbox_knowledge_routing",
+      "dks_compile_index_route",
+      "bedrock_forced_tool_use",
+      "edx_uploading",
+      "training",
+      "calibration",
+      "packaging",
+      "registration",
+      "edx_anti_join",
+      "incremental_scoring"
+    ],
+    "node_count": 15,
+    "edge_count": 16,
+    "task_type": "incremental_training_with_dks_routed_llm_scoring",
+    "entry_points": [
+      "CradleDataLoading_baseline",
+      "CradleDataLoading_delta",
+      "CradleDataLoading_calibration"
+    ],
+    "exit_points": [
+      "Registration",
+      "EdxUploading_scored"
+    ],
+    "sink_nodes": [
+      "Registration",
+      "EdxUploading_scored"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": true,
+      "llm_provider": "bedrock"
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_edx_access": true,
+      "requires_mims": true,
+      "requires_bedrock_access": true
+    },
+    "cost": {
+      "estimated_hours": "6-16 (Bedrock delta scoring + routing dominate)",
+      "cost_driver": "bedrock_inference_plus_embedding_routing",
+      "instance_cost_tier": "high",
+      "scalability": "delta_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Incremental retraining of a DKS-routed LLM-labeled model (e.g. RnR): you have a prior scored-EDX label cache and need to score only NEW orders. The delta path routes each record against a bundled DKS knowledge corpus (SlipboxKnowledgeRouting: compile->index->route) then classifies with Bedrock forced tool-use, writes the labels back to EDX, and merges with the baseline cache for training.",
+      "when_not_to_use": "First-time training (no scored-EDX baseline exists) — use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_pytorch_incremental_edx (no SlipboxKnowledgeRouting step).",
+      "differentiators": [
+        "Only incremental DAG with a SlipboxKnowledgeRouting step (DKS compile->index->route) upstream of Bedrock",
+        "Bedrock runs forced tool-use (constrained decoding) on the routed rule set — schema-aligned labels, 0 parse failures",
+        "EDX anti-join skips already-scored orders; EDX write-back grows the label cache",
+        "Delta feeds BOTH the EDX write-back and the training merge"
+      ],
+      "prerequisites": [
+        {
+          "check": "Scored-EDX label cache exists from a prior run (or a prior backfill)",
+          "how": "Verify the the scored-label EDX ARN is accessible via Cradle"
+        },
+        {
+          "check": "Bedrock model access",
+          "how": "IAM role has bedrock:InvokeModel for the target model"
+        },
+        {
+          "check": "DKS knowledge corpus present",
+          "how": "SlipboxKnowledgeRouting bundles the rule_*/pattern_*/behavior_* corpus in its source_dir (default), or mount it via the optional knowledge_corpus channel (DummyDataLoading S3)"
+        },
+        {
+          "check": "MDS data for new period",
+          "how": "Cradle date range covers a period NOT already in the scored EDX"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "edx_scored_arn",
+          "mds_date_range",
+          "bedrock_model_id",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "routing_scoring_mode",
+          "routing_threshold",
+          "routing_top_k",
+          "embedding_model_name",
+          "bedrock_use_structured_output",
+          "instance_types",
+          "train_ratio"
+        ],
+        "common_pitfalls": [
+          "BedrockProcessing_delta MUST set bedrock_use_structured_output=true (forced tool-use) or the delta labels drift from the baseline labels",
+          "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX — count+order must match)",
+          "knowledge_corpus is OPTIONAL (bundled default) — do NOT wire it unless overriding the corpus via DummyDataLoading",
+          "MDS date range must NOT overlap the scored EDX period — causes an empty anti-join result",
+          "Cradle transform_sql final projection must equal output_schema (no SELECT *; window/helper columns projected away)"
+        ]
+      },
+      "decision_tree": {
+        "has_prior_scored_edx?": {
+          "yes": "USE THIS DAG (scores only new orders)",
+          "no": "Use the baseline dag.json first to seed the EDX cache"
+        },
+        "labeling_uses_dks_routing?": {
+          "yes": "USE THIS DAG (SlipboxKnowledgeRouting)",
+          "no": "Use bedrock_pytorch_incremental_edx (no routing step)"
+        }
+      }
+    },
+    "used_by_projects": [
+      "rnr_pytorch_bedrock"
+    ]
+  }
+}

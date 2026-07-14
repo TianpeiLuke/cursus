@@ -6,11 +6,12 @@ Provides focused inference engine for multi-task gradient boosting models.
 Handles model loading, preprocessing, and multi-task prediction generation.
 """
 
+import logging
+
 # Standard library imports
 import os
 import sys
 from subprocess import check_call
-import logging
 
 # ============================================================================
 # PACKAGE INSTALLATION CONFIGURATION
@@ -44,7 +45,7 @@ def _get_secure_pypi_access_token() -> str:
         sts = boto3.client("sts", region_name="us-east-1")
         caller_identity = sts.get_caller_identity()
         assumed_role_object = sts.assume_role(
-            RoleArn="arn:aws:iam::675292366480:role/SecurePyPIReadRole_"
+            RoleArn=f"arn:aws:iam::{os.environ.get('SECURE_PYPI_ROLE_ACCOUNT', '123456789012')}:role/SecurePyPIReadRole_"
             + caller_identity["Account"],
             RoleSessionName="SecurePypiReadRole",
         )
@@ -57,7 +58,8 @@ def _get_secure_pypi_access_token() -> str:
             region_name="us-west-2",
         )
         token = code_artifact_client.get_authorization_token(
-            domain="amazon", domainOwner="149122183214"
+            domain=os.environ.get("SECURE_PYPI_DOMAIN", "amazon"),
+            domainOwner=os.environ.get("SECURE_PYPI_DOMAIN_OWNER", "123456789012"),
         )["authorizationToken"]
 
         logger.info("Successfully retrieved secure PyPI access token")
@@ -98,7 +100,7 @@ def install_packages_from_secure_pypi(packages: list) -> None:
 
     try:
         token = _get_secure_pypi_access_token()
-        index_url = f"https://aws:{token}@amazon-149122183214.d.codeartifact.us-west-2.amazonaws.com/pypi/secure-pypi/simple/"
+        index_url = f"https://aws:{token}@{os.environ.get('SECURE_PYPI_DOMAIN', 'amazon')}-{os.environ.get('SECURE_PYPI_DOMAIN_OWNER', '123456789012')}.d.codeartifact.us-west-2.amazonaws.com/pypi/{os.environ.get('SECURE_PYPI_REPOSITORY', 'secure-pypi')}/simple/"
 
         check_call(
             [
@@ -188,18 +190,19 @@ print("***********************Package Installation Complete*********************
 
 import json
 import pickle as pkl
+from io import BytesIO, StringIO
 from pathlib import Path
-from typing import Dict, Any, Union, Tuple, List, Optional
-from io import StringIO, BytesIO
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 # Third-party imports
 import pandas as pd
-import numpy as np
+from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
 
 # Model wrapper imports (for consistency with training/eval)
 from models.factory.model_factory import ModelFactory
 from models.implementations.mtgbm_model import MtgbmModel
-from hyperparams.hyperparameters_lightgbmmt import LightGBMMtModelHyperparameters
 
 # Local imports
 from processing.categorical.risk_table_processor import RiskTableMappingProcessor

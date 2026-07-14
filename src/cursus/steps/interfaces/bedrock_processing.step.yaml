@@ -50,11 +50,16 @@ contract:
       BEDROCK_BATCH_SIZE: '10'
       BEDROCK_CONCURRENCY_MODE: sequential
       BEDROCK_USE_STRUCTURED_OUTPUT: 'false'
+      BEDROCK_USE_TOOL_CALLING: 'false'
+      BEDROCK_TOOL_NAME: submit_classification
+      BEDROCK_TOOL_DESCRIPTION: Classify the input data and return structured output
       BEDROCK_USE_CONVERSE_API: 'false'
       BEDROCK_INFERENCE_PROFILE_REQUIRED_MODELS: '[]'
       BEDROCK_TOP_P: '0.999'
       BEDROCK_MAX_RETRIES: '3'
       BEDROCK_OUTPUT_COLUMN_PREFIX: llm_
+      BEDROCK_OUTPUT_COLUMN_MAP: ''
+      BEDROCK_ROUTED_RULES_COLUMN: selected_rule_names
       BEDROCK_SKIP_ERROR_RECORDS: 'false'
       BEDROCK_MAX_CONCURRENT_WORKERS: '5'
       BEDROCK_RATE_LIMIT_PER_SECOND: '10'

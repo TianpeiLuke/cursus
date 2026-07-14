@@ -5,10 +5,11 @@ This module implements the configuration class for the Bedrock Processing step
 using the three-tier design pattern for optimal user experience and maintainability.
 """
 
-from pydantic import Field, PrivateAttr, model_validator, field_validator
-from typing import Dict, Any, Optional, List
 import json
 import logging
+from typing import Any, Dict, List, Optional
+
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -102,6 +103,21 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         default="llm_", description="Prefix for output columns in processed data"
     )
 
+    bedrock_output_column_map: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Optional {produced_name: canonical_name} rename applied to output columns "
+        "before write, so the output matches a downstream consumer's schema. Emitted as "
+        "BEDROCK_OUTPUT_COLUMN_MAP (JSON). Empty = no rename. Generic: no field names are hardcoded "
+        "in the script — the map is supplied per use case by this config.",
+    )
+
+    bedrock_routed_rules_column: str = Field(
+        default="selected_rule_names",
+        description="Name of the per-record column carrying the routed rule names when the upstream "
+        "step is a rule-driven routing step (used to fill the {routed_rules} prompt slot). Emitted "
+        "as BEDROCK_ROUTED_RULES_COLUMN.",
+    )
+
     bedrock_skip_error_records: bool = Field(
         default=False,
         description="Whether to exclude error records from output files (statistics still track all records)",
@@ -170,6 +186,23 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
     bedrock_use_structured_output: bool = Field(
         default=False,
         description="Use tool_use for guaranteed schema compliance (0% parse failures).",
+    )
+
+    # Forced tool-use knobs (constrained decoding). bedrock_use_tool_calling is an explicit alias
+    # for bedrock_use_structured_output; tool_name/tool_description name the emitted tool. Kept as
+    # first-class fields so a script reading BEDROCK_USE_TOOL_CALLING / BEDROCK_TOOL_NAME /
+    # _DESCRIPTION has them config-backed + interface-declared (parity across repos).
+    bedrock_use_tool_calling: bool = Field(
+        default=False,
+        description="Alias for bedrock_use_structured_output — force tool_use/tool_choice (constrained decoding).",
+    )
+    bedrock_tool_name: str = Field(
+        default="submit_classification",
+        description="Name of the forced tool the model must call when tool-use is enabled.",
+    )
+    bedrock_tool_description: str = Field(
+        default="Classify the input data and return structured output",
+        description="Description of the forced tool (shown to the model).",
     )
 
     # Converse API mode
@@ -263,6 +296,12 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
                 "BEDROCK_BATCH_SIZE": str(self.bedrock_batch_size),
                 "BEDROCK_MAX_RETRIES": str(self.bedrock_max_retries),
                 "BEDROCK_OUTPUT_COLUMN_PREFIX": self.bedrock_output_column_prefix,
+                "BEDROCK_OUTPUT_COLUMN_MAP": (
+                    json.dumps(self.bedrock_output_column_map)
+                    if self.bedrock_output_column_map
+                    else ""
+                ),
+                "BEDROCK_ROUTED_RULES_COLUMN": self.bedrock_routed_rules_column,
                 "BEDROCK_SKIP_ERROR_RECORDS": str(
                     self.bedrock_skip_error_records
                 ).lower(),
@@ -286,18 +325,24 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
                 # Config-embedded template support (self-contained mode)
                 "BEDROCK_USER_PROMPT_TEMPLATE": self.bedrock_user_prompt_template or "",
                 "BEDROCK_SYSTEM_PROMPT": self.bedrock_system_prompt or "",
-                "BEDROCK_INPUT_PLACEHOLDERS": json.dumps(
-                    self.bedrock_input_placeholders
-                )
-                if self.bedrock_input_placeholders
-                else "[]",
-                "BEDROCK_VALIDATION_SCHEMA": json.dumps(self.bedrock_validation_schema)
-                if self.bedrock_validation_schema
-                else "{}",
+                "BEDROCK_INPUT_PLACEHOLDERS": (
+                    json.dumps(self.bedrock_input_placeholders)
+                    if self.bedrock_input_placeholders
+                    else "[]"
+                ),
+                "BEDROCK_VALIDATION_SCHEMA": (
+                    json.dumps(self.bedrock_validation_schema)
+                    if self.bedrock_validation_schema
+                    else "{}"
+                ),
                 # Structured output mode
                 "BEDROCK_USE_STRUCTURED_OUTPUT": str(
                     self.bedrock_use_structured_output
                 ).lower(),
+                # Forced tool-use knobs (constrained decoding)
+                "BEDROCK_USE_TOOL_CALLING": str(self.bedrock_use_tool_calling).lower(),
+                "BEDROCK_TOOL_NAME": self.bedrock_tool_name,
+                "BEDROCK_TOOL_DESCRIPTION": self.bedrock_tool_description,
                 # Converse API mode
                 "BEDROCK_USE_CONVERSE_API": str(self.bedrock_use_converse_api).lower(),
                 # Adaptive rate limiting
@@ -337,9 +382,11 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
                 "max_workers": self.bedrock_max_concurrent_workers,
                 "rate_limit_per_second": self.bedrock_rate_limit_per_second,
                 "is_concurrent": self.bedrock_concurrency_mode == "concurrent",
-                "expected_speedup": f"{self.bedrock_max_concurrent_workers}x"
-                if self.bedrock_concurrency_mode == "concurrent"
-                else "1x",
+                "expected_speedup": (
+                    f"{self.bedrock_max_concurrent_workers}x"
+                    if self.bedrock_concurrency_mode == "concurrent"
+                    else "1x"
+                ),
                 "recommended_for_production": self.bedrock_concurrency_mode
                 == "concurrent"
                 and self.bedrock_fallback_model_id is not None,
@@ -510,6 +557,8 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
             "bedrock_batch_size": self.bedrock_batch_size,
             "bedrock_max_retries": self.bedrock_max_retries,
             "bedrock_output_column_prefix": self.bedrock_output_column_prefix,
+            "bedrock_output_column_map": self.bedrock_output_column_map,
+            "bedrock_routed_rules_column": self.bedrock_routed_rules_column,
             "bedrock_concurrency_mode": self.bedrock_concurrency_mode,
             "bedrock_max_concurrent_workers": self.bedrock_max_concurrent_workers,
             "bedrock_rate_limit_per_second": self.bedrock_rate_limit_per_second,
@@ -534,6 +583,9 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
         bedrock_fields["bedrock_use_structured_output"] = (
             self.bedrock_use_structured_output
         )
+        bedrock_fields["bedrock_use_tool_calling"] = self.bedrock_use_tool_calling
+        bedrock_fields["bedrock_tool_name"] = self.bedrock_tool_name
+        bedrock_fields["bedrock_tool_description"] = self.bedrock_tool_description
         bedrock_fields["bedrock_use_converse_api"] = self.bedrock_use_converse_api
         bedrock_fields["bedrock_adaptive_rate_limiting"] = (
             self.bedrock_adaptive_rate_limiting
@@ -598,9 +650,11 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
             "expected_speedup": f"{speedup:.1f}x",
             "throughput_estimate": throughput_estimate,
             "batch_size": self.bedrock_batch_size,
-            "max_workers": self.bedrock_max_concurrent_workers
-            if self.bedrock_concurrency_mode == "concurrent"
-            else 1,
+            "max_workers": (
+                self.bedrock_max_concurrent_workers
+                if self.bedrock_concurrency_mode == "concurrent"
+                else 1
+            ),
             "rate_limit": self.bedrock_rate_limit_per_second,
             "production_ready": self.is_production_ready(),
         }
