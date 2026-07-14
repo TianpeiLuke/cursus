@@ -31,17 +31,16 @@ I/O container paths, the env-var reads, and the ``__main__`` argparse — is com
 and correct so that validate/preflight pass and the step is constructible.
 """
 
-import os
-import json
 import argparse
+import json
 import logging
+import os
 import sys
 import traceback
 from pathlib import Path
-from typing import Dict, List, Optional, Callable, Any, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import pandas as pd
-
 
 # ============================================================================
 # COMPILE — knowledge_corpus/rule_*.md -> prompts.json (in memory)
@@ -120,8 +119,10 @@ def _load_encoder(embedding_model_dir: Optional[str], model_name: str, log: Call
             "Install with: pip install sentence-transformers"
         ) from e
 
-    if embedding_model_dir and Path(embedding_model_dir).exists() and any(
-        Path(embedding_model_dir).iterdir()
+    if (
+        embedding_model_dir
+        and Path(embedding_model_dir).exists()
+        and any(Path(embedding_model_dir).iterdir())
     ):
         log(f"[INDEX] Loading OFFLINE encoder from {embedding_model_dir}")
         return SentenceTransformer(embedding_model_dir)
@@ -306,9 +307,7 @@ def route_records(
         raise RuntimeError(f"No parquet record shards found under {records_dir}")
 
     log(f"[ROUTE] Reading {len(shards)} record shard(s) from {records_dir}")
-    df = pd.concat(
-        [pd.read_parquet(s) for s in shards], axis=0, ignore_index=True
-    )
+    df = pd.concat([pd.read_parquet(s) for s in shards], axis=0, ignore_index=True)
     log(f"[ROUTE] Loaded {df.shape[0]} records with {df.shape[1]} columns")
 
     encoder = index["_encoder"]
@@ -349,9 +348,7 @@ def assert_index_rules_subset_of_ruleset(
     """
     ruleset_rule_names = set(ruleset["rule_names"])
     index_rule_names = {
-        rule_name
-        for linked in index["linked_rules"].values()
-        for rule_name in linked
+        rule_name for linked in index["linked_rules"].values() for rule_name in linked
     }
     missing = index_rule_names - ruleset_rule_names
     if missing:
@@ -386,7 +383,9 @@ def write_prompt_ruleset(
     )
 
     schema_path = output_path / "tool_schema.json"
-    schema_path.write_text(json.dumps(ruleset["tool_schema"], indent=2), encoding="utf-8")
+    schema_path.write_text(
+        json.dumps(ruleset["tool_schema"], indent=2), encoding="utf-8"
+    )
 
     log(f"[WRITE] Wrote prompt ruleset to {prompts_path} and {schema_path}")
 
@@ -530,7 +529,9 @@ if __name__ == "__main__":
         }
 
         environ_vars = {
-            "ROUTING_SCORING_MODE": os.environ.get("ROUTING_SCORING_MODE", "activation"),
+            "ROUTING_SCORING_MODE": os.environ.get(
+                "ROUTING_SCORING_MODE", "activation"
+            ),
             "ROUTING_THRESHOLD": os.environ.get("ROUTING_THRESHOLD", "0.30"),
             "ROUTING_TOP_K": os.environ.get("ROUTING_TOP_K", "7"),
             "EMBEDDING_MODEL_NAME": os.environ.get(

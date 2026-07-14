@@ -22,10 +22,11 @@ a matching lower-cased field here so ``get_environment_variables`` can resolve i
     EMBEDDING_MODEL_NAME   <- self.embedding_model_name
 """
 
-from pydantic import Field, field_validator, model_validator
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from pydantic import Field, field_validator, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
