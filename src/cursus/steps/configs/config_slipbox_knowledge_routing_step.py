@@ -92,6 +92,31 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
         description="SentenceTransformer model name used to build the routing index. Overridden at runtime by the offline embedding_model input path when present (EMBEDDING_MODEL_NAME).",
     )
 
+    # In-container bundled-corpus defaults + index scratch path. The script reads every
+    # knob through main()'s environ_vars for testability; these back the DEFAULT_CORPUS_VAULT /
+    # DEFAULT_PROMPTS_DIR / ROUTING_INDEX_PATH env vars the .step.yaml declares (NAME<-self.name).
+    #
+    # default_corpus_vault / default_prompts_dir default to "" (empty) ON PURPOSE: the bundled
+    # DKS corpus path is a fact about the container layout best known to the SCRIPT, which computes
+    # it absolutely from __file__. An empty config value defers to that robust self-located default;
+    # set these ONLY to deliberately override the corpus location (an absolute path — a relative one
+    # would resolve against the container CWD).
+
+    default_corpus_vault: str = Field(
+        default="",
+        description="Override for the bundled DKS corpus vault path (DEFAULT_CORPUS_VAULT). Empty ⇒ the script uses its own bundled corpus (resolved from __file__). Set to an absolute path only to override.",
+    )
+
+    default_prompts_dir: str = Field(
+        default="",
+        description="Override for the bundled ruleset_metadata.json / prompts.json dir (DEFAULT_PROMPTS_DIR). Empty ⇒ the script uses its bundled prompts dir (resolved from __file__). Set to an absolute path only to override.",
+    )
+
+    routing_index_path: str = Field(
+        default="/tmp/pattern_routing_index.pkl",
+        description="Scratch path where the run-scoped pattern routing index pickle is written (ROUTING_INDEX_PATH).",
+    )
+
     # ===== Compute overrides =====
     # The routing index build runs SentenceTransformer.encode (torch); default to the
     # larger processing instance so the torch/sentence-transformers container has headroom.
@@ -208,7 +233,12 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
             "routing_threshold": self.routing_threshold,
             "routing_top_k": self.routing_top_k,
             "embedding_model_name": self.embedding_model_name,
+            "default_corpus_vault": self.default_corpus_vault,
+            "default_prompts_dir": self.default_prompts_dir,
+            "routing_index_path": self.routing_index_path,
             "use_large_processing_instance": self.use_large_processing_instance,
+            "framework_version": self.framework_version,
+            "py_version": self.py_version,
         }
 
         # Combine fields (routing fields take precedence if overlap)

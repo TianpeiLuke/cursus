@@ -20,7 +20,7 @@ contract:
       required: true
     knowledge_corpus:
       path: /opt/ml/processing/input/knowledge
-      required: true
+      required: false
     embedding_model:
       path: /opt/ml/processing/input/model
       required: false
@@ -76,8 +76,9 @@ spec:
       - source
     knowledge_corpus:
       type: processing_output
-      required: true
+      required: false
       compatible_sources:
+      - DummyDataLoading
       - CradleDataLoading
       - ProcessingStep
       semantic_keywords:

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.2] - 2026-07-13
+
+**`SlipboxKnowledgeRouting` — script↔interface↔config alignment pass.** A three-way alignment audit of the step surfaced several gaps, fixed here: `knowledge_corpus` is now an optional input with a guaranteed in-container bundled default and a sanctioned S3 override path, and the full runtime config (including the corpus-default + index paths) flows through declared env vars.
+
+### Changed
+
+- **`knowledge_corpus` input → optional** — `required: true` → **`false`** in `contract.inputs` and `spec.dependencies`. The script reads it via `input_paths.get(...)` and falls back to the bundled DKS corpus, so the channel is an override; only `records` stays required.
+- **`knowledge_corpus.compatible_sources` += `DummyDataLoading`** — now `[DummyDataLoading, CradleDataLoading, ProcessingStep]`. `DummyDataLoading` is the sanctioned way to bring an external S3 corpus into a pipeline, so it must be a compatible source for the optional override (`DummyDataLoading.DATA → knowledge_corpus` resolves at 0.717).
+- **Config-backed env surface** — added `DEFAULT_CORPUS_VAULT`, `DEFAULT_PROMPTS_DIR`, `ROUTING_INDEX_PATH` to `contract.env_vars.optional` and backed each with a config field (`default_corpus_vault`/`default_prompts_dir` default `""` ⇒ the script self-locates the bundled corpus from `__file__`; `routing_index_path` → scratch pkl). All config resolves via `get_environment_variables()` (`NAME ← self.name`), so the script reads every knob from `main()`'s `environ_vars` (testability). `get_public_init_fields()` now enumerates the new fields + `framework_version`/`py_version`.
+
+### Notes
+
+- Env alignment verified 7-way (script-reads == interface-declares == config-backs); interface validates with 0 errors.
+
 ## [2.9.1] - 2026-07-13
 
 **`SlipboxKnowledgeRouting` → Processing pattern 2 (source-dir / PyTorch FrameworkProcessor).** The step ships a **source directory** (its entry-point script plus a co-located package + DKS corpus it imports at runtime), so its interface now adopts the same source-dir pattern as the model-eval / model-inference steps. Corrective follow-up to 2.9.0 (which declared the step as a self-contained `sklearn` `ScriptProcessor` — `ScriptProcessor.run` has no `source_dir`, so it could not ship the sibling package).
