@@ -4,12 +4,16 @@ registry:
   sagemaker_step_type: Processing
   description: Slipbox knowledge routing step that hosts the DKS knowledge+ruleset corpus and runs compile→index→route internally, emitting a compiled prompt ruleset plus per-record routed rule names and routing confidence for downstream Bedrock processing
 patterns:
+  step_assembly: step_args
   direct_input_keys: [records, knowledge_corpus, embedding_model]
 compute:
-  kind: sklearn
-  framework_version_field: processing_framework_version
+  kind: framework
+  sdk_class: PyTorch
+  framework_version_field: framework_version
+  py_version_field: py_version
 contract:
   entry_point: slipbox_knowledge_routing.py
+  source_dir: true
   inputs:
     records:
       path: /opt/ml/processing/input/data

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.1] - 2026-07-13
+
+**`SlipboxKnowledgeRouting` → Processing pattern 2 (source-dir / PyTorch FrameworkProcessor).** The step ships a **source directory** (its entry-point script plus a co-located package + DKS corpus it imports at runtime), so its interface now adopts the same source-dir pattern as the model-eval / model-inference steps. Corrective follow-up to 2.9.0 (which declared the step as a self-contained `sklearn` `ScriptProcessor` — `ScriptProcessor.run` has no `source_dir`, so it could not ship the sibling package).
+
+### Changed
+
+- **`interfaces/slipbox_knowledge_routing.step.yaml`** — `compute.kind: sklearn` → **`framework`** with `sdk_class: PyTorch` + `py_version_field: py_version` (the PyTorch base image already carries torch, so the container only layers on `sentence-transformers`, vs. installing the whole torch stack onto a sklearn image); `patterns.step_assembly: step_args`; `contract.source_dir: true`.
+- **`configs/config_slipbox_knowledge_routing_step.py`** — added `framework_version` (default `2.1.2`) + `py_version` (default `py310`), mirroring the pytorch model-eval config; `processing_source_dir` (inherited) points at the step's script directory at pipeline-wiring time.
+
+### Notes
+
+- No dependency/output changes — the 2.9.0 `compatible_sources` wiring is unchanged; the delta DAG still resolves.
+
 ## [2.9.0] - 2026-07-13
 
 New pipeline step **`SlipboxKnowledgeRouting`** (Processing) — hosts a DKS knowledge + ruleset corpus and runs *compile → index → route* inside one container, emitting a compiled prompt ruleset (+ tool schema) and per-record routed rules to a downstream Bedrock inference step. Reusable for any DKS-driven LLM-labeling pipeline.

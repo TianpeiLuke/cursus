@@ -100,6 +100,35 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
         description="Use the large processing instance type; the SentenceTransformer encode pass benefits from the extra CPU/memory headroom.",
     )
 
+    # ===== Source-dir / framework processor (Processing pattern 2) =====
+    # This step ships a SOURCE DIR (not a self-contained script): the entry-point script
+    # sits alongside a bundled knowledge closure (the DKS compile→index→route package +
+    # the rule_*/pattern_*/behavior_*.md corpus) that it imports at runtime. The .step.yaml
+    # therefore declares ``contract.source_dir: true`` + ``compute.kind: framework`` /
+    # ``sdk_class: PyTorch`` (a FrameworkProcessor — ScriptProcessor.run has no source_dir),
+    # the SAME pattern as the model-eval / model-inference steps.
+    #
+    # PyTorch (not SKLearn) because the routing index build runs SentenceTransformer.encode,
+    # which needs torch: the PyTorch container ships torch already, so we only layer on
+    # sentence-transformers via a requirements file — vs a SKLearn image that would have to
+    # pip-install the whole torch/CUDA stack at container start.
+    #
+    #   * ``processing_source_dir`` (inherited from ProcessingStepConfigBase, default None)
+    #     is set at pipeline-wiring time to the dir holding the entry-point script + the
+    #     bundled knowledge closure; ``effective_source_dir`` / ``get_script_path`` resolve it.
+    #   * ``framework_version`` / ``py_version`` below drive the SageMaker PyTorch container
+    #     image (mirroring the pytorch model-eval step).
+
+    framework_version: str = Field(
+        default="2.1.2",
+        description="PyTorch framework version for the processing container (drives the SageMaker PyTorch image, same as the pytorch model-eval step).",
+    )
+
+    py_version: str = Field(
+        default="py310",
+        description="Python version for the SageMaker PyTorch container.",
+    )
+
     # ===== Derived Fields (Tier 3) =====
     # (No derived properties needed beyond the base class — script path resolution is
     #  inherited from ProcessingStepConfigBase.)
