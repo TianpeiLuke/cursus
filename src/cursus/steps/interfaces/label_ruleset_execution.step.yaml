@@ -45,6 +45,7 @@ spec:
       required: true
       compatible_sources:
       - LabelRulesetGeneration
+      - SlipboxKnowledgeRouting
       semantic_keywords:
       - ruleset
       - validated_ruleset

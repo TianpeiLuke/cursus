@@ -96,6 +96,7 @@ spec:
       - MissingValueImputation
       - FeatureSelection
       - CurrencyConversion
+      - SlipboxKnowledgeRouting
       semantic_keywords:
       - data
       - dataset
@@ -107,6 +108,7 @@ spec:
       required: true
       compatible_sources:
       - BedrockPromptTemplateGeneration
+      - SlipboxKnowledgeRouting
       semantic_keywords:
       - templates
       - prompts
@@ -117,6 +119,7 @@ spec:
       required: true
       compatible_sources:
       - BedrockPromptTemplateGeneration
+      - SlipboxKnowledgeRouting
       semantic_keywords:
       - schema
       - validation

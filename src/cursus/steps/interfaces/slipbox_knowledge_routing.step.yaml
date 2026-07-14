@@ -1,0 +1,132 @@
+step_type: SlipboxKnowledgeRouting
+node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  description: Slipbox knowledge routing step that hosts the Athelas-Conv DKS knowledge+ruleset corpus and runs compile→index→route internally, emitting a compiled prompt ruleset plus per-record routed rule names and routing confidence for downstream Bedrock processing
+patterns:
+  direct_input_keys: [records, knowledge_corpus, embedding_model]
+compute:
+  kind: sklearn
+  framework_version_field: processing_framework_version
+contract:
+  entry_point: slipbox_knowledge_routing.py
+  inputs:
+    records:
+      path: /opt/ml/processing/input/data
+      required: true
+    knowledge_corpus:
+      path: /opt/ml/processing/input/knowledge
+      required: true
+    embedding_model:
+      path: /opt/ml/processing/input/model
+      required: false
+  outputs:
+    prompt_ruleset:
+      path: /opt/ml/processing/output/ruleset
+    routed_records:
+      path: /opt/ml/processing/output/data
+  arguments: {}
+  job_arguments:
+  - flag: --job_type
+    source: job_type
+  env_vars:
+    required: []
+    optional:
+      ROUTING_SCORING_MODE: activation
+      ROUTING_THRESHOLD: '0.30'
+      ROUTING_TOP_K: '7'
+      EMBEDDING_MODEL_NAME: all-MiniLM-L6-v2
+  framework_requirements:
+    boto3: '>=1.34'
+    pandas: '>=2.0'
+    pyarrow: '>=15.0'
+    pyyaml: '>=6.0'
+    sentence-transformers: '>=3.0'
+    numpy: '>=1.26'
+  description: 'Slipbox knowledge routing script that COMPILES the DKS rule_*.md corpus
+    into an in-memory prompt ruleset (prompts.json + tool schema), INDEXES the
+    pattern_*/behavior_* corpus with an offline SentenceTransformer encoder into an
+    in-memory routing index, and ROUTES each input record via cosine similarity +
+    activation top-k to a set of routed rule names with a routing_confidence score.
+    An internal consistency gate asserts the index linked_rules are a subset of the
+    compiled rule_names. Emits the prompt_ruleset and the routed_records for
+    downstream BedrockProcessing.
+
+    '
+spec:
+  dependencies:
+    records:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - TabularPreprocessing
+      - CradleDataLoading
+      - ProcessingStep
+      semantic_keywords:
+      - data
+      - records
+      - input
+      - dataset
+      - processed_data
+      - tabular
+      - source
+    knowledge_corpus:
+      type: processing_output
+      required: true
+      compatible_sources:
+      - CradleDataLoading
+      - ProcessingStep
+      semantic_keywords:
+      - knowledge
+      - corpus
+      - rules
+      - ruleset
+      - patterns
+      - behaviors
+      - dks
+    embedding_model:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - ProcessingStep
+      - CradleDataLoading
+      semantic_keywords:
+      - model
+      - embedding
+      - encoder
+      - weights
+      - minilm
+      - sentence_transformer
+  outputs:
+    prompt_ruleset:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['prompt_ruleset'].S3Output.S3Uri
+      semantic_keywords:
+      - ruleset
+      - prompt
+      - prompts
+      - tool_schema
+      - compiled_rules
+      aliases:
+      - prompt_templates
+      - prompts
+      - ruleset
+      - templates
+      data_type: S3Uri
+    routed_records:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['routed_records'].S3Output.S3Uri
+      semantic_keywords:
+      - routed
+      - records
+      - routed_records
+      - routing_confidence
+      - processed_data
+      - data
+      aliases:
+      - input_data
+      - processed_data
+      - data
+      - input_path
+      - model_input_data
+      data_type: S3Uri
