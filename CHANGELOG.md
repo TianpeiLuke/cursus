@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.0] - 2026-07-13
+
+New pipeline step **`SlipboxKnowledgeRouting`** (Processing) — hosts a DKS knowledge + ruleset corpus and runs *compile → index → route* inside one container, emitting a compiled prompt ruleset (+ tool schema) and per-record routed rules to a downstream Bedrock inference step. Reusable for any DKS-driven LLM-labeling pipeline.
+
+### Added
+
+- **`SlipboxKnowledgeRouting` step** — three artifacts under `src/cursus/steps/`:
+  - `interfaces/slipbox_knowledge_routing.step.yaml` — self-registering interface (registry-by-construction). Dependencies: `records` (required; `compatible_sources` includes `TabularPreprocessing`), `knowledge_corpus` (required — the `rule_*/pattern_*/behavior_*` DKS corpus), `embedding_model` (optional — offline `all-MiniLM-L6-v2`). Outputs: `prompt_ruleset` (compiled `prompts.json` + tool schema) and `routed_records`. `sagemaker_step_type: Processing`, `compute.kind: sklearn`.
+  - `configs/config_slipbox_knowledge_routing_step.py` — `SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase)` with routing knobs (`routing_scoring_mode`/`routing_threshold`/`routing_top_k`/`embedding_model_name`).
+  - `scripts/slipbox_knowledge_routing.py` — Cursus contract entry point (`main(input_paths, output_paths, environ_vars, job_args)` + `--job_type`); compile → embed-index → route scaffold.
+
+### Changed
+
+- **`BedrockProcessing` + `BedrockBatchProcessing` interfaces** — added `SlipboxKnowledgeRouting` to `compatible_sources` on `input_data`, `prompt_templates`, and `validation_schema`.
+- **`LabelRulesetExecution` interface** — `validated_ruleset.compatible_sources` now accepts both `LabelRulesetGeneration` and `SlipboxKnowledgeRouting`.
+
 ## [2.8.5] - 2026-07-06
 
 Robustness: keep `stdout` clean **at import time** so the stdio MCP server can't be corrupted by import-time logging, without any external wrapper.

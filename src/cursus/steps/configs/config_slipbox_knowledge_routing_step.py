@@ -2,7 +2,7 @@
 Slipbox Knowledge Routing Configuration with Self-Contained Derivation Logic
 
 This module implements the configuration class for the SageMaker Processing step
-that hosts the Athelas-Conv DKS knowledge+ruleset corpus and runs the internal
+that hosts the DKS knowledge+ruleset corpus and runs the internal
 compile → index → route pipeline (see FZ 29h1e §4/§7).
 
 Fields are categorized according to the three-tier design used across cursus

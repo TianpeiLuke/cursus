@@ -2,13 +2,13 @@
 """
 Slipbox Knowledge Routing — Cursus ProcessingStep script (PROPOSAL scaffold).
 
-Hosts the Athelas-Conv DKS knowledge+ruleset corpus and runs the internal
+Hosts the DKS knowledge+ruleset corpus and runs the internal
 compile → index → route pipeline (FZ 29h1e §4/§7), emitting to the downstream
 BedrockProcessing step:
   - prompt_ruleset : the compiled prompt ruleset (prompts.json + tool schema)
   - routed_records : the input records + routed rule names + routing_confidence
 
-Pipeline stages (each ports a named Athelas source function — see the TODOs):
+Pipeline stages (each ports a named DKS-router source function — see the TODOs):
   COMPILE  read knowledge_corpus/rule_*.md      -> prompts.json (in memory)
            [ports compile_prompt_ruleset.compile_rules]
   INDEX    read knowledge_corpus/pattern_*.md (+ behavior_*.md)
@@ -24,7 +24,7 @@ Internal consistency gate: the set of rules linked from the routing index MUST b
 a subset of the compiled rule_names in prompts.json (otherwise routing could emit a
 rule name the ruleset does not define).
 
-NOTE (PROPOSAL scaffold): the ported Athelas logic below is a faithful skeleton
+NOTE (PROPOSAL scaffold): the ported DKS-router logic below is a faithful skeleton
 with explicit TODOs pointing at the source functions. The Cursus contract surface
 — the ``main(input_paths, output_paths, environ_vars, job_args)`` signature, the
 I/O container paths, the env-var reads, and the ``__main__`` argparse — is complete
@@ -54,7 +54,7 @@ def compile_prompt_ruleset(
     """
     Compile the DKS ``rule_*.md`` corpus into an in-memory prompt ruleset.
 
-    Ports ``compile_prompt_ruleset.compile_rules`` from Athelas-Conv.
+    Ports ``compile_prompt_ruleset.compile_rules`` from the DKS pipeline.
 
     Returns a dict shaped like the emitted ``prompts.json``:
         {
@@ -80,7 +80,7 @@ def compile_prompt_ruleset(
         text = rule_file.read_text(encoding="utf-8")
         # TODO(compile_prompt_ruleset.compile_rules): parse the rule markdown front
         #   matter + body into {prompt, metadata}; port the section-splitting and
-        #   prompt-template assembly from Athelas compile_prompt_ruleset.py.
+        #   prompt-template assembly from the DKS compile_prompt_ruleset.py.
         rules[rule_name] = {"prompt": text, "metadata": {"source": rule_file.name}}
 
     # TODO(compile_prompt_ruleset.build_tool_schema): assemble the structured-output
@@ -182,7 +182,7 @@ def build_routing_index(
         text = pattern_file.read_text(encoding="utf-8")
         # TODO(build_routing_index.py:150): parse the pattern markdown into its
         #   description text + the list of rule_* names it links to (front-matter
-        #   'linked_rules:' / body reference parsing in Athelas build_routing_index).
+        #   'linked_rules:' / body reference parsing in the DKS build_routing_index).
         pattern_names.append(pattern_name)
         pattern_texts.append(text)
         linked_rules[pattern_name] = []
@@ -217,7 +217,7 @@ def build_query_text(row: pd.Series) -> str:
     (routing.py:217).
     """
     # TODO(routing.py:217): assemble the query text from the domain-relevant record
-    #   fields exactly as Athelas UnifiedPatternRouter.build_query_text does (field
+    #   fields exactly as the DKS UnifiedPatternRouter.build_query_text does (field
     #   selection + concatenation order matters for routing parity).
     return " ".join(str(v) for v in row.to_dict().values())
 

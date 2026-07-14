@@ -2,7 +2,7 @@ step_type: SlipboxKnowledgeRouting
 node_type: internal
 registry:
   sagemaker_step_type: Processing
-  description: Slipbox knowledge routing step that hosts the Athelas-Conv DKS knowledge+ruleset corpus and runs compile→index→route internally, emitting a compiled prompt ruleset plus per-record routed rule names and routing confidence for downstream Bedrock processing
+  description: Slipbox knowledge routing step that hosts the DKS knowledge+ruleset corpus and runs compile→index→route internally, emitting a compiled prompt ruleset plus per-record routed rule names and routing confidence for downstream Bedrock processing
 patterns:
   direct_input_keys: [records, knowledge_corpus, embedding_model]
 compute:
