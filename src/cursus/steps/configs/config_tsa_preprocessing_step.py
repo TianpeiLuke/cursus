@@ -192,15 +192,18 @@ class TSAPreprocessingConfig(ProcessingStepConfigBase):
 
         return self._full_script_path
 
-    @property
-    def preprocessing_environment_variables(self) -> Dict[str, str]:
+    def get_environment_variables(self, declared_env_vars=None) -> Dict[str, str]:
         """
-        Get preprocessing-specific environment variables based on configuration.
+        Get preprocessing-specific environment variables based on configuration
+        (bespoke collector — see TabularPreprocessingConfig.get_environment_variables).
 
         These are static environment variables derived from config fields like
         target_positive_rate, time windows, and tag. Dynamic environment variables
         that depend on step inputs (like PREPROCESSOR_PATH) are added by the builder
-        at runtime when the step is created.
+        at runtime when the step is created. The universal builder detects this
+        config-owned ``get_environment_variables`` and calls it (the former
+        ``preprocessing_environment_variables`` property was never invoked). ``declared_env_vars``
+        is accepted for base-signature compatibility and ignored.
 
         Returns:
             Dictionary mapping environment variable names to values

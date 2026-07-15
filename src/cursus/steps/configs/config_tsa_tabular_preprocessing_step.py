@@ -18,10 +18,11 @@ Key divergences from the generic TabularPreprocessingConfig:
     --preprocessor-output-path in addition to --job_type.
 """
 
-from pydantic import Field, field_validator, model_validator, PrivateAttr
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -230,10 +231,15 @@ class TSATabularPreprocessingConfig(ProcessingStepConfigBase):
 
         return self._tsa_environment_variables
 
-    # Keep legacy alias used by ProcessingStepHandler env-var injection
-    @property
-    def preprocessing_environment_variables(self) -> Dict[str, str]:
-        """Alias for tsa_environment_variables (ProcessingStepHandler compatibility)."""
+    # Bespoke collector the universal builder detects and calls (was the
+    # preprocessing_environment_variables property, which the builder never invoked).
+    def get_environment_variables(self, declared_env_vars=None) -> Dict[str, str]:
+        """Full container env for the TSA-tabular step (delegates to tsa_environment_variables).
+
+        The universal builder (builder_base._get_environment_variables) sources the container
+        env from a config-owned ``get_environment_variables``; ``declared_env_vars`` is accepted
+        for base-signature compatibility and ignored (this returns the full env dict).
+        """
         return self.tsa_environment_variables
 
     # =========================================================================

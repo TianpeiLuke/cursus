@@ -9,10 +9,11 @@ is properly categorized according to the three-tier design:
 3. Derived Fields (Tier 3) - Fields calculated from other fields, private with read-only properties
 """
 
-from pydantic import Field, field_validator, model_validator, PrivateAttr
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -144,10 +145,18 @@ class TabularPreprocessingConfig(ProcessingStepConfigBase):
 
         return self._full_script_path
 
-    @property
-    def preprocessing_environment_variables(self) -> Dict[str, str]:
+    def get_environment_variables(self, declared_env_vars=None) -> Dict[str, str]:
         """
-        Get preprocessing-specific environment variables.
+        Get preprocessing-specific environment variables (bespoke collector).
+
+        The universal builder (``builder_base._get_environment_variables``) detects a
+        config-OWNED ``get_environment_variables`` and calls it to source the container env,
+        then merges interface defaults for any declared-optional var not produced here. This
+        replaces the former ``preprocessing_environment_variables`` property, which the builder
+        never called (dead code) — that bypass dropped ``LABEL_FIELD`` / ``LABEL_DERIVE_*`` so
+        the training script saw no label. ``declared_env_vars`` is accepted for signature
+        compatibility with the base resolver and intentionally ignored (this bespoke path
+        returns the full env dict — sanctioned by ``BasePipelineConfig.get_environment_variables``).
 
         Returns:
             Dictionary mapping environment variable names to values
