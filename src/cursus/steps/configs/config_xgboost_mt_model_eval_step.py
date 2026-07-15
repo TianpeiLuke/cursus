@@ -9,9 +9,10 @@ Fields are organized into three tiers:
 3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
 """
 
-from pydantic import Field, model_validator
-from typing import Dict, List, Any, TYPE_CHECKING
 import logging
+from typing import TYPE_CHECKING, Any, Dict, List
+
+from pydantic import Field, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -70,7 +71,7 @@ class XgboostMtModelEvalConfig(ProcessingStepConfigBase):
 
     # XGBoost specific fields
     framework_version: str = Field(
-        default="2.1.2",
+        default="2.1.0",
         description="PyTorch framework version for processing (XGBoost installed via pip)",
     )
 

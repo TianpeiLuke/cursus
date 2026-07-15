@@ -6,9 +6,10 @@ which trains a BPE tokenizer optimized for customer name data with automatic voc
 size tuning to achieve target compression ratio.
 """
 
-from typing import Dict, List, Optional
-from pydantic import Field, model_validator, field_validator, PrivateAttr
 import logging
+from typing import Dict, List, Optional
+
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -50,7 +51,7 @@ class TokenizerTrainingConfig(ProcessingStepConfigBase):
 
     # PyTorch specific fields
     framework_version: str = Field(
-        default="2.1.2", description="PyTorch framework version for processing"
+        default="2.1.0", description="PyTorch framework version for processing"
     )
 
     py_version: str = Field(

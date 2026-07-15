@@ -36,7 +36,7 @@ class PyTorchTrainingConfig(BasePipelineConfig):
 
     # Framework versions for SageMaker PyTorch container
     framework_version: str = Field(
-        default="2.1.2", description="SageMaker PyTorch framework version."
+        default="2.1.0", description="SageMaker PyTorch framework version."
     )
     py_version: str = Field(
         default="py310",

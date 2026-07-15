@@ -9,10 +9,11 @@ design where each field is properly categorized according to the three-tier desi
 3. Derived Fields (Tier 3) - Fields calculated from other fields, private with read-only properties
 """
 
-from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr
-from typing import Dict, Optional, Any, TYPE_CHECKING
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -56,7 +57,7 @@ class TSAPreprocessingConfig(ProcessingStepConfigBase):
     )
 
     framework_version: str = Field(
-        default="2.1.2",
+        default="2.1.0",
         description="PyTorch framework version for processing",
     )
 

@@ -9,9 +9,10 @@ Fields are organized into three tiers:
 3. Tier 3: Derived Fields - fields calculated from other fields (private with properties)
 """
 
-from pydantic import Field, model_validator
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import logging
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from pydantic import Field, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -70,7 +71,7 @@ class LightGBMMTModelEvalConfig(ProcessingStepConfigBase):
 
     # LightGBM specific fields
     framework_version: str = Field(
-        default="2.1.2",
+        default="2.1.0",
         description="PyTorch framework version for processing (LightGBM installed via pip)",
     )
 
@@ -143,7 +144,10 @@ class LightGBMMTModelEvalConfig(ProcessingStepConfigBase):
         if not self.processing_entry_point:
             raise ValueError("evaluation step requires a processing_entry_point")
 
-        if self.job_type and (not self.job_type.replace("_", "").isalnum() or self.job_type != self.job_type.lower()):
+        if self.job_type and (
+            not self.job_type.replace("_", "").isalnum()
+            or self.job_type != self.job_type.lower()
+        ):
             raise ValueError(
                 f"job_type must be lowercase alphanumeric (with underscores), got '{self.job_type}'"
             )

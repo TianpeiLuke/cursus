@@ -61,7 +61,7 @@ class XgboostMtTrainingConfig(BasePipelineConfig):
 
     # Framework versions for SageMaker PyTorch container (used for XgboostMt)
     framework_version: str = Field(
-        default="2.1.2",
+        default="2.1.0",
         description="SageMaker PyTorch framework version for XgboostMt container.",
     )
 

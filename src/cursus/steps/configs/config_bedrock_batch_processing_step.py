@@ -5,10 +5,11 @@ This module implements the configuration class for the Bedrock Batch Processing 
 using the three-tier design pattern for optimal user experience and maintainability.
 """
 
-from pydantic import Field, PrivateAttr, model_validator, field_validator
-from typing import Dict, Any, Optional, List
 import json
 import logging
+from typing import Any, Dict, List, Optional
+
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -198,7 +199,7 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
 
     # PyTorch framework configuration
     framework_version: str = Field(
-        default="2.1.2",
+        default="2.1.0",
         description="PyTorch framework version for processing container",
     )
 
@@ -677,9 +678,11 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
                 "expected_speedup": f"{realtime_speedup:.1f}x",
                 "throughput_estimate": realtime_throughput,
                 "batch_size": self.bedrock_batch_size,
-                "max_workers": self.bedrock_max_concurrent_workers
-                if self.bedrock_concurrency_mode == "concurrent"
-                else 1,
+                "max_workers": (
+                    self.bedrock_max_concurrent_workers
+                    if self.bedrock_concurrency_mode == "concurrent"
+                    else 1
+                ),
                 "rate_limit": self.bedrock_rate_limit_per_second,
             },
             "production_ready": self.is_production_ready(),
@@ -702,9 +705,11 @@ class BedrockBatchProcessingConfig(ProcessingStepConfigBase):
                 if k.startswith("BEDROCK_BATCH_")
             },
             "recommendations": {
-                "optimal_for_datasets": f">= {self.bedrock_batch_threshold} records"
-                if self.bedrock_batch_mode == "auto"
-                else "All datasets",
+                "optimal_for_datasets": (
+                    f">= {self.bedrock_batch_threshold} records"
+                    if self.bedrock_batch_mode == "auto"
+                    else "All datasets"
+                ),
                 "cost_savings": self.cost_optimization_info["estimated_savings"],
                 "fallback_available": True,
                 "production_ready": self.is_production_ready(),

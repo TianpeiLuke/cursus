@@ -225,7 +225,7 @@ class BedrockProcessingConfig(ProcessingStepConfigBase):
 
     # PyTorch framework configuration
     framework_version: str = Field(
-        default="2.1.2",
+        default="2.1.0",
         description="PyTorch framework version for processing container",
     )
 

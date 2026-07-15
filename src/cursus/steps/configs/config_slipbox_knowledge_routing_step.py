@@ -146,7 +146,7 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
     #     image (mirroring the pytorch model-eval step).
 
     framework_version: str = Field(
-        default="2.1.2",
+        default="2.1.0",
         description="PyTorch framework version for the processing container (drives the SageMaker PyTorch image, same as the pytorch model-eval step).",
     )
 

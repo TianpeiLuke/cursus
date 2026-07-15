@@ -11,10 +11,11 @@ Fields are organized into three tiers:
 Aligned with PyTorch model eval config structure.
 """
 
-from pydantic import Field, model_validator, field_validator, PrivateAttr
-from typing import Optional, Dict, Any, TYPE_CHECKING
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional
+
+from pydantic import Field, PrivateAttr, field_validator, model_validator
 
 from .config_processing_step_base import ProcessingStepConfigBase
 
@@ -78,7 +79,7 @@ class TSAModelEvalConfig(ProcessingStepConfigBase):
 
     # PyTorch specific fields
     framework_version: str = Field(
-        default="2.1.2", description="PyTorch framework version for processing"
+        default="2.1.0", description="PyTorch framework version for processing"
     )
 
     py_version: str = Field(
@@ -399,9 +400,9 @@ class TSAModelEvalConfig(ProcessingStepConfigBase):
                 "NUM_WORKERS": str(self.num_workers),
                 "ENABLE_CPU_OPTIMIZATION": str(self.enable_cpu_optimization).lower(),
                 "EVAL_PERCENTILE": str(self.eval_percentile),
-                "EVAL_BATCH_SIZE": str(self.eval_batch_size)
-                if self.eval_batch_size
-                else "",
+                "EVAL_BATCH_SIZE": (
+                    str(self.eval_batch_size) if self.eval_batch_size else ""
+                ),
             }
         )
 
