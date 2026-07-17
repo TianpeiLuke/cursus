@@ -44,6 +44,17 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
     # ===== System Fields with Defaults (Tier 2) =====
     # These are fields with reasonable defaults that users can override
 
+    id_column: str = Field(
+        default="order_id",
+        description=(
+            "Primary-key column used by the memory-bounded parquet streaming path to select "
+            "sampled rows by id (emitted as the ID_COLUMN env var). For a parquet split whose "
+            "text columns exceed Arrow's 2 GiB per-array limit, the script samples the tiny "
+            "(id, strata) index then streams full rows whose id was selected. If this column is "
+            "absent or non-unique, the script falls back to positional selection."
+        ),
+    )
+
     processing_entry_point: str = Field(
         default="stratified_sampling.py",
         description="Relative path (within processing_source_dir) to the stratified sampling script.",
@@ -220,6 +231,7 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         # Add stratified sampling specific fields
         sampling_fields = {
             "strata_column": self.strata_column,
+            "id_column": self.id_column,
             "processing_entry_point": self.processing_entry_point,
             "job_type": self.job_type,
             "sampling_strategy": self.sampling_strategy,

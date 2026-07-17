@@ -216,6 +216,43 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
 
     # ===== Overrides for Inheritance =====
 
+    def get_environment_variables(self) -> Dict[str, str]:
+        """Environment variables for the slipbox knowledge routing script.
+
+        Explicitly emits USE_SECURE_PYPI (a BasePipelineConfig field) so the container's
+        pip-install step can authenticate to the secure CodeArtifact PyPI index inside a
+        restricted VPC — this is REQUIRED because the step interface's declared env_vars list
+        does not include USE_SECURE_PYPI, so the interface-driven base resolver never emits it
+        (the container would otherwise see the default false and skip the secure index). Mirrors
+        the pytorch model-eval config, which overrides this method for the same reason.
+
+        Also emits the routing knobs explicitly (rather than leaning on the NAME->self.name
+        convention) so the full env is self-contained and independent of the interface's
+        declared-key set.
+        """
+        env_vars = (
+            super().get_environment_variables()
+            if hasattr(super(), "get_environment_variables")
+            else {}
+        )
+
+        env_vars.update(
+            {
+                # Secure-PyPI toggle (base field) — the reason this override exists.
+                "USE_SECURE_PYPI": str(self.use_secure_pypi).lower(),
+                # Routing knobs (match the names declared in slipbox_knowledge_routing.step.yaml).
+                "ROUTING_SCORING_MODE": self.routing_scoring_mode,
+                "ROUTING_THRESHOLD": str(self.routing_threshold),
+                "ROUTING_TOP_K": str(self.routing_top_k),
+                "EMBEDDING_MODEL_NAME": self.embedding_model_name,
+                "DEFAULT_CORPUS_VAULT": self.default_corpus_vault,
+                "DEFAULT_PROMPTS_DIR": self.default_prompts_dir,
+                "ROUTING_INDEX_PATH": self.routing_index_path,
+            }
+        )
+
+        return env_vars
+
     def get_public_init_fields(self) -> Dict[str, Any]:
         """
         Override get_public_init_fields to include slipbox knowledge routing

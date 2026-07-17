@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.7] - 2026-07-17
+
+Two general fixes to the `SlipboxKnowledgeRouting` and `StratifiedSampling` processing steps.
+
+### Fixed
+
+- **`stratified_sampling` no longer crashes on parquet with a >2 GiB string column.** Reading a
+  split with `pandas.read_parquet()` materializes each column as one contiguous Arrow array; a
+  large-text feature whose bytes sum past **2^31 (2,147,483,646)** across the file overflows Arrow's
+  int32 string-offset limit (`ArrowCapacityError: array cannot contain more than 2147483646 bytes`)
+  inside `read_table()`. `stratified_sampling.py` now takes a **two-pass, memory-bounded streaming
+  path** for a parquet split with no row-level filter: Pass 1 reads only the tiny `(id, strata)` key
+  columns and runs the existing allocation to choose rows; Pass 2 streams the file row-group-by-
+  row-group and writes only the selected rows — **by id** when a unique id column is present, else
+  **by position** — with a single `ParquetWriter`. The `test` split is copied byte-for-byte. The
+  full file is never materialized. CSV/TSV and the filter / `external_proportional` cases keep the
+  in-memory path.
+- **`SlipboxKnowledgeRoutingConfig` now emits its env vars to the container.** It had no config-owned
+  `get_environment_variables()`, so the universal builder fell back to the generic `NAME → self.<name>`
+  resolver, which only emits vars a `.step.yaml` declares — dropping `USE_SECURE_PYPI` (needed so the
+  step can pull its container-start dependencies from a secure PyPI index in a restricted-network VPC).
+  Added a bespoke `get_environment_variables()` (mirrors the pytorch model-eval config) emitting
+  `USE_SECURE_PYPI` + the routing knobs.
+
+### Added
+
+- `StratifiedSamplingConfig.id_column` (default `order_id`) + `ID_COLUMN` in
+  `stratified_sampling.step.yaml`, making the streaming path's id-selection column configurable.
+  Absent/non-unique id ⇒ automatic fallback to positional selection.
+
 ## [2.9.4] - 2026-07-14
 
 **Repository hygiene (internal-identifier scrub) + generic `BedrockProcessing` routed-rule injection.**

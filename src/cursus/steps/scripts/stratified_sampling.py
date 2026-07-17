@@ -26,12 +26,28 @@ import os
 import argparse
 import json
 import logging
+import shutil
 import sys
 import traceback
 from pathlib import Path
 from typing import Dict, Optional, Callable, Any
 
 import pandas as pd
+
+# Big-parquet streaming path: a parquet whose string column (e.g. `dialogue` — full
+# conversations) sums to > 2 GiB across the file overflows Arrow's int32-offset string-array
+# limit (2^31 bytes) when loaded in one shot via pandas.read_parquet -> to_pandas():
+#   pyarrow.lib.ArrowCapacityError: array cannot contain more than 2147483646 bytes
+# This is a GENERAL cursus issue (any large-text feature crosses it), not project-specific. Fix:
+# never materialize the full file. Pass 1 reads only the tiny (id, tag) key columns and runs the
+# existing allocation to pick which rows; Pass 2 streams row-groups in bounded batches, keeps the
+# selected rows (by id, else by position), and writes them incrementally. Each batch's big column
+# stays well under 2 GiB, and the sampled output is far under it. Test is copied byte-for-byte.
+# CSV/TSV and the filter / external_proportional cases keep the original in-memory path.
+STREAM_BATCH_ROWS = (
+    200_000  # rows per pyarrow batch in the streaming passes (bounds per-batch bytes)
+)
+_ROW_POS_COL = "__cursus_row_pos__"  # transient positional key mapping Pass-1 selection -> Pass-2 rows
 
 
 # --- Stratified Sampling Core Logic ---
@@ -415,6 +431,198 @@ def _save_sampled_data(
     logger(f"[INFO] Saved {output_file} (format={output_format}, shape={df.shape})")
 
 
+# --- Streaming parquet path (avoids the >2 GiB Arrow int32-offset overflow) ---
+
+
+def _read_strata_index_parquet(
+    file_path: Path,
+    strata_column: str,
+    id_column: Optional[str],
+    log: Callable[[str], None],
+) -> pd.DataFrame:
+    """Pass 1: read ONLY the tiny key columns — the strata (tag) column, plus the id column when
+    present — never the multi-GiB text column.
+
+    Projecting to just these small columns keeps every Arrow array tiny, so this never hits the
+    2^31 offset limit even on a very large file. Always synthesizes ``_ROW_POS_COL`` (ordinal
+    position across the file) as a fallback selection key. Returns [strata_column, _ROW_POS_COL]
+    and, if id_column exists in the schema, [id_column].
+    """
+    import pyarrow.parquet as pq
+
+    pf = pq.ParquetFile(str(file_path))
+    names = pf.schema_arrow.names
+    if strata_column not in names:
+        raise RuntimeError(
+            f"Strata column '{strata_column}' not found in {file_path.name}. "
+            f"Available columns: {names}"
+        )
+    have_id = bool(id_column) and id_column in names
+    cols = [strata_column] + ([id_column] if have_id else [])
+    frames = []
+    pos = 0
+    for batch in pf.iter_batches(batch_size=STREAM_BATCH_ROWS, columns=cols):
+        n = batch.num_rows
+        data = {strata_column: batch.column(0).to_pandas().values}
+        if have_id:
+            data[id_column] = batch.column(1).to_pandas().values
+        data[_ROW_POS_COL] = range(pos, pos + n)
+        frames.append(pd.DataFrame(data))
+        pos += n
+    proj = f"[{strata_column}" + (f", {id_column}]" if have_id else "]")
+    log(
+        f"[INFO] Pass 1: scanned {pos:,} rows of {file_path.name} (key-only projection {proj})"
+    )
+    empty_cols = cols + [_ROW_POS_COL]
+    return (
+        pd.concat(frames, ignore_index=True)
+        if frames
+        else pd.DataFrame(columns=empty_cols)
+    )
+
+
+def _write_selected_rows_parquet(
+    file_path: Path,
+    output_file: Path,
+    log: Callable[[str], None],
+    selected_ids=None,
+    id_column: Optional[str] = None,
+    selected_positions: Optional[set] = None,
+) -> int:
+    """Pass 2: stream the full file row-group-by-row-group, keep the selected rows, write them out
+    incrementally with a single ParquetWriter.
+
+    Selection is BY ID when (id_column, selected_ids) are given (order-independent, the robust
+    primary path); falls back to BY POSITION otherwise. Each streamed batch is <= STREAM_BATCH_ROWS
+    rows, so its big text slice is far under 2 GiB; the selected output is likewise well under the
+    limit. Never holds the whole file.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    by_id = selected_ids is not None and id_column is not None
+    pf = pq.ParquetFile(str(file_path))
+    id_col_idx = pf.schema_arrow.names.index(id_column) if by_id else None
+
+    writer = None
+    written = 0
+    pos = 0
+    try:
+        for batch in pf.iter_batches(batch_size=STREAM_BATCH_ROWS):
+            n = batch.num_rows
+            if by_id:
+                ids = batch.column(id_col_idx).to_pandas()
+                take = [i for i, v in enumerate(ids) if v in selected_ids]
+            else:
+                take = [p - pos for p in range(pos, pos + n) if p in selected_positions]
+            pos += n
+            if not take:
+                continue
+            tbl = pa.Table.from_batches([batch]).take(take)
+            if writer is None:
+                output_file.parent.mkdir(parents=True, exist_ok=True)
+                writer = pq.ParquetWriter(str(output_file), tbl.schema)
+            writer.write_table(tbl)
+            written += tbl.num_rows
+    finally:
+        if writer is not None:
+            writer.close()
+    log(
+        f"[INFO] Pass 2: wrote {written:,} selected rows -> {output_file} "
+        f"(by {'id' if by_id else 'position'})"
+    )
+    return written
+
+
+def _stratified_sample_parquet_streaming(
+    input_file: Path,
+    output_file: Path,
+    strata_column: str,
+    id_column: Optional[str],
+    sampler: "StratifiedSampler",
+    split_target_size_fn: Callable[[int], int],
+    sampling_strategy: str,
+    min_samples_per_stratum: int,
+    variance_column: Optional[str],
+    reference_counts: Optional[Dict[str, int]],
+    multiplier: float,
+    allow_replacement: bool,
+    log: Callable[[str], None],
+) -> Dict[str, Any]:
+    """Two-pass streaming stratified sample for a big parquet split.
+
+    Pass 1 reads the tiny (id, tag) key columns and runs the SAME allocation logic on that index to
+    pick which rows to keep. Pass 2 streams the full file and writes only those rows — selecting BY
+    ID (order-independent) when a unique id column is present, else BY POSITION. ``variance_column``
+    (optimal strategy) is unsupported here (the value column isn't in the key projection) — falls
+    back to uniform variance, which is fine for the balanced strategy. Returns a diagnostics dict.
+    """
+    idx = _read_strata_index_parquet(input_file, strata_column, id_column, log)
+    input_size = len(idx)
+    if input_size == 0:
+        log(f"[WARNING] {input_file.name} has 0 rows; writing empty output")
+        shutil.copyfile(input_file, output_file)
+        return {"input_size": 0, "output_size": 0, "per_stratum": {}}
+
+    # Prefer id-based selection; require the id column present AND unique (else id-set membership in
+    # Pass 2 would pull duplicate-id rows and break the exact sampled count — fall back to position).
+    use_id = bool(id_column) and id_column in idx.columns
+    if use_id and idx[id_column].nunique() != input_size:
+        log(
+            f"[WARNING] id column '{id_column}' has duplicate values; "
+            f"falling back to positional selection to preserve exact sample counts."
+        )
+        use_id = False
+
+    split_target = split_target_size_fn(input_size)
+    sampled_idx = sampler.sample(
+        df=idx,
+        strata_column=strata_column,
+        target_size=split_target,
+        strategy=sampling_strategy,
+        min_samples_per_stratum=min_samples_per_stratum,
+        variance_column=None,  # value column not available in the key projection
+        reference_counts=reference_counts,
+        multiplier=multiplier,
+        allow_replacement=allow_replacement,
+    )
+
+    if use_id:
+        selected_ids = set(sampled_idx[id_column].tolist())
+        log(
+            f"[INFO] Selected {len(selected_ids):,} of {input_size:,} rows by id '{id_column}' "
+            f"(target {split_target:,}); streaming full columns for the write"
+        )
+        written = _write_selected_rows_parquet(
+            input_file, output_file, log, selected_ids=selected_ids, id_column=id_column
+        )
+    else:
+        selected_positions = set(int(p) for p in sampled_idx[_ROW_POS_COL].tolist())
+        log(
+            f"[INFO] Selected {len(selected_positions):,} of {input_size:,} rows by position "
+            f"(target {split_target:,}); streaming full columns for the write"
+        )
+        written = _write_selected_rows_parquet(
+            input_file, output_file, log, selected_positions=selected_positions
+        )
+
+    avail = idx[strata_column].value_counts().to_dict()
+    samp = sampled_idx[strata_column].value_counts().to_dict()
+    per_stratum = {
+        str(s): {
+            "available": int(avail.get(s, 0)),
+            "sampled": int(samp.get(s, 0)),
+            "replacement_used": int(samp.get(s, 0)) > int(avail.get(s, 0)),
+        }
+        for s in samp
+    }
+    return {
+        "input_size": input_size,
+        "output_size": written,
+        "per_stratum": per_stratum,
+    }
+
+
 # --- Main Processing Logic ---
 
 
@@ -450,6 +658,10 @@ def main(
     allow_replacement = environ_vars.get("ALLOW_REPLACEMENT", "false").lower() == "true"
     filter_column = environ_vars.get("SAMPLING_FILTER_COLUMN", "")
     filter_value = environ_vars.get("SAMPLING_FILTER_VALUE", "")
+    # ID column for the big-parquet streaming path: sampling only needs (id, tag), then rows are
+    # selected by id. Optional env var; defaults to the common primary key `order_id`. If the column
+    # is absent or non-unique, the streaming path falls back to positional selection.
+    id_column = environ_vars.get("ID_COLUMN", "order_id")
 
     # Extract paths - no defaults, require explicit paths
     input_data_dir = input_paths.get("input_data")
@@ -539,6 +751,65 @@ def main(
     for split_name in splits_to_process:
         try:
             log(f"[INFO] Processing {split_name} split...")
+
+            # Streaming path: for a PARQUET split with NO row-level filter, use the two-pass
+            # id/position sampler so we never materialize the full file (a >2 GiB text column
+            # overflows Arrow's 2^31 offset limit in a single-array to_pandas()). The filter case
+            # and CSV/TSV keep the in-memory path below; external_proportional keeps it too.
+            split_dir = Path(input_data_dir) / split_name
+            parquet_in = split_dir / f"{split_name}_processed_data.parquet"
+            use_streaming = (
+                parquet_in.exists()
+                and not (filter_column and filter_value)
+                and sampling_strategy != "external_proportional"
+            )
+            if use_streaming:
+                out_file = (
+                    Path(output_dir)
+                    / split_name
+                    / f"{split_name}_processed_data.parquet"
+                )
+
+                def _target_fn(n):
+                    return min(target_sample_size, n)
+
+                diag = _stratified_sample_parquet_streaming(
+                    input_file=parquet_in,
+                    output_file=out_file,
+                    strata_column=strata_column,
+                    id_column=id_column,
+                    sampler=sampler,
+                    split_target_size_fn=_target_fn,
+                    sampling_strategy=sampling_strategy,
+                    min_samples_per_stratum=min_samples_per_stratum,
+                    variance_column=None,  # value col not in the key projection (balanced uses none)
+                    reference_counts=reference_counts,
+                    multiplier=sampling_multiplier,
+                    allow_replacement=allow_replacement,
+                    log=log,
+                )
+                log(
+                    f"[INFO] Sampled {split_name} (streaming): "
+                    f"{diag['output_size']:,} rows from {diag['input_size']:,}"
+                )
+                diagnostics = {
+                    "strategy": sampling_strategy,
+                    "strata_column": strata_column,
+                    "input_size": diag["input_size"],
+                    "output_size": diag["output_size"],
+                    "allow_replacement": allow_replacement,
+                    "multiplier": sampling_multiplier,
+                    "streaming": True,
+                    "per_stratum": diag["per_stratum"],
+                }
+                diag_path = Path(output_dir) / split_name / "sampling_diagnostics.json"
+                diag_path.parent.mkdir(parents=True, exist_ok=True)
+                diag_path.write_text(json.dumps(diagnostics, indent=2, default=str))
+                log(f"[INFO] Saved diagnostics to {diag_path}")
+                sampled_splits[split_name] = (
+                    None  # streamed to disk; not held in memory
+                )
+                continue
 
             # Read the processed data from tabular_preprocessing output
             df, detected_format = _read_processed_data(input_data_dir, split_name)
@@ -650,15 +921,26 @@ def main(
             log(f"[ERROR] Failed to process {split_name} split: {str(e)}")
             raise
 
-    # For training job_type, also copy test split unchanged (if it exists)
+    # For training job_type, also copy test split unchanged (if it exists).
+    # If test is parquet, copy the file BYTE-FOR-BYTE (shutil.copyfile) instead of
+    # read->to_pandas->to_parquet: a >2 GiB text column would hit the same Arrow overflow on read,
+    # and "unchanged" means an exact copy anyway.
     if job_type == "training":
         try:
-            test_df, test_format = _read_processed_data(input_data_dir, "test")
-            log(
-                f"[INFO] Copying test split unchanged (shape: {test_df.shape}, format: {test_format})"
-            )
-            _save_sampled_data(test_df, output_dir, "test", test_format, log)
-            sampled_splits["test"] = test_df
+            test_parquet = Path(input_data_dir) / "test" / "test_processed_data.parquet"
+            if test_parquet.exists():
+                out_file = Path(output_dir) / "test" / "test_processed_data.parquet"
+                out_file.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(test_parquet, out_file)
+                log(f"[INFO] Copied test split unchanged (byte-for-byte) -> {out_file}")
+                sampled_splits["test"] = None  # copied on disk; not held in memory
+            else:
+                test_df, test_format = _read_processed_data(input_data_dir, "test")
+                log(
+                    f"[INFO] Copying test split unchanged (shape: {test_df.shape}, format: {test_format})"
+                )
+                _save_sampled_data(test_df, output_dir, "test", test_format, log)
+                sampled_splits["test"] = test_df
         except Exception as e:
             log(f"[WARNING] Could not copy test split: {str(e)}")
 
@@ -692,6 +974,9 @@ if __name__ == "__main__":
         REFERENCE_COUNTS_JSON = os.environ.get("REFERENCE_COUNTS_JSON", "")
         SAMPLING_FILTER_COLUMN = os.environ.get("SAMPLING_FILTER_COLUMN", "")
         SAMPLING_FILTER_VALUE = os.environ.get("SAMPLING_FILTER_VALUE", "")
+        ID_COLUMN = os.environ.get(
+            "ID_COLUMN", "order_id"
+        )  # big-parquet streaming id-selection key
 
         # Define standard SageMaker paths - use contract-declared paths directly
         INPUT_DATA_DIR = "/opt/ml/processing/input/data"
@@ -734,6 +1019,7 @@ if __name__ == "__main__":
             "REFERENCE_COUNTS_JSON": REFERENCE_COUNTS_JSON,
             "SAMPLING_FILTER_COLUMN": SAMPLING_FILTER_COLUMN,
             "SAMPLING_FILTER_VALUE": SAMPLING_FILTER_VALUE,
+            "ID_COLUMN": ID_COLUMN,
         }
 
         # Execute the main processing logic
@@ -745,9 +1031,12 @@ if __name__ == "__main__":
             logger=logger.info,
         )
 
-        # Log completion summary
+        # Log completion summary (streamed splits return None — written to disk, not held in memory)
         splits_summary = ", ".join(
-            [f"{name}: {df.shape}" for name, df in result.items()]
+            [
+                f"{name}: {df.shape if df is not None else 'streamed-to-disk'}"
+                for name, df in result.items()
+            ]
         )
         logger.info(
             f"Stratified sampling completed successfully. Splits: {splits_summary}"
