@@ -1167,6 +1167,15 @@ class BedrockProcessor:
                 logger.info(f"Saved intermediate results to {intermediate_file}")
 
         results_df = pd.DataFrame(results)
+        # Empty input (e.g. an incremental delta window with no new orders to score) makes
+        # pd.DataFrame([]) column-less; main() then does result_df[f"{prefix}status"]
+        # unconditionally -> KeyError: '<prefix>status'. Restore the invariant these methods
+        # promise -- the returned frame always carries the status column -- by returning a
+        # schema-preserving empty frame (input columns + status, 0 rows). An empty delta is a
+        # legitimate "nothing new to score" state, not a failure.
+        if results_df.empty:
+            results_df = df.iloc[0:0].copy()
+            results_df[f"{output_prefix}status"] = pd.Series(dtype="object")
         logger.info(f"Completed concurrent processing {len(results_df)} records")
 
         return results_df
@@ -1279,6 +1288,11 @@ class BedrockProcessor:
                 logger.info(f"Saved intermediate results to {intermediate_file}")
 
         results_df = pd.DataFrame(results)
+        # See process_batch_concurrent: on empty input restore the status-column invariant so
+        # main()'s result_df[f"{prefix}status"] never KeyErrors on a no-new-orders delta window.
+        if results_df.empty:
+            results_df = df.iloc[0:0].copy()
+            results_df[f"{output_prefix}status"] = pd.Series(dtype="object")
         logger.info(f"Completed sequential processing {len(results_df)} records")
 
         return results_df

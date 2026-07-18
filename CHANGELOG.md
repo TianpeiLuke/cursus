@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.9] - 2026-07-18
+
+**BedrockProcessing: no longer crashes with `KeyError` on an empty (0-row) input.**
+
+A Processing run whose input parquet carries a full column schema but zero data rows (e.g. an
+incremental delta window with no new records to score) made `process_batch_concurrent` /
+`process_batch_sequential` return a column-less `pd.DataFrame([])`. `main()` then accessed
+`result_df[f"{output_column_prefix}status"]` unconditionally and raised `KeyError` on that status
+column — even though an empty input is a legitimate state, not a failure.
+
+### Fixed
+
+- `bedrock_processing.py` — at both `process_batch_concurrent` and `process_batch_sequential`
+  return sites, restore the invariant these methods promise (the returned frame always carries the
+  status column) when the results frame is empty: return a schema-preserving 0-row frame
+  (`df.iloc[0:0]` + the `{output_column_prefix}status` column). All downstream count / filter /
+  write logic then runs cleanly on 0 rows, and a valid empty output is written. Non-empty runs are
+  unchanged.
+
 ## [2.9.8] - 2026-07-17
 
 **SlipboxKnowledgeRouting step-interface redesign: bundled `knowledge_corpus` + `embedding_model`
