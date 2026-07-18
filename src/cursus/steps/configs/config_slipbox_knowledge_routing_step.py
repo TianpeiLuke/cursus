@@ -126,6 +126,19 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
         description="Use the large processing instance type; the SentenceTransformer encode pass benefits from the extra CPU/memory headroom.",
     )
 
+    use_bundled_corpus: bool = Field(
+        default=True,
+        description=(
+            "When True (default), the DKS knowledge_corpus and the offline embedding_model are "
+            "read from the BUNDLED closure inside the step's source_dir, NOT from external upstream "
+            "inputs — so the .step.yaml lists both under contract.skip_inputs (declared-but-not-"
+            "mounted, like PercentileModelCalibration's calibration_config) and the dependency "
+            "resolver never wires them. This is the intended mode: the corpus+encoder ship with the "
+            "step. Set False only to override the corpus/model from external upstream outputs (a "
+            "bespoke wiring — the interface would then need those two removed from skip_inputs)."
+        ),
+    )
+
     # ===== Source-dir / framework processor (Processing pattern 2) =====
     # This step ships a SOURCE DIR (not a self-contained script): the entry-point script
     # sits alongside a bundled knowledge closure (the DKS compile→index→route package +
@@ -274,6 +287,7 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
             "default_prompts_dir": self.default_prompts_dir,
             "routing_index_path": self.routing_index_path,
             "use_large_processing_instance": self.use_large_processing_instance,
+            "use_bundled_corpus": self.use_bundled_corpus,
             "framework_version": self.framework_version,
             "py_version": self.py_version,
         }

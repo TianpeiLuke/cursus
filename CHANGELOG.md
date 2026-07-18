@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.8] - 2026-07-17
+
+**SlipboxKnowledgeRouting step-interface redesign: bundled `knowledge_corpus` + `embedding_model`
+no longer mis-resolve to the TabularPreprocessing output.**
+
+The step declares three inputs — `records`, `knowledge_corpus`, `embedding_model` — but the corpus
+and encoder ship *inside* the step's `source_dir` (the bundled knowledge closure), so they are not
+upstream data. The interface had declared all three as `processing_output` dependencies with
+overlapping `compatible_sources`, so the dependency resolver could bind **all three to the same
+`TabularPreprocessing` output**.
+
+### Changed
+
+- `slipbox_knowledge_routing.step.yaml`: `knowledge_corpus` + `embedding_model` moved under
+  **`contract.skip_inputs`** (declared-but-not-mounted, the same pattern `PercentileModelCalibration`
+  uses for its bundled `calibration_config`); their `contract.inputs` paths re-pointed to the
+  source_dir (`/opt/ml/code/…`); `patterns.direct_input_keys` narrowed to `[records]`. Dependency
+  `type` changed to **`custom_property`** (corpus) and **`model_artifacts`** (encoder) — neither
+  type-compatible with a `processing_output` — and `compatible_sources` narrowed to dedicated
+  producers, excluding `TabularPreprocessing`/`ProcessingStep`/`CradleDataLoading`.
+- `SlipboxKnowledgeRoutingConfig` gains **`use_bundled_corpus: bool = True`**, documenting/defaulting
+  the bundled mode (mirrors the interface `skip_inputs`).
+
+Verified with the real dependency resolver on a `TabularPreprocessing → SlipboxKnowledgeRouting`
+graph: only `records` resolves; the bundled inputs are correctly left unbound.
+
 ## [2.9.7] - 2026-07-17
 
 Two general fixes to the `SlipboxKnowledgeRouting` and `StratifiedSampling` processing steps.

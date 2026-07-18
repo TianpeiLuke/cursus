@@ -5,7 +5,7 @@ registry:
   description: Slipbox knowledge routing step that hosts the DKS knowledge+ruleset corpus and runs compile→index→route internally, emitting a compiled prompt ruleset plus per-record routed rule names and routing confidence for downstream Bedrock processing
 patterns:
   step_assembly: step_args
-  direct_input_keys: [records, knowledge_corpus, embedding_model]
+  direct_input_keys: [records]
 compute:
   kind: framework
   sdk_class: PyTorch
@@ -14,15 +14,26 @@ compute:
 contract:
   entry_point: slipbox_knowledge_routing.py
   source_dir: true
+  # knowledge_corpus + embedding_model are BUNDLED in the source_dir and loaded internally by the
+  # script — declared here for documentation but listed under skip_inputs so the builder does NOT
+  # mount them and the dependency resolver does NOT wire them (the same pattern
+  # PercentileModelCalibration uses for its bundled calibration_config). This is the
+  # use_bundled_corpus=True (default) mode; only `records` is a real external input. It also removes
+  # the bug where all three inputs resolved to the SAME TabularPreprocessing output.
+  skip_inputs:
+  - knowledge_corpus
+  - embedding_model
   inputs:
     records:
       path: /opt/ml/processing/input/data
       required: true
     knowledge_corpus:
-      path: /opt/ml/processing/input/knowledge
+      # bundled under the source_dir (/opt/ml/code/…), resolved from __file__ by the script
+      path: /opt/ml/code/slipbox_knowledge
       required: false
     embedding_model:
-      path: /opt/ml/processing/input/model
+      # bundled offline encoder under the source_dir (optional external override)
+      path: /opt/ml/code/embedding_model
       required: false
   outputs:
     prompt_ruleset:
@@ -75,12 +86,15 @@ spec:
       - tabular
       - source
     knowledge_corpus:
-      type: processing_output
+      # BUNDLED (skip_inputs) — declared for documentation only; not mounted, not resolved.
+      # type=custom_property (NOT processing_output) so it structurally CANNOT score the type-match
+      # against a TabularPreprocessing processing_output — even in an external-override run it can
+      # never bind to the same TP output as `records`. compatible_sources also restricted to a
+      # dedicated corpus-producing DummyDataLoading step.
+      type: custom_property
       required: false
       compatible_sources:
       - DummyDataLoading
-      - CradleDataLoading
-      - ProcessingStep
       semantic_keywords:
       - knowledge
       - corpus
@@ -90,18 +104,20 @@ spec:
       - behaviors
       - dks
     embedding_model:
-      type: processing_output
+      # BUNDLED (skip_inputs) — declared for documentation only; not mounted, not resolved.
+      # type=model_artifacts (not processing_output) + non-generic sources so it can never bind to
+      # the `records`/TabularPreprocessing output; a real external encoder would come from a
+      # dedicated model-artifact step if bundled mode is ever turned off.
+      type: model_artifacts
       required: false
       compatible_sources:
-      - ProcessingStep
-      - CradleDataLoading
+      - PyTorchModel
+      - TokenizerTraining
       semantic_keywords:
-      - model
-      - embedding
-      - encoder
-      - weights
-      - minilm
+      - embedding_model
       - sentence_transformer
+      - encoder_weights
+      - minilm
   outputs:
     prompt_ruleset:
       type: processing_output
