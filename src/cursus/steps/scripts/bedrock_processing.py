@@ -1794,6 +1794,10 @@ def _adapt_ruleset_templates(
         "input_placeholders": placeholders,
         "_rule_names": rule_names,
         "_rules_by_name": rules_by_name,
+        # The output schema is embedded in the ruleset by the template-generation step, so the
+        # consumer can source it here instead of from a separate validation_schema input channel
+        # (lets that channel be dropped — the prompt ruleset carries the whole contract).
+        "_output_schema": ruleset.get("output_schema"),
     }
 
 
@@ -1951,8 +1955,21 @@ def _load_schema_with_fallback(
     input_paths: Dict[str, str],
     environ_vars: Dict[str, str],
     log: Callable[[str], None],
+    templates: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Load schema: upstream step → env var → empty (graceful degradation)."""
+    """Load schema: embedded-in-ruleset → upstream channel → env var → empty (graceful degradation).
+
+    The prompt ruleset ({ruleset, rules}) now carries the output schema (``ruleset.output_schema``,
+    surfaced as ``templates['_output_schema']``), so the schema travels WITH the prompt and the
+    separate ``validation_schema`` input channel is no longer required. Prefer it when present; the
+    channel/env-var paths remain as fallbacks for producers that do not embed a schema."""
+    if templates and templates.get("_output_schema"):
+        schema = templates["_output_schema"]
+        if isinstance(schema, dict) and schema.get("properties"):
+            log(
+                "[INFO] Using output schema embedded in the prompt ruleset (no separate channel)"
+            )
+            return schema
     if "validation_schema" in input_paths:
         schema_path = input_paths["validation_schema"]
         if Path(schema_path).exists():
@@ -2156,8 +2173,11 @@ def main(
             f"user_prompt_template={bool(templates.get('user_prompt_template'))}"
         )
 
-        # Load validation schema with fallback chain (upstream > env var > empty)
-        validation_schema = _load_schema_with_fallback(input_paths, environ_vars, log)
+        # Load validation schema — prefer the schema embedded in the prompt ruleset (templates),
+        # then the upstream channel / env var (fallbacks for non-embedding producers).
+        validation_schema = _load_schema_with_fallback(
+            input_paths, environ_vars, log, templates
+        )
         log(
             f"Loaded validation schema with {len(validation_schema.get('properties', {}))} properties"
         )
@@ -2346,9 +2366,9 @@ def main(
 
                     processing_stats["successful_records"] += success_count
                     processing_stats["failed_records"] += failed_count
-                    processing_stats[
-                        "validation_passed_records"
-                    ] += validation_passed_count
+                    processing_stats["validation_passed_records"] += (
+                        validation_passed_count
+                    )
                     processing_stats["files_processed"].append(
                         {
                             "filename": input_file.name,

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.12] - 2026-07-18
+
+**BedrockProcessing: source the output schema from the embedded prompt ruleset, so the separate
+`validation_schema` input channel is no longer required.**
+
+The prompt-ruleset producers now embed the output schema in the `{ruleset, rules}` prompts.json
+(`ruleset.output_schema`). `bedrock_processing.py` now prefers that embedded schema when resolving
+the validation schema, so the schema travels WITH the prompt and a dedicated schema channel is
+unnecessary (a step toward simplifying the Bedrock step inputs from 3 to 2).
+
+### Changed
+
+- `bedrock_processing.py` — `_adapt_ruleset_templates` surfaces `ruleset.output_schema` as
+  `templates["_output_schema"]`; `_load_schema_with_fallback` prefers it (embedded-in-ruleset →
+  upstream channel → env var → empty). Additive; channel/env-var paths remain as fallbacks.
+
 ## [2.9.11] - 2026-07-18
 
 **BedrockPromptTemplateGeneration: refactored to a declarative meta-prompt assembler emitting one
