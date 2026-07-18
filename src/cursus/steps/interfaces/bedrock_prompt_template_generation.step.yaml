@@ -2,7 +2,7 @@ step_type: BedrockPromptTemplateGeneration
 node_type: internal
 registry:
   sagemaker_step_type: Processing
-  description: Bedrock prompt template generation step that creates structured prompt templates for classification tasks using the 5-component architecture pattern
+  description: Bedrock prompt template generation step that assembles the prompt-config bundle (system prompt, category rules, output schema) into ONE standardized prompts.json prompt ruleset ({ruleset, rules} shape) with the output schema embedded in the prompt — the same contract the knowledge-routing producer emits, consumed by the Bedrock processing steps
 compute:
   kind: sklearn
   framework_version_field: processing_framework_version
@@ -47,8 +47,10 @@ contract:
   framework_requirements:
     pydantic: '>=2.0.0'
     boto3: '>=1.26.0'
-  description: 'Bedrock prompt template generation script. Creates structured prompt
-    templates for classification tasks using the 5-component architecture pattern.
+  description: 'Bedrock prompt template generation script. Assembles the prompt-config
+    bundle into ONE prompts.json prompt ruleset ({ruleset, rules}) with the output schema
+    embedded in the prompt; a declarative meta-prompt assembler (validate blanks -> assemble),
+    same downstream contract as the knowledge-routing producer.
 
     '
 spec:

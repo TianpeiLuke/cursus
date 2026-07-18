@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.11] - 2026-07-18
+
+**BedrockPromptTemplateGeneration: refactored to a declarative meta-prompt assembler emitting one
+`prompts.json` prompt ruleset.**
+
+The 1,599-line prose-generation script is replaced by a ~470-line assembler: validate the four
+config blanks (system prompt, category rules, output schema, instructions) → assemble → emit ONE
+`prompts.json` in the `{ruleset, rules}` shape — the same contract the rule-driven routing step
+emits, so both prompt-ruleset producers share one downstream contract. The output schema is
+embedded IN the prompt (the `{OUTPUT_CONSTRAINTS}` block) and carried as `ruleset.output_schema`,
+enum-locked to the rule names.
+
+### Changed
+
+- `bedrock_prompt_template_generation.py` — rewritten as a meta-prompt assembler. Output is now
+  `{ruleset, rules}` (was the flat `{system_prompt, user_prompt_template, input_placeholders}`);
+  `rules[]` mapped to the shape the consumer's ruleset adapter reads. Removed the tone-register
+  table, placeholder example-fabricator, and self-output prose validator — the fill-in-the-blank
+  contract is enforced by the step config's Pydantic models at authoring time. Step config +
+  interface I/O contract unchanged.
+- Test suite rewritten to exercise the assembler functions + the `{ruleset, rules}` contract.
+
 ## [2.9.10] - 2026-07-18
 
 **Bedrock steps: `validation_schema` can no longer mis-bind to a data/prompt output.**
