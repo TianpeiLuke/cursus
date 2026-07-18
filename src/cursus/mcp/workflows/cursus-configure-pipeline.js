@@ -22,9 +22,9 @@ export const meta = {
 // a project is a self-contained folder holding, AT ITS ROOT, generate_config.py (+ <project>_na.py,
 // run_pipeline.py) alongside dockers/ (scripts/ + hyperparams/ + training/inference entry points) and
 // pipeline_config/ (config_<REGION>.json + dag_*.json + exe_doc). The folder lives under either:
-//   - AmazonCursus (dev):  projects/<project>/
+//   - cursus dev repo:     projects/<project>/
 //   - BuyerAbuseModsTemplate (deployed): src/buyer_abuse_mods_template/<project>/
-// Pass project_root explicitly to target either; it defaults to the AmazonCursus dev location.
+// Pass project_root explicitly to target either; it defaults to the cursus dev-repo location.
 // generate_config.py writes pipeline_config/config_<REGION>.json (singular 'pipeline_config').
 // ---------------------------------------------------------------------------
 const INPUT = (args && typeof args === 'object' && !Array.isArray(args)) ? args
@@ -170,7 +170,7 @@ function authorPrompt(plan) {
     HOWTO, '',
     'TASK: author (or repair) the config-generation script ' + GEN_SCRIPT + ' with your Write/Edit tool.',
     'PROJECT LAYOUT (relative to the project root ' + PROJECT_ROOT + ' — the SAME structure in every project,',
-    'whether under AmazonCursus projects/ or BuyerAbuseModsTemplate src/buyer_abuse_mods_template/):',
+    'whether under the dev-repo projects/ or BuyerAbuseModsTemplate src/buyer_abuse_mods_template/):',
     '  ' + PROJECT_ROOT + '/generate_config.py             <- the script you write (project root)',
     '  ' + PROJECT_ROOT + '/<project>_<region>.py          <- the DAG def (lowercase region, e.g. *_na.py);',
     '                                                         create_<project>_dag() -> ONE worldwide (WW) DAG',

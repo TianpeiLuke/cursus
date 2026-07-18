@@ -14,7 +14,7 @@ export const meta = {
 //   name       — project base name (snake_case), e.g. "secure_delivery"
 //   framework  — one of xgboost | pytorch | lightgbmmt | bedrock
 //   target_dir — where the <name>_<framework>/ folder is created. Defaults to the
-//                AmazonCursus dev location "projects"; for a BAMT deploy pass
+//                cursus dev-repo location "projects"; for a BAMT deploy pass
 //                "src/buyer_abuse_mods_template".
 // The full project name is `${name}_${framework}` (framework is the suffix).
 //
@@ -55,7 +55,7 @@ const PLAN_SCHEMA = {
   properties: {
     project: { type: 'string' },
     pascal_class: { type: 'string', description: 'PascalCase(name) + "Pipeline"' },
-    import_prefix: { type: 'string', description: '"cursus" for an AmazonCursus dev target, "buyer_abuse_mods_template.cursus" for a BAMT target' },
+    import_prefix: { type: 'string', description: '"cursus" for a cursus dev-repo target, "buyer_abuse_mods_template.cursus" for a BAMT target' },
     training_entry: { type: 'string' },
     inference_handler: { type: 'string' },
     reference_project: { type: 'string', description: 'a real project dir to ground the fixed templates against' },

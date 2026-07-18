@@ -159,7 +159,7 @@ Two general fixes to the `SlipboxKnowledgeRouting` and `StratifiedSampling` proc
 
 ### Notes
 
-- Purely additive for the Bedrock change (empty map ⇒ no rename; `{routed_rules}` injected only when the template carries the slot). Mirrors internal AmazonCursus 2.9.4. All edited `.py` compile; all edited `.json`/`.ipynb`/`.yaml` parse.
+- Purely additive for the Bedrock change (empty map ⇒ no rename; `{routed_rules}` injected only when the template carries the slot). Mirrors the internal 2.9.4 revision. All edited `.py` compile; all edited `.json`/`.ipynb`/`.yaml` parse.
 
 ## [2.9.2] - 2026-07-13
 
