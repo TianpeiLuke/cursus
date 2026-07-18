@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.10] - 2026-07-18
+
+**Bedrock steps: `validation_schema` can no longer mis-bind to a data/prompt output.**
+
+`BedrockProcessing` and `BedrockBatchProcessing` declare a `validation_schema` input whose only
+legitimate producer is `BedrockPromptTemplateGeneration`. Both interfaces also listed
+`SlipboxKnowledgeRouting` as a compatible source, but SKR emits no schema output (only
+`prompt_ruleset` + `routed_records`; the schema is built in-step). Because all three inputs were
+`type: processing_output` / `S3Uri`, the resolver could bind the schema channel to SKR's
+`routed_records` — the same 3-way collision class as the 2.9.8 SlipboxKnowledgeRouting redesign,
+on the consumer side.
+
+### Fixed
+
+- `bedrock_processing.step.yaml` + `bedrock_batch_processing.step.yaml` — removed
+  `SlipboxKnowledgeRouting` from `validation_schema.compatible_sources` and retyped the
+  `validation_schema` dependency `processing_output → custom_property` (type-compatible only with
+  `custom_property`, so any `processing_output`/data producer scores `0.0` and is excluded). The
+  `compatible_sources` drop alone was insufficient — it is a ±0.1 penalty, not a hard gate.
+- `bedrock_prompt_template_generation.step.yaml` — retyped its `validation_schema` output to
+  `custom_property` so the legitimate template-generation → Bedrock schema edge still binds
+  (verified `1.000`). `property_path`/`data_type` unchanged.
+
 ## [2.9.9] - 2026-07-18
 
 **BedrockProcessing: no longer crashes with `KeyError` on an empty (0-row) input.**

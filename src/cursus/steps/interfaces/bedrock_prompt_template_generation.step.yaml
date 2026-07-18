@@ -97,7 +97,12 @@ spec:
       - generation_results
       data_type: S3Uri
     validation_schema:
-      type: processing_output
+      # type=custom_property (NOT processing_output) so it binds ONLY to a consumer dep also typed
+      # custom_property (the Bedrock steps' validation_schema), never to a data/prompt dependency —
+      # the paired half of the fix that stops the schema-vs-data channel confusion. The
+      # property_path/data_type are unchanged: the builder still emits this as a normal S3 output;
+      # the type only affects dependency-resolver scoring, not how the output is produced/navigated.
+      type: custom_property
       property_path: properties.ProcessingOutputConfig.Outputs['validation_schema'].S3Output.S3Uri
       semantic_keywords:
       - schema

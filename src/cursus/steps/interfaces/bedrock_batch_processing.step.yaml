@@ -115,11 +115,21 @@ spec:
       - prompt_templates
       - bedrock_templates
     validation_schema:
-      type: processing_output
+      # type=custom_property (NOT processing_output) so this schema channel is STRUCTURALLY
+      # un-matchable to a data/prompt output: custom_property is type-compatible only with
+      # custom_property (_are_types_compatible), so scoring any processing_output producer (e.g.
+      # SlipboxKnowledgeRouting's routed_records/prompt_ruleset) returns 0.0 and the candidate is
+      # eliminated. This is the real fix for the validation_schema-vs-data channel confusion: dropping
+      # SlipboxKnowledgeRouting from compatible_sources alone was NOT enough
+      # (compatible_sources is only a ±0.1 penalty, not a gate, so the score stayed 0.529 > 0.5).
+      # BedrockPromptTemplateGeneration's validation_schema OUTPUT is retyped to custom_property to
+      # match, so that legitimate edge still binds. On the SlipboxKnowledgeRouting path there is no
+      # validation_schema producer at all — the script builds it IN-STEP from the prompt
+      # ruleset's rule names, so this optional channel correctly stays unbound.
+      type: custom_property
       required: true
       compatible_sources:
       - BedrockPromptTemplateGeneration
-      - SlipboxKnowledgeRouting
       semantic_keywords:
       - schema
       - validation
