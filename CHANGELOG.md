@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.14] - 2026-07-20
+
+Version realignment only — no code change. The `routed_rules` missing-placeholder false-alarm
+fix and the adaptive boto3-retry throttling fix were folded into the consolidated 2.9.13 release
+below; this bumps the published version so it advances past 2.9.13.
+
 ## [2.9.13] - 2026-07-20
 
 Consolidated Bedrock release: the prompt-ruleset simplification and data-flow hardening, a
