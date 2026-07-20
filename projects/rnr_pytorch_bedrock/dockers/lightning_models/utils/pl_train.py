@@ -258,6 +258,7 @@ def model_inference(
     model_log_path: str = "./model_logs",
     return_dataframe: bool = False,
     label_col: str = "label",
+    limit_test_batches: int = 0,
 ) -> Union[
     Tuple[torch.Tensor, torch.Tensor], Tuple[torch.Tensor, torch.Tensor, pd.DataFrame]
 ]:
@@ -285,7 +286,7 @@ def model_inference(
     resolved_accelerator = "gpu" if torch.cuda.is_available() else "cpu"
     resolved_devices = 1 if resolved_accelerator == "cpu" else device
 
-    tester = pl.Trainer(
+    tester_kwargs = dict(
         max_epochs=1,
         default_root_dir=model_log_path,
         enable_checkpointing=False,
@@ -296,6 +297,12 @@ def model_inference(
         strategy="auto",  # Will use distributed strategy if torch.distributed is initialized
         inference_mode=True,
     )
+    # Cap the post-training re-inference to bound its runtime. The 994K val/test sets give
+    # ±0.0006 AUROC (overkill); ~5000 batches at eval_batch_size ≈ 160K samples → ±0.002, still
+    # publication-grade. Lightning's .test() honors limit_test_batches (>0). 0 = uncapped.
+    if limit_test_batches and limit_test_batches > 0:
+        tester_kwargs["limit_test_batches"] = int(limit_test_batches)
+    tester = pl.Trainer(**tester_kwargs)
 
     # All ranks participate in test (required for distributed collective operations)
     tester.test(model, dataloaders=dataloader)
