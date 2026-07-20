@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.15] - 2026-07-20
+
+**Shared DAG catalog: add the SlipboxKnowledgeRouting → Bedrock BATCH incremental DAG; genericize the SlipboxKnowledgeRouting scaffold.**
+
+### Added
+- `pipeline_catalog/shared_dags/bedrock/bedrock_slipbox_routing_batch_pytorch_incremental.dag.json`
+  — the batch-inference variant of `bedrock_slipbox_routing_pytorch_incremental`:
+  `BedrockBatchProcessing_delta` (async Bedrock batch) replaces the realtime
+  `BedrockProcessing_delta`, so a large routed delta is scored off the per-minute online quota.
+  Same 15-node/16-edge two-source shape; `SlipboxKnowledgeRouting_delta` feeds both the batch
+  step's `processed_data` and `prompt_templates` inputs. Registered in
+  `shared_dags/catalog_index.json` (total_dags 45 → 46).
+
+### Changed
+- `steps/scripts/slipbox_knowledge_routing.py` — genericized the PROPOSAL-scaffold
+  docstrings/comments: replaced internal source-library citations with neutral "port the
+  domain's <stage> function" TODOs and a "mounted knowledge corpus" description. No logic change;
+  the scaffold still mounts `knowledge_corpus` (no bundled corpus) and keeps the batched-encode
+  throughput knobs.
+
 ## [2.9.14] - 2026-07-20
 
 Version realignment only — no code change. The `routed_rules` missing-placeholder false-alarm

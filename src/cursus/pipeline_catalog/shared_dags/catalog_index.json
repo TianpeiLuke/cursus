@@ -1,7 +1,7 @@
 {
   "version": "3.1",
   "generated": "2026-06-24T23:57:14Z",
-  "total_dags": 45,
+  "total_dags": 46,
   "frameworks": [
     "bedrock",
     "dummy",
@@ -49,10 +49,10 @@
       },
       "used_by_projects": [],
       "agent_context": {
-        "when_to_use": "Data enrichment/labeling only — you want Bedrock batch to process text data (classify, extract, summarize) but do NOT need downstream training in the same pipeline.",
+        "when_to_use": "Data enrichment/labeling only \u2014 you want Bedrock batch to process text data (classify, extract, summarize) but do NOT need downstream training in the same pipeline.",
         "when_not_to_use": "If you need training after processing (use bedrock_batch_pytorch_e2e). If data volume is <100K rows (use realtime bedrock_pytorch_e2e).",
         "differentiators": [
-          "Data processing only — no training node",
+          "Data processing only \u2014 no training node",
           "Cost-efficient batch API (50% cheaper than realtime for >100K rows)",
           "Output goes to S3 for downstream consumption by any pipeline"
         ],
@@ -79,8 +79,8 @@
             "instance_type (ml.m5.large)"
           ],
           "common_pitfalls": [
-            "Batch input must be JSONL with specific schema — validate before submitting",
-            "Batch jobs are async — pipeline must poll for completion",
+            "Batch input must be JSONL with specific schema \u2014 validate before submitting",
+            "Batch jobs are async \u2014 pipeline must poll for completion",
             "Output needs post-processing to extract structured fields from LLM responses"
           ]
         },
@@ -144,11 +144,11 @@
       "used_by_projects": [],
       "agent_context": {
         "when_to_use": "Need LLM to enrich/label data before PyTorch training AND data volume is >100K rows. Batch API is ~50% cheaper than realtime for large volumes. Used by afn_return_mdr_sopa pattern.",
-        "when_not_to_use": "If data <100K rows (use realtime bedrock_pytorch_e2e — faster turnaround). If you need label ruleset overrides (use bedrock_batch_pytorch_with_label_ruleset_e2e).",
+        "when_not_to_use": "If data <100K rows (use realtime bedrock_pytorch_e2e \u2014 faster turnaround). If you need label ruleset overrides (use bedrock_batch_pytorch_with_label_ruleset_e2e).",
         "differentiators": [
           "Batch Bedrock API (async, cost-efficient for large data)",
-          "No label ruleset — direct LLM output to training",
-          "Full E2E: LLM→train→calibrate→register",
+          "No label ruleset \u2014 direct LLM output to training",
+          "Full E2E: LLM\u2192train\u2192calibrate\u2192register",
           "Single pipeline (no EDX round-trip)"
         ],
         "prerequisites": [
@@ -180,9 +180,9 @@
             "calibration_method"
           ],
           "common_pitfalls": [
-            "Batch jobs are async — pipeline wall-clock time is 4-24h",
-            "Batch output format differs from realtime — ensure parsing handles JSONL response format",
-            "If batch job fails mid-way, partial results may exist in S3 — handle idempotently"
+            "Batch jobs are async \u2014 pipeline wall-clock time is 4-24h",
+            "Batch output format differs from realtime \u2014 ensure parsing handles JSONL response format",
+            "If batch job fails mid-way, partial results may exist in S3 \u2014 handle idempotently"
           ]
         },
         "decision_tree": {
@@ -254,7 +254,7 @@
         "differentiators": [
           "Batch Bedrock (cost-efficient for >100K rows)",
           "Label ruleset generation + execution (transparent rule-based overrides)",
-          "Full E2E: LLM→rules→train→calibrate→register",
+          "Full E2E: LLM\u2192rules\u2192train\u2192calibrate\u2192register",
           "Used by rnr_pytorch_bedrock pattern"
         ],
         "prerequisites": [
@@ -264,7 +264,7 @@
           },
           {
             "check": "Label ruleset defined",
-            "how": "JSON/YAML file with override rules (condition→label mappings)"
+            "how": "JSON/YAML file with override rules (condition\u2192label mappings)"
           },
           {
             "check": "GPU quota for training",
@@ -286,9 +286,9 @@
             "calibration_method"
           ],
           "common_pitfalls": [
-            "Label ruleset must be deterministic — non-deterministic rules cause training instability",
-            "Ruleset execution order matters — first matching rule wins",
-            "Batch jobs are async — total pipeline time is 4-24h depending on data volume"
+            "Label ruleset must be deterministic \u2014 non-deterministic rules cause training instability",
+            "Ruleset execution order matters \u2014 first matching rule wins",
+            "Batch jobs are async \u2014 total pipeline time is 4-24h depending on data volume"
           ]
         },
         "decision_tree": {
@@ -337,7 +337,7 @@
       },
       "used_by_projects": [],
       "agent_context": {
-        "when_to_use": "Quick prototyping of batch Bedrock LLM integration with PyTorch training. Use when you want to test the batch LLM→train flow without calibration/registration overhead.",
+        "when_to_use": "Quick prototyping of batch Bedrock LLM integration with PyTorch training. Use when you want to test the batch LLM\u2192train flow without calibration/registration overhead.",
         "when_not_to_use": "Production deployments (no packaging/registration). If you need calibration or model registration, use bedrock_batch_pytorch_e2e.",
         "differentiators": [
           "Minimal batch Bedrock pipeline (training only, no registration)",
@@ -366,8 +366,8 @@
             "max_tokens"
           ],
           "common_pitfalls": [
-            "Batch jobs can take hours for large datasets — monitor via CloudWatch",
-            "No registration step — must manually promote model artifacts"
+            "Batch jobs can take hours for large datasets \u2014 monitor via CloudWatch",
+            "No registration step \u2014 must manually promote model artifacts"
           ]
         },
         "decision_tree": {
@@ -546,7 +546,7 @@
             "max_tokens"
           ],
           "common_pitfalls": [
-            "Real-time Bedrock can be slow for >100K rows — consider batch variant",
+            "Real-time Bedrock can be slow for >100K rows \u2014 consider batch variant",
             "Prompt template must produce parseable structured output"
           ]
         },
@@ -615,7 +615,7 @@
       ],
       "agent_context": {
         "when_to_use": "Incremental retraining: you have a prior EDX scored dataset and need to score only NEW addresses via Bedrock LLM, then retrain on the full growing dataset.",
-        "when_not_to_use": "First-time training (no EDX baseline exists) — use pytorch/complete_e2e or bedrock_pytorch_e2e instead.",
+        "when_not_to_use": "First-time training (no EDX baseline exists) \u2014 use pytorch/complete_e2e or bedrock_pytorch_e2e instead.",
         "differentiators": [
           "Only DAG with EDX anti-join (skip already-scored data)",
           "Grows labeled pool incrementally",
@@ -653,9 +653,9 @@
           ],
           "common_pitfalls": [
             "EDX read ARN must point to PREVIOUS batch output, not the one being written (use separate _CRADLE_EDX_END vs _UPLOAD_EDX_END)",
-            "MDS date range must NOT overlap scored EDX period — causes empty anti-join result",
-            "pandas str.split(\"|||\") uses regex — must pass regex=False or use re.escape()",
-            "ml.g5.12xlarge ModelInference is NVMe — VolumeKmsKeyId handled by compiler"
+            "MDS date range must NOT overlap scored EDX period \u2014 causes empty anti-join result",
+            "pandas str.split(\"|||\") uses regex \u2014 must pass regex=False or use re.escape()",
+            "ml.g5.12xlarge ModelInference is NVMe \u2014 VolumeKmsKeyId handled by compiler"
           ]
         },
         "decision_tree": {
@@ -724,10 +724,10 @@
       ],
       "agent_context": {
         "when_to_use": "Incremental retraining of a DKS-routed LLM-labeled model (e.g. RnR): you have a prior scored-EDX label cache and need to score only NEW orders. The delta path routes each record against a bundled DKS knowledge corpus (SlipboxKnowledgeRouting: compile->index->route) then classifies with Bedrock forced tool-use, writes the labels back to EDX, and merges with the baseline cache for training.",
-        "when_not_to_use": "First-time training (no scored-EDX baseline exists) — use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_pytorch_incremental_edx (no SlipboxKnowledgeRouting step).",
+        "when_not_to_use": "First-time training (no scored-EDX baseline exists) \u2014 use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_pytorch_incremental_edx (no SlipboxKnowledgeRouting step).",
         "differentiators": [
           "Only incremental DAG with a SlipboxKnowledgeRouting step (DKS compile->index->route) upstream of Bedrock",
-          "Bedrock runs forced tool-use (constrained decoding) on the routed rule set — schema-aligned labels, 0 parse failures",
+          "Bedrock runs forced tool-use (constrained decoding) on the routed rule set \u2014 schema-aligned labels, 0 parse failures",
           "EDX anti-join skips already-scored orders; EDX write-back grows the label cache",
           "Delta feeds BOTH the EDX write-back and the training merge"
         ],
@@ -768,9 +768,9 @@
           ],
           "common_pitfalls": [
             "BedrockProcessing_delta MUST set bedrock_use_structured_output=true (forced tool-use) or the delta labels drift from the baseline labels",
-            "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX — count+order must match)",
-            "knowledge_corpus is OPTIONAL (bundled default) — do NOT wire it unless overriding the corpus via DummyDataLoading",
-            "MDS date range must NOT overlap the scored EDX period — causes an empty anti-join result",
+            "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX \u2014 count+order must match)",
+            "knowledge_corpus is OPTIONAL (bundled default) \u2014 do NOT wire it unless overriding the corpus via DummyDataLoading",
+            "MDS date range must NOT overlap the scored EDX period \u2014 causes an empty anti-join result",
             "Cradle transform_sql final projection must equal output_schema (no SELECT *; window/helper columns projected away)"
           ]
         },
@@ -782,6 +782,131 @@
           "labeling_uses_dks_routing?": {
             "yes": "USE THIS DAG (SlipboxKnowledgeRouting)",
             "no": "Use bedrock_pytorch_incremental_edx (no routing step)"
+          }
+        }
+      }
+    },
+    {
+      "id": "bedrock_slipbox_routing_batch_pytorch_incremental",
+      "path": "bedrock/bedrock_slipbox_routing_batch_pytorch_incremental.dag.json",
+      "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock BATCH forced-tool-use scoring, EDX anti-join, and EDX write-back.",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "incremental_training_with_dks_routed_batch_llm_scoring",
+      "node_count": 15,
+      "edge_count": 16,
+      "features": [
+        "cradle_data_loading",
+        "tabular_preprocessing",
+        "slipbox_knowledge_routing",
+        "dks_compile_index_route",
+        "bedrock_batch_processing",
+        "bedrock_forced_tool_use",
+        "edx_uploading",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "edx_anti_join",
+        "incremental_scoring",
+        "cost_optimization"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_edx_access": true,
+        "requires_mims": true,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "4-24 (Bedrock batch delta scoring is async; routing + batch turnaround dominate)",
+        "cost_driver": "bedrock_batch_inference_plus_embedding_routing",
+        "instance_cost_tier": "high",
+        "scalability": "delta_size_linear"
+      },
+      "used_by_projects": [
+        "rnr_pytorch_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "Same as bedrock_slipbox_routing_pytorch_incremental (incremental retraining of a DKS-routed LLM-labeled model, e.g. RnR) BUT the delta is LARGE (>~100K new orders) and the realtime BedrockProcessing path is bound by the account's per-minute Sonnet quota (ThrottlingException, multi-day wall). BedrockBatchProcessing_delta submits the routed records as an async Bedrock batch job (off the online RPM/TPM quota, ~50% cheaper for large volumes) then merges the scored labels back exactly like the realtime variant.",
+        "when_not_to_use": "Small delta (<~100K orders) or when you need low-latency turnaround \u2014 use the realtime bedrock_slipbox_routing_pytorch_incremental (no async batch wall). First-time training (no scored-EDX baseline) \u2014 use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_batch_pytorch_e2e (no SlipboxKnowledgeRouting step).",
+        "differentiators": [
+          "Only incremental DAG that pairs SlipboxKnowledgeRouting (DKS compile->index->route) with Bedrock BATCH inference",
+          "Async batch scoring escapes the realtime per-minute quota that caps the online BedrockProcessing_delta delta size",
+          "BedrockBatchProcessing_delta consumes BOTH SlipboxKnowledgeRouting outputs (routed processed_data + the {ruleset,rules} prompt_templates)",
+          "EDX anti-join skips already-scored orders; EDX write-back grows the label cache",
+          "Delta feeds BOTH the EDX write-back and the training merge"
+        ],
+        "prerequisites": [
+          {
+            "check": "Scored-EDX label cache exists from a prior run (or a prior backfill)",
+            "how": "Verify the scored-label EDX ARN is accessible via Cradle"
+          },
+          {
+            "check": "Bedrock batch model access",
+            "how": "IAM role has bedrock:CreateModelInvocationJob for the target model"
+          },
+          {
+            "check": "DKS knowledge corpus present",
+            "how": "SlipboxKnowledgeRouting bundles the rule_*/pattern_*/behavior_* corpus in its source_dir (default), or mount it via the optional knowledge_corpus channel (DummyDataLoading S3)"
+          },
+          {
+            "check": "MDS data for new period",
+            "how": "Cradle date range covers a period NOT already in the scored EDX"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "edx_scored_arn",
+            "mds_date_range",
+            "bedrock_model_id",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "routing_scoring_mode",
+            "routing_threshold",
+            "routing_top_k",
+            "embedding_model_name",
+            "bedrock_use_structured_output",
+            "instance_types",
+            "train_ratio"
+          ],
+          "common_pitfalls": [
+            "BedrockBatchProcessing_delta MUST set bedrock_use_structured_output=true (forced tool-use) or the delta labels drift from the baseline labels",
+            "Batch jobs are async \u2014 the delta scoring step's wall-clock time is 4-24h; size the step max_runtime accordingly",
+            "Batch output is JSONL (differs from the realtime response) \u2014 ensure the batch result parser handles the batch response format; if a batch job fails mid-way partial results may exist in S3, handle idempotently",
+            "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX \u2014 count+order must match)",
+            "knowledge_corpus is OPTIONAL (bundled default) \u2014 do NOT wire it unless overriding the corpus via DummyDataLoading",
+            "MDS date range must NOT overlap the scored EDX period \u2014 causes an empty anti-join result",
+            "Cradle transform_sql final projection must equal output_schema (no SELECT *; window/helper columns projected away)"
+          ]
+        },
+        "decision_tree": {
+          "has_prior_scored_edx?": {
+            "yes": "USE THIS DAG (scores only new orders)",
+            "no": "Use the baseline dag.json first to seed the EDX cache"
+          },
+          "labeling_uses_dks_routing?": {
+            "yes": "Use a SlipboxKnowledgeRouting DAG",
+            "no": "Use bedrock_batch_pytorch_e2e (no routing step)"
+          },
+          "delta_volume_large_or_quota_bound?": {
+            "yes": "USE THIS DAG (async Bedrock batch escapes the realtime per-minute quota)",
+            "no": "Use bedrock_slipbox_routing_pytorch_incremental (realtime, lower latency)"
           }
         }
       }
@@ -835,7 +960,7 @@
         "when_to_use": "Two-pipeline architecture: a separate LLM inference pipeline uploads scored labels to EDX/Andes, and THIS pipeline trains from that uploaded data. Use when inference and training have different schedules or ownership.",
         "when_not_to_use": "If LLM scoring and training run in the same pipeline (use bedrock_batch_pytorch_e2e). If no EDX round-trip is needed (use pytorch/complete_e2e).",
         "differentiators": [
-          "Training pipeline only — expects LLM labels already in EDX",
+          "Training pipeline only \u2014 expects LLM labels already in EDX",
           "Decoupled from inference pipeline (different cadence/ownership)",
           "CradleDataLoading reads from EDX (not raw MDS)",
           "Two-pipeline pattern enables independent scheduling"
@@ -936,11 +1061,11 @@
       "used_by_projects": [],
       "agent_context": {
         "when_to_use": "LLM labels need rule-based override before training AND data volume is <100K rows. Realtime API gives faster turnaround. Used by rnr_pytorch_bedrock pattern for smaller datasets.",
-        "when_not_to_use": "If data volume >100K rows (use batch variant — bedrock_batch_pytorch_with_label_ruleset_e2e). If no label override rules needed (use bedrock_pytorch_e2e).",
+        "when_not_to_use": "If data volume >100K rows (use batch variant \u2014 bedrock_batch_pytorch_with_label_ruleset_e2e). If no label override rules needed (use bedrock_pytorch_e2e).",
         "differentiators": [
           "Real-time Bedrock (synchronous, faster for small data)",
           "Label ruleset generation + execution (transparent rule-based overrides)",
-          "Full E2E: LLM→rules→train→calibrate→register",
+          "Full E2E: LLM\u2192rules\u2192train\u2192calibrate\u2192register",
           "Faster iteration cycle than batch variant"
         ],
         "prerequisites": [
@@ -950,7 +1075,7 @@
           },
           {
             "check": "Label ruleset defined",
-            "how": "JSON/YAML file with override rules (condition→label mappings)"
+            "how": "JSON/YAML file with override rules (condition\u2192label mappings)"
           },
           {
             "check": "GPU quota for training",
@@ -972,8 +1097,8 @@
             "calibration_method"
           ],
           "common_pitfalls": [
-            "Real-time API has throttling limits — may hit TPS caps on large data",
-            "Label ruleset must be deterministic — non-deterministic rules cause training instability",
+            "Real-time API has throttling limits \u2014 may hit TPS caps on large data",
+            "Label ruleset must be deterministic \u2014 non-deterministic rules cause training instability",
             "Slower and more expensive than batch for >100K rows"
           ]
         },
@@ -1025,12 +1150,12 @@
       },
       "used_by_projects": [],
       "agent_context": {
-        "when_to_use": "Quick prototyping of realtime Bedrock LLM integration with PyTorch training. Minimal pipeline to test LLM→train flow without calibration/registration.",
+        "when_to_use": "Quick prototyping of realtime Bedrock LLM integration with PyTorch training. Minimal pipeline to test LLM\u2192train flow without calibration/registration.",
         "when_not_to_use": "Production deployments (no packaging/registration). If you need full E2E pipeline, use bedrock_pytorch_e2e. If data >100K rows, use batch variant.",
         "differentiators": [
           "Minimal realtime Bedrock pipeline (training only, no registration)",
           "Uses DummyDataLoading (no Cradle dependency)",
-          "Fastest way to test Bedrock→PyTorch integration"
+          "Fastest way to test Bedrock\u2192PyTorch integration"
         ],
         "prerequisites": [
           {
@@ -1053,9 +1178,9 @@
             "training_epochs"
           ],
           "common_pitfalls": [
-            "Realtime API can be slow for large datasets — only use for prototyping",
-            "No registration step — must manually promote model artifacts",
-            "No calibration — scores may not be well-calibrated"
+            "Realtime API can be slow for large datasets \u2014 only use for prototyping",
+            "No registration step \u2014 must manually promote model artifacts",
+            "No calibration \u2014 scores may not be well-calibrated"
           ]
         },
         "decision_tree": {
@@ -1110,13 +1235,13 @@
       },
       "used_by_projects": [],
       "agent_context": {
-        "when_to_use": "Testing/development only: validate the packaging→registration pipeline flow without real training. Simplest way to test MIMS registration works.",
+        "when_to_use": "Testing/development only: validate the packaging\u2192registration pipeline flow without real training. Simplest way to test MIMS registration works.",
         "when_not_to_use": "ANY production use. Never use dummy DAGs for real model deployment.",
         "differentiators": [
           "For testing/development ONLY",
           "Simplest possible E2E (4 nodes)",
-          "Tests Package→Registration flow",
-          "No data loading required — DummyTraining generates mock model"
+          "Tests Package\u2192Registration flow",
+          "No data loading required \u2014 DummyTraining generates mock model"
         ],
         "prerequisites": [
           {
@@ -1138,7 +1263,7 @@
           ],
           "common_pitfalls": [
             "NEVER deploy a model from a dummy DAG to production",
-            "Registration will create real MIMS entries — clean up after testing",
+            "Registration will create real MIMS entries \u2014 clean up after testing",
             "Use a test service_name to avoid polluting production registries"
           ]
         },
@@ -1190,13 +1315,13 @@
       },
       "used_by_projects": [],
       "agent_context": {
-        "when_to_use": "Testing/development only: validate the inference→metrics→wiki pipeline flow without real training. Tests ModelMetricsComputation and ModelWikiGenerator integration.",
+        "when_to_use": "Testing/development only: validate the inference\u2192metrics\u2192wiki pipeline flow without real training. Tests ModelMetricsComputation and ModelWikiGenerator integration.",
         "when_not_to_use": "ANY production use. Never use dummy DAGs for real model training or deployment.",
         "differentiators": [
           "For testing/development ONLY",
           "Tests inference + metrics + wiki generation flow",
           "DummyTraining produces a mock model (no real learning)",
-          "No real data required — uses DummyDataLoading"
+          "No real data required \u2014 uses DummyDataLoading"
         ],
         "prerequisites": [
           {
@@ -1211,7 +1336,7 @@
           ],
           "common_pitfalls": [
             "NEVER deploy a model from a dummy DAG",
-            "Metrics will be meaningless — only validates pipeline plumbing",
+            "Metrics will be meaningless \u2014 only validates pipeline plumbing",
             "Wiki content will be generated but based on synthetic metrics"
           ]
         },
@@ -1266,7 +1391,7 @@
         "when_to_use": "Tabular classification/regression with structured features. LightGBM is faster than XGBoost, handles categorical features natively, and requires no GPU. Used by abuse_polygraph pattern.",
         "when_not_to_use": "If data is primarily text (use PyTorch). If you need feature selection or stratified sampling (use XGBoost variants with those features). If multi-task learning needed (use mtl/ DAGs).",
         "differentiators": [
-          "CPU-only — no GPU quota needed",
+          "CPU-only \u2014 no GPU quota needed",
           "LightGBM handles categoricals natively (no one-hot encoding required)",
           "Faster training than XGBoost (histogram-based, leaf-wise growth)",
           "Standard isotonic/Platt calibration included",
@@ -1297,9 +1422,9 @@
             "instance_type (ml.m5.xlarge)"
           ],
           "common_pitfalls": [
-            "Categorical features must be declared in config — LightGBM won't auto-detect",
-            "num_leaves too high causes overfitting (keep ≤ 2^max_depth)",
-            "Class imbalance — set scale_pos_weight or use is_unbalance=true"
+            "Categorical features must be declared in config \u2014 LightGBM won't auto-detect",
+            "num_leaves too high causes overfitting (keep \u2264 2^max_depth)",
+            "Class imbalance \u2014 set scale_pos_weight or use is_unbalance=true"
           ]
         },
         "decision_tree": {
@@ -1494,7 +1619,7 @@
             "task_weights"
           ],
           "common_pitfalls": [
-            "Tasks must be correlated for MTL benefit — independent tasks train better separately"
+            "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
           ]
         },
         "decision_tree": {
@@ -1503,7 +1628,7 @@
             "no": "Use single-task XGBoost or PyTorch"
           },
           "text_input?": {
-            "yes": "No MTL for text yet — use PyTorch with multi-head",
+            "yes": "No MTL for text yet \u2014 use PyTorch with multi-head",
             "no": "USE THIS DAG"
           }
         }
@@ -1557,7 +1682,7 @@
         "differentiators": [
           "Multi-task LightGBM (multiple labels predicted simultaneously)",
           "Label ruleset generation + execution (transparent rule-based overrides)",
-          "CPU-only — no GPU required",
+          "CPU-only \u2014 no GPU required",
           "Handles correlated tasks better than independent models"
         ],
         "prerequisites": [
@@ -1589,8 +1714,8 @@
             "n_estimators (100)"
           ],
           "common_pitfalls": [
-            "Label ruleset must cover ALL tasks — partial rules may leave some tasks un-overridden",
-            "Multi-task calibration produces separate calibration per task — ensure enough calibration data per task",
+            "Label ruleset must cover ALL tasks \u2014 partial rules may leave some tasks un-overridden",
+            "Multi-task calibration produces separate calibration per task \u2014 ensure enough calibration data per task",
             "Rule conflicts between tasks must be resolved in ruleset config"
           ]
         },
@@ -1660,7 +1785,7 @@
         "when_not_to_use": "If you have sufficient labeled data for all tasks (use mtl/complete_e2e). If single-task (use xgboost/ssl_training). If you need label override rules (use mtl/lightgbmmt_with_label_ruleset_e2e).",
         "differentiators": [
           "Semi-supervised: leverages unlabeled data via pseudo-labeling",
-          "Two-stage training: pretrain → active sampling → pseudo-label merge → fine-tune",
+          "Two-stage training: pretrain \u2192 active sampling \u2192 pseudo-label merge \u2192 fine-tune",
           "Multi-task: handles multiple labels simultaneously",
           "ActiveSampleSelection picks high-confidence pseudo-labels only",
           "Most complex MTL DAG (16 nodes)"
@@ -1700,10 +1825,10 @@
             "max_pseudo_label_ratio (3x labeled data)"
           ],
           "common_pitfalls": [
-            "Confidence threshold too low → noisy pseudo-labels degrade model",
-            "Confidence threshold too high → too few pseudo-labels to benefit",
+            "Confidence threshold too low \u2192 noisy pseudo-labels degrade model",
+            "Confidence threshold too high \u2192 too few pseudo-labels to benefit",
             "Unlabeled data must be from same distribution as labeled data",
-            "Pipeline trains TWICE (pretrain + finetune) — double the compute time"
+            "Pipeline trains TWICE (pretrain + finetune) \u2014 double the compute time"
           ]
         },
         "decision_tree": {
@@ -1764,7 +1889,7 @@
         "when_not_to_use": "If data is tabular-only (use XGBoost). If you need LLM labeling (use bedrock_pytorch_e2e).",
         "differentiators": [
           "No LLM dependency",
-          "Direct Cradle→Train→Register",
+          "Direct Cradle\u2192Train\u2192Register",
           "Simplest PyTorch path"
         ],
         "prerequisites": [
@@ -1847,7 +1972,7 @@
         "differentiators": [
           "Full E2E pipeline but with DummyDataLoading (no Cradle dependency)",
           "Tests packaging and registration flow with synthetic data",
-          "Same structure as complete_e2e — easy to swap to real data",
+          "Same structure as complete_e2e \u2014 easy to swap to real data",
           "For development/testing only"
         ],
         "prerequisites": [
@@ -1872,9 +1997,9 @@
             "dummy_data_size (1000)"
           ],
           "common_pitfalls": [
-            "Registration will create real model artifacts — clean up after testing",
-            "Dummy data distribution won't match production — don't use for model validation",
-            "Calibration on dummy data is meaningless — only tests the pipeline flow"
+            "Registration will create real model artifacts \u2014 clean up after testing",
+            "Dummy data distribution won't match production \u2014 don't use for model validation",
+            "Calibration on dummy data is meaningless \u2014 only tests the pipeline flow"
           ]
         },
         "decision_tree": {
@@ -2041,7 +2166,7 @@
             "learning_rate (1e-4)"
           ],
           "common_pitfalls": [
-            "No registration — must manually promote artifacts for downstream use",
+            "No registration \u2014 must manually promote artifacts for downstream use",
             "Dummy data may not represent production distribution"
           ]
         },
@@ -2095,7 +2220,7 @@
         "when_to_use": "Standard PyTorch E2E when you want training + packaging + registration but WITHOUT calibration. Model scores go directly to registration. Used by names3risk_pytorch pattern.",
         "when_not_to_use": "If you need calibration (use pytorch/complete_e2e). If just prototyping (use pytorch/simple_training).",
         "differentiators": [
-          "No calibration step — faster pipeline, simpler",
+          "No calibration step \u2014 faster pipeline, simpler",
           "Has validation/eval path (separate from training)",
           "Includes packaging and registration (production-ready)",
           "Lighter than complete_e2e (no calibration split needed)"
@@ -2130,7 +2255,7 @@
             "learning_rate"
           ],
           "common_pitfalls": [
-            "No calibration — raw model scores may not be well-calibrated probabilities",
+            "No calibration \u2014 raw model scores may not be well-calibrated probabilities",
             "If downstream consumers expect calibrated scores, use complete_e2e instead",
             "Validation data should be from a different time period than training"
           ]
@@ -2362,10 +2487,10 @@
       },
       "used_by_projects": [],
       "agent_context": {
-        "when_to_use": "Training + validation only — when you want to train and evaluate a model but handle packaging/registration separately (e.g., manual promotion, or a separate deployment pipeline).",
+        "when_to_use": "Training + validation only \u2014 when you want to train and evaluate a model but handle packaging/registration separately (e.g., manual promotion, or a separate deployment pipeline).",
         "when_not_to_use": "If you need automated registration (use pytorch/standard_e2e or pytorch/complete_e2e). If just prototyping without Cradle data (use pytorch/simple_training).",
         "differentiators": [
-          "Training + evaluation only — no packaging/registration",
+          "Training + evaluation only \u2014 no packaging/registration",
           "Uses real Cradle data (not dummy)",
           "Separate validation data loading path",
           "Good for iterative model development before committing to registration"
@@ -2399,7 +2524,7 @@
             "learning_rate"
           ],
           "common_pitfalls": [
-            "No registration — model artifacts stay in S3, must be promoted manually",
+            "No registration \u2014 model artifacts stay in S3, must be promoted manually",
             "Validation split should be temporal (not random) for production models",
             "If model looks good, graduate to standard_e2e or complete_e2e for production"
           ]
@@ -2552,7 +2677,7 @@
         "when_to_use": "Standalone data loading step: validate Cradle SQL query, test MDS connectivity, or extract data for offline analysis. Single-node pipeline for data exploration.",
         "when_not_to_use": "If you need training or any downstream processing (use a full pipeline DAG). This is purely for data extraction/validation.",
         "differentiators": [
-          "Single node — smallest possible Cursus pipeline",
+          "Single node \u2014 smallest possible Cursus pipeline",
           "Tests Cradle/MDS connectivity in isolation",
           "Output can be inspected before committing to a full pipeline",
           "Useful for debugging data issues"
@@ -2573,9 +2698,9 @@
             "volume_size_gb (50)"
           ],
           "common_pitfalls": [
-            "Output goes to S3 but no downstream consumer — must check artifacts manually",
-            "Large queries may timeout — add date range filters to Cradle SQL",
-            "Not meant for production pipelines — use as debugging/exploration tool"
+            "Output goes to S3 but no downstream consumer \u2014 must check artifacts manually",
+            "Large queries may timeout \u2014 add date range filters to Cradle SQL",
+            "Not meant for production pipelines \u2014 use as debugging/exploration tool"
           ]
         },
         "decision_tree": {
@@ -4067,7 +4192,7 @@
         "when_to_use": "Multi-task learning on time-series/temporal data where the train/test boundary MUST be split chronologically (no future data leaks into training). Predict multiple related labels simultaneously with a time-ordered split and a dedicated held-out testing evaluation path.",
         "when_not_to_use": "Non-temporal data where a random split is appropriate (use mtl/complete_e2e). Single binary classification (use xgboost or pytorch). Unrelated tasks (train separately).",
         "differentiators": [
-          "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing — prevents temporal leakage",
+          "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing \u2014 prevents temporal leakage",
           "Separate LightGBMMTModelEval_testing path (held-out chronological test) in addition to the calibration eval path",
           "Dual evaluation: testing (from the temporal split) + calibration (from a separate Cradle query)",
           "Multi-task output (multiple labels) with shared feature representation",
@@ -4102,8 +4227,8 @@
           ],
           "common_pitfalls": [
             "Temporal split boundary must be set so the test window has enough data for meaningful evaluation",
-            "Do not shuffle across the temporal boundary — that reintroduces leakage",
-            "Tasks must be correlated for MTL benefit — independent tasks train better separately"
+            "Do not shuffle across the temporal boundary \u2014 that reintroduces leakage",
+            "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
           ]
         },
         "decision_tree": {
@@ -4116,7 +4241,7 @@
             "no": "Use single-task XGBoost or PyTorch"
           },
           "text_input?": {
-            "yes": "No MTL for text yet — use PyTorch with multi-head",
+            "yes": "No MTL for text yet \u2014 use PyTorch with multi-head",
             "no": "USE THIS DAG"
           }
         }
@@ -4171,11 +4296,11 @@
         "when_to_use": "XGBoost multi-task learning (one_output_per_tree) on time-series/temporal data where the train/test boundary MUST be split chronologically (no future data leaks into training). Predict multiple related labels simultaneously with a time-ordered split and a dedicated held-out testing evaluation path.",
         "when_not_to_use": "Non-temporal data where a random split is appropriate. Single-task XGBoost (use xgboost/complete_e2e). Unrelated tasks (train separately). LightGBM-family MTL (use mtl/temporal_split_e2e).",
         "differentiators": [
-          "XgboostMt framework — multi-task XGBoost (one_output_per_tree) predicting multiple labels simultaneously",
-          "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing — prevents temporal leakage",
+          "XgboostMt framework \u2014 multi-task XGBoost (one_output_per_tree) predicting multiple labels simultaneously",
+          "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing \u2014 prevents temporal leakage",
           "Separate XgboostMtModelEval_testing path (held-out chronological test) in addition to the calibration eval path",
           "Dual evaluation: testing (from the temporal split) + calibration (from a separate Cradle query)",
-          "CPU-only — no GPU required"
+          "CPU-only \u2014 no GPU required"
         ],
         "prerequisites": [
           {
@@ -4208,8 +4333,8 @@
           ],
           "common_pitfalls": [
             "Temporal split boundary must be set so the test window has enough data for meaningful evaluation",
-            "Do not shuffle across the temporal boundary — that reintroduces leakage",
-            "Tasks must be correlated for MTL benefit — independent tasks train better separately"
+            "Do not shuffle across the temporal boundary \u2014 that reintroduces leakage",
+            "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
           ]
         },
         "decision_tree": {

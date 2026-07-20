@@ -1,0 +1,177 @@
+{
+  "dag": {
+    "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock BATCH forced-tool-use scoring, EDX anti-join, and EDX write-back. Batch variant of bedrock_slipbox_routing_pytorch_incremental: BedrockBatchProcessing_delta (async Bedrock batch inference) replaces the realtime BedrockProcessing_delta so a large DKS-routed delta is scored off the per-minute online quota. Two-source: baseline reads the scored-EDX label cache; delta reads live MDS anti-joined vs that cache.",
+    "nodes": [
+      "CradleDataLoading_baseline",
+      "CradleDataLoading_delta",
+      "TabularPreprocessing_delta",
+      "SlipboxKnowledgeRouting_delta",
+      "BedrockBatchProcessing_delta",
+      "EdxUploading_scored",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelEval_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      ["CradleDataLoading_delta", "TabularPreprocessing_delta"],
+      ["TabularPreprocessing_delta", "SlipboxKnowledgeRouting_delta"],
+      ["SlipboxKnowledgeRouting_delta", "BedrockBatchProcessing_delta"],
+      ["BedrockBatchProcessing_delta", "EdxUploading_scored"],
+      ["BedrockBatchProcessing_delta", "TabularPreprocessing_training"],
+      ["CradleDataLoading_baseline", "TabularPreprocessing_training"],
+      ["TabularPreprocessing_training", "PyTorchTraining"],
+      ["CradleDataLoading_calibration", "TabularPreprocessing_calibration"],
+      ["PyTorchTraining", "PyTorchModelEval_calibration"],
+      ["TabularPreprocessing_calibration", "PyTorchModelEval_calibration"],
+      ["PyTorchModelEval_calibration", "PercentileModelCalibration_calibration"],
+      ["PercentileModelCalibration_calibration", "Package"],
+      ["PyTorchTraining", "Package"],
+      ["PyTorchTraining", "Payload"],
+      ["Package", "Registration"],
+      ["Payload", "Registration"]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_slipbox_routing_batch_pytorch_incremental",
+    "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock BATCH forced-tool-use scoring, EDX anti-join, and EDX write-back.",
+    "complexity": "comprehensive",
+    "framework": "pytorch",
+    "features": [
+      "cradle_data_loading",
+      "tabular_preprocessing",
+      "slipbox_knowledge_routing",
+      "dks_compile_index_route",
+      "bedrock_batch_processing",
+      "bedrock_forced_tool_use",
+      "edx_uploading",
+      "training",
+      "calibration",
+      "packaging",
+      "registration",
+      "edx_anti_join",
+      "incremental_scoring",
+      "cost_optimization"
+    ],
+    "node_count": 15,
+    "edge_count": 16,
+    "task_type": "incremental_training_with_dks_routed_batch_llm_scoring",
+    "entry_points": [
+      "CradleDataLoading_baseline",
+      "CradleDataLoading_delta",
+      "CradleDataLoading_calibration"
+    ],
+    "exit_points": [
+      "Registration",
+      "EdxUploading_scored"
+    ],
+    "sink_nodes": [
+      "Registration",
+      "EdxUploading_scored"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": true,
+      "llm_provider": "bedrock"
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_edx_access": true,
+      "requires_mims": true,
+      "requires_bedrock_access": true
+    },
+    "cost": {
+      "estimated_hours": "4-24 (Bedrock batch delta scoring is async; routing + batch turnaround dominate)",
+      "cost_driver": "bedrock_batch_inference_plus_embedding_routing",
+      "instance_cost_tier": "high",
+      "scalability": "delta_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Same as bedrock_slipbox_routing_pytorch_incremental (incremental retraining of a DKS-routed LLM-labeled model, e.g. RnR) BUT the delta is LARGE (>~100K new orders) and the realtime BedrockProcessing path is bound by the account's per-minute Sonnet quota (ThrottlingException, multi-day wall). BedrockBatchProcessing_delta submits the routed records as an async Bedrock batch job (off the online RPM/TPM quota, ~50% cheaper for large volumes) then merges the scored labels back exactly like the realtime variant.",
+      "when_not_to_use": "Small delta (<~100K orders) or when you need low-latency turnaround — use the realtime bedrock_slipbox_routing_pytorch_incremental (no async batch wall). First-time training (no scored-EDX baseline) — use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_batch_pytorch_e2e (no SlipboxKnowledgeRouting step).",
+      "differentiators": [
+        "Only incremental DAG that pairs SlipboxKnowledgeRouting (DKS compile->index->route) with Bedrock BATCH inference",
+        "Async batch scoring escapes the realtime per-minute quota that caps the online BedrockProcessing_delta delta size",
+        "BedrockBatchProcessing_delta consumes BOTH SlipboxKnowledgeRouting outputs (routed processed_data + the {ruleset,rules} prompt_templates)",
+        "EDX anti-join skips already-scored orders; EDX write-back grows the label cache",
+        "Delta feeds BOTH the EDX write-back and the training merge"
+      ],
+      "prerequisites": [
+        {
+          "check": "Scored-EDX label cache exists from a prior run (or a prior backfill)",
+          "how": "Verify the scored-label EDX ARN is accessible via Cradle"
+        },
+        {
+          "check": "Bedrock batch model access",
+          "how": "IAM role has bedrock:CreateModelInvocationJob for the target model"
+        },
+        {
+          "check": "DKS knowledge corpus present",
+          "how": "SlipboxKnowledgeRouting bundles the rule_*/pattern_*/behavior_* corpus in its source_dir (default), or mount it via the optional knowledge_corpus channel (DummyDataLoading S3)"
+        },
+        {
+          "check": "MDS data for new period",
+          "how": "Cradle date range covers a period NOT already in the scored EDX"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "edx_scored_arn",
+          "mds_date_range",
+          "bedrock_model_id",
+          "author",
+          "service_name"
+        ],
+        "safe_defaults": [
+          "routing_scoring_mode",
+          "routing_threshold",
+          "routing_top_k",
+          "embedding_model_name",
+          "bedrock_use_structured_output",
+          "instance_types",
+          "train_ratio"
+        ],
+        "common_pitfalls": [
+          "BedrockBatchProcessing_delta MUST set bedrock_use_structured_output=true (forced tool-use) or the delta labels drift from the baseline labels",
+          "Batch jobs are async — the delta scoring step's wall-clock time is 4-24h; size the step max_runtime accordingly",
+          "Batch output is JSONL (differs from the realtime response) — ensure the batch result parser handles the batch response format; if a batch job fails mid-way partial results may exist in S3, handle idempotently",
+          "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX — count+order must match)",
+          "knowledge_corpus is OPTIONAL (bundled default) — do NOT wire it unless overriding the corpus via DummyDataLoading",
+          "MDS date range must NOT overlap the scored EDX period — causes an empty anti-join result",
+          "Cradle transform_sql final projection must equal output_schema (no SELECT *; window/helper columns projected away)"
+        ]
+      },
+      "decision_tree": {
+        "has_prior_scored_edx?": {
+          "yes": "USE THIS DAG (scores only new orders)",
+          "no": "Use the baseline dag.json first to seed the EDX cache"
+        },
+        "labeling_uses_dks_routing?": {
+          "yes": "Use a SlipboxKnowledgeRouting DAG",
+          "no": "Use bedrock_batch_pytorch_e2e (no routing step)"
+        },
+        "delta_volume_large_or_quota_bound?": {
+          "yes": "USE THIS DAG (async Bedrock batch escapes the realtime per-minute quota)",
+          "no": "Use bedrock_slipbox_routing_pytorch_incremental (realtime, lower latency)"
+        }
+      }
+    },
+    "used_by_projects": [
+      "rnr_pytorch_bedrock"
+    ]
+  }
+}

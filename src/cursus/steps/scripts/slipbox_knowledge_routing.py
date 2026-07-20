@@ -2,29 +2,28 @@
 """
 Slipbox Knowledge Routing — Cursus ProcessingStep script (PROPOSAL scaffold).
 
-Hosts the DKS knowledge+ruleset corpus and runs the internal
-compile → index → route pipeline, emitting to the downstream BedrockProcessing step:
+Reads a mounted domain knowledge+ruleset corpus and runs a compile → index → route
+pipeline, emitting to the downstream BedrockProcessing step:
   - prompt_ruleset : the compiled prompt ruleset (prompts.json, in the {ruleset, rules}
                      envelope the consumer expects; output schema embedded in ruleset)
   - routed_records : the input records + selected_rule_names + routing_confidence
 
-Pipeline stages (each ports a named DKS-router source function — see the TODOs):
+Pipeline stages (each is a scaffold TODO — fill in the domain's source function):
   COMPILE  read knowledge_corpus/rule_*.md      -> prompts.json (in memory)
-           [ports compile_prompt_ruleset.compile_rules]
+           [TODO: port the domain's rule-compilation function]
   INDEX    read knowledge_corpus/pattern_*.md (+ behavior_*.md)
            -> SentenceTransformer.encode -> in-memory routing index
-           [ports build_routing_index.py:150]; the encoder is overridden to the
+           [TODO: port the domain's index-build function]; the encoder is overridden to the
            offline embedding_model input path so no HuggingFace-hub download occurs.
   ROUTE    read records parquet -> build_query_text -> cosine-match
            -> activation top-k -> routed rule names + routing_confidence
-           [ports routing.UnifiedPatternRouter.route_batch (routing.py:217)
-            + scoring.score_rules_by_activation (scoring.py:64)]
+           [TODO: port the domain's batch-route + activation-scoring functions]
 
 Internal consistency gate: the set of rules linked from the routing index MUST be
 a subset of the compiled rule_names in prompts.json (otherwise routing could emit a
 rule name the ruleset does not define).
 
-NOTE (PROPOSAL scaffold): the ported DKS-router logic below is a faithful skeleton
+NOTE (PROPOSAL scaffold): the routing logic below is a faithful skeleton
 with explicit TODOs pointing at the source functions. The Cursus contract surface
 — the ``main(input_paths, output_paths, environ_vars, job_args)`` signature, the
 I/O container paths, the env-var reads, and the ``__main__`` argparse — is complete
@@ -51,9 +50,9 @@ def compile_prompt_ruleset(
     knowledge_dir: str, log: Callable[[str], None]
 ) -> Dict[str, Any]:
     """
-    Compile the DKS ``rule_*.md`` corpus into an in-memory prompt ruleset.
+    Compile the ``rule_*.md`` knowledge corpus into an in-memory prompt ruleset.
 
-    Ports ``compile_prompt_ruleset.compile_rules`` from the DKS pipeline.
+    TODO: port the domain's rule-compilation function here.
 
     Returns a dict shaped like the emitted ``prompts.json`` — the ``{ruleset, rules}``
     envelope the downstream Bedrock consumer's ``_adapt_ruleset_templates`` expects
@@ -67,7 +66,7 @@ def compile_prompt_ruleset(
         }
 
     Args:
-        knowledge_dir: Path to the mounted DKS knowledge corpus.
+        knowledge_dir: Path to the mounted knowledge corpus.
         log: Logging function.
 
     Returns:
@@ -82,9 +81,9 @@ def compile_prompt_ruleset(
     for rule_file in rule_files:
         rule_name = rule_file.stem  # e.g. 'rule_return_abuse_high_velocity'
         text = rule_file.read_text(encoding="utf-8")
-        # TODO(compile_prompt_ruleset.compile_rules): parse the rule markdown front
+        # TODO(rule-compilation): parse the rule markdown front
         #   matter + body into structured fields (description/key_elements/conditions/
-        #   exclusions/priority_tier/...); port the section-splitting from the DKS
+        #   exclusions/priority_tier/...); port the domain's section-splitting logic here.
         #   compile_prompt_ruleset.py. For now the whole rule body is the description.
         rules.append(
             {
@@ -99,7 +98,7 @@ def compile_prompt_ruleset(
     # The output schema travels INSIDE the ruleset (ruleset.output_schema), so the
     # downstream consumer sources it there instead of from a separate channel. Lock the
     # classification field's enum to the compiled rule names (the routed categories).
-    # TODO(compile_prompt_ruleset.build_tool_schema): enrich the per-field schema from
+    # TODO(tool-schema): enrich the per-field schema from
     #   the parsed rule metadata; this is the minimal enum-locked classification schema.
     output_schema: Dict[str, Any] = {
         "type": "object",
@@ -169,7 +168,7 @@ def _load_encoder(embedding_model_dir: Optional[str], model_name: str, log: Call
     Load a SentenceTransformer encoder, overriding to the offline weights path when
     the ``embedding_model`` input is mounted (so no HuggingFace-hub download occurs).
 
-    Ports the encoder-construction half of ``build_routing_index.py:150``.
+    Encoder-construction half of the index-build stage (offline SentenceTransformer).
     """
     try:
         from sentence_transformers import SentenceTransformer
@@ -204,7 +203,7 @@ def build_routing_index(
     Read ``pattern_*.md`` (+ ``behavior_*.md``) and encode them into an in-memory
     routing index.
 
-    Ports ``build_routing_index`` (build_routing_index.py:150).
+    Build the in-memory routing index (TODO: port the domain index-build function).
 
     Returns a dict shaped like:
         {
@@ -214,7 +213,7 @@ def build_routing_index(
         }
 
     Args:
-        knowledge_dir: Path to the mounted DKS knowledge corpus.
+        knowledge_dir: Path to the mounted knowledge corpus.
         embedding_model_dir: Optional path to offline encoder weights.
         model_name: Fallback SentenceTransformer model name.
         log: Logging function.
@@ -241,9 +240,9 @@ def build_routing_index(
     for pattern_file in pattern_files:
         pattern_name = pattern_file.stem
         text = pattern_file.read_text(encoding="utf-8")
-        # TODO(build_routing_index.py:150): parse the pattern markdown into its
+        # TODO(index-build): parse the pattern markdown into its
         #   description text + the list of rule_* names it links to (front-matter
-        #   'linked_rules:' / body reference parsing in the DKS build_routing_index).
+        #   'linked_rules:' / body reference parsing); port the domain's index-build logic.
         pattern_names.append(pattern_name)
         pattern_texts.append(text)
         linked_rules[pattern_name] = []
@@ -274,11 +273,10 @@ def build_query_text(row: pd.Series) -> str:
     """
     Build the query text for a single record used to match against the pattern index.
 
-    Ports the query-assembly half of ``routing.UnifiedPatternRouter.route_batch``
-    (routing.py:217).
+    Query-assembly half of the batch-route stage.
     """
-    # TODO(routing.py:217): assemble the query text from the domain-relevant record
-    #   fields exactly as the DKS UnifiedPatternRouter.build_query_text does (field
+    # TODO(batch-route): assemble the query text from the domain-relevant record
+    #   fields exactly as the domain's build_query_text does (field
     #   selection + concatenation order matters for routing parity).
     return " ".join(str(v) for v in row.to_dict().values())
 
@@ -292,7 +290,7 @@ def score_rules_by_activation(
     """
     Score rules by activation and return the top-k routed rule names + confidence.
 
-    Ports ``scoring.score_rules_by_activation`` (scoring.py:64).
+    TODO: port the domain's activation-scoring function here.
 
     Args:
         query_embedding: The (dim,) normalized query embedding.
@@ -312,7 +310,7 @@ def score_rules_by_activation(
     # Cosine similarity (embeddings are normalized -> dot product).
     sims = np.asarray(embeddings) @ np.asarray(query_embedding)
 
-    # TODO(scoring.score_rules_by_activation, scoring.py:64): accumulate per-rule
+    # TODO(activation-scoring): accumulate per-rule
     #   activation from every pattern whose similarity >= threshold (a rule's
     #   activation is the aggregate of its linked patterns' similarities), then rank
     #   rules by activation and keep the top_k. The block below is the faithful
@@ -345,7 +343,7 @@ def route_records(
     """
     Read the input records and route each one to a set of rule names + confidence.
 
-    Ports ``routing.UnifiedPatternRouter.route_batch`` (routing.py:217).
+    Batch-route the records (TODO: port the domain batch-route function).
 
     Args:
         records_dir: Path to the mounted records (parquet shards).
