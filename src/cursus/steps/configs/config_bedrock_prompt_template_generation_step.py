@@ -626,10 +626,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         default=True, description="Include examples in the generated template"
     )
 
-    generate_validation_schema: bool = Field(
-        default=True, description="Generate JSON validation schema for downstream use"
-    )
-
     template_version: str = Field(
         default="1.0", description="Version identifier for the generated template"
     )
@@ -763,7 +759,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
                 "includes_examples": self.include_examples,
                 "input_placeholders": self.input_placeholders,
                 "required_output_fields": self.required_output_fields,
-                "generate_validation_schema": self.generate_validation_schema,
             }
 
         return self._template_metadata
@@ -780,9 +775,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
                 "VALIDATION_LEVEL": self.validation_level,
                 "INPUT_PLACEHOLDERS": json.dumps(self.input_placeholders),
                 "INCLUDE_EXAMPLES": str(self.include_examples).lower(),
-                "GENERATE_VALIDATION_SCHEMA": str(
-                    self.generate_validation_schema
-                ).lower(),
                 "TEMPLATE_VERSION": self.template_version,
             }
             # Note: OUTPUT_FORMAT_TYPE and REQUIRED_OUTPUT_FIELDS are now available in output_format.json
@@ -988,7 +980,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
             "output_format_type": self.output_format_type,
             "required_output_fields": self.required_output_fields,
             "include_examples": self.include_examples,
-            "generate_validation_schema": self.generate_validation_schema,
             "template_version": self.template_version,
             # Include effective (resolved) configuration values for inheritance
             "_effective_system_prompt_config": self.effective_system_prompt_config,
@@ -1006,8 +997,6 @@ class BedrockPromptTemplateGenerationConfig(ProcessingStepConfigBase):
         args: List[str] = []
         if self.include_examples:
             args.append("--include-examples")
-        if self.generate_validation_schema:
-            args.append("--generate-validation-schema")
         args.extend(["--template-version", self.template_version])
         return args or None
 

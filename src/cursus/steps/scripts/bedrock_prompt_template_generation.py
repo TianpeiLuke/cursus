@@ -20,10 +20,8 @@ Container contract (bedrock_prompt_template_generation.step.yaml):
   inputs   prompt_configs=/opt/ml/processing/input/prompt_configs (OPTIONAL — bundled defaults)
   outputs  prompt_templates=/opt/ml/processing/output/templates (the ONE prompts.json ruleset),
            template_metadata=/opt/ml/processing/output/metadata,
-           validation_schema=/opt/ml/processing/output/schema (transitional: the schema is now
-             embedded in prompts.json; the separate channel deletion is a follow-on)
   env      TEMPLATE_TASK_TYPE, TEMPLATE_STYLE, VALIDATION_LEVEL, INPUT_PLACEHOLDERS,
-           INCLUDE_EXAMPLES, GENERATE_VALIDATION_SCHEMA, TEMPLATE_VERSION
+           INCLUDE_EXAMPLES, TEMPLATE_VERSION
 """
 
 import argparse
@@ -446,8 +444,8 @@ def main(
 
     Args:
         input_paths: {'prompt_configs': dir with system_prompt/category_definitions/output_format/instruction .json}
-        output_paths: {'prompt_templates', 'template_metadata', 'validation_schema'}
-        environ_vars: TEMPLATE_*, INPUT_PLACEHOLDERS, INCLUDE_EXAMPLES, GENERATE_VALIDATION_SCHEMA, TEMPLATE_VERSION
+        output_paths: {'prompt_templates', 'template_metadata'}
+        environ_vars: TEMPLATE_*, INPUT_PLACEHOLDERS, INCLUDE_EXAMPLES, TEMPLATE_VERSION
         job_args: parsed CLI args
         logger: optional logging function (defaults to print)
 
@@ -499,8 +497,7 @@ def main(
         # --- Write outputs. prompts.json IS the whole contract (system + rules + schema). ---
         templates_path = Path(output_paths["prompt_templates"])
         metadata_path = Path(output_paths["template_metadata"])
-        schema_path = Path(output_paths["validation_schema"])
-        for p in (templates_path, metadata_path, schema_path):
+        for p in (templates_path, metadata_path):
             p.mkdir(parents=True, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -524,35 +521,6 @@ def main(
         with open(metadata_file, "w", encoding="utf-8") as f:
             json.dump(metadata_output, f, indent=2, ensure_ascii=False, default=str)
         log(f"Saved template metadata to: {metadata_file}")
-
-        # Transitional: the schema is embedded in prompts.json (ruleset.output_schema); we still emit
-        # the standalone validation_schema output for consumers reading that channel. Channel deletion
-        # is gated on both producers emitting one prompts.json.
-        if environ_vars.get("GENERATE_VALIDATION_SCHEMA", "true").lower() == "true":
-            schema_file = schema_path / f"validation_schema_{timestamp}.json"
-            validation_schema = {
-                "title": "Bedrock Response Validation Schema",
-                "description": "Output schema (also embedded in prompts.json ruleset.output_schema)",
-                **prompt_ruleset["ruleset"]["output_schema"],
-                "processing_config": {
-                    "format_type": output_format_config.get(
-                        "format_type", "structured_json"
-                    ),
-                    "response_model_name": f"{environ_vars.get('TEMPLATE_TASK_TYPE', 'classification').title()}Response",
-                    "validation_level": environ_vars.get(
-                        "VALIDATION_LEVEL", "standard"
-                    ),
-                },
-                "template_metadata": {
-                    "template_version": template_version,
-                    "generation_timestamp": timestamp,
-                    "category_count": len(category_names),
-                    "category_names": category_names,
-                },
-            }
-            with open(schema_file, "w", encoding="utf-8") as f:
-                json.dump(validation_schema, f, indent=2, ensure_ascii=False)
-            log(f"Saved validation schema to: {schema_file}")
 
         results = {
             "success": True,
@@ -583,11 +551,6 @@ if __name__ == "__main__":
             help="Include examples in template",
         )
         parser.add_argument(
-            "--generate-validation-schema",
-            action="store_true",
-            help="Generate validation schema",
-        )
-        parser.add_argument(
             "--template-version", default="1.0", help="Template version identifier"
         )
         args = parser.parse_args()
@@ -596,7 +559,6 @@ if __name__ == "__main__":
         output_paths = {
             "prompt_templates": CONTAINER_PATHS["OUTPUT_TEMPLATES_DIR"],
             "template_metadata": CONTAINER_PATHS["OUTPUT_METADATA_DIR"],
-            "validation_schema": CONTAINER_PATHS["OUTPUT_SCHEMA_DIR"],
         }
         environ_vars = {
             "TEMPLATE_TASK_TYPE": os.environ.get(
@@ -609,10 +571,6 @@ if __name__ == "__main__":
             ),
             "INCLUDE_EXAMPLES": os.environ.get(
                 "INCLUDE_EXAMPLES", str(args.include_examples).lower()
-            ),
-            "GENERATE_VALIDATION_SCHEMA": os.environ.get(
-                "GENERATE_VALIDATION_SCHEMA",
-                str(args.generate_validation_schema).lower(),
             ),
             "TEMPLATE_VERSION": os.environ.get(
                 "TEMPLATE_VERSION", args.template_version

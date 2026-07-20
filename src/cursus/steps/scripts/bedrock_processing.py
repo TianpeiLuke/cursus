@@ -231,7 +231,12 @@ from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
 from pydantic import Field, ValidationError, create_model
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_not_exception_type,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -373,10 +378,15 @@ def extract_json_candidate(response_text: str) -> str:
 CONTAINER_PATHS = {
     "INPUT_DATA_DIR": "/opt/ml/processing/input/data",
     "INPUT_TEMPLATES_DIR": "/opt/ml/processing/input/templates",
-    "INPUT_SCHEMA_DIR": "/opt/ml/processing/input/schema",
     "OUTPUT_DATA_DIR": "/opt/ml/processing/output/data",
     "OUTPUT_SUMMARY_DIR": "/opt/ml/processing/output/summary",
 }
+
+# Prompt-template placeholders that _format_prompt injects PER-RECORD (rendered from the row's
+# own fields), NOT read from a DataFrame column. These must be excluded from the
+# "Missing DataFrame columns for placeholders" pre-flight check or they read as a false alarm on
+# every healthy run. {routed_rules} is rendered from selected_rule_names via _render_routed_rules.
+_INJECTED_PLACEHOLDERS = frozenset({"routed_rules"})
 
 
 # ============================================================================
@@ -501,6 +511,26 @@ def save_dataframe_with_format(
     return file_path
 
 
+class CircuitBreakerOpen(RuntimeError):
+    """Raised when the circuit breaker is OPEN (a transient Bedrock outage / throttle burst).
+
+    Subclasses RuntimeError so existing ``except (RuntimeError | Exception)`` handlers still treat
+    it as an error, but its distinct type lets the tenacity ``@retry`` decorators skip it
+    (``retry_if_not_exception_type``): retrying a breaker-open call only burns exponential backoff
+    without helping, since the breaker stays open until its recovery window elapses.
+    """
+
+
+def _checkpoint_namespace_for(input_file) -> str:
+    """A filesystem-safe token identifying an input shard.
+
+    Used to namespace a shard's checkpoint + intermediate batch files so a crash+resume over a
+    multi-file input directory cannot pick up a different shard's stale batch files (which would
+    otherwise silently mix records across shards).
+    """
+    return re.sub(r"[^0-9A-Za-z_.-]", "_", Path(input_file).stem)
+
+
 class BedrockProcessor:
     """
     Bedrock processor with template-driven response processing.
@@ -522,13 +552,16 @@ class BedrockProcessor:
         # Rate limiting for concurrent requests
         self.max_concurrent_workers = config.get("max_concurrent_workers", 5)
         self.rate_limit_per_second = config.get("rate_limit_per_second", 10)
+        self.max_retries = int(config.get("max_retries", 3))
         self.concurrency_mode = config.get(
             "concurrency_mode", "sequential"
         )  # sequential, concurrent
 
         # Rate limiting state
         self.request_semaphore = threading.Semaphore(self.max_concurrent_workers)
-        self.last_request_times = {}
+        # Global next-allowed request slot (monotonic clock), shared across all worker threads
+        # so the throttle is a single aggregate limit rather than a per-thread one.
+        self._next_request_time = 0.0
         self.time_lock = threading.Lock()
 
         # Circuit breaker state (P5)
@@ -561,37 +594,70 @@ class BedrockProcessor:
         self._configure_inference_profile()
         self._create_response_model_from_schema()
 
+    def _bedrock_client_config(self):
+        """botocore Config for the bedrock-runtime client with ADAPTIVE retry.
+
+        The default (legacy) boto3 retry mode does only ~3 attempts with no throttle-aware
+        backoff, so on a low model TPM/RPM quota a burst of concurrent workers overruns the
+        limit -> ThrottlingException -> the record is dropped as an error (records are NOT
+        deferred/re-queued elsewhere). Adaptive mode adds a client-side token bucket that
+        SENSES throttling and self-slows to the account's real ceiling, and max_attempts gives
+        each record room to ride out a throttle instead of failing. read_timeout is widened for
+        long forced-tool generations.
+        """
+        from botocore.config import Config as BotocoreConfig
+
+        return BotocoreConfig(
+            retries={"max_attempts": max(self.max_retries, 8), "mode": "adaptive"},
+            read_timeout=120,
+            connect_timeout=10,
+        )
+
     def _initialize_bedrock_client(self):
         """Initialize Bedrock client."""
         region_name = self.config.get("region_name", "us-east-1")
-        self.bedrock_client = boto3.client("bedrock-runtime", region_name=region_name)
-        logger.info(f"Initialized Bedrock client for region: {region_name}")
+        self.bedrock_client = boto3.client(
+            "bedrock-runtime",
+            region_name=region_name,
+            config=self._bedrock_client_config(),
+        )
+        logger.info(
+            f"Initialized Bedrock client for region: {region_name} "
+            f"(adaptive retry, max_attempts={max(self.max_retries, 8)})"
+        )
 
     def _get_thread_local_bedrock_client(self):
         """Get thread-local Bedrock client for concurrent processing."""
         if not hasattr(self.thread_local, "bedrock_client"):
             region_name = self.config.get("region_name", "us-east-1")
             self.thread_local.bedrock_client = boto3.client(
-                "bedrock-runtime", region_name=region_name
+                "bedrock-runtime",
+                region_name=region_name,
+                config=self._bedrock_client_config(),
             )
         return self.thread_local.bedrock_client
 
     def _enforce_rate_limit(self):
-        """Enforce rate limiting between requests for concurrent processing."""
+        """Enforce a GLOBAL rate limit across all worker threads.
+
+        The throttle was previously keyed per worker thread, so the effective request rate was
+        max_concurrent_workers x rate_limit_per_second (e.g. 5 x 10 = 50 req/s) -- it could blow
+        past the Bedrock account quota and trigger ThrottlingException storms. Reserve one shared
+        next-allowed slot (spaced min_interval apart) under the lock, then sleep OUTSIDE the lock
+        until that slot, so the aggregate rate honors rate_limit_per_second globally without
+        serializing the workers during the wait.
+        """
         if self.concurrency_mode == "sequential":
             return  # No rate limiting needed for sequential processing
 
+        min_interval = 1.0 / self.rate_limit_per_second
         with self.time_lock:
-            current_time = time.time()
-            min_interval = 1.0 / self.rate_limit_per_second
-
-            thread_id = threading.current_thread().ident
-            if thread_id in self.last_request_times:
-                elapsed = current_time - self.last_request_times[thread_id]
-                if elapsed < min_interval:
-                    time.sleep(min_interval - elapsed)
-
-            self.last_request_times[thread_id] = time.time()
+            now = time.monotonic()
+            slot = max(now, self._next_request_time)
+            self._next_request_time = slot + min_interval
+        wait = slot - now
+        if wait > 0:
+            time.sleep(wait)
 
     def _circuit_breaker_check(self):
         """Check circuit breaker state before making a request."""
@@ -607,7 +673,7 @@ class BedrockProcessor:
                     )
                     return
                 remaining = self._cb_recovery_sec - elapsed
-                raise RuntimeError(
+                raise CircuitBreakerOpen(
                     f"Circuit breaker OPEN: {remaining:.0f}s remaining "
                     f"({self._cb_failures} consecutive failures)"
                 )
@@ -665,7 +731,9 @@ class BedrockProcessor:
                 self.rate_limit_per_second = new_rate
 
     @retry(
-        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_not_exception_type(CircuitBreakerOpen),
     )
     def _invoke_bedrock_converse(self, prompt: str) -> Dict[str, Any]:
         """Invoke Bedrock using the model-agnostic Converse API (supports Nova/Llama/Mistral)."""
@@ -1014,6 +1082,24 @@ class BedrockProcessor:
                     else ""
                 )
                 formatted_prompt = formatted_prompt.replace(placeholder_pattern, value)
+            elif placeholder == "input_data":
+                # Convention: {input_data} means "the whole record". A rule-driven routing
+                # producer emits input_placeholders=[] and a template that references only
+                # {input_data}, so without this the record evidence would render as
+                # "[Missing: input_data]" and never reach the model -- classifications would
+                # rest on the routed rules alone. Serialize the row's columns (minus the routing
+                # bookkeeping columns, which are surfaced separately via {routed_rules}) so the
+                # model always sees the actual record.
+                rr_col = self.config.get("routed_rules_column", "selected_rule_names")
+                record = {
+                    k: v
+                    for k, v in truncated_data.items()
+                    if k not in (rr_col, "routing_confidence")
+                }
+                formatted_prompt = formatted_prompt.replace(
+                    placeholder_pattern,
+                    json.dumps(record, ensure_ascii=False, default=str),
+                )
             else:
                 # Log warning for missing placeholder data
                 logger.warning(
@@ -1026,7 +1112,9 @@ class BedrockProcessor:
         return formatted_prompt
 
     @retry(
-        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_not_exception_type(CircuitBreakerOpen),
     )
     def _invoke_bedrock(self, prompt: str) -> Dict[str, Any]:
         """Invoke Bedrock with circuit breaker, adaptive rate, and fallback."""
@@ -1091,7 +1179,9 @@ class BedrockProcessor:
             raise
 
     @retry(
-        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_not_exception_type(CircuitBreakerOpen),
     )
     def _invoke_bedrock_with_structured_output(self, prompt: str) -> Dict[str, Any]:
         """Invoke Bedrock using tool_use for guaranteed schema compliance (0% parse failures)."""
@@ -1309,7 +1399,14 @@ class BedrockProcessor:
             return result
 
         except Exception as e:
-            logger.error(f"Error processing case: {str(e)}")
+            if isinstance(e, CircuitBreakerOpen):
+                # Transient: the breaker is open (Bedrock outage / throttle burst). Fail fast (no
+                # retry backoff) and record a terminal error for THIS run so the row is re-runnable;
+                # logged distinctly at WARNING so an outage is not mistaken for bad data. (The
+                # error_message already carries "Circuit breaker OPEN" for downstream identification.)
+                logger.warning(f"[circuit-open] case not scored this run: {str(e)}")
+            else:
+                logger.error(f"Error processing case: {str(e)}")
 
             # Return structured error response
             error_result = {
@@ -1359,6 +1456,7 @@ class BedrockProcessor:
         df: pd.DataFrame,
         batch_size: Optional[int] = None,
         save_intermediate: bool = True,
+        checkpoint_namespace: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Process a batch of data through Bedrock using concurrent processing.
@@ -1391,7 +1489,11 @@ class BedrockProcessor:
         )
 
         # Check for missing placeholders
-        missing_placeholders = [p for p in placeholders if p not in df.columns]
+        missing_placeholders = [
+            p
+            for p in placeholders
+            if p not in df.columns and p not in _INJECTED_PLACEHOLDERS
+        ]
         if missing_placeholders:
             logger.warning(
                 f"Missing DataFrame columns for placeholders: {missing_placeholders}"
@@ -1400,7 +1502,11 @@ class BedrockProcessor:
         # Checkpoint/resume: load progress from previous run if available
         output_dir = Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
         output_dir.mkdir(parents=True, exist_ok=True)
-        checkpoint_file = output_dir / "_checkpoint_progress.json"
+        # Namespace the checkpoint + intermediate batch files per input shard so a crash+resume
+        # over a multi-file input directory cannot pick up another shard's stale batch files
+        # (which would mix records). No namespace -> legacy single-shard filenames (unchanged).
+        ckpt_suffix = f"_{checkpoint_namespace}" if checkpoint_namespace else ""
+        checkpoint_file = output_dir / f"_checkpoint_progress{ckpt_suffix}.json"
         completed_batches = 0
 
         if checkpoint_file.exists():
@@ -1419,7 +1525,7 @@ class BedrockProcessor:
         # Load intermediate results from completed batches
         if completed_batches > 0 and save_intermediate:
             for b in range(1, completed_batches + 1):
-                prev_file = output_dir / f"batch_{b:04d}_results.parquet"
+                prev_file = output_dir / f"batch{ckpt_suffix}_{b:04d}_results.parquet"
                 if prev_file.exists():
                     prev_df = pd.read_parquet(prev_file)
                     results.extend(prev_df.to_dict("records"))
@@ -1502,7 +1608,7 @@ class BedrockProcessor:
             if save_intermediate:
                 intermediate_df = pd.DataFrame(batch_results)
                 intermediate_file = (
-                    output_dir / f"batch_{batch_num:04d}_results.parquet"
+                    output_dir / f"batch{ckpt_suffix}_{batch_num:04d}_results.parquet"
                 )
                 intermediate_df.to_parquet(intermediate_file, index=False)
                 checkpoint_file.write_text(
@@ -1518,6 +1624,14 @@ class BedrockProcessor:
         if checkpoint_file.exists():
             checkpoint_file.unlink()
             logger.info("All batches complete — checkpoint removed")
+        # Remove this shard's intermediate batch files so per-shard namespacing does not
+        # accumulate them in the output dir (legacy no-namespace runs keep prior behavior).
+        if checkpoint_namespace:
+            for stale in output_dir.glob(f"batch{ckpt_suffix}_*_results.parquet"):
+                try:
+                    stale.unlink()
+                except OSError:
+                    pass
 
         results_df = pd.DataFrame(results)
         # Empty input (e.g. an incremental delta window with no new orders to score) makes
@@ -1538,6 +1652,7 @@ class BedrockProcessor:
         df: pd.DataFrame,
         batch_size: Optional[int] = None,
         save_intermediate: bool = True,
+        checkpoint_namespace: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Process a batch of data through Bedrock using template placeholders.
@@ -1552,15 +1667,20 @@ class BedrockProcessor:
             DataFrame with analysis results
         """
         if self.concurrency_mode == "concurrent":
-            return self.process_batch_concurrent(df, batch_size, save_intermediate)
+            return self.process_batch_concurrent(
+                df, batch_size, save_intermediate, checkpoint_namespace
+            )
         else:
-            return self.process_batch_sequential(df, batch_size, save_intermediate)
+            return self.process_batch_sequential(
+                df, batch_size, save_intermediate, checkpoint_namespace
+            )
 
     def process_batch_sequential(
         self,
         df: pd.DataFrame,
         batch_size: Optional[int] = None,
         save_intermediate: bool = True,
+        checkpoint_namespace: Optional[str] = None,
     ) -> pd.DataFrame:
         """
         Process a batch of data through Bedrock using sequential processing.
@@ -1591,7 +1711,11 @@ class BedrockProcessor:
         logger.info("Sequential processing mode")
 
         # Check for missing placeholders
-        missing_placeholders = [p for p in placeholders if p not in df.columns]
+        missing_placeholders = [
+            p
+            for p in placeholders
+            if p not in df.columns and p not in _INJECTED_PLACEHOLDERS
+        ]
         if missing_placeholders:
             logger.warning(
                 f"Missing DataFrame columns for placeholders: {missing_placeholders}"
@@ -1600,7 +1724,11 @@ class BedrockProcessor:
         # Checkpoint/resume: load progress from previous run if available
         output_dir = Path(CONTAINER_PATHS["OUTPUT_DATA_DIR"])
         output_dir.mkdir(parents=True, exist_ok=True)
-        checkpoint_file = output_dir / "_checkpoint_progress.json"
+        # Namespace the checkpoint + intermediate batch files per input shard so a crash+resume
+        # over a multi-file input directory cannot pick up another shard's stale batch files
+        # (which would mix records). No namespace -> legacy single-shard filenames (unchanged).
+        ckpt_suffix = f"_{checkpoint_namespace}" if checkpoint_namespace else ""
+        checkpoint_file = output_dir / f"_checkpoint_progress{ckpt_suffix}.json"
         completed_batches = 0
 
         if checkpoint_file.exists():
@@ -1619,7 +1747,7 @@ class BedrockProcessor:
         # Load intermediate results from completed batches
         if completed_batches > 0 and save_intermediate:
             for b in range(1, completed_batches + 1):
-                prev_file = output_dir / f"batch_{b:04d}_results.parquet"
+                prev_file = output_dir / f"batch{ckpt_suffix}_{b:04d}_results.parquet"
                 if prev_file.exists():
                     prev_df = pd.read_parquet(prev_file)
                     results.extend(prev_df.to_dict("records"))
@@ -1676,7 +1804,7 @@ class BedrockProcessor:
             if save_intermediate:
                 intermediate_df = pd.DataFrame(batch_results)
                 intermediate_file = (
-                    output_dir / f"batch_{batch_num:04d}_results.parquet"
+                    output_dir / f"batch{ckpt_suffix}_{batch_num:04d}_results.parquet"
                 )
                 intermediate_df.to_parquet(intermediate_file, index=False)
                 checkpoint_file.write_text(
@@ -1692,6 +1820,14 @@ class BedrockProcessor:
         if checkpoint_file.exists():
             checkpoint_file.unlink()
             logger.info("All batches complete — checkpoint removed")
+        # Remove this shard's intermediate batch files so per-shard namespacing does not
+        # accumulate them in the output dir (legacy no-namespace runs keep prior behavior).
+        if checkpoint_namespace:
+            for stale in output_dir.glob(f"batch{ckpt_suffix}_*_results.parquet"):
+                try:
+                    stale.unlink()
+                except OSError:
+                    pass
 
         results_df = pd.DataFrame(results)
         # See process_batch_concurrent: on empty input restore the status-column invariant so
@@ -1991,6 +2127,28 @@ def _load_schema_with_fallback(
                 return schema
         except json.JSONDecodeError as e:
             log(f"[WARN] Failed to parse BEDROCK_VALIDATION_SCHEMA: {e}")
+
+    # Rule-driven routing case: its ruleset carries NO embedded output_schema and no channel is
+    # mounted, but the ruleset DOES supply rule names — synthesize a minimal classification schema
+    # enum-locked to those names so the forced-tool contract works for that upstream too.
+    rule_names = (templates or {}).get("_rule_names") or []
+    if rule_names:
+        log(
+            f"[INFO] Building classification schema from {len(rule_names)} ruleset rule names"
+        )
+        return {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": list(rule_names),
+                    "description": "The single best-matching rule / category name for this record.",
+                },
+                "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+                "reasoning": {"type": "string", "description": "Concise reasoning."},
+            },
+            "required": ["category"],
+        }
 
     log("[WARN] No validation schema — using basic JSON parsing only")
     return {}
@@ -2344,7 +2502,11 @@ def main(
                     log(f"Detected input format: {input_format}")
 
                     # Process batch
-                    result_df = processor.process_batch(df, save_intermediate=True)
+                    result_df = processor.process_batch(
+                        df,
+                        save_intermediate=True,
+                        checkpoint_namespace=_checkpoint_namespace_for(input_file),
+                    )
 
                     # Update statistics
                     processing_stats["total_records"] += len(df)
@@ -2479,7 +2641,11 @@ def main(
                 log(f"Detected input format: {input_format}")
 
                 # Process batch
-                result_df = processor.process_batch(df, save_intermediate=True)
+                result_df = processor.process_batch(
+                    df,
+                    save_intermediate=True,
+                    checkpoint_namespace=_checkpoint_namespace_for(input_file),
+                )
 
                 # Update statistics
                 processing_stats["total_records"] += len(df)
@@ -2642,7 +2808,9 @@ if __name__ == "__main__":
         input_paths = {
             "input_data": CONTAINER_PATHS["INPUT_DATA_DIR"],
             "prompt_templates": CONTAINER_PATHS["INPUT_TEMPLATES_DIR"],
-            "validation_schema": CONTAINER_PATHS["INPUT_SCHEMA_DIR"],
+            # validation_schema channel was dropped: the schema now travels inside the
+            # prompt ruleset (ruleset.output_schema), or is synthesized from the routed
+            # rule names, or comes from the BEDROCK_VALIDATION_SCHEMA env var.
         }
 
         output_paths = {
@@ -2711,6 +2879,32 @@ if __name__ == "__main__":
             # BEDROCK_LOG_TRUNCATIONS: Log truncation events (default: "true")
             "BEDROCK_LOG_TRUNCATIONS": os.environ.get(
                 "BEDROCK_LOG_TRUNCATIONS", "true"
+            ),
+            # Structured-output / prompt / schema controls. These are emitted by
+            # config.get_environment_variables() but were previously NOT forwarded here, so
+            # main()/the loaders always saw their in-code defaults: self-contained mode
+            # (BEDROCK_USER_PROMPT_TEMPLATE) hard-failed, a config-embedded schema
+            # (BEDROCK_VALIDATION_SCHEMA) never reached the script, and use_structured_output
+            # could not be disabled. Forward them with the SAME defaults the readers use so an
+            # unset env var is byte-for-byte unchanged, while a config-set value now takes effect.
+            "BEDROCK_USE_STRUCTURED_OUTPUT": os.environ.get(
+                "BEDROCK_USE_STRUCTURED_OUTPUT", "true"
+            ),
+            "BEDROCK_USE_CONVERSE_API": os.environ.get(
+                "BEDROCK_USE_CONVERSE_API", "false"
+            ),
+            "BEDROCK_ADAPTIVE_RATE_LIMITING": os.environ.get(
+                "BEDROCK_ADAPTIVE_RATE_LIMITING", "false"
+            ),
+            "BEDROCK_VALIDATION_SCHEMA": os.environ.get(
+                "BEDROCK_VALIDATION_SCHEMA", "{}"
+            ),
+            "BEDROCK_USER_PROMPT_TEMPLATE": os.environ.get(
+                "BEDROCK_USER_PROMPT_TEMPLATE", ""
+            ),
+            "BEDROCK_SYSTEM_PROMPT": os.environ.get("BEDROCK_SYSTEM_PROMPT", ""),
+            "BEDROCK_INPUT_PLACEHOLDERS": os.environ.get(
+                "BEDROCK_INPUT_PLACEHOLDERS", "[]"
             ),
         }
 

@@ -50,6 +50,8 @@ contract:
       ROUTING_SCORING_MODE: activation
       ROUTING_THRESHOLD: '0.30'
       ROUTING_TOP_K: '7'
+      ROUTING_ENCODE_BATCH_SIZE: '256'
+      ROUTING_NUM_THREADS: '0'
       EMBEDDING_MODEL_NAME: all-MiniLM-L6-v2
   framework_requirements:
     boto3: '>=1.34'

@@ -1463,6 +1463,14 @@ class BedrockProcessor:
             logger.info("All batches complete — checkpoint removed")
 
         results_df = pd.DataFrame(results)
+        # Empty input (e.g. an incremental delta window with no new records to score) makes
+        # pd.DataFrame([]) column-less; downstream aggregation then does result_df[f"{prefix}status"]
+        # unconditionally -> KeyError: '<prefix>status'. Restore the invariant this method
+        # promises -- the returned frame always carries the status column -- by returning a
+        # schema-preserving empty frame (input columns + status, 0 rows).
+        if results_df.empty:
+            results_df = df.iloc[0:0].copy()
+            results_df[f"{output_prefix}status"] = pd.Series(dtype="object")
         logger.info(f"Completed concurrent processing {len(results_df)} records")
 
         return results_df
@@ -1628,6 +1636,14 @@ class BedrockProcessor:
             logger.info("All batches complete — checkpoint removed")
 
         results_df = pd.DataFrame(results)
+        # Empty input (e.g. an incremental delta window with no new records to score) makes
+        # pd.DataFrame([]) column-less; downstream aggregation then does result_df[f"{prefix}status"]
+        # unconditionally -> KeyError: '<prefix>status'. Restore the invariant this method
+        # promises -- the returned frame always carries the status column -- by returning a
+        # schema-preserving empty frame (input columns + status, 0 rows).
+        if results_df.empty:
+            results_df = df.iloc[0:0].copy()
+            results_df[f"{output_prefix}status"] = pd.Series(dtype="object")
         logger.info(f"Completed sequential processing {len(results_df)} records")
 
         return results_df
@@ -1661,6 +1677,21 @@ def load_prompt_templates(
         try:
             with open(prompts_file, "r", encoding="utf-8") as f:
                 json_templates = json.load(f)
+
+            # This copy only understands the FLAT prompts.json shape (system_prompt /
+            # user_prompt_template / input_placeholders at top level). The rule-driven producers
+            # (SlipboxKnowledgeRouting / the updated BedrockPromptTemplateGeneration) emit a nested
+            # {ruleset, rules} envelope, which this script has no _adapt_ruleset_templates handling
+            # for -- those keys would silently miss every flat check below and this function would
+            # return {} -> a generic default prompt (silent garbage output). Fail loudly so the
+            # producer/consumer mismatch is caught at load time instead of downstream.
+            if "ruleset" in json_templates and "rules" in json_templates:
+                raise ValueError(
+                    f"{prompts_file} is a rule-driven {{ruleset, rules}} envelope, which this "
+                    "script does not support (it handles only the flat system_prompt / "
+                    "user_prompt_template shape). Point this step at a flat-shape prompt producer, "
+                    "or port _adapt_ruleset_templates from the canonical bedrock_processing.py."
+                )
 
             if "system_prompt" in json_templates:
                 templates["system_prompt"] = json_templates["system_prompt"]

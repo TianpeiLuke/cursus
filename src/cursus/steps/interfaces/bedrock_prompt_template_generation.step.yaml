@@ -21,17 +21,12 @@ contract:
       path: /opt/ml/processing/output/templates
     template_metadata:
       path: /opt/ml/processing/output/metadata
-    validation_schema:
-      path: /opt/ml/processing/output/schema
   arguments:
     include-examples: boolean flag to include examples in template
-    generate-validation-schema: boolean flag to generate validation schema
     template-version: template version identifier
   job_arguments:
   - flag: --include-examples
     source: include_examples
-  - flag: --generate-validation-schema
-    source: generate_validation_schema
   - flag: --template-version
     source: template_version
   env_vars:
@@ -42,7 +37,6 @@ contract:
       VALIDATION_LEVEL: standard
       INPUT_PLACEHOLDERS: '["input_data"]'
       INCLUDE_EXAMPLES: 'false'
-      GENERATE_VALIDATION_SCHEMA: 'false'
       TEMPLATE_VERSION: '1.0'
   framework_requirements:
     pydantic: '>=2.0.0'
@@ -97,24 +91,4 @@ spec:
       - validation_results
       - quality_metrics
       - generation_results
-      data_type: S3Uri
-    validation_schema:
-      # type=custom_property (NOT processing_output) so it binds ONLY to a consumer dep also typed
-      # custom_property (the Bedrock steps' validation_schema), never to a data/prompt dependency —
-      # the paired half of the fix that stops the schema-vs-data channel confusion. The
-      # property_path/data_type are unchanged: the builder still emits this as a normal S3 output;
-      # the type only affects dependency-resolver scoring, not how the output is produced/navigated.
-      type: custom_property
-      property_path: properties.ProcessingOutputConfig.Outputs['validation_schema'].S3Output.S3Uri
-      semantic_keywords:
-      - schema
-      - validation
-      - response_schema
-      aliases:
-      - schema
-      - output_validation_schema
-      - bedrock_validation_schema
-      - response_schema
-      - classification_schema
-      - downstream_schema
       data_type: S3Uri

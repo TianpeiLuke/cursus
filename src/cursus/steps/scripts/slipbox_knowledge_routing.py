@@ -3,10 +3,10 @@
 Slipbox Knowledge Routing — Cursus ProcessingStep script (PROPOSAL scaffold).
 
 Hosts the DKS knowledge+ruleset corpus and runs the internal
-compile → index → route pipeline (FZ 29h1e §4/§7), emitting to the downstream
-BedrockProcessing step:
-  - prompt_ruleset : the compiled prompt ruleset (prompts.json + tool schema)
-  - routed_records : the input records + routed rule names + routing_confidence
+compile → index → route pipeline, emitting to the downstream BedrockProcessing step:
+  - prompt_ruleset : the compiled prompt ruleset (prompts.json, in the {ruleset, rules}
+                     envelope the consumer expects; output schema embedded in ruleset)
+  - routed_records : the input records + selected_rule_names + routing_confidence
 
 Pipeline stages (each ports a named DKS-router source function — see the TODOs):
   COMPILE  read knowledge_corpus/rule_*.md      -> prompts.json (in memory)
@@ -55,11 +55,15 @@ def compile_prompt_ruleset(
 
     Ports ``compile_prompt_ruleset.compile_rules`` from the DKS pipeline.
 
-    Returns a dict shaped like the emitted ``prompts.json``:
+    Returns a dict shaped like the emitted ``prompts.json`` — the ``{ruleset, rules}``
+    envelope the downstream Bedrock consumer's ``_adapt_ruleset_templates`` expects
+    (``ruleset`` = the shared prompt layer + embedded ``output_schema``; ``rules`` = a
+    LIST of per-rule dicts each carrying at least ``rule_name``):
         {
-          "rules": {rule_name: {"prompt": str, "metadata": {...}}, ...},
-          "rule_names": [rule_name, ...],
-          "tool_schema": {...},   # structured-output tool schema for Bedrock
+          "ruleset": {"system_prompt": str, "input_placeholders": [...],
+                      "output_schema": {...}},
+          "rules": [{"rule_name": str, "description": str, "metadata": {...}}, ...],
+          "rule_names": [rule_name, ...],   # convenience mirror of rules[*].rule_name
         }
 
     Args:
@@ -73,35 +77,91 @@ def compile_prompt_ruleset(
     rule_files = sorted(knowledge_path.glob("rule_*.md"))
     log(f"[COMPILE] Found {len(rule_files)} rule_*.md files in {knowledge_dir}")
 
-    rules: Dict[str, Any] = {}
+    # rules is a LIST (the consumer contract), each entry keyed by rule_name.
+    rules: List[Dict[str, Any]] = []
     for rule_file in rule_files:
         rule_name = rule_file.stem  # e.g. 'rule_return_abuse_high_velocity'
         text = rule_file.read_text(encoding="utf-8")
         # TODO(compile_prompt_ruleset.compile_rules): parse the rule markdown front
-        #   matter + body into {prompt, metadata}; port the section-splitting and
-        #   prompt-template assembly from the DKS compile_prompt_ruleset.py.
-        rules[rule_name] = {"prompt": text, "metadata": {"source": rule_file.name}}
+        #   matter + body into structured fields (description/key_elements/conditions/
+        #   exclusions/priority_tier/...); port the section-splitting from the DKS
+        #   compile_prompt_ruleset.py. For now the whole rule body is the description.
+        rules.append(
+            {
+                "rule_name": rule_name,
+                "description": text,
+                "metadata": {"source": rule_file.name},
+            }
+        )
 
-    # TODO(compile_prompt_ruleset.build_tool_schema): assemble the structured-output
-    #   tool schema (the Bedrock tool_use JSON schema) from the compiled rules.
-    tool_schema: Dict[str, Any] = {
-        "name": "slipbox_routed_ruleset",
-        "description": "Compiled DKS prompt ruleset for Bedrock structured output.",
-        "input_schema": {"type": "object", "properties": {}},
+    rule_names = sorted(r["rule_name"] for r in rules)
+
+    # The output schema travels INSIDE the ruleset (ruleset.output_schema), so the
+    # downstream consumer sources it there instead of from a separate channel. Lock the
+    # classification field's enum to the compiled rule names (the routed categories).
+    # TODO(compile_prompt_ruleset.build_tool_schema): enrich the per-field schema from
+    #   the parsed rule metadata; this is the minimal enum-locked classification schema.
+    output_schema: Dict[str, Any] = {
+        "type": "object",
+        "properties": {
+            "category": {
+                "type": "string",
+                "enum": rule_names,
+                "description": "The single best-matching rule / category name.",
+            },
+            "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "reasoning": {
+                "type": "string",
+                "description": "Reasoning for the classification.",
+            },
+        },
+        "required": ["category"],
     }
 
     ruleset = {
+        "ruleset": {
+            "system_prompt": (
+                "Classify each record into exactly one of the routed rules below."
+            ),
+            "input_placeholders": [],
+            "output_schema": output_schema,
+        },
         "rules": rules,
-        "rule_names": sorted(rules.keys()),
-        "tool_schema": tool_schema,
+        "rule_names": rule_names,
     }
-    log(f"[COMPILE] Compiled {len(ruleset['rule_names'])} rules into prompt ruleset")
+    log(f"[COMPILE] Compiled {len(rule_names)} rules into prompt ruleset")
     return ruleset
 
 
 # ============================================================================
 # INDEX — pattern_*/behavior_* -> SentenceTransformer.encode -> routing index
 # ============================================================================
+
+
+def _configure_cpu_threads(environ_vars: Dict[str, str], log: Callable) -> None:
+    """Size torch's intra-op thread pool to the box's vCPUs so the batched encode uses them.
+
+    The route stage is embedding-bound and ``SentenceTransformer.encode`` parallelizes one
+    batched forward pass across cores via torch's intra-op threads. On a big CPU instance a
+    container-default thread count of 1-4 leaves most cores idle, so raise it to the vCPU count.
+    Env-overridable via ``ROUTING_NUM_THREADS`` (0/empty = auto = os.cpu_count()).
+    """
+    raw = environ_vars.get("ROUTING_NUM_THREADS", "").strip()
+    try:
+        n = int(raw) if raw else 0
+    except ValueError:
+        n = 0
+    if n <= 0:
+        n = os.cpu_count() or 1
+    try:
+        import torch
+
+        torch.set_num_threads(n)
+        log(f"[INDEX] torch intra-op threads set to {n} (vCPUs={os.cpu_count()})")
+    except (
+        ImportError
+    ):  # pragma: no cover - container ships torch (SentenceTransformer dep)
+        log("[INDEX] torch not importable; skipping thread-count configuration")
 
 
 def _load_encoder(embedding_model_dir: Optional[str], model_name: str, log: Callable):
@@ -280,6 +340,7 @@ def route_records(
     threshold: float,
     top_k: int,
     log: Callable[[str], None],
+    encode_batch_size: int = 256,
 ) -> pd.DataFrame:
     """
     Read the input records and route each one to a set of rule names + confidence.
@@ -295,7 +356,9 @@ def route_records(
 
     Returns:
         The records DataFrame with two added columns:
-          - routed_rule_names : list[str]
+          - selected_rule_names : list[str]  (the routed rule names; this is the column
+            name the downstream Bedrock consumer reads by default —
+            ``BEDROCK_ROUTED_RULES_COLUMN``, default ``selected_rule_names``)
           - routing_confidence : float
     """
     records_path = Path(records_dir)
@@ -313,8 +376,13 @@ def route_records(
     encoder = index["_encoder"]
     query_texts = [build_query_text(row) for _, row in df.iterrows()]
     if query_texts:
+        # One batched, multi-core encode over ALL query texts. batch_size is a throughput
+        # knob (larger on a many-vCPU box improves encode throughput up to a memory ceiling).
         query_embeddings = encoder.encode(
-            query_texts, convert_to_numpy=True, normalize_embeddings=True
+            query_texts,
+            batch_size=encode_batch_size,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
         )
     else:
         query_embeddings = []
@@ -328,7 +396,7 @@ def route_records(
         routed_names.append(names)
         confidences.append(conf)
 
-    df["routed_rule_names"] = routed_names
+    df["selected_rule_names"] = routed_names
     df["routing_confidence"] = confidences
     log(f"[ROUTE] Routed {len(df)} records (top_k={top_k}, threshold={threshold})")
     return df
@@ -370,38 +438,39 @@ def assert_index_rules_subset_of_ruleset(
 def write_prompt_ruleset(
     ruleset: Dict[str, Any], output_dir: str, log: Callable[[str], None]
 ) -> None:
-    """Write prompts.json + tool schema to the prompt_ruleset output path."""
+    """Write prompts.json in the ``{ruleset, rules}`` envelope the Bedrock consumer expects.
+
+    The consumer's gate requires BOTH a top-level ``ruleset`` object AND a ``rules`` list
+    (``bedrock_processing.py`` ``load_prompt_templates`` → ``_adapt_ruleset_templates``);
+    the output schema travels inside ``ruleset.output_schema`` so no separate schema
+    channel is needed.
+    """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     prompts_path = output_path / "prompts.json"
     prompts_path.write_text(
         json.dumps(
-            {"rules": ruleset["rules"], "rule_names": ruleset["rule_names"]}, indent=2
+            {"ruleset": ruleset["ruleset"], "rules": ruleset["rules"]}, indent=2
         ),
         encoding="utf-8",
     )
 
-    schema_path = output_path / "tool_schema.json"
-    schema_path.write_text(
-        json.dumps(ruleset["tool_schema"], indent=2), encoding="utf-8"
-    )
-
-    log(f"[WRITE] Wrote prompt ruleset to {prompts_path} and {schema_path}")
+    log(f"[WRITE] Wrote prompt ruleset ({{ruleset, rules}}) to {prompts_path}")
 
 
 def write_routed_records(
     df: pd.DataFrame, output_dir: str, log: Callable[[str], None]
 ) -> None:
-    """Write the routed records (records + routed rule names + confidence) as parquet."""
+    """Write the routed records (records + selected_rule_names + confidence) as parquet."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     out_file = output_path / "routed_records.parquet"
-    # routed_rule_names is a list column — serialize to JSON strings for portability
-    # across the downstream Bedrock reader.
+    # selected_rule_names is a list column — serialize to JSON strings for portability
+    # across the downstream Bedrock reader (which json.loads it back).
     df = df.copy()
-    df["routed_rule_names"] = df["routed_rule_names"].apply(json.dumps)
+    df["selected_rule_names"] = df["selected_rule_names"].apply(json.dumps)
     df.to_parquet(out_file, index=False)
     log(f"[WRITE] Wrote {df.shape[0]} routed records to {out_file}")
 
@@ -441,6 +510,9 @@ def main(
     threshold = float(environ_vars.get("ROUTING_THRESHOLD", "0.30"))
     top_k = int(environ_vars.get("ROUTING_TOP_K", "7"))
     model_name = environ_vars.get("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+    # Throughput knobs: encode batch size for the batched route pass, and the torch intra-op
+    # thread count (0/empty = auto = os.cpu_count()). Both feed the embedding-bound encode.
+    encode_batch_size = int(environ_vars.get("ROUTING_ENCODE_BATCH_SIZE", "256"))
 
     # --- Extract paths ---
     records_dir = input_paths["records"]
@@ -456,9 +528,13 @@ def main(
     log(f"  Threshold: {threshold}")
     log(f"  Top-K: {top_k}")
     log(f"  Embedding Model Name: {model_name}")
+    log(f"  Encode Batch Size: {encode_batch_size}")
     log(f"  Records Dir: {records_dir}")
     log(f"  Knowledge Corpus Dir: {knowledge_dir}")
     log(f"  Embedding Model Dir: {embedding_model_dir or 'not mounted'}")
+
+    # Size torch's intra-op thread pool to the vCPUs before any encode.
+    _configure_cpu_threads(environ_vars, log)
 
     # --- COMPILE ---
     ruleset = compile_prompt_ruleset(knowledge_dir, log)
@@ -470,7 +546,9 @@ def main(
     assert_index_rules_subset_of_ruleset(index, ruleset, log)
 
     # --- ROUTE ---
-    routed_df = route_records(records_dir, index, threshold, top_k, log)
+    routed_df = route_records(
+        records_dir, index, threshold, top_k, log, encode_batch_size=encode_batch_size
+    )
 
     # --- WRITE ---
     write_prompt_ruleset(ruleset, prompt_ruleset_out, log)
@@ -534,6 +612,12 @@ if __name__ == "__main__":
             ),
             "ROUTING_THRESHOLD": os.environ.get("ROUTING_THRESHOLD", "0.30"),
             "ROUTING_TOP_K": os.environ.get("ROUTING_TOP_K", "7"),
+            # Throughput knobs: encode batch size for the batched route pass, and the torch
+            # intra-op thread count (empty/0 = auto = os.cpu_count()).
+            "ROUTING_ENCODE_BATCH_SIZE": os.environ.get(
+                "ROUTING_ENCODE_BATCH_SIZE", "256"
+            ),
+            "ROUTING_NUM_THREADS": os.environ.get("ROUTING_NUM_THREADS", ""),
             "EMBEDDING_MODEL_NAME": os.environ.get(
                 "EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2"
             ),

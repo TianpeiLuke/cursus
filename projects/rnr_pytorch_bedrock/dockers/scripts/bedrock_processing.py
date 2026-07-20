@@ -354,10 +354,15 @@ def extract_json_candidate(response_text: str) -> str:
 CONTAINER_PATHS = {
     "INPUT_DATA_DIR": "/opt/ml/processing/input/data",
     "INPUT_TEMPLATES_DIR": "/opt/ml/processing/input/templates",
-    "INPUT_SCHEMA_DIR": "/opt/ml/processing/input/schema",
     "OUTPUT_DATA_DIR": "/opt/ml/processing/output/data",
     "OUTPUT_SUMMARY_DIR": "/opt/ml/processing/output/summary",
 }
+
+# Prompt-template placeholders that _format_prompt injects PER-RECORD (rendered from the row's
+# own fields), NOT read from a DataFrame column. These must be excluded from the
+# "Missing DataFrame columns for placeholders" pre-flight check or they read as a false alarm on
+# every healthy run. {routed_rules} is rendered from selected_rule_names via _render_routed_rules.
+_INJECTED_PLACEHOLDERS = frozenset({"routed_rules"})
 
 
 # ============================================================================
@@ -461,6 +466,7 @@ class BedrockProcessor:
         # Rate limiting for concurrent requests
         self.max_concurrent_workers = config.get("max_concurrent_workers", 5)
         self.rate_limit_per_second = config.get("rate_limit_per_second", 10)
+        self.max_retries = int(config.get("max_retries", 3))
         self.concurrency_mode = config.get(
             "concurrency_mode", "sequential"
         )  # sequential, concurrent
@@ -486,18 +492,46 @@ class BedrockProcessor:
         self._configure_inference_profile()
         self._create_response_model_from_schema()
 
+    def _bedrock_client_config(self):
+        """botocore Config for the bedrock-runtime client with ADAPTIVE retry.
+
+        The default (legacy) boto3 retry mode does only ~3 attempts with no throttle-aware
+        backoff, so on a low model TPM/RPM quota a burst of concurrent workers overruns the
+        limit -> ThrottlingException -> the record is dropped as an error (records are NOT
+        deferred/re-queued elsewhere). Adaptive mode adds a client-side token bucket that
+        SENSES throttling and self-slows to the account's real ceiling, and max_attempts gives
+        each record room to ride out a throttle instead of failing. read_timeout is widened for
+        long forced-tool generations.
+        """
+        from botocore.config import Config as BotocoreConfig
+
+        return BotocoreConfig(
+            retries={"max_attempts": max(self.max_retries, 8), "mode": "adaptive"},
+            read_timeout=120,
+            connect_timeout=10,
+        )
+
     def _initialize_bedrock_client(self):
         """Initialize Bedrock client."""
         region_name = self.config.get("region_name", "us-east-1")
-        self.bedrock_client = boto3.client("bedrock-runtime", region_name=region_name)
-        logger.info(f"Initialized Bedrock client for region: {region_name}")
+        self.bedrock_client = boto3.client(
+            "bedrock-runtime",
+            region_name=region_name,
+            config=self._bedrock_client_config(),
+        )
+        logger.info(
+            f"Initialized Bedrock client for region: {region_name} "
+            f"(adaptive retry, max_attempts={max(self.max_retries, 8)})"
+        )
 
     def _get_thread_local_bedrock_client(self):
         """Get thread-local Bedrock client for concurrent processing."""
         if not hasattr(self.thread_local, "bedrock_client"):
             region_name = self.config.get("region_name", "us-east-1")
             self.thread_local.bedrock_client = boto3.client(
-                "bedrock-runtime", region_name=region_name
+                "bedrock-runtime",
+                region_name=region_name,
+                config=self._bedrock_client_config(),
             )
         return self.thread_local.bedrock_client
 
@@ -794,6 +828,21 @@ class BedrockProcessor:
         # Start with the template
         formatted_prompt = self.config["user_prompt_template"]
 
+        # Per-record routed-rule injection (generic): if the template carries a {routed_rules} slot
+        # and this record has a per-record selected-rule list (from a rule-driven routing step),
+        # render the routed rule definitions into the body. The row column name is config-driven
+        # (routed_rules_column, default "selected_rule_names"); no domain names hardcoded.
+        rules_by_name = self.config.get("_rules_by_name")
+        if "{routed_rules}" in formatted_prompt:
+            if rules_by_name:
+                rr_col = self.config.get("routed_rules_column", "selected_rule_names")
+                routed_block = _render_routed_rules(
+                    truncated_data.get(rr_col), rules_by_name
+                )
+            else:
+                routed_block = ""
+            formatted_prompt = formatted_prompt.replace("{routed_rules}", routed_block)
+
         # Replace each placeholder with its value using string replacement
         # This avoids issues with curly braces in JSON examples being interpreted as placeholders
         for placeholder in placeholders:
@@ -879,6 +928,84 @@ class BedrockProcessor:
                     raise fallback_error
             else:
                 raise e
+
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
+    def _invoke_bedrock_with_structured_output(self, prompt: str) -> Dict[str, Any]:
+        """Invoke Bedrock using forced tool_use for guaranteed schema compliance.
+
+        The validation_schema becomes the tool's input_schema and tool_choice is forced
+        to that tool, so constrained decoding makes an off-schema value impossible. The
+        tool_use block is unwrapped to the same ``{"content": [{"text": ...}]}`` shape the
+        assistant-prefill path returns, so _parse_response_with_pydantic is unchanged.
+        """
+        # Enforce rate limiting for concurrent processing
+        if self.concurrency_mode == "concurrent":
+            self._enforce_rate_limit()
+            client = self._get_thread_local_bedrock_client()
+        else:
+            client = self.bedrock_client
+
+        tool_schema = {
+            "type": "object",
+            "properties": self.validation_schema.get("properties", {}),
+            "required": self.validation_schema.get("required", []),
+        }
+
+        request_body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": int(self.config["max_tokens"]),
+            "temperature": float(self.config["temperature"]),
+            "top_p": float(self.config["top_p"]),
+            "messages": [{"role": "user", "content": prompt}],
+            "tools": [
+                {
+                    "name": "structured_response",
+                    "description": "Return the structured analysis response",
+                    "input_schema": tool_schema,
+                }
+            ],
+            "tool_choice": {"type": "tool", "name": "structured_response"},
+        }
+
+        if self.config.get("system_prompt"):
+            request_body["system"] = self.config["system_prompt"]
+
+        def _extract_tool_use(response_body: Dict[str, Any]) -> Dict[str, Any]:
+            for block in response_body.get("content", []):
+                if (
+                    block.get("type") == "tool_use"
+                    and block.get("name") == "structured_response"
+                ):
+                    return {"content": [{"text": json.dumps(block["input"])}]}
+            raise ValueError("No tool_use block found in response")
+
+        # Try primary model/profile first
+        try:
+            response = client.invoke_model(
+                modelId=self.effective_model_id,
+                body=json.dumps(request_body),
+                contentType="application/json",
+                accept="application/json",
+            )
+            return _extract_tool_use(json.loads(response["body"].read()))
+
+        except Exception as e:
+            # Fallback to on-demand model if inference profile fails
+            fallback_model = self.config.get("fallback_model_id")
+            if fallback_model and "ValidationException" in str(e):
+                logger.warning(
+                    f"Structured output: inference profile failed, falling back to: {fallback_model}"
+                )
+                response = client.invoke_model(
+                    modelId=fallback_model,
+                    body=json.dumps(request_body),
+                    contentType="application/json",
+                    accept="application/json",
+                )
+                return _extract_tool_use(json.loads(response["body"].read()))
+            raise
 
     def _parse_response_with_pydantic(self, response: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -989,8 +1116,13 @@ class BedrockProcessor:
             # Format prompt using template placeholders
             prompt = self._format_prompt(row_data)
 
-            # Invoke Bedrock
-            response = self._invoke_bedrock(prompt)
+            # Invoke Bedrock — force tool-use (constrained decoding) when enabled and a
+            # schema is available, so the model is physically unable to emit an off-schema
+            # value; otherwise fall back to the assistant-prefill JSON path.
+            if self.config.get("use_structured_output") and self.validation_schema:
+                response = self._invoke_bedrock_with_structured_output(prompt)
+            else:
+                response = self._invoke_bedrock(prompt)
 
             # Parse response with Pydantic validation
             parsed_result = self._parse_response_with_pydantic(response)
@@ -1090,7 +1222,11 @@ class BedrockProcessor:
         )
 
         # Check for missing placeholders
-        missing_placeholders = [p for p in placeholders if p not in df.columns]
+        missing_placeholders = [
+            p
+            for p in placeholders
+            if p not in df.columns and p not in _INJECTED_PLACEHOLDERS
+        ]
         if missing_placeholders:
             logger.warning(
                 f"Missing DataFrame columns for placeholders: {missing_placeholders}"
@@ -1237,7 +1373,11 @@ class BedrockProcessor:
         logger.info("Sequential processing mode")
 
         # Check for missing placeholders
-        missing_placeholders = [p for p in placeholders if p not in df.columns]
+        missing_placeholders = [
+            p
+            for p in placeholders
+            if p not in df.columns and p not in _INJECTED_PLACEHOLDERS
+        ]
         if missing_placeholders:
             logger.warning(
                 f"Missing DataFrame columns for placeholders: {missing_placeholders}"
@@ -1298,21 +1438,124 @@ class BedrockProcessor:
         return results_df
 
 
+def _render_routed_rules(selected_rule_names, rules_by_name: Dict[str, Any]) -> str:
+    """Render a record's routed rules into a prompt block (generic, domain-agnostic).
+
+    A rule-driven upstream routing step may emit prompts.json in a
+    ``{"ruleset": {...}, "rules": [{...}]}`` shape and attach a per-record list of selected rule
+    names. This renders the selected rules' definitions (whatever fields each rule dict carries —
+    description / conditions / etc.) into the prompt body so the routing signal reaches the model.
+    No field names are hardcoded: it walks the rule dict generically. Empty selection → a neutral
+    fallback line.
+    """
+    names = selected_rule_names
+    if isinstance(names, str):
+        try:
+            names = json.loads(names)
+        except (ValueError, TypeError):
+            names = [n.strip() for n in names.split(",") if n.strip()]
+    names = names or []
+    if not names:
+        return "No specific rules were routed for this record; classify using the general guidance above."
+    blocks = []
+    for name in names:
+        r = rules_by_name.get(name)
+        if not r:
+            blocks.append(
+                f"=== RULE: {name} ===\n(definition unavailable)\n=== END RULE ==="
+            )
+            continue
+        lines = [f"=== RULE: {r.get('rule_name', name)} ==="]
+        # Render each remaining field generically (skip the name we already used as the header).
+        for key, val in r.items():
+            if key == "rule_name" or val in (None, "", [], {}):
+                continue
+            if isinstance(val, (list, tuple)):
+                rendered = "\n".join(f"- {item}" for item in val)
+                lines.append(f"{key}:\n{rendered}")
+            else:
+                lines.append(f"{key}: {val}")
+        lines.append("=== END RULE ===")
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
+def _adapt_ruleset_templates(
+    json_templates: Dict[str, Any], log: Callable[[str], None]
+) -> Dict[str, Any]:
+    """Adapt a ``{"ruleset": {...}, "rules": [...]}`` prompts.json into the flat template shape.
+
+    Generic support for a rule-driven routing producer (the flat template-generation shape is
+    handled directly by ``load_prompt_templates``). Maps the ruleset envelope onto
+    system_prompt / user_prompt_template / input_placeholders, folds any analysis_instructions /
+    classification_guidelines into the system layer, adds a ``{routed_rules}`` slot to the user
+    template, and exposes ``_rule_names`` (the category set) + ``_rules_by_name`` (consumed per
+    record by ``_render_routed_rules``). No domain field names are hardcoded.
+    """
+    ruleset = json_templates.get("ruleset", {}) or {}
+    rules = json_templates.get("rules", []) or []
+    placeholders = ruleset.get("input_placeholders", []) or []
+
+    sys_parts = [ruleset.get("system_prompt", "") or ""]
+    for k in ("analysis_instructions", "classification_guidelines"):
+        v = ruleset.get(k)
+        if v:
+            sys_parts.append(
+                f"## {k.replace('_', ' ').title()}\n"
+                + (v if isinstance(v, str) else json.dumps(v, indent=2))
+            )
+    system_prompt = "\n\n".join(p for p in sys_parts if p).strip()
+
+    user_tmpl = ruleset.get("user_prompt_template")
+    if not user_tmpl:
+        evidence = [f"{p}:\n{{{p}}}" for p in placeholders] or ["Input:\n{input_data}"]
+        user_tmpl = (
+            "Applicable rules for this record:\n{routed_rules}\n\nEvidence:\n"
+            + "\n\n".join(evidence)
+        )
+    elif "{routed_rules}" not in user_tmpl:
+        user_tmpl = "Applicable rules for this record:\n{routed_rules}\n\n" + user_tmpl
+
+    rule_names = [r.get("rule_name") for r in rules if r.get("rule_name")]
+    rules_by_name = {r["rule_name"]: r for r in rules if r.get("rule_name")}
+    log(
+        f"Adapted rule-driven ruleset prompts.json: {len(rule_names)} rule categories, "
+        f"{len(placeholders)} placeholders, routed-rule injection enabled"
+    )
+    return {
+        "system_prompt": system_prompt,
+        "user_prompt_template": user_tmpl,
+        "input_placeholders": placeholders,
+        "_rule_names": rule_names,
+        "_rules_by_name": rules_by_name,
+        # The output schema is embedded in the ruleset by the template-generation producer, so the
+        # consumer can source it here instead of from a separate validation_schema input channel
+        # (lets that channel be dropped — the prompt ruleset carries the whole contract).
+        "_output_schema": ruleset.get("output_schema"),
+    }
+
+
 def load_prompt_templates(
     templates_path: str, log: Callable[[str], None]
 ) -> Dict[str, Any]:
     """
-    Load prompt templates from Bedrock Prompt Template Generation step output.
+    Load prompt templates from the upstream prompt-generation step output.
 
-    Expected file structure from Template Generation step:
-    - prompts.json: JSON file containing system_prompt, user_prompt_template, and input_placeholders
+    Two supported prompts.json shapes:
+    - Flat (the prompt template-generation step): {system_prompt, user_prompt_template,
+      input_placeholders}
+    - Ruleset (a rule-driven routing producer): {"ruleset": {...}, "rules": [...]} — auto-adapted
+      to the flat shape via ``_adapt_ruleset_templates`` (adds a ``{routed_rules}`` slot +
+      ``_rules_by_name`` / ``_rule_names`` for per-record rule injection). Generic; no domain
+      field names.
 
     Args:
-        templates_path: Path to templates directory from Template Generation step
+        templates_path: Path to templates directory from the upstream step
         log: Logger function
 
     Returns:
         Dictionary with 'system_prompt', 'user_prompt_template', and 'input_placeholders' keys
+        (plus '_rule_names' / '_rules_by_name' / '_output_schema' for the ruleset shape).
     """
     templates = {}
     templates_dir = Path(templates_path)
@@ -1326,6 +1569,11 @@ def load_prompt_templates(
         try:
             with open(prompts_file, "r", encoding="utf-8") as f:
                 json_templates = json.load(f)
+
+            # Rule-driven ruleset shape → adapt to the flat template shape.
+            if "ruleset" in json_templates and "rules" in json_templates:
+                log(f"Detected rule-driven ruleset shape in {prompts_file}; adapting")
+                return _adapt_ruleset_templates(json_templates, log)
 
             if "system_prompt" in json_templates:
                 templates["system_prompt"] = json_templates["system_prompt"]
@@ -1400,6 +1648,102 @@ def load_validation_schema(
 
     except Exception as e:
         raise ValueError(f"Failed to load validation schema from {schema_file}: {e}")
+
+
+def _synthesize_schema_from_rule_names(rule_names: List[str]) -> Dict[str, Any]:
+    """Build a minimal classification schema enum-locked to a set of routed rule names.
+
+    Used when the prompt ruleset carries rules but NO embedded output_schema (and no separate
+    schema channel/env var is supplied). Without this, a rule-driven routing producer that omits
+    a schema would yield an EMPTY schema and the forced-tool contract would break. The synthesized
+    schema constrains the model's ``category`` to exactly the routed rule names. Generic; the enum
+    values come entirely from the ruleset's own rule names.
+    """
+    return {
+        "type": "object",
+        "properties": {
+            "category": {
+                "type": "string",
+                "enum": list(rule_names),
+                "description": "The single best-matching rule category for this record.",
+            },
+            "confidence": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Confidence in the chosen category, from 0 to 1.",
+            },
+            "reasoning": {
+                "type": "string",
+                "description": "Brief justification for the chosen category.",
+            },
+        },
+        "required": ["category"],
+    }
+
+
+def _load_schema_with_fallback(
+    input_paths: Dict[str, str],
+    environ_vars: Dict[str, str],
+    log: Callable[[str], None],
+    templates: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Load schema with graceful fallbacks so the separate validation_schema channel is optional.
+
+    Resolution order:
+      (i)   the output schema embedded in the prompt ruleset (``templates['_output_schema']``,
+            surfaced from ``ruleset.output_schema``) when it carries properties — the schema then
+            travels WITH the prompt and no separate channel is required;
+      (ii)  the ``validation_schema`` input channel, if present;
+      (iii) the ``BEDROCK_VALIDATION_SCHEMA`` env var (self-contained mode);
+      (iv)  if none of the above AND the ruleset carried rule names, synthesize a minimal
+            classification schema enum-locked to those rule names — this covers a rule-driven
+            routing producer whose ruleset carries NO output_schema, which would otherwise yield an
+            empty schema and break the forced-tool contract;
+      (v)   else an empty schema (basic JSON parsing only).
+    """
+    if templates and templates.get("_output_schema"):
+        schema = templates["_output_schema"]
+        if isinstance(schema, dict) and schema.get("properties"):
+            log(
+                "[INFO] Using output schema embedded in the prompt ruleset (no separate channel)"
+            )
+            return schema
+
+    if "validation_schema" in input_paths:
+        schema_path = input_paths["validation_schema"]
+        if Path(schema_path).exists():
+            try:
+                return load_validation_schema(schema_path, log)
+            except Exception as e:
+                log(
+                    f"[WARN] Failed to load schema from upstream: {e}, trying env var fallback"
+                )
+
+    schema_str = environ_vars.get("BEDROCK_VALIDATION_SCHEMA", "{}")
+    if schema_str and schema_str != "{}":
+        try:
+            schema = json.loads(schema_str)
+            if "properties" in schema:
+                log(
+                    "[INFO] Using config-embedded validation schema (self-contained mode)"
+                )
+                return schema
+        except json.JSONDecodeError as e:
+            log(f"[WARN] Failed to parse BEDROCK_VALIDATION_SCHEMA: {e}")
+
+    # (iv) No schema anywhere, but the ruleset carried rule names — synthesize an enum-locked
+    # classification schema so the forced-tool contract still holds for the routing producer.
+    if templates and templates.get("_rule_names"):
+        rule_names = templates["_rule_names"]
+        log(
+            f"[INFO] No output schema supplied; synthesizing an enum-locked classification "
+            f"schema from {len(rule_names)} routed rule names"
+        )
+        return _synthesize_schema_from_rule_names(rule_names)
+
+    log("[WARN] No validation schema — using basic JSON parsing only")
+    return {}
 
 
 def process_split_directory(
@@ -1578,14 +1922,11 @@ def main(
             f"Loaded templates: system_prompt={bool(templates.get('system_prompt'))}, user_prompt_template={bool(templates.get('user_prompt_template'))}"
         )
 
-        # Load validation schema from Template Generation step (REQUIRED)
-        if "validation_schema" not in input_paths:
-            raise ValueError(
-                "validation_schema input is required for Bedrock Processing"
-            )
-
-        validation_schema = load_validation_schema(
-            input_paths["validation_schema"], log
+        # Load validation schema — prefer the schema embedded in the prompt ruleset (templates),
+        # then the upstream channel / env var (fallbacks for non-embedding producers). The separate
+        # validation_schema input channel is therefore no longer required.
+        validation_schema = _load_schema_with_fallback(
+            input_paths, environ_vars, log, templates
         )
         log(
             f"Loaded validation schema with {len(validation_schema.get('properties', {}))} properties"
@@ -1607,8 +1948,24 @@ def main(
                 "user_prompt_template", "Analyze: {input_data}"
             ),
             "input_placeholders": templates.get("input_placeholders", []),
+            # Per-record routed-rule injection (generic): the rule definitions from a rule-driven
+            # ruleset prompts.json, keyed by name, consumed by _format_prompt's {routed_rules} slot.
+            "_rules_by_name": templates.get("_rules_by_name", {}),
+            "routed_rules_column": environ_vars.get(
+                "BEDROCK_ROUTED_RULES_COLUMN", "selected_rule_names"
+            ),
             # Validation schema for response processing
             "validation_schema": validation_schema,
+            # Forced tool-use (constrained decoding): when on, every invoke carries
+            # tools=[structured_response] + forced tool_choice, so the model cannot emit
+            # an off-schema value. BEDROCK_USE_TOOL_CALLING is an alias for
+            # BEDROCK_USE_STRUCTURED_OUTPUT — either turns it on. Default off so the
+            # existing assistant-prefill path is unchanged.
+            "use_structured_output": environ_vars.get(
+                "BEDROCK_USE_STRUCTURED_OUTPUT", "false"
+            ).lower()
+            == "true"
+            or environ_vars.get("BEDROCK_USE_TOOL_CALLING", "false").lower() == "true",
             # API configuration
             "max_tokens": int(environ_vars.get("BEDROCK_MAX_TOKENS", "8192")),
             "temperature": float(environ_vars.get("BEDROCK_TEMPERATURE", "1.0")),
@@ -1740,9 +2097,9 @@ def main(
 
                     processing_stats["successful_records"] += success_count
                     processing_stats["failed_records"] += failed_count
-                    processing_stats[
-                        "validation_passed_records"
-                    ] += validation_passed_count
+                    processing_stats["validation_passed_records"] += (
+                        validation_passed_count
+                    )
                     processing_stats["files_processed"].append(
                         {
                             "filename": input_file.name,
@@ -1989,7 +2346,9 @@ if __name__ == "__main__":
         input_paths = {
             "input_data": CONTAINER_PATHS["INPUT_DATA_DIR"],
             "prompt_templates": CONTAINER_PATHS["INPUT_TEMPLATES_DIR"],
-            "validation_schema": CONTAINER_PATHS["INPUT_SCHEMA_DIR"],
+            # validation_schema channel was dropped: the schema now travels inside the
+            # prompt ruleset (ruleset.output_schema), or is synthesized from the routed
+            # rule names, or comes from the BEDROCK_VALIDATION_SCHEMA env var.
         }
 
         output_paths = {
@@ -2017,6 +2376,12 @@ if __name__ == "__main__":
             "BEDROCK_MAX_RETRIES": os.environ.get("BEDROCK_MAX_RETRIES", "3"),
             "BEDROCK_OUTPUT_COLUMN_PREFIX": os.environ.get(
                 "BEDROCK_OUTPUT_COLUMN_PREFIX", "llm_"
+            ),
+            "BEDROCK_ROUTED_RULES_COLUMN": os.environ.get(
+                "BEDROCK_ROUTED_RULES_COLUMN", "selected_rule_names"
+            ),
+            "BEDROCK_VALIDATION_SCHEMA": os.environ.get(
+                "BEDROCK_VALIDATION_SCHEMA", "{}"
             ),
             "BEDROCK_SKIP_ERROR_RECORDS": os.environ.get(
                 "BEDROCK_SKIP_ERROR_RECORDS", "false"
@@ -2052,6 +2417,20 @@ if __name__ == "__main__":
             # BEDROCK_LOG_TRUNCATIONS: Log truncation events (default: "true")
             "BEDROCK_LOG_TRUNCATIONS": os.environ.get(
                 "BEDROCK_LOG_TRUNCATIONS", "true"
+            ),
+            # Forced tool-use (constrained decoding). Either flag turns it on; default off.
+            "BEDROCK_USE_STRUCTURED_OUTPUT": os.environ.get(
+                "BEDROCK_USE_STRUCTURED_OUTPUT", "false"
+            ),
+            "BEDROCK_USE_TOOL_CALLING": os.environ.get(
+                "BEDROCK_USE_TOOL_CALLING", "false"
+            ),
+            # Self-contained schema fallback + routed-rule column name.
+            "BEDROCK_VALIDATION_SCHEMA": os.environ.get(
+                "BEDROCK_VALIDATION_SCHEMA", ""
+            ),
+            "BEDROCK_ROUTED_RULES_COLUMN": os.environ.get(
+                "BEDROCK_ROUTED_RULES_COLUMN", "selected_rule_names"
             ),
         }
 

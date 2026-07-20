@@ -5,6 +5,117 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.13] - 2026-07-20
+
+Consolidated Bedrock release: the prompt-ruleset simplification and data-flow hardening, a
+producer→consumer robustness review (env-var forwarding, global rate limiting, circuit-breaker
+fail-fast, per-shard checkpoint namespacing, whole-record prompt rendering), the `routed_rules`
+placeholder false-alarm fix, adaptive boto3 retry for throttling, SlipboxKnowledgeRouting
+throughput knobs, and a PyTorch distributed-eval fix.
+
+### Added
+
+- **SlipboxKnowledgeRouting batched-encode throughput knobs** (interface-declared: script +
+  config + `.step.yaml`; defaults preserve behavior). `routing_encode_batch_size`
+  (env `ROUTING_ENCODE_BATCH_SIZE`, default 256) sizes the batched route encode pass
+  (`encoder.encode(batch_size=)`). `routing_num_threads` (env `ROUTING_NUM_THREADS`, default
+  0 = auto = `os.cpu_count()`) with a new `_configure_cpu_threads()` sizes torch's intra-op
+  thread pool to the instance vCPUs before the encode, so the forward pass uses all cores.
+
+### Changed
+
+- **Bedrock consumers parse the `{ruleset, rules}` prompt shape from EITHER upstream and resolve
+  the output schema channel-free.** `bedrock_batch_processing.py` (+ `bedrock_processing.py`)
+  `load_prompt_templates` detects `{ruleset, rules}` and adapts it (`_adapt_ruleset_templates` +
+  `_render_routed_rules`), exposing `_rule_names` / `_rules_by_name` / `_output_schema`.
+  `_load_schema_with_fallback` resolves the schema by: embedded `ruleset.output_schema` →
+  `validation_schema` channel → env var → **synthesize an enum-locked classification schema from
+  `_rule_names`** → empty; no longer hard-fails when the channel is absent. `_format_prompt`
+  injects per-record `{routed_rules}`. Flat-shape + batch inference preserved.
+- **Bedrock steps dropped the `validation_schema` input (3 inputs → 2).**
+  `bedrock_processing.step.yaml` + `bedrock_batch_processing.step.yaml` removed
+  `validation_schema` from both `contract.inputs` and `spec.dependencies`; the two real inputs
+  remain `input_data` + `prompt_templates`. The `BEDROCK_VALIDATION_SCHEMA` env-var path remains
+  as a fallback.
+- **BedrockPromptTemplateGeneration removed the redundant `validation_schema` output** end-to-end.
+  `bedrock_prompt_template_generation.step.yaml` dropped the output (`contract.outputs` +
+  `spec.outputs`), the `generate-validation-schema` argument + job_argument, and the
+  `GENERATE_VALIDATION_SCHEMA` env var; `bedrock_prompt_template_generation.py` dropped the
+  standalone write block, the `output_paths["validation_schema"]` read, and the dead arg/env;
+  `config_bedrock_prompt_template_generation_step.py` dropped the `generate_validation_schema`
+  field/job-arg/env/metadata. Outputs are now `prompt_templates` + `template_metadata`; the schema
+  remains embedded in `prompts.json`.
+- **Formatting** — `black`/`ruff format` on the touched Bedrock scripts (split one long `reasoning`
+  schema line in `slipbox_knowledge_routing.py` to the 88-char limit). No logic change.
+
+### Fixed
+
+- **Bedrock data-flow robustness — five gaps closed** by a producer→consumer alignment review of
+  the processing/batch scripts: (1) **empty-input `KeyError`** — both inline branches of
+  `bedrock_batch_processing.py` `main()` (project + `src/cursus/steps` copies) now guard
+  `len==0 || status_col not in columns` and record an empty entry + `continue`, matching
+  `process_split_directory`; (2) **forced tool-use ported to the `projects/rnr_pytorch_bedrock`
+  docker copies** (a `structured_response` tool whose `input_schema` is the validation schema +
+  forced `tool_choice`, realtime and batch JSONL, a `tool_use` parse branch, and config/env wiring)
+  which previously invoked via assistant-prefill only; (3) **knowledge-routing scaffold** now emits
+  the `{ruleset, rules}` envelope (schema embedded in `ruleset.output_schema`, enum-locked to rule
+  names) and renames the routed column to `selected_rule_names`.
+- **PyTorch distributed eval: `InferenceMode` inplace crash in `all_gather`/`gather`.** The
+  trimodal/bimodal Lightning `.test()`/validation loop runs under `torch.inference_mode(True)`; the
+  `*_object` collectives allocate their own output tensors and `work.wait()` writes into them in
+  place, raising `RuntimeError: Inplace update to inference tensor ...` on torch 2.1.0 on every rank.
+  `lightning_models/utils/dist_utils.py` `all_gather` + `gather` now wrap ONLY the `*_object`
+  collective in `torch.inference_mode(False), torch.no_grad()` (nested `no_grad` because
+  `inference_mode(False)` otherwise re-enables grad), so its internally-allocated outputs are
+  writable while eval stays in inference mode. Applied to all four PyTorch templates
+  (`rnr_pytorch_bedrock`, `bsm_pytorch`, `names3risk_pytorch`, `temporal_self_attention_pytorch`).
+- **Bedrock/Slipbox producer→consumer robustness (review-driven; behavior-preserving on unset/default paths).**
+  (1) `BedrockProcessing` + `BedrockBatchProcessing` `__main__` now forward the structured-output /
+  prompt / schema env vars the loaders read (`BEDROCK_USE_STRUCTURED_OUTPUT`, `BEDROCK_VALIDATION_SCHEMA`,
+  `BEDROCK_USER_PROMPT_TEMPLATE`, `BEDROCK_SYSTEM_PROMPT`, `BEDROCK_INPUT_PLACEHOLDERS`,
+  `BEDROCK_USE_CONVERSE_API`, `BEDROCK_ADAPTIVE_RATE_LIMITING`, `BEDROCK_ROUTED_RULES_COLUMN`) — they
+  were dropped by the entrypoint, so self-contained mode hard-failed and a config-embedded schema /
+  structured-output toggle never took effect. (2) Rate limiting is now a single GLOBAL slot instead of
+  per-thread, so the aggregate request rate honors `rate_limit_per_second` rather than `workers × rate`
+  (prevents ThrottlingException storms). (3) `_format_prompt` renders the whole record for an
+  `{input_data}` slot that has no matching column (routing bookkeeping columns excluded), so a
+  rule-driven routed prompt carries the actual record evidence instead of `[Missing: input_data]`.
+  (4) The `munged_address_pytorch` Bedrock copy restores the empty-input status-column guard (no
+  `KeyError` on a 0-row delta window) and now fails loudly on a `{ruleset, rules}` envelope it cannot
+  parse instead of silently emitting a generic default prompt.
+- **Circuit-breaker-OPEN fails fast instead of burning retry backoff.** During a transient Bedrock
+  outage / throttle burst the breaker opens; the invoke retry now skips that state via
+  `retry_if_not_exception_type(CircuitBreakerOpen)` so a record fails fast for that run instead of
+  wasting 3× exponential backoff (which widened the outage window), and such rows are logged
+  distinctly (`[circuit-open] …`) so an outage is not mistaken for bad data. Genuine API errors still
+  retry as before. (`CircuitBreakerOpen` subclasses `RuntimeError`, so existing handlers are unaffected.)
+- **Per-shard checkpoint namespacing (multi-file inputs).** The concurrent/sequential batch
+  checkpoint (`_checkpoint_progress.json`) and intermediate `batch_NNNN_results.parquet` files are now
+  namespaced by input-file identity (`checkpoint_namespace` / `_checkpoint_namespace_for`), so a
+  crash+resume over a directory of input shards can no longer pick up a different shard's stale batch
+  files and silently mix records. Single-file / training runs keep the legacy filenames; a shard's
+  intermediate batch files are cleaned up on completion (shard-scoped glob).
+- **`routed_rules` missing-placeholder false alarm silenced.** The pre-flight check compared every
+  `{...}` template placeholder against the input DataFrame columns and warned on absent ones, but
+  `{routed_rules}` is injected per-record by `_format_prompt` (never a DataFrame column), so it was
+  flagged as "missing" on every healthy SlipboxKnowledgeRouting→BedrockProcessing run. Added
+  `_INJECTED_PLACEHOLDERS = frozenset({"routed_rules"})` and excluded it from the check at both
+  `process_batch_concurrent`/`_sequential` sites (genuine missing-column detection preserved).
+  Applied to both copies (`steps/scripts/bedrock_processing.py` + `rnr_pytorch_bedrock`).
+- **Adaptive boto3 retry for Bedrock throttling.** The `bedrock-runtime` client is now built with
+  `botocore.Config(retries={"mode": "adaptive", "max_attempts": max(max_retries, 8)},
+  read_timeout=120, connect_timeout=10)` (`_bedrock_client_config()`, wired into both the main and
+  thread-local clients), replacing the legacy ~3-attempt retry that dropped records as errors on a
+  throttle burst. Adaptive mode is a client-side token bucket that self-slows to the account's real
+  ceiling; `self.max_retries` now reads `BEDROCK_MAX_RETRIES`. Applied to both copies
+  (`steps/scripts/bedrock_processing.py` + `rnr_pytorch_bedrock`).
+
+### Removed
+
+- Dead `input_paths["validation_schema"]` injection + the unused `INPUT_SCHEMA_DIR` container-path
+  constant from all four Bedrock consumer copies (the channel was dropped above; the injection was
+  a guarded no-op).
+
 ## [2.9.12] - 2026-07-18
 
 **BedrockProcessing: source the output schema from the embedded prompt ruleset, so the separate

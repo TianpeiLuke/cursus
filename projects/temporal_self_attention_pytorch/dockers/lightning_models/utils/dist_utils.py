@@ -86,7 +86,15 @@ def all_gather(data, group=None, safe_clone=True):
     if safe_clone and isinstance(data, torch.Tensor):
         data = data.clone().detach().cpu()
     output = [None for _ in range(get_world_size(group))]
-    dist.all_gather_object(output, data, group=group)
+    # inference_mode(False): dist.all_gather_object allocates its OWN output byte
+    # tensors (coalesced_output_tensor = torch.empty(...)) and work.wait() writes them
+    # IN PLACE; under Lightning's inference_mode=True .test()/.validate() loop those are
+    # inference tensors and the inplace write raises on torch 2.1.0 (the training image).
+    # safe_clone covers only the input, not these internally allocated outputs. no_grad
+    # is nested because inference_mode(False) otherwise re-enables grad even under an
+    # outer no_grad() — these are pure metric/bookkeeping gathers that must not build a graph.
+    with torch.inference_mode(False), torch.no_grad():
+        dist.all_gather_object(output, data, group=group)
     return output
 
 
@@ -96,7 +104,10 @@ def gather(data, dst=0, group=None):
     group = group or _get_global_gloo_group()
     rank = dist.get_rank(group)
     output = [None for _ in range(get_world_size(group))] if rank == dst else None
-    dist.gather_object(data, output, dst=dst, group=group)
+    # Same inference-tensor guard as all_gather: gather_object allocates + inplace-writes
+    # its own byte tensors, which fails under inference_mode on torch 2.1.0.
+    with torch.inference_mode(False), torch.no_grad():
+        dist.gather_object(data, output, dst=dst, group=group)
     return output if rank == dst else []
 
 

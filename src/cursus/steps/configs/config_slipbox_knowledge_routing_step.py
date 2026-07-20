@@ -19,6 +19,8 @@ a matching lower-cased field here so ``get_environment_variables`` can resolve i
     ROUTING_SCORING_MODE   <- self.routing_scoring_mode
     ROUTING_THRESHOLD      <- self.routing_threshold
     ROUTING_TOP_K          <- self.routing_top_k
+    ROUTING_ENCODE_BATCH_SIZE <- self.routing_encode_batch_size
+    ROUTING_NUM_THREADS    <- self.routing_num_threads
     EMBEDDING_MODEL_NAME   <- self.embedding_model_name
 """
 
@@ -90,6 +92,21 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
     embedding_model_name: str = Field(
         default="all-MiniLM-L6-v2",
         description="SentenceTransformer model name used to build the routing index. Overridden at runtime by the offline embedding_model input path when present (EMBEDDING_MODEL_NAME).",
+    )
+
+    # Throughput knobs. The route stage is embedding-bound and the batched
+    # SentenceTransformer.encode parallelizes one forward pass across CPU cores; these tune that
+    # batched encode (not the per-record scoring loop).
+    routing_encode_batch_size: int = Field(
+        default=256,
+        ge=1,
+        description="Batch size for the batched route encode pass (ROUTING_ENCODE_BATCH_SIZE). Larger on a many-vCPU box improves encode throughput up to a memory ceiling.",
+    )
+
+    routing_num_threads: int = Field(
+        default=0,
+        ge=0,
+        description="torch intra-op thread count for the encode (ROUTING_NUM_THREADS). 0 ⇒ auto = os.cpu_count() (use all vCPUs on the processing instance).",
     )
 
     # In-container bundled-corpus defaults + index scratch path. The script reads every
@@ -257,6 +274,8 @@ class SlipboxKnowledgeRoutingConfig(ProcessingStepConfigBase):
                 "ROUTING_SCORING_MODE": self.routing_scoring_mode,
                 "ROUTING_THRESHOLD": str(self.routing_threshold),
                 "ROUTING_TOP_K": str(self.routing_top_k),
+                "ROUTING_ENCODE_BATCH_SIZE": str(self.routing_encode_batch_size),
+                "ROUTING_NUM_THREADS": str(self.routing_num_threads),
                 "EMBEDDING_MODEL_NAME": self.embedding_model_name,
                 "DEFAULT_CORPUS_VAULT": self.default_corpus_vault,
                 "DEFAULT_PROMPTS_DIR": self.default_prompts_dir,
