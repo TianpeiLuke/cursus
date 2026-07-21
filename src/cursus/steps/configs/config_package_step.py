@@ -1,3 +1,4 @@
+from pathlib import Path
 from pydantic import Field, model_validator
 from typing import Dict, List, Optional, TYPE_CHECKING
 
@@ -23,6 +24,18 @@ class PackageConfig(ProcessingStepConfigBase):
 
     processing_entry_point: str = Field(
         default="package.py", description="Entry point script for packaging."
+    )
+
+    inference_scripts_dir: Optional[str] = Field(
+        default=None,
+        description=(
+            "Directory whose contents package.py bundles into the tarball's code/ dir "
+            "(the inference_scripts_input channel). Independent of processing_source_dir "
+            "(which locates package.py itself): the inference handler + its package deps "
+            "often live at the source_dir ROOT, not the processing_source_dir scripts subdir. "
+            "When None, inference_scripts_source() defaults to source_dir (NOT "
+            "processing_source_dir), so the full code tree is packaged by default."
+        ),
     )
 
     # Update to Pydantic V2 style model_config
@@ -87,19 +100,29 @@ class PackageConfig(ProcessingStepConfigBase):
         return env_vars
 
     def inference_scripts_source(self) -> str:
-        """Local source for the packaging step's ``inference_scripts_input`` (FZ 31e1d3i).
+        """Local RESOLVED source path for the packaging step's ``inference_scripts_input`` (FZ 31e1d3i).
 
         The packaging step always mounts inference scripts from a LOCAL path (overriding any
-        dependency-resolved value). Delegates to ``effective_source_dir`` — the single comprehensive
-        source-dir resolver (hybrid ``processing_source_dir`` → hybrid ``source_dir`` → legacy
-        values) on ProcessingStepConfigBase — falling back to the literal ``"inference"`` only when
-        no source dir is configured.
+        dependency-resolved value). This is DELIBERATELY decoupled from ``processing_source_dir``
+        (which resolves the packaging entry point ``package.py`` — typically in a ``scripts/``
+        subdir): the inference handler + its Python package deps usually live at the ``source_dir``
+        ROOT, one level ABOVE that scripts subdir, so packaging ``processing_source_dir`` would omit
+        them and the serving DLC would fall back to its default model_fn.
 
-        NOTE: the original builder used ``resolved_source_dir or source_dir or "inference"``, which
-        reimplemented a PARTIAL version of this resolution and silently IGNORED
-        ``processing_source_dir`` (falling through to ``"inference"`` when only that was set — a
-        latent bug). Using ``effective_source_dir`` fixes that and removes the duplicated chain.
+        Resolution order (each hybrid-resolved to a real path, mirroring effective_source_dir):
+        1. ``inference_scripts_dir`` (explicit override)
+        2. ``source_dir`` (DEFAULT — the full code tree, NOT processing_source_dir)
+        3. ``effective_source_dir`` (last-resort; processing_source_dir → source_dir → legacy)
+        4. the literal ``"inference"`` when nothing is configured.
         """
+        for candidate in (self.inference_scripts_dir, self.source_dir):
+            if candidate:
+                resolved = self.resolve_hybrid_path(candidate)
+                if resolved and Path(resolved).exists():
+                    return resolved
+                # hybrid resolution missed (e.g. non-monorepo layout): return the raw value so
+                # the caller still mounts the intended dir rather than silently narrowing.
+                return candidate
         return self.effective_source_dir or "inference"
 
     # Removed get_script_path override - now inherits modernized version from ProcessingStepConfigBase

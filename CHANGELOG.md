@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.16] - 2026-07-21
+
+**Package step: decouple the inference-scripts packaging channel from `processing_source_dir`.**
+
+### Added
+- `PackageConfig.inference_scripts_dir` (`config_package_step.py`) — optional override for the
+  directory the packaging script bundles into the tarball's `code/` dir (the
+  `inference_scripts_input` channel), independent of `processing_source_dir`.
+
+### Changed
+- `PackageConfig.inference_scripts_source()` now resolves `inference_scripts_dir` → **`source_dir`
+  (new default)** → `effective_source_dir` → `"inference"`, each hybrid-resolved to a real path.
+  Previously it delegated to `effective_source_dir`, which resolves `processing_source_dir` first —
+  so a project whose packaging entry point lives in a `scripts/` subdir but whose inference handler
+  and its Python-package deps live at the `source_dir` root would package only the `scripts/` subdir
+  and omit the handler, causing the serving container to fall back to its built-in default model
+  loader. Defaulting the channel to `source_dir` packages the full code tree while
+  `processing_source_dir` still resolves the packaging entry point. No behavior change for projects
+  where `source_dir == processing_source_dir` or where the handler is self-contained.
+
 ## [2.9.15] - 2026-07-20
 
 **Shared DAG catalog: add the SlipboxKnowledgeRouting → Bedrock BATCH incremental DAG; genericize the SlipboxKnowledgeRouting scaffold.**
