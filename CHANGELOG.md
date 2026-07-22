@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.17] - 2026-07-22
+
+**Fix: guard `optimize_dtypes` against `ZeroDivisionError` on empty shards.**
+
+### Fixed
+- `steps/scripts/tabular_preprocessing.py` + `steps/scripts/dummy_data_loading.py` `optimize_dtypes`:
+  the fully-parallel (streaming) preprocessing path raised `ZeroDivisionError: division by zero`
+  at `num_unique / num_total` when a shard contained **0 rows** (all rows filtered/deduped
+  upstream) — the worker exception propagated through `pool.map` and failed the whole
+  preprocessing step. Guarded the low-cardinality categorical test with `num_total > 0`, and
+  guarded the memory-reduction percentage with `initial_memory > 0` (a second latent
+  `ZeroDivisionError` on an empty DataFrame).
+
 ## [2.9.16] - 2026-07-21
 
 **Package step: decouple the inference-scripts packaging channel from `processing_source_dir`.**

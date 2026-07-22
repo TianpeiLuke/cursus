@@ -90,11 +90,13 @@ def optimize_dtypes(
     for col in df.select_dtypes(include=["object"]).columns:
         num_unique = df[col].nunique()
         num_total = len(df[col])
-        if num_unique / num_total < 0.5:  # Less than 50% unique values
+        # Guard num_total==0 (empty shard reaching the fully-parallel path) →
+        # previously ZeroDivisionError crashed the whole pool.map.
+        if num_total > 0 and num_unique / num_total < 0.5:  # Less than 50% unique values
             df[col] = df[col].astype("category")
 
     final_memory = df.memory_usage(deep=True).sum() / 1024**2
-    reduction = (1 - final_memory / initial_memory) * 100
+    reduction = (1 - final_memory / initial_memory) * 100 if initial_memory > 0 else 0.0
     log(
         f"[INFO] Memory optimization: {initial_memory:.2f} MB -> {final_memory:.2f} MB ({reduction:.1f}% reduction)"
     )
