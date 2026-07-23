@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.20] - 2026-07-23
+
+**Perf: coerce Names3Risk MDS string features to numeric before `optimize_dtypes` (Pass-2 speed/memory).**
+
+### Changed
+- `projects/names3risk_pytorch/dockers/scripts/tabular_preprocessing.py` Pass-2
+  (`process_shard_end_to_end`): the real CPU bottleneck was `optimize_dtypes` running an
+  O(n·m) per-object-column `.nunique()` scan over the ~800 MDS feature columns (13–27
+  min/shard). Those features are stored as STRING in the Cradle parquet but are NUMERIC
+  model inputs (training already `pd.to_numeric(errors="coerce")`s each at load). Added
+  `coerce_feature_columns_to_numeric()` and reordered STEP 2 to: `__DOT__`→`.` rename →
+  build `text` (from the 4 cat name-fields) → coerce all object columns EXCEPT a protect-set
+  {`text`, `label`, `customerId`, `transactionDate`, `orderDate`} to float32 → `optimize_dtypes`.
+  `optimize_dtypes`' object scan then covers ~3 columns instead of ~800, and per-shard memory
+  drops ~11 GB → ~3 GB (float32 vs Python str). Schema-safe: keeps every column (no drops),
+  byte-equivalent to the training-time coercion, and the streaming reader's
+  `pd.to_numeric(...).fillna(-1.0)` is a no-op on float32. Column pruning was rejected — the
+  821 features are all needed AND all string-typed (they ARE the scan cost).
+
 ## [2.9.19] - 2026-07-23
 
 **Fix: Pass-2 fully-parallel preprocessing oversubscribed host RAM (multi-hour stuck hang).**

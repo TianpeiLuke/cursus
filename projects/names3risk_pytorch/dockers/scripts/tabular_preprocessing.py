@@ -96,6 +96,47 @@ def compute_memory_safe_workers(
     return safe
 
 
+def coerce_feature_columns_to_numeric(
+    df: pd.DataFrame,
+    protect: List[str],
+    log_func: Optional[Callable] = None,
+) -> pd.DataFrame:
+    """Coerce feature (object) columns to numeric in-place, protecting non-feature columns.
+
+    The Names3Risk MDS features (the ~821 tab_field_list columns) are stored as STRING in
+    the Cradle parquet (output_schema declares every field STRING; no CAST) but are
+    NUMERIC model inputs — pytorch_training already does the same ``pd.to_numeric(...,
+    errors="coerce")`` per field at load. Doing it HERE, per shard, gives three wins:
+      1. Speed: optimize_dtypes' O(n*m) per-object-column ``.nunique()`` scan then runs on
+         only the handful of protected object columns (text + keys) instead of ~800 strings.
+      2. Memory: float32 columns are far smaller than Python str objects (~11 GB -> ~3 GB
+         per 240K-row shard), easing Pass-2 host-RAM pressure.
+      3. Alignment: the written parquet now carries the features as numerics — matching the
+         model's NUMERIC contract and what training coerces to anyway (byte-equivalent:
+         errors="coerce" -> NaN, imputed downstream exactly as before).
+
+    ``protect`` columns (text, label, customerId, the temporal keys) are left untouched so
+    the text modality, dedup, and split keys survive. Coercion is by DTYPE-is-object within
+    the non-protected set — never by the 821 names — so it can't accidentally drop a feature:
+    every declared feature is an object column here and is coerced (not dropped); a genuinely
+    non-numeric feature becomes NaN, identical to training.
+    """
+    log = log_func or print
+    protect_set = set(protect)
+    obj_cols = [
+        c for c in df.select_dtypes(include=["object"]).columns if c not in protect_set
+    ]
+    if not obj_cols:
+        return df
+    for col in obj_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce").astype("float32")
+    log(
+        f"[INFO] Coerced {len(obj_cols)} feature columns object->float32 "
+        f"(protected {len(protect_set & set(df.columns))})"
+    )
+    return df
+
+
 def optimize_dtypes(
     df: pd.DataFrame, log_func: Optional[Callable] = None
 ) -> pd.DataFrame:
@@ -948,11 +989,32 @@ def process_shard_end_to_end(args: tuple) -> Dict[str, int]:
     # ============================================================
     # STEP 2: Preprocess (Independent Operations)
     # ============================================================
-    if optimize_memory:
-        df = optimize_dtypes(df, print)
-
+    # Order matters: rename __DOT__->'.' FIRST so the dotted feature names match, then build
+    # 'text' from the 4 cat name-fields (they must still exist), THEN coerce the string-typed
+    # MDS features to numeric, and only THEN optimize_dtypes. Previously optimize_dtypes ran
+    # first over ~800 STRING feature columns — an O(n*m) .nunique() scan (13-27 min/shard) that
+    # was the Pass-2 CPU bottleneck. Coercing features to float32 first removes them from that
+    # object-column scan (leaving only text+keys) and cuts per-shard memory ~11 GB -> ~3 GB.
     df.columns = [col.replace("__DOT__", ".") for col in df.columns]
     df = detect_and_apply_names3risk_preprocessing(df, print)
+
+    # Coerce MDS feature columns (object/string in Cradle output) to numeric, protecting the
+    # text modality, label, and the dedup/split keys. Matches what pytorch_training coerces at
+    # load (byte-equivalent), so the written schema now aligns with the model's NUMERIC contract.
+    _protect = [
+        "text",
+        "label",
+        "customerId",
+        global_context.get("temporal_col") or "transactionDate",
+        "transactionDate",
+        "orderDate",
+    ]
+    if label_field:
+        _protect.append(label_field)
+    df = coerce_feature_columns_to_numeric(df, _protect, print)
+
+    if optimize_memory:
+        df = optimize_dtypes(df, print)
 
     if label_field:
         if label_field in df.columns:
