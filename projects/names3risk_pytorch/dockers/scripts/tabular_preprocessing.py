@@ -137,6 +137,33 @@ def coerce_feature_columns_to_numeric(
     return df
 
 
+# Columns optimize_dtypes must NEVER convert to `category`. Two reasons:
+#   1. The 4 name text-fields (emailAddress/billingAddressName/customerName/
+#      paymentAccountHolderName) are consumed by detect_and_apply_names3risk_preprocessing
+#      via `df[text_fields].fillna("[MISSING]")`. A categorical column raises
+#      `ValueError: fill value must be in categories` because "[MISSING]" is not a known
+#      category. In the batch/consolidate paths optimize_dtypes runs BEFORE that concat.
+#   2. The temporal keys (transactionDate/orderDate) are compared with `<` in
+#      assign_splits_with_global_boundaries; an UNORDERED categorical raises
+#      `TypeError: Unordered Categoricals can only compare equality or not`. In the active
+#      streaming path optimize_dtypes runs BEFORE the split assignment.
+# 'text', 'label', 'customerId' are included for the same fillna/keying safety. Skipping
+# category-conversion for these ~9 columns changes DTYPE only (never values, never the
+# written column set) and costs <1% memory (the ~800 string feature columns are NOT skipped
+# and are still coerced/optimized, so the Pass-2 memory fix is unaffected).
+OPTIMIZE_DTYPES_SKIP = {
+    "text",
+    "label",
+    "customerId",
+    "transactionDate",
+    "orderDate",
+    "emailAddress",
+    "billingAddressName",
+    "customerName",
+    "paymentAccountHolderName",
+}
+
+
 def optimize_dtypes(
     df: pd.DataFrame, log_func: Optional[Callable] = None
 ) -> pd.DataFrame:
@@ -166,13 +193,21 @@ def optimize_dtypes(
 
     # Convert low-cardinality object columns to category
     for col in df.select_dtypes(include=["object"]).columns:
+        # Never categoricalize the text/name fields or the label/id/temporal keys — see
+        # OPTIMIZE_DTYPES_SKIP: categorical breaks the downstream fillna("[MISSING]") and the
+        # `<` split-boundary comparison. These stay object regardless of call ordering.
+        if col in OPTIMIZE_DTYPES_SKIP:
+            continue
         num_unique = df[col].nunique()
         num_total = len(df[col])
-        if num_unique / num_total < 0.5:  # Less than 50% unique values
+        # Guard num_total==0: an EMPTY shard (0 rows) reaches this fully-parallel path and
+        # previously hit `num_unique / num_total` -> ZeroDivisionError, crashing the pool.
+        if num_total > 0 and num_unique / num_total < 0.5:  # Less than 50% unique values
             df[col] = df[col].astype("category")
 
     final_memory = df.memory_usage(deep=True).sum() / 1024**2
-    reduction = (1 - final_memory / initial_memory) * 100
+    # Guard initial_memory==0 (empty df) -> avoid a second ZeroDivisionError in the reduction %.
+    reduction = (1 - final_memory / initial_memory) * 100 if initial_memory > 0 else 0.0
     log(
         f"[INFO] Memory optimization: {initial_memory:.2f} MB -> {final_memory:.2f} MB ({reduction:.1f}% reduction)"
     )

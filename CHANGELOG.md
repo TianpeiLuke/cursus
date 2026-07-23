@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.21] - 2026-07-23
+
+**Fix: `optimize_dtypes` categoricalized Names3Risk text/date/key columns, crashing `fillna` and `<` (calibration + training).**
+
+### Fixed
+- `projects/names3risk_pytorch/dockers/scripts/tabular_preprocessing.py`
+  `optimize_dtypes` converts low-cardinality object columns to `category`. Once the 4 name
+  text-fields or the temporal keys got categoricalized, two crashes followed:
+  1. `detect_and_apply_names3risk_preprocessing` builds `text` via
+     `df[text_fields].fillna("[MISSING]")`. On a categorical column this raises
+     `ValueError: fill value must be in categories`. In the batch/consolidate paths
+     `optimize_dtypes` runs BEFORE that concat, so the prior detect-before-optimize
+     reorder (which only touched the active fully-parallel path) did NOT cover them.
+  2. `assign_splits_with_global_boundaries` compares `transactionDate`/`orderDate` with
+     `<`; an UNORDERED categorical raises
+     `TypeError: Unordered Categoricals can only compare equality or not`. In the active
+     streaming path `optimize_dtypes` runs before the split assignment, so this second
+     latent defect would crash training even though the fillna order was already fixed.
+  Added a module-level `OPTIMIZE_DTYPES_SKIP` set (`text`, `label`, `customerId`,
+  `transactionDate`, `orderDate` + the 4 name fields) with a `continue` guard at the top of
+  the categorical loop — order-independent, protecting all three call sites
+  (`process_shard_end_to_end`, `process_batch_mode_preprocessing`, `process_single_batch`).
+  Dtype-only change (value-lossless; the reader selects columns by name and re-coerces per
+  field), <1% memory (the ~800 string feature columns are NOT skipped and still
+  coerce/optimize). Also ported the `num_total > 0` / `initial_memory > 0` guards into this
+  project copy for parity, so an empty (0-row) shard no longer raises `ZeroDivisionError`.
+
 ## [2.9.20] - 2026-07-23
 
 **Perf: coerce Names3Risk MDS string features to numeric before `optimize_dtypes` (Pass-2 speed/memory).**
