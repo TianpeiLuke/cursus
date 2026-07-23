@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.19] - 2026-07-23
+
+**Fix: Pass-2 fully-parallel preprocessing oversubscribed host RAM (multi-hour stuck hang).**
+
+### Fixed
+- `projects/names3risk_pytorch/dockers/scripts/tabular_preprocessing.py` Pass-2
+  (`process_shard_end_to_end` via `pool.map`): each worker reads a FULL shard (all columns
+  incl. long text) into a pandas DataFrame, but `max_workers = min(cpu_count, n_shards)`
+  (e.g. 48) x a ~0.5-4 GiB expanded shard oversubscribed the host -> OOM-kill / swap-thrash
+  -> a multi-hour "stuck" hang. Added `compute_memory_safe_workers()` (cgroup-aware host
+  detection) to cap Pass-2 workers so `N x (max_shard_bytes x ~6x expansion)` stays under
+  `0.7 x host_RAM - 4 GiB`; falls back to the cpu-count cap when host RAM / shard size can't
+  be read. Pass 1 keeps the higher cpu-count worker count (it reads only 2 columns). The two
+  Pass-2 pools now use `maxtasksperchild=1` + `chunksize=1` so workers recycle per shard
+  (releasing pandas/pyarrow arena memory).
+
 ## [2.9.18] - 2026-07-23
 
 **Perf: parallelize + vectorize the Pass-1 customer dedup scan in `tabular_preprocessing.py`.**

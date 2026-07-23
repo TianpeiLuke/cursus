@@ -24,6 +24,78 @@ from sklearn.model_selection import train_test_split
 # ============================================================================
 
 
+def _host_available_bytes() -> Optional[int]:
+    """Best-effort host RAM in bytes (cgroup-aware), or None if undeterminable.
+
+    Prefers the cgroup memory limit (containers are cgroup-capped and os.sysconf
+    under-reports the true ceiling inconsistently), falling back to
+    SC_PHYS_PAGES x PAGE_SIZE. Returns None if neither is readable so callers can
+    fall back to the cpu-count worker cap.
+    """
+    for path in (
+        "/sys/fs/cgroup/memory.max",
+        "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+    ):
+        try:
+            with open(path) as f:
+                val = f.read().strip()
+            if val and val != "max":
+                n = int(val)
+                if 0 < n < (1 << 62):
+                    return n
+        except (OSError, ValueError):
+            continue
+    try:
+        return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+def compute_memory_safe_workers(
+    all_shards: List[Path],
+    cpu_workers: int,
+    log_func: Callable,
+    ram_fraction: float = 0.7,
+    expansion_factor: float = 6.0,
+    reserve_bytes: int = 4 * 1024**3,
+) -> int:
+    """Cap Pass-2 workers so N x (per-shard resident RAM) stays within host memory.
+
+    Pass 2 (``process_shard_end_to_end``) reads a FULL shard (all columns incl. long text)
+    into a pandas DataFrame per worker — unlike the 2-column Pass-1 dedup scan. With
+    ``max_workers = min(cpu_count, n_shards)`` (e.g. 48) each holding a ~0.5-4 GiB
+    decompressed+expanded shard, the pool oversubscribes the host -> OOM-kill or
+    swap-thrash -> a multi-hour "stuck" hang. This estimates per-worker RAM as
+    ``max_shard_file_bytes x expansion_factor`` (parquet->pandas with Python str objects
+    expands ~4-8x) and returns the largest worker count whose aggregate stays under
+    ``ram_fraction x host_RAM - reserve``. Falls back to ``cpu_workers`` when host RAM or
+    shard sizes can't be read (never raises).
+    """
+    if cpu_workers <= 1 or not all_shards:
+        return max(1, cpu_workers)
+    host = _host_available_bytes()
+    try:
+        max_shard_bytes = max(s.stat().st_size for s in all_shards)
+    except OSError:
+        max_shard_bytes = 0
+    if not host or max_shard_bytes <= 0:
+        log_func(
+            f"[FULLY_PARALLEL] Memory-aware cap skipped (host RAM or shard size unknown); "
+            f"using {cpu_workers} workers"
+        )
+        return cpu_workers
+    per_worker = max_shard_bytes * expansion_factor
+    budget = max(0, int(host * ram_fraction) - reserve_bytes)
+    mem_workers = max(1, int(budget // per_worker)) if per_worker > 0 else cpu_workers
+    safe = max(1, min(cpu_workers, mem_workers))
+    log_func(
+        f"[FULLY_PARALLEL] Memory-aware worker cap: host~{host / 1024**3:.0f}GiB, "
+        f"max_shard~{max_shard_bytes / 1024**2:.0f}MiB, est_per_worker~"
+        f"{per_worker / 1024**3:.1f}GiB -> {safe} workers (cpu cap {cpu_workers})"
+    )
+    return safe
+
+
 def optimize_dtypes(
     df: pd.DataFrame, log_func: Optional[Callable] = None
 ) -> pd.DataFrame:
@@ -980,9 +1052,11 @@ def process_training_streaming_fully_parallel(
         for i, shard in enumerate(all_shards)
     ]
 
-    # Process ALL shards in parallel (no batching!)
-    with Pool(processes=max_workers) as pool:
-        results = pool.map(process_shard_end_to_end, shard_args)
+    # maxtasksperchild=1 + chunksize=1: recycle each worker after one shard so
+    # pandas/pyarrow arena memory is released back to the OS between shards, and the
+    # memory-safe worker count is honored (no worker grabbing a batch of shards at once).
+    with Pool(processes=max_workers, maxtasksperchild=1) as pool:
+        results = pool.map(process_shard_end_to_end, shard_args, chunksize=1)
 
     # Aggregate statistics
     total_stats = {
@@ -1049,8 +1123,10 @@ def process_single_split_streaming_fully_parallel(
         for i, shard in enumerate(all_shards)
     ]
 
-    with Pool(processes=max_workers) as pool:
-        results = pool.map(process_shard_end_to_end, shard_args)
+    # maxtasksperchild=1 + chunksize=1: recycle workers per shard (release arena memory)
+    # and honor the memory-safe worker count — see process_training_streaming_fully_parallel.
+    with Pool(processes=max_workers, maxtasksperchild=1) as pool:
+        results = pool.map(process_shard_end_to_end, shard_args, chunksize=1)
 
     total_rows = sum(r.get(job_type, 0) for r in results)
     non_empty_shards = sum(1 for r in results if r.get(job_type, 0) > 0)
@@ -1162,6 +1238,12 @@ def process_fully_parallel_mode_preprocessing(
     # ============================================================
     log("[FULLY_PARALLEL] Pass 2: Processing shards in parallel...")
 
+    # Pass 2 reads FULL shards (all columns incl. long text) per worker — unlike the
+    # 2-column Pass-1 scans — so the cpu-count worker cap oversubscribes host RAM and
+    # thrashes/OOMs (the multi-hour "stuck" hang). Cap Pass-2 workers to what host memory
+    # can hold; Pass 1 above intentionally keeps the higher cpu-count worker count.
+    pass2_workers = compute_memory_safe_workers(all_shards, max_workers, log)
+
     if job_type == "training":
         process_training_streaming_fully_parallel(
             all_shards,
@@ -1171,7 +1253,7 @@ def process_fully_parallel_mode_preprocessing(
             label_field,
             optimize_memory,
             output_format,
-            max_workers,
+            pass2_workers,
             log,
         )
     else:
@@ -1183,7 +1265,7 @@ def process_fully_parallel_mode_preprocessing(
             label_field,
             optimize_memory,
             output_format,
-            max_workers,
+            pass2_workers,
             log,
         )
 
