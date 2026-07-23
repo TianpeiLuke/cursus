@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.18] - 2026-07-23
+
+**Perf: parallelize + vectorize the Pass-1 customer dedup scan in `tabular_preprocessing.py`.**
+
+### Changed
+- `projects/names3risk_pytorch/dockers/scripts/tabular_preprocessing.py`
+  `collect_customer_dedup_tracking`: the streaming pipeline's Pass-1 dedup scan was the
+  throughput bottleneck (~25 min on 143 shards / 25.4M rows) — it used a `df.iterrows()`
+  Python row-loop over a sequential shard loop while workers idled. Replaced with a parallel
+  map-reduce: a new top-level `_shard_customer_min_dates` worker computes a vectorized
+  `groupby("customerId")[temporal_col].min()` per shard (~35x vs iterrows), fanned out across
+  shards via `multiprocessing.Pool`, then a single-threaded min-merge (commutative +
+  associative → identical result to the old sequential scan). Empty/unreadable shards return
+  `{}` so one bad shard never kills the pool; serial fallback for a single shard. Estimated
+  ~50x speedup on Pass 1 (~25 min → ~30 s). Runs on the main process (before the Pass-2 pool),
+  so no nested-pool hazard.
+
 ## [2.9.17] - 2026-07-22
 
 **Fix: guard `optimize_dtypes` against `ZeroDivisionError` on empty shards.**

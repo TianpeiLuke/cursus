@@ -1145,7 +1145,7 @@ def process_fully_parallel_mode_preprocessing(
         customer_dedup = None
         if has_customer_id:
             customer_dedup = collect_customer_dedup_tracking(
-                all_shards, signature_columns, temporal_col, log
+                all_shards, signature_columns, temporal_col, log, max_workers=max_workers
             )
 
         global_context = {
@@ -1278,11 +1278,39 @@ def collect_temporal_split_boundaries(
     return train_cutoff_date, test_cutoff_date
 
 
+def _shard_customer_min_dates(args: tuple) -> Dict[Any, Any]:
+    """Map worker: per-customer earliest temporal value within ONE shard.
+
+    Runs in a Pool worker (must be a top-level function so it pickles). Reads only the
+    two dedup columns and computes a VECTORIZED ``groupby("customerId")[temporal_col].min()``
+    — replacing the old ``df.iterrows()`` Python row-loop (~100x slower over 25M+ rows).
+    Returns {} for empty/unreadable shards (a 0-row shard is a normal outcome of upstream
+    filtering) so one bad shard never kills the pool.
+    """
+    shard, signature_columns, temporal_col = args
+    try:
+        suffix = shard.suffix.lower()
+        if suffix.endswith(".parquet") or suffix.endswith(".snappy.parquet"):
+            df = pd.read_parquet(shard, columns=["customerId", temporal_col])
+        else:
+            # For CSV/JSON, read full but keep only the needed columns.
+            df = _read_file_to_df(shard, signature_columns)
+            df = df[["customerId", temporal_col]]
+        if df.empty:
+            return {}
+        # Vectorized reduction; groupby drops NaN keys by default.
+        return df.groupby("customerId")[temporal_col].min().to_dict()
+    except Exception:
+        # Missing column / unreadable shard: skip (mirrors the old per-shard continue).
+        return {}
+
+
 def collect_customer_dedup_tracking(
     all_shards: List[Path],
     signature_columns: Optional[list],
     temporal_col: str,
     log_func: Callable,
+    max_workers: Optional[int] = None,
 ) -> Dict[str, Any]:
     """
     Pass 1 (Deduplication): Determine which customerIds to keep (first occurrence by temporal order).
@@ -1290,61 +1318,57 @@ def collect_customer_dedup_tracking(
     Memory: O(unique_customers) - typically manageable (e.g., 1M customers = ~16MB)
     Scans all data to track the earliest temporal value for each customerId.
 
+    Parallel map-reduce (replaces the old sequential iterrows scan — the Pass-1 throughput
+    bottleneck, ~25 min on 143 shards / 25.4M rows):
+      - MAP (parallel across shards): each shard -> groupby("customerId")[temporal_col].min()
+      - REDUCE (single-threaded, fast): merge per-shard dicts keeping the global min.
+    The reduction is commutative + associative, so the merged result is identical to the
+    sequential scan. Safe to parallelize: this runs on the MAIN process (before the Pass-2
+    pool), so there is no nested-pool issue.
+
     Args:
         all_shards: List of all input shard paths
         signature_columns: Optional column names
         temporal_col: Name of temporal column for ordering
         log_func: Logging function
+        max_workers: Parallel workers for the map phase (default: min(cpu_count, n_shards))
 
     Returns:
         Dictionary mapping customerId -> earliest temporal value
     """
+    n_shards = len(all_shards)
+    if max_workers is None:
+        max_workers = min(cpu_count(), max(1, n_shards))
     log_func(
-        "[PASS 1 - DEDUP] Scanning all shards to track first customer occurrences..."
+        f"[PASS 1 - DEDUP] Parallel scan of {n_shards} shards with {max_workers} workers "
+        f"(vectorized groupby per shard + min-merge)..."
     )
 
-    # Dictionary: customerId -> earliest temporal value
-    customer_first_date = {}
+    map_args = [(shard, signature_columns, temporal_col) for shard in all_shards]
 
-    for i, shard in enumerate(all_shards):
-        try:
-            # Read only customerId + temporal columns (very low memory)
-            suffix = shard.suffix.lower()
+    # --- MAP: parallel per-shard vectorized min (serial fallback for a single shard) ---
+    if max_workers > 1 and n_shards > 1:
+        with Pool(processes=max_workers) as pool:
+            shard_dicts = pool.map(_shard_customer_min_dates, map_args)
+    else:
+        shard_dicts = [_shard_customer_min_dates(a) for a in map_args]
 
-            if suffix.endswith(".parquet") or suffix.endswith(".snappy.parquet"):
-                df = pd.read_parquet(shard, columns=["customerId", temporal_col])
-            else:
-                # For CSV/JSON, read full but keep only needed columns
-                df = _read_file_to_df(shard, signature_columns)
-                df = df[["customerId", temporal_col]]
-
-            # Update tracking dictionary
-            for _, row in df.iterrows():
-                cust_id = row["customerId"]
-                order_date = row[temporal_col]
-
-                if cust_id not in customer_first_date:
-                    customer_first_date[cust_id] = order_date
-                else:
-                    # Keep earliest date
-                    customer_first_date[cust_id] = min(
-                        customer_first_date[cust_id], order_date
-                    )
-
-            del df
-            gc.collect()
-
-            if (i + 1) % 100 == 0:
-                log_func(
-                    f"[PASS 1 - DEDUP] Processed {i + 1}/{len(all_shards)} shards, tracking {len(customer_first_date)} unique customers"
-                )
-
-        except Exception as e:
-            log_func(
-                f"[PASS 1 - DEDUP WARNING] Failed to read dedup columns from {shard.name}: {e}"
-            )
+    # --- REDUCE: merge per-shard dicts, keeping the earliest temporal value per customer ---
+    customer_first_date: Dict[Any, Any] = {}
+    empty_shards = 0
+    for shard_dict in shard_dicts:
+        if not shard_dict:
+            empty_shards += 1
             continue
+        for cust_id, order_date in shard_dict.items():
+            cur = customer_first_date.get(cust_id)
+            if cur is None or order_date < cur:
+                customer_first_date[cust_id] = order_date
 
+    if empty_shards:
+        log_func(
+            f"[PASS 1 - DEDUP] {empty_shards}/{n_shards} shards were empty/unreadable (skipped)"
+        )
     log_func(f"[PASS 1 - DEDUP] Tracked {len(customer_first_date)} unique customers")
     log_func(
         f"[PASS 1 - DEDUP] Memory usage: ~{len(customer_first_date) * 16 / 1024 / 1024:.2f} MB"
@@ -1913,6 +1937,7 @@ def process_training_splits_streaming(
             signature_columns,
             temporal_col,
             log_func,
+            max_workers=max_workers,
         )
 
     log_func("[STREAMING] ===== PASS 1 COMPLETE =====")
