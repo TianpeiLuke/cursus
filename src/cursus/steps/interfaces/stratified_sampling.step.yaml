@@ -27,6 +27,7 @@ contract:
     optional:
       SAMPLING_STRATEGY: balanced
       TARGET_SAMPLE_SIZE: '1000'
+      VAL_TARGET_SAMPLE_SIZE: '0'
       MIN_SAMPLES_PER_STRATUM: '10'
       VARIANCE_COLUMN: ''
       RANDOM_STATE: '42'

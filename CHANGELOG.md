@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.21] - 2026-07-23
+
+**Feature: `VAL_TARGET_SAMPLE_SIZE` — per-split sample cap for the VAL split in stratified sampling.**
+
+### Added
+- `src/cursus/steps/configs/config_stratified_sampling_step.py`: new
+  `val_target_sample_size: Optional[int]` field (emitted as the `VAL_TARGET_SAMPLE_SIZE` env var;
+  included in `get_public_init_fields` only when set). `TARGET_SAMPLE_SIZE` applies identically to
+  every split (train/val/test), so with `balanced` + `allow_replacement` a large target oversamples
+  the minority class to that size for EACH split — the val split balloons to the same size as train.
+  This lets callers keep a large `target_sample_size` for train while capping val, so downstream
+  per-epoch + post-training eval stays cheap. `None`/unset → env omitted → interface default `'0'` →
+  disabled (val falls back to `target_sample_size`; unchanged behavior).
+- `src/cursus/steps/interfaces/stratified_sampling.step.yaml`: declared `VAL_TARGET_SAMPLE_SIZE: '0'`
+  in optional `env_vars`.
+- `src/cursus/steps/scripts/stratified_sampling.py`: reads `VAL_TARGET_SAMPLE_SIZE` (0/unset =
+  disabled) and applies it as the effective target for the `val` split ONLY, in BOTH the streaming
+  (parquet `_target_fn`) and non-streaming (`split_target_size`) paths. Train/test unaffected.
+
+Backward-compatible (default `0` = old behavior). Validated: script-level test confirms val is
+capped while train is unchanged in both code paths (control: val==train without the cap).
+
 ## [2.9.20] - 2026-07-23
 
 **Perf: coerce Names3Risk MDS string features to numeric before `optimize_dtypes` (Pass-2 speed/memory).**

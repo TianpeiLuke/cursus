@@ -651,6 +651,12 @@ def main(
     strata_column = environ_vars.get("STRATA_COLUMN")
     sampling_strategy = environ_vars.get("SAMPLING_STRATEGY", "balanced")
     target_sample_size = int(environ_vars.get("TARGET_SAMPLE_SIZE", 1000))
+    # Optional per-split override for the VAL split only. TARGET_SAMPLE_SIZE applies to every split
+    # (train/val/test) identically; with balanced + allow_replacement a large target oversamples the
+    # minority class up to the target for EACH split, so val can balloon to the same size as train.
+    # VAL_TARGET_SAMPLE_SIZE (0/unset = disabled → fall back to TARGET_SAMPLE_SIZE) lets callers keep
+    # a large train sample while capping val, so downstream per-epoch + post-training eval stays cheap.
+    val_target_sample_size = int(environ_vars.get("VAL_TARGET_SAMPLE_SIZE", 0)) or None
     min_samples_per_stratum = int(environ_vars.get("MIN_SAMPLES_PER_STRATUM", 10))
     variance_column = environ_vars.get("VARIANCE_COLUMN")
     random_state = int(environ_vars.get("RANDOM_STATE", 42))
@@ -770,8 +776,15 @@ def main(
                     / f"{split_name}_processed_data.parquet"
                 )
 
-                def _target_fn(n):
-                    return min(target_sample_size, n)
+                # Use the val-specific cap for the val split when configured; else TARGET_SAMPLE_SIZE.
+                _effective_target = (
+                    val_target_sample_size
+                    if (split_name == "val" and val_target_sample_size is not None)
+                    else target_sample_size
+                )
+
+                def _target_fn(n, _t=_effective_target):
+                    return min(_t, n)
 
                 diag = _stratified_sample_parquet_streaming(
                     input_file=parquet_in,
@@ -840,7 +853,13 @@ def main(
             if sampling_strategy == "external_proportional":
                 split_target_size = target_sample_size
             else:
-                split_target_size = min(target_sample_size, len(df))
+                # Use the val-specific cap for the val split when configured; else TARGET_SAMPLE_SIZE.
+                effective_target = (
+                    val_target_sample_size
+                    if (split_name == "val" and val_target_sample_size is not None)
+                    else target_sample_size
+                )
+                split_target_size = min(effective_target, len(df))
 
             # Apply filter: sample only matching rows, pass rest through
             if filter_column and filter_value and filter_column in df.columns:

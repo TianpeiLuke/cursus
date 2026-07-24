@@ -76,6 +76,19 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         description="Total desired sample size per split",
     )
 
+    val_target_sample_size: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Optional per-split override applied to the VAL split only (emitted as the "
+            "VAL_TARGET_SAMPLE_SIZE env var). target_sample_size applies identically to every "
+            "split, so with balanced + allow_replacement a large target oversamples val to the "
+            "same size as train. Set this to cap val (e.g. 250_000) while keeping a large "
+            "target_sample_size for train. None/unset (emitted as '0') = disabled, val uses "
+            "target_sample_size like the other splits."
+        ),
+    )
+
     min_samples_per_stratum: int = Field(
         default=10,
         ge=1,
@@ -243,6 +256,8 @@ class StratifiedSamplingConfig(ProcessingStepConfigBase):
         }
 
         # Only include optional fields if set
+        if self.val_target_sample_size is not None:
+            sampling_fields["val_target_sample_size"] = self.val_target_sample_size
         if self.variance_column is not None:
             sampling_fields["variance_column"] = self.variance_column
         if self.reference_counts_json is not None:
