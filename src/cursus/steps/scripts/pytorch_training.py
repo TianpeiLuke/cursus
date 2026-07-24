@@ -2373,6 +2373,57 @@ def main(
     # Extract datasets for evaluation
     train_dataset, val_dataset, test_dataset = datasets
 
+    # Bound the post-training eval to avoid host-RAM OOM on a large test/val holdout.
+    # The full test set is scored by the downstream PyTorchModelEval step; the in-training
+    # metric is informational only. 0 = uncapped (score ALL rows).
+    #
+    # DDP-safety: evaluation below runs on ALL ranks (collective), so the cap MUST be
+    # applied identically on every rank BEFORE the eval dataloaders are rebuilt — a
+    # deterministic head() truncation (same on all ranks) keeps batch counts matched, so
+    # no rank stalls in a collective. Batch mode only: a streaming PipelineIterableDataset
+    # has no in-memory DataReader (it reads from disk), so it is left unbounded here.
+    def _cap_eval_dataset(ds, limit, name):
+        if not limit or not hasattr(ds, "__len__"):
+            return ds
+        try:
+            n = len(ds)
+        except TypeError:
+            return ds  # streaming/iterable without a concrete length
+        if n <= limit:
+            return ds
+        if getattr(ds, "DataReader", None) is not None:
+            ds.DataReader = ds.DataReader.iloc[:limit].reset_index(drop=True)
+            log_once(logger, f"[POST-EVAL] Capping {name} set: {n} -> {limit} rows")
+        else:
+            log_once(
+                logger,
+                f"[POST-EVAL] {name} set has {n} rows > {limit} but no in-memory "
+                f"DataReader (streaming) - leaving unbounded",
+            )
+        return ds
+
+    limit_test = int(environ_vars.get("LIMIT_EVAL_TEST_ROWS", 0) or 0)
+    limit_val = int(environ_vars.get("LIMIT_EVAL_VAL_ROWS", 0) or 0)
+    if limit_test or limit_val:
+        test_dataset = _cap_eval_dataset(test_dataset, limit_test, "test")
+        val_dataset = _cap_eval_dataset(val_dataset, limit_val, "val")
+        # Rebuild the val/test loaders so the truncation takes effect (reuse the
+        # existing collate_fn/batch_size; num_workers=0 for the bounded one-shot eval).
+        val_dataloader = DataLoader(
+            val_dataset,
+            batch_size=val_dataloader.batch_size,
+            shuffle=False,
+            collate_fn=val_dataloader.collate_fn,
+            num_workers=0,
+        )
+        test_dataloader = DataLoader(
+            test_dataset,
+            batch_size=test_dataloader.batch_size,
+            shuffle=False,
+            collate_fn=test_dataloader.collate_fn,
+            num_workers=0,
+        )
+
     # CRITICAL FIX: Ensure all ranks finish training before evaluation
     # This prevents race conditions in distributed training where ranks might
     # try to read each other's test result files before they're fully written

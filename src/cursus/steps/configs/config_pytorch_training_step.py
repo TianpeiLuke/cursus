@@ -132,6 +132,33 @@ class PyTorchTrainingConfig(BasePipelineConfig):
         ),
     )
 
+    # Post-training evaluation row limits — bound the in-training eval so a large
+    # test/val holdout doesn't OOM the training host. The full test set is scored by
+    # the downstream PyTorchModelEval step on a dedicated instance; the in-training
+    # metric is informational only.
+    limit_eval_test_rows: int = Field(
+        default=100000,
+        ge=0,
+        description=(
+            "Maximum number of test-set rows for post-training evaluation "
+            "(emitted as the LIMIT_EVAL_TEST_ROWS env var). Prevents host-RAM OOM when "
+            "the test holdout is large (e.g. 2M+ rows). The full test set is scored by "
+            "the downstream PyTorchModelEval step; the in-training eval is informational "
+            "only. Set to 0 to disable the cap and score ALL test rows (use with caution "
+            "on large datasets)."
+        ),
+    )
+
+    limit_eval_val_rows: int = Field(
+        default=100000,
+        ge=0,
+        description=(
+            "Maximum number of val-set rows for post-training evaluation "
+            "(emitted as the LIMIT_EVAL_VAL_ROWS env var). Prevents host-RAM OOM when the "
+            "val split is large. Set to 0 to disable the cap and score ALL val rows."
+        ),
+    )
+
     # Semi-supervised learning support
     job_type: Optional[str] = Field(
         default=None,
@@ -245,6 +272,9 @@ class PyTorchTrainingConfig(BasePipelineConfig):
                 "NUM_WORKERS_PER_RANK": str(self.num_workers_per_rank),
                 "PREFETCH_FACTOR": str(self.prefetch_factor),
                 "USE_PERSISTENT_WORKERS": str(self.use_persistent_workers).lower(),
+                # Post-training evaluation row limits (0 = uncapped, score all rows)
+                "LIMIT_EVAL_TEST_ROWS": str(self.limit_eval_test_rows),
+                "LIMIT_EVAL_VAL_ROWS": str(self.limit_eval_val_rows),
             }
         )
 
@@ -279,6 +309,8 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             "num_workers_per_rank": self.num_workers_per_rank,
             "prefetch_factor": self.prefetch_factor,
             "use_persistent_workers": self.use_persistent_workers,
+            "limit_eval_test_rows": self.limit_eval_test_rows,
+            "limit_eval_val_rows": self.limit_eval_val_rows,
             "job_type": self.job_type,
         }
 

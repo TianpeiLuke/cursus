@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.22] - 2026-07-24
+
+**Feature: `LIMIT_EVAL_TEST_ROWS` / `LIMIT_EVAL_VAL_ROWS` — bound the post-training in-training eval (0 = score all rows).**
+
+### Added
+- `src/cursus/steps/configs/config_pytorch_training_step.py`: new `limit_eval_test_rows` +
+  `limit_eval_val_rows` fields (default 100000, `ge=0`; emitted as `LIMIT_EVAL_TEST_ROWS` /
+  `LIMIT_EVAL_VAL_ROWS` via the hardcoded env-var dict; included in `get_public_init_fields`).
+  The post-training in-training eval materializes the val/test holdouts; a large holdout
+  (e.g. 2M+ rows) OOMs the training host. These cap the eval; the full test set is scored by
+  the downstream PyTorchModelEval step (the in-training metric is informational only).
+  **Set either to 0 to disable the cap and score ALL rows.**
+- `src/cursus/steps/scripts/pytorch_training.py`: `main()` now reads `LIMIT_EVAL_TEST_ROWS` /
+  `LIMIT_EVAL_VAL_ROWS` and caps the val/test datasets before the eval, then rebuilds the
+  val/test dataloaders. The cap truncates the in-memory `DataReader` DataFrame
+  (`iloc[:limit]`, deterministic) rather than slicing the dataset object. **DDP-safe:** the
+  eval runs on all ranks (collective), and a deterministic head-truncation applied
+  identically on every rank keeps batch counts matched (no rank stalls in a collective).
+  Batch mode only — a streaming `PipelineIterableDataset` (no in-memory `DataReader`) is left
+  unbounded. `0` = uncapped.
+
+Backward-compatible opt-out (0 = full data). Mirrors AmazonCursus 2.9.27. Validated:
+cap / uncap(0) / streaming-skip / cross-rank determinism.
+
 ## [2.9.21] - 2026-07-23
 
 **Feature: `VAL_TARGET_SAMPLE_SIZE` — per-split sample cap for the VAL split in stratified sampling.**
