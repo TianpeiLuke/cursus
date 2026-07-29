@@ -12,7 +12,7 @@ import traceback
 import random
 from pathlib import Path
 from typing import Dict, Optional, Callable, Any, List
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, TimeoutError as MPTimeoutError
 import pandas as pd
 import numpy as np
 import gc
@@ -22,6 +22,64 @@ from sklearn.model_selection import train_test_split
 # ============================================================================
 # SHARED UTILITY FUNCTIONS (Used by both Batch and Streaming modes)
 # ============================================================================
+
+
+def _float_env(name: str, default: float) -> float:
+    """Read a float env var, tolerating absent / empty / the literal string 'None'.
+
+    ``os.environ.get(name, default)`` only substitutes the default when the var is ABSENT.
+    A config/step wiring can emit an UNSET optional value as the literal string ``"None"``
+    (or ``""``), which then reaches ``float(...)`` and raises ``ValueError: could not
+    convert string to float: 'None'`` at module load — crashing the step before it starts.
+    Treat those sentinels as "use the default".
+    """
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    raw = raw.strip()
+    if raw == "" or raw.lower() in ("none", "null"):
+        return default
+    try:
+        return float(raw)
+    except (ValueError, TypeError):
+        return default
+
+
+def _run_shard_pool(worker, shard_args, max_workers, log_func, per_shard_timeout=1800):
+    """Run per-shard workers with bounded, memory-recycling parallelism.
+
+    ``maxtasksperchild=1`` recycles each worker after one shard (releases pandas/pyarrow
+    arena memory). The result collection is BOUNDED via ``imap_unordered`` + a per-result
+    ``next(timeout=...)``: a plain ``pool.map`` / ``list(imap)`` waits FOREVER if a worker
+    dies C-level (OOM / cgroup SIGKILL / segfault / fork-inherited native lock), because
+    Python's Pool cannot detect a killed worker. On timeout we terminate + raise loudly
+    (output is per-shard on disk, so nothing is lost) instead of hanging to the watchdog.
+    """
+    n = len(shard_args)
+    pool = Pool(processes=max_workers, maxtasksperchild=1)
+    results = []
+    try:
+        it = pool.imap_unordered(worker, shard_args, chunksize=1)
+        for done in range(1, n + 1):
+            try:
+                results.append(it.next(timeout=per_shard_timeout))
+            except MPTimeoutError:
+                pool.terminate()
+                raise RuntimeError(
+                    f"[FULLY_PARALLEL] Pass-2 stalled: no shard result within "
+                    f"{per_shard_timeout}s after {done - 1}/{n} shards — a worker was likely "
+                    f"OOM/SIGKILL-killed. Terminated the pool to avoid an unbounded hang."
+                )
+            if done % 50 == 0 or done == n:
+                log_func(f"[FULLY_PARALLEL] Collected {done}/{n} shard results")
+        pool.close()
+    except BaseException:
+        pool.terminate()
+        pool.join()
+        raise
+    else:
+        pool.join()
+    return results
 
 
 def optimize_dtypes(
@@ -1786,9 +1844,12 @@ def process_training_streaming_fully_parallel_generic(
         for i, shard in enumerate(all_shards)
     ]
 
-    # Process ALL shards in parallel
-    with Pool(processes=max_workers) as pool:
-        results = pool.map(process_shard_end_to_end_generic, shard_args)
+    # Process ALL shards in parallel — bounded collection + maxtasksperchild recycling.
+    # (Was pool.map, which hangs forever if a worker dies C-level; _run_shard_pool bounds
+    # each result with a timeout and terminates loudly instead.)
+    results = _run_shard_pool(
+        process_shard_end_to_end_generic, shard_args, max_workers, log_func
+    )
 
     # Aggregate statistics
     total_stats = {
@@ -1857,8 +1918,10 @@ def process_single_split_streaming_fully_parallel_generic(
         for i, shard in enumerate(all_shards)
     ]
 
-    with Pool(processes=max_workers) as pool:
-        results = pool.map(process_shard_end_to_end_generic, shard_args)
+    # Bounded collection + maxtasksperchild recycling — see _run_shard_pool.
+    results = _run_shard_pool(
+        process_shard_end_to_end_generic, shard_args, max_workers, log_func
+    )
 
     total_rows = sum(r.get(job_type, 0) for r in results)
     non_empty_shards = sum(1 for r in results if r.get(job_type, 0) > 0)
@@ -2091,8 +2154,10 @@ if __name__ == "__main__":
         LABEL_FIELD = os.environ.get("LABEL_FIELD")
         # LABEL_FIELD is now optional for all job types
         # The script will skip label processing if not provided
-        TRAIN_RATIO = float(os.environ.get("TRAIN_RATIO", 0.7))
-        TEST_VAL_RATIO = float(os.environ.get("TEST_VAL_RATIO", 0.5))
+        # _float_env tolerates the wiring passing an unset optional as "None"/"" —
+        # a bare float(os.environ.get(..., default)) crashes on that at module load.
+        TRAIN_RATIO = _float_env("TRAIN_RATIO", 0.7)
+        TEST_VAL_RATIO = _float_env("TEST_VAL_RATIO", 0.5)
 
         # Define standard SageMaker paths as constants
         INPUT_DATA_DIR = "/opt/ml/processing/input/data"

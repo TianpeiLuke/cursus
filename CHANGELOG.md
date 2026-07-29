@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.23] - 2026-07-29
+
+**Fix: harden `tabular_preprocessing` fully-parallel mode against worker-death hangs and a `float`-env crash.**
+
+Two robustness fixes ported from the downstream names3risk pipeline's `tabular_preprocessing`
+experience, applied to the canonical `src/cursus/steps/scripts/tabular_preprocessing.py`.
+
+### Fixed
+- **Pass-2 pool no longer hangs on a dead worker.** The two fully-parallel shard-processing
+  sites used `pool.map(...)`, which blocks **forever** if any worker dies at the C level
+  (OOM / cgroup `SIGKILL` / segfault / a fork-inherited native lock) — Python's `Pool` cannot
+  detect a killed worker, so the collection never returns and the job hangs until the
+  platform watchdog kills it. Replaced with a new `_run_shard_pool()` helper: bounded
+  `imap_unordered` + a per-shard `next(timeout=1800)`; on timeout it `terminate()`s the pool
+  and raises a clear `RuntimeError` (output is per-shard on disk, so nothing is lost).
+  Worker recycling (`maxtasksperchild=1`) is preserved.
+- **`TRAIN_RATIO` / `TEST_VAL_RATIO` no longer crash on `"None"`.** `float(os.environ.get(k, default))`
+  crashes at module load when the wiring emits an unset optional as the literal string
+  `"None"`/`""` (the `.get` default only applies when the var is truly absent). Added a
+  tolerant `_float_env()` helper that maps `None`/`""`/`"none"`/`"null"`/garbage to the default.
+
+### Notes
+- Names3risk's other preprocessing fixes (custom dedup vectorization, `OPTIMIZE_DTYPES_SKIP`,
+  coerce-to-numeric, PyArrow cast-at-read, round-robin rank sharding) live in that project's
+  own copy and are absent from the canonical script, so they are not ported here. The
+  `optimize_dtypes` empty-shard division guard and the memory-safe worker cap were already
+  present (v2.9.17 / earlier).
+
 ## [2.9.22] - 2026-07-24
 
 **Feature: `LIMIT_EVAL_TEST_ROWS` / `LIMIT_EVAL_VAL_ROWS` — bound the post-training in-training eval (0 = score all rows).**
