@@ -56,6 +56,12 @@ New here? Start with :doc:`getting_started/index`.
 
 .. toctree::
    :maxdepth: 2
+   :caption: Step Catalog
+
+   steps-catalog/index
+
+.. toctree::
+   :maxdepth: 2
    :caption: Reference
 
    api/index

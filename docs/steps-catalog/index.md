@@ -2,7 +2,7 @@
 
 Every pipeline step that cursus supports — **60 steps** — generated directly from the `.step.yaml` interface files. Each row links to that step's page: its purpose, its inputs (with the upstream steps that can produce them), its outputs, and the downstream steps that consume it.
 
-A cursus pipeline is a DAG of these steps. An edge is valid when a downstream step's input **type** matches an upstream step's output, and the upstream step is listed among the input's *compatible producers* — see [The DAG + Config → Pipeline model](../concepts/dag-config-compile.md) and [Registry and Step Catalog](../architecture/registry-and-catalog.md).
+A cursus pipeline is a DAG of these steps. An edge is valid when a downstream step's input **type** matches an upstream step's output, and the upstream step is listed among the input's *compatible producers* — see [The DAG + Config → Pipeline model](../concepts/dag_and_compilation.md) and [Registry and Step Catalog](../concepts/registry_and_discovery.md).
 
 The **Compute** column names how a step's container is built: an SDK-managed DLC (`sklearn` / `xgboost` / `framework` / `estimator` / `model`), the SAIS `script` image, or **`byo_container`** — a user-supplied ECR image run verbatim (no `image_uris.retrieve`), which is how a non-DLC framework (e.g. GraphStorm/DGL) enters cursus. A step may also declare a per-step VPC (`network_mode: config`) to reach a VPC-only data source — shown on its page's **Compute** section.
 
@@ -118,3 +118,69 @@ _Model registration — register a model with MIMS._
 ---
 
 *This catalog is generated from `src/cursus/steps/interfaces/*.step.yaml` by `docs/gen_step_catalog.py`. To change a step's catalog entry, edit its `.step.yaml` and re-run the generator.*
+
+```{toctree}
+:hidden:
+:maxdepth: 1
+
+cradle_data_loading
+redshift_data_loading
+active_sample_selection
+bedrock_batch_processing
+bedrock_processing
+bedrock_prompt_template_generation
+currency_conversion
+data_uploading
+dummy_data_loading
+dummy_training
+edx_uploading
+feature_selection
+graph_construction
+graph_feature_processing
+graphstorm_gnn_inference_eval
+graph_subgraph_extraction
+label_ruleset_execution
+label_ruleset_generation
+lightgbmmt_model_eval
+lightgbmmt_model_inference
+lightgbm_model_eval
+lightgbm_model_inference
+missing_value_imputation
+model_calibration
+model_metrics_computation
+model_wiki_generator
+package
+payload
+percentile_model_calibration
+piper_metric_generation
+pseudo_label_merge
+pytorch_model_eval
+pytorch_model_inference
+risk_table_mapping
+slipbox_knowledge_routing
+stratified_sampling
+tsa_model_calibration
+tsa_model_eval
+tsa_preprocessing
+tsa_tabular_preprocessing
+tabular_preprocessing
+temporal_feature_engineering
+temporal_sequence_normalization
+temporal_split_preprocessing
+tokenizer_training
+xgboost_model_eval
+xgboost_model_inference
+xgboost_mt_model_eval
+graphstorm_gnn_training
+lightgbmmt_training
+lightgbm_training
+pytorch_training
+sopa_instruction_tuning
+tsa_training
+xgboost_training
+xgboost_mt_training
+batch_transform
+pytorch_model
+xgboost_model
+registration
+```

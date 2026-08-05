@@ -270,8 +270,8 @@ def render_index(steps: list[dict], consumers: dict[str, list[str]]) -> str:
         "A cursus pipeline is a DAG of these steps. An edge is valid when a downstream step's "
         "input **type** matches an upstream step's output, and the upstream step is listed among "
         "the input's *compatible producers* — see [The DAG + Config → Pipeline model]"
-        "(../concepts/dag-config-compile.md) and [Registry and Step Catalog]"
-        "(../architecture/registry-and-catalog.md).\n"
+        "(../concepts/dag_and_compilation.md) and [Registry and Step Catalog]"
+        "(../concepts/registry_and_discovery.md).\n"
     )
     L.append(
         "The **Compute** column names how a step's container is built: an SDK-managed DLC "
@@ -299,6 +299,7 @@ def render_index(steps: list[dict], consumers: dict[str, list[str]]) -> str:
         t for t in by_type if t not in order
     ]
 
+    ordered_slugs: list[str] = []
     for t in ordered_types:
         group = sorted(by_type[t], key=lambda x: x["step_type"])
         L.append(f"## {t}\n")
@@ -307,6 +308,7 @@ def render_index(steps: list[dict], consumers: dict[str, list[str]]) -> str:
         L.append("| Step | Node | Compute | Purpose | Consumes | Produces |")
         L.append("|------|------|---------|---------|----------|----------|")
         for s in group:
+            ordered_slugs.append(s["slug"])
             purpose = first_sentence(s["short_desc"] or s["description"]) or "—"
             dep_types = sorted(
                 {d.get("type", "") for d in s["dependencies"].values() if d.get("type")}
@@ -329,6 +331,16 @@ def render_index(steps: list[dict], consumers: dict[str, list[str]]) -> str:
         "`docs/gen_step_catalog.py`. To change a step's catalog entry, edit its `.step.yaml` "
         "and re-run the generator.*\n"
     )
+
+    # Hidden Sphinx toctree so every per-step page is adopted into the site nav (and no
+    # "document isn't included in any toctree" warnings). Ordered as the tables above.
+    L.append("```{toctree}")
+    L.append(":hidden:")
+    L.append(":maxdepth: 1")
+    L.append("")
+    for slug in ordered_slugs:
+        L.append(slug)
+    L.append("```")
     return "\n".join(L)
 
 
