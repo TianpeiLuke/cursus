@@ -49,6 +49,16 @@ BasePipelineConfig            (author, bucket, role, region, service_name, ...)
 `project_root_folder`, plus optional system fields with defaults (`model_class`,
 `framework_version`, `py_version`, `enable_caching`, `max_runtime_seconds`, …).
 
+The compute-model additions (`byo_container` and per-step VPC) put four more optional
+system fields on the base — all default `None`, so most steps ignore them: `image_uri`
+(the verbatim ECR image a `compute.kind='byo_container'` step runs, bypassing
+`image_uris.retrieve`; `None` for DLC-managed kinds that derive their image from
+`framework_version`), and the per-step VPC trio `subnets`, `security_group_ids`, and
+`enable_network_isolation`, which the builder reads only when the step's
+`compute.network_mode` is `'config'` (`subnets` is required in that mode). Because they
+live on `BasePipelineConfig`, both Processing and Training configs inherit them; see
+[Step interfaces](step_interfaces.md) for how `ComputeSpec` points at them.
+
 `ProcessingStepConfigBase` adds the ten processing-specific fields on top:
 `processing_instance_count`, `processing_volume_size`,
 `processing_instance_type_large`/`_small`, `use_large_processing_instance`,

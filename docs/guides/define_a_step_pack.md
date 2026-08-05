@@ -80,6 +80,57 @@ contract:
 silently dropped. The `config_class` (`AcmeScoringConfig`) and `builder_step_name`
 (`AcmeScoringStepBuilder`) are derived from the step name by convention.
 
+### The compute descriptor (`compute:`)
+
+The optional top-level `compute:` section is a declarative descriptor for the step's
+SageMaker compute object (the processor / estimator / model / transformer the
+synthesized builder constructs). Every value in it is the *name* of a config attr, so
+the compute object is fully constructable from config plus this descriptor — which
+says only *which* SDK class and *which* config fields. `compute.kind` is one of the
+eight values in `ComputeSpec._KINDS`
+(`src/cursus/core/base/step_interface.py` lines 231-242): `sklearn`, `xgboost`,
+`framework`, `script`, `estimator`, `model`, `transformer`, `byo_container`. Omit
+`compute:` (or leave `kind` unset) and the step keeps its own factory.
+
+**Bring-your-own container.** `compute.kind: byo_container` runs a user-supplied ECR
+image **verbatim** on the Processing OR Training verb the handler already selected —
+with no `image_uris.retrieve` and no `sdk_class`. It is how a non-DLC framework
+(GraphStorm/DGL, a custom CUDA/runtime image) enters Cursus without adding a new
+`_KINDS` entry. It reads two `byo_container`-only fields: `image_uri_field` (**required**
+— the config attr holding the verbatim `image_uri`) and `container_entrypoint` (optional
+— a command list such as `["bash", "run.sh"]` that bypasses the default `["python3"]`).
+
+**Per-step VPC.** `compute.network_mode` selects the step's network placement — one of
+`none` (default, no VpcConfig), `config` (the step runs in its *own* VPC, built from the
+step's own config fields), or `shared`. The validator accepts `config` for `byo_container`
+and `estimator`, but the builder currently realizes the per-step VPC only through
+`byo_container` — on either the Processing or the Training verb (a `byo_container` Training
+step is what gives you Training-in-VPC); the `estimator` allowance is validator-level only.
+`shared` is **not** a standalone
+selector: the shared network config is still reached via `kms_network` on `kind: script`,
+so declaring `network_mode: shared` here raises. Under `network_mode: config` the
+pointers `subnets_field` / `security_group_ids_field` / `enable_network_isolation_field`
+name the config attrs (defaulting to `subnets` / `security_group_ids`; the isolation
+pointer is unset by default). At build time `builder_base._resolve_network_config(spec)`
+turns those into a `sagemaker.network.NetworkConfig`: a Processing (`byo_container`) job
+gets it as `network_config`, and a Training job gets `subnets` / `security_group_ids` plus
+`encrypt_inter_container_traffic=True`.
+
+```yaml
+# step_pack/interfaces/graphstorm_train.step.yaml
+step_type: GraphStormTrain
+node_type: internal
+registry:
+  sagemaker_step_type: Training
+  description: GraphStorm/DGL training on a bring-your-own container
+compute:
+  kind: byo_container
+  image_uri_field: custom_image_uri     # config attr holding the verbatim ECR image_uri
+  network_mode: config                  # run this step in its own VPC (Training-in-VPC)
+  subnets_field: subnets                # config attrs naming the per-step VPC
+  security_group_ids_field: security_group_ids
+```
+
 ### The config class (`configs/*.py`)
 
 A class following the `<Name>Config` convention (or inheriting a known base). Because
@@ -90,13 +141,26 @@ module name — so two packs that each ship a `config_..._step.py` never collide
 
 ```python
 # step_pack/configs/config_acme_scoring_step.py
+from typing import List, Optional
 from cursus.core.base.config_base import BasePipelineConfig
 
 class AcmeScoringConfig(BasePipelineConfig):
     threshold: float = 0.5
+    # For a compute.kind='byo_container' step: the config attr pointed at by
+    # compute.image_uri_field, holding the verbatim ECR image URI.
+    custom_image_uri: Optional[str] = None
+    # For compute.network_mode='config' (per-step VPC): these three optional fields
+    # are inherited from BasePipelineConfig — subnets is required under 'config',
+    # the others default to None (no VpcConfig / SDK default False).
+    subnets: Optional[List[str]] = None
+    security_group_ids: Optional[List[str]] = None
+    enable_network_isolation: Optional[bool] = None
 ```
 
-`ConfigAutoDiscovery.discover_config_classes()` matches a class when it either
+`subnets`, `security_group_ids`, and `enable_network_isolation` live on
+`BasePipelineConfig` itself, so any config inherits them; they are read only when the
+step's `compute.network_mode` is `config` and are `None` (no per-step VpcConfig) for the
+default `none` mode. `ConfigAutoDiscovery.discover_config_classes()` matches a class when it either
 inherits `BasePipelineConfig` / `ProcessingStepConfigBase` / `BaseModel`, **or** its
 name ends in `Config` / `Configuration`. Hyperparameter classes (in an optional
 `hyperparams/` dir) match by inheriting `ModelHyperparameters` / `BaseModel` or by a
@@ -364,6 +428,12 @@ for the DAGs the catalog branch can seed.
   `get_registry_health`, `get_step_names`.
 - Config / hyperparameter discovery —
   `cursus.step_catalog.config_discovery.ConfigAutoDiscovery`.
+- Compute descriptor — `ComputeSpec` in `cursus.core.base.step_interface`
+  (`kind` / `_KINDS`, `byo_container`'s `image_uri_field` / `container_entrypoint`,
+  `network_mode` / `_NETWORK_MODES` + the `*_field` VPC pointers); the
+  `subnets` / `security_group_ids` / `enable_network_isolation` config fields on
+  `cursus.core.base.config_base.BasePipelineConfig`; and
+  `builder_base._create_byo_container_compute` / `_resolve_network_config`.
 - Catalog — `cursus.step_catalog.step_catalog.StepCatalog`, `set_default_workspace_dirs`.
   See the [step catalog reference](../reference/generated/step_catalog.md).
 - Scaffolding — the `project.init` / `project.bring_up` MCP tools; see the

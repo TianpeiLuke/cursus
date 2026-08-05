@@ -9,6 +9,7 @@ basics from [Getting Started](../getting_started/index.md).
 compile_and_deploy
 generate_configs
 define_a_step_pack
+byo_container_and_vpc
 validate_a_pipeline
 inspect_catalog_and_registry
 ```

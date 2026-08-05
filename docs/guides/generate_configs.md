@@ -228,6 +228,28 @@ for step in factory.get_pending_steps():
 configs = factory.generate_all_configs()   # list[BaseModel]
 ```
 
+### Optional base fields for BYO-container and per-step VPC
+
+`BasePipelineConfig` also carries four optional fields that are only read by steps whose compute
+descriptor opts into them (`src/cursus/core/base/config_base.py` lines 95-127). They default to
+`None`, so `get_base_config_requirements()` reports them as optional and you can omit them for
+DLC-managed steps:
+
+- **`image_uri`** (`Optional[str]`) — a verbatim ECR image URI. It is read only by steps whose
+  `compute.kind == "byo_container"` (a user-supplied image run as-is, with no `image_uris.retrieve`);
+  it stays `None` for the DLC-managed kinds (`sklearn`/`xgboost`/`framework`/`estimator`/`model`),
+  which derive their image from `framework_version`.
+- **`subnets`** (`Optional[List[str]]`) and **`security_group_ids`** (`Optional[List[str]]`) — the
+  per-step VPC that a step's job runs in. They are read only when a step's `compute.network_mode ==
+  "config"`, which builds a `NetworkConfig` (or, for a Training estimator, sets `subnets` /
+  `security_group_ids` directly) from these fields; otherwise no per-step `VpcConfig` is attached.
+- **`enable_network_isolation`** (`Optional[bool]`) — sets network isolation on the job under
+  `compute.network_mode == "config"`; `None` leaves the SDK default (`False`).
+
+Set these on the base config once (they live on `BasePipelineConfig`, so both Processing and Training
+step configs inherit them) whenever the DAG contains a `byo_container` step or any step configured
+with `compute.network_mode == "config"`.
+
 ### What `set_step_config` does
 
 `set_step_config(step_name, **kwargs)` (in `src/cursus/api/factory/dag_config_factory.py`):

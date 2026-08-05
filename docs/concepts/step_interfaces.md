@@ -96,7 +96,7 @@ spec:
 The sections map directly onto the sub-models:
 
 - **`registry`** (`RegistrySection`) — `sagemaker_step_type` is the routing key that selects the construction handler (see §4). Its `requires` field declares the build-time third-party dependency (`none` for native SageMaker steps, `secure_ai_sandbox_workflow_python_sdk` for the SDK-delegation steps). The valid `sagemaker_step_type` values are pinned in a class-level tuple so a typo is caught at author time.
-- **`compute`** (`ComputeSpec`) — a declarative descriptor of the SDK compute object the builder constructs (processor / estimator / model / transformer). `kind` picks the class family (`sklearn`, `xgboost`, `framework`, `script`, `estimator`, `model`, `transformer`). Some fields name config attributes the builder reads at build time (`framework_version_field`, `py_version_field`); others are literal switches or SDK identifiers (`sdk_class`, `framework_name`, `kms_network`, `instance_size_mode`, `lock_training_region`, `retrieve_image`, `requires`). When `kind` is unset the step keeps its own factory. The model validator enforces internal consistency (e.g. `framework`/`estimator`/`model` require an `sdk_class`; `kms_network` is `script`-only; `framework_name` is `model`-only).
+- **`compute`** (`ComputeSpec`) — a declarative descriptor of the SDK compute object the builder constructs (processor / estimator / model / transformer). `kind` picks the class family; the full `_KINDS` set is `sklearn`, `xgboost`, `framework`, `script`, `estimator`, `model`, `transformer`, `byo_container` (see *BYO-container compute and per-step VPC* below for `byo_container`). Some fields name config attributes the builder reads at build time (`framework_version_field`, `py_version_field`, `image_uri_field`, `subnets_field`, `security_group_ids_field`, `enable_network_isolation_field`); others are literal switches or SDK identifiers (`sdk_class`, `framework_name`, `kms_network`, `instance_size_mode`, `lock_training_region`, `retrieve_image`, `container_entrypoint`, `network_mode`, `requires`). When `kind` is unset the step keeps its own factory. The model validator enforces internal consistency (e.g. `framework`/`estimator`/`model` require an `sdk_class`; `kms_network` is `script`-only; `framework_name` is `model`-only; `byo_container` requires `image_uri_field` and rejects every DLC/retrieve knob; `network_mode='config'` is wired only for `byo_container`/`estimator`).
 - **`patterns`** (`PatternsSection`) — the per-axis strategy-selection knobs read into the bound handler at build time: `step_assembly` (`code` | `step_args` | `delegation`), `include_job_type_in_path`, and `direct_input_keys`. Editing these steers the build with no Python change.
 - **`contract`** (`ContractSection`) — the script's execution requirements: `entry_point`, structured `inputs`/`outputs` ports, `env_vars`, `arguments`/`job_arguments`, plus a set of declarative deviation flags (`circular_ref_check`, `skip_inputs`, `input_source_overrides`, `sink`, `source_dir`, `output_path_token`, `include_job_type_in_path`, `computed_env_paths`) that let the handler cover a per-step quirk without a Python override.
 - **`spec`** (`SpecSection`) — the DAG-wiring metadata: `dependencies` (what the step demands — each a `DependencyDecl` with `type`, `required`, `compatible_sources`, `semantic_keywords`) and `outputs` (what it supplies — each an `OutputDecl` with `type`, `property_path`, `aliases`, `semantic_keywords`). `compatible_sources` is dependency-only; `property_path`/`aliases` are output-only.
@@ -113,6 +113,43 @@ VALID_OUTPUT_PREFIXES = ("/opt/ml/processing/", "/opt/ml/model",
 ```
 
 `entry_point`, when present, must be a `.py` file. Both `entry_point` and the port `path` fields are `Optional`: script-less SageMaker steps (CreateModel / Transform — e.g. `xgboost_model`, `batch_transform`) legitimately declare them as `null`.
+
+### BYO-container compute and per-step VPC
+
+`byo_container` is the eighth `compute.kind`. It runs a **user-supplied ECR `image_uri` verbatim** on the Processing **or** Training verb the handler already selected — with **no `image_uris.retrieve` and no `sdk_class`**. It is how a non-DLC framework (GraphStorm/DGL, custom CUDA/runtime images) enters Cursus **without** adding a new `_KINDS`/`_SDK_CLASSES` entry: the framework family is expressed as interface *data*, not framework code. Because the image is not derived from a framework version, `byo_container` owns its own image and takes none of the DLC/retrieve knobs — the validator rejects `sdk_class`, `framework_version_field`, `py_version_field`, `framework_name`, `retrieve_framework`, `retrieve_image`, and `kms_network` for this kind.
+
+It uses two dedicated `ComputeSpec` fields:
+
+- **`image_uri_field`** — the config attribute holding the verbatim `image_uri` (flows to `AppSpecification.ImageUri` for Processing / `AlgorithmSpecification.TrainingImage` for Training). **Required** for `byo_container`; invalid on every other kind.
+- **`container_entrypoint`** — an optional `ContainerEntrypoint` bypass: a command list (e.g. `["bash", "run.sh"]`) so the image runs its own entrypoint instead of the default `["python3"]`. `None` ⇒ the container is invoked as a normal script container. On the Training verb, `container_entrypoint=None` means the builder threads `training_entry_point`/`source_dir`; setting it drops them so the image's own entrypoint runs. Invalid on every other kind.
+
+A minimal `byo_container` compute descriptor:
+
+```yaml
+compute:
+  kind: byo_container                    # run a user-supplied image verbatim
+  image_uri_field: graphstorm_image_uri  # config attr with the ECR image_uri
+  container_entrypoint: [bash, run.sh]   # optional; omit to use ["python3"]
+  network_mode: config                   # optional per-step VPC (see below)
+```
+
+`byo_container` is built by `builder_base._create_byo_container_compute(spec, cfg, verb, ...)`, which `_create_compute` dispatches to (threading `verb="Processing"`/`"Training"` from the owning handler): the Processing verb builds a `ScriptProcessor` with the config image, the Training verb builds a **generic `Estimator`** (not a framework estimator, so no `framework_version`/`py_version`) with the image passed verbatim. The Training verb is what gives `byo_container` **Training-in-VPC** — a capability no prior kind had.
+
+**Per-step VPC — `network_mode`.** `ComputeSpec.network_mode` is an additive network axis, one of `none` | `shared` | `config`, default `none`:
+
+- **`none`** (default) — no `VpcConfig`; existing steps are unaffected (the reactive `nvme_security` upsert patch still applies its SAIS config).
+- **`shared`** — **not a standalone selector** in this increment; the validator raises for it. The shared network config is still reached via `kms_network` on `kind='script'` (unchanged).
+- **`config`** — the step runs in its **own** VPC (its own subnets / security groups) instead of only the session-wide `sagemaker_config` default. The validator **accepts** `config` only for `byo_container` and `estimator` (it rejects `config` on every other kind), but the builder currently **realizes** the per-step VPC only through `byo_container` (`_create_byo_container_compute`, see below) — on either the Processing or the Training verb. So Training-in-VPC is delivered by a `byo_container` step on the Training verb; the `estimator` allowance is validator-level and is not yet consumed by the framework-estimator branch of `_create_compute`.
+
+Under `network_mode='config'`, three pointer fields name the config attributes that supply the VPC — `subnets_field` (default `"subnets"`), `security_group_ids_field` (default `"security_group_ids"`), and `enable_network_isolation_field` (default `None`; only meaningful — and only permitted — under `config`). `builder_base._resolve_network_config(spec)` reads them off the config and returns a `sagemaker.network.NetworkConfig` (or `None` for `network_mode='none'`). It is wired into `_create_byo_container_compute`: the **Processing** path sets the processor's `network_config`; the **Training** path sets the estimator's `subnets`/`security_group_ids` and `encrypt_inter_container_traffic=True` (and `enable_network_isolation` when the pointer resolves a value).
+
+**New `BasePipelineConfig` fields.** To supply the per-step VPC, `BasePipelineConfig` gained three optional fields (on the base, so every Processing and Training config inherits them):
+
+- **`subnets`** (`Optional[List[str]]`, default `None`) — VPC subnets for the step's SageMaker job; **required when `compute.network_mode == 'config'`**. `None` ⇒ no per-step `VpcConfig`.
+- **`security_group_ids`** (`Optional[List[str]]`, default `None`) — VPC security groups for the step's job under `network_mode='config'`.
+- **`enable_network_isolation`** (`Optional[bool]`, default `None`) — set `enable_network_isolation` on the job; `None` ⇒ SDK default (`False`). Only meaningful under `network_mode='config'`.
+
+All three are `None` for every step in the default `network_mode='none'` mode, so steps that do not opt into a per-step VPC are unaffected.
 
 ---
 
