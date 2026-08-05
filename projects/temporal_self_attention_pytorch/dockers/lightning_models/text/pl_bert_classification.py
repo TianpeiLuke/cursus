@@ -319,6 +319,9 @@ class TextBertClassification(pl.LightningModule):
             dynamic_axes={
                 self.config.text_input_ids_key: {0: "batch_size"},
                 self.config.text_attention_mask_key: {0: "batch_size"},
+                # Output batch axis dynamic so single-record serving (batch=1) is not frozen at the
+                # traced batch size (ONNX "Expected {N,C} vs {1,C}" -> full-batch latency); FZ 29k fix.
+                "logits": {0: "batch_size"},
             },
             opset_version=opset_version,
         )

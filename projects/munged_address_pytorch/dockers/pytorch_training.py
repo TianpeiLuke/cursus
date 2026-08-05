@@ -570,6 +570,9 @@ def main(input_paths: Dict, output_paths: Dict, environ_vars: Dict, job_args):
                 dynamic_axes={
                     "input_ids": {0: "batch", 1: "seq_len"},
                     "attention_mask": {0: "batch", 1: "seq_len"},
+                    # Output batch axis dynamic so single-record serving (batch=1) is not frozen at the
+                    # traced batch size (ONNX "Expected {N,C} vs {1,C}" -> full-batch latency); FZ 29k fix.
+                    "logits": {0: "batch"},
                 },
                 opset_version=14,
             )

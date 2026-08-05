@@ -681,6 +681,9 @@ class TrimodalGateFusionBert(pl.LightningModule):
             dynamic_axes[name] = axes
 
         try:
+            # Output batch axis dynamic so single-record serving (batch=1) is not frozen at the
+            # traced batch size (ONNX "Expected {N,C} vs {1,C}" -> full-batch latency); FZ 29k fix.
+            dynamic_axes["probs"] = {0: "batch"}
             torch.onnx.export(
                 wrapper,
                 tuple(input_tensors),
