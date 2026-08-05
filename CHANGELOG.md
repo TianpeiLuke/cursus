@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.30] - 2026-08-05
+
+**Fix: `output_path_token` is now honored at compile time — it was silently overwritten by the assembler's own output-path derivation.**
+
+A step's `contract.output_path_token` (the opt-in fixed S3 folder an external consumer keys off —
+e.g. PIPER scans `<pipeline>/Model_Metric_Generation_Step/` for `.metric` files) was dead in a real
+compile: `PipelineAssembler._generate_outputs` pre-computed every output destination from
+`step_type.lower()` + an unconditional `job_type`, and `ProcessingHandler.get_outputs` passed that
+value through verbatim (`if logical_name in outputs`), so the branch reading `output_path_token` /
+`include_job_type_in_path` never ran. A live `PiperMetricGeneration` run realized
+`.../pipermetricgeneration/calibration/metric_output` instead of the declared
+`.../Model_Metric_Generation_Step/`.
+
+### Fixed
+- `core/assembler/pipeline_assembler.py` (`_generate_outputs`): now reads
+  `builder.contract.output_path_token`. When **set**, the output is a single flat `<base>/<token>`
+  segment — NO `step_type`, NO `job_type`, NO per-output `logical_name` subfolder — so every output
+  lands under the fixed folder the external consumer expects. When **absent** (the default for ~all
+  steps), the historical `<base>/<step_type>[/<job_type>]/<logical_name>` derivation is UNCHANGED.
+- `core/base/builder_templates.py` (`ProcessingHandler.get_outputs`): its own fallback derivation
+  (used when the assembler does not pre-supply an output) now applies the SAME token rule — a set
+  token yields the flat `<base>/<token>`; both code paths agree.
+
+### Semantics
+- **No `output_path_token`** → old behavior, byte-identical.
+- **`output_path_token` given** → that token is the S3 folder, used verbatim.
+- **`output_path_token` given** → a SINGLE path segment `<base>/<token>` — the `job_type`
+  (`calibration`, …) and per-output `logical_name` subfolders are NOT appended.
+
+### Tests
+- `tests/core/assembler/test_pipeline_assembler.py::TestGenerateOutputsPathToken` (4) — token-absent
+  4-part + 3-part unchanged; token-present flat single segment; multiple outputs all land flat.
+- `tests/core/base/test_builder_templates.py::TestProcessingHandlerOutputPathToken` (3) — handler
+  fallback honors the token flat, token-absent canonical-snake path preserved, assembler-pre-supplied
+  destination passed through.
+
+### Known follow-up (documented, not changed here)
+- The assembler derives the token-absent segment as `step_type.lower()` (`pipermetricgeneration`)
+  while the handler uses `canonical_to_snake` (`piper_metric_generation`); the two disagree for
+  multi-word steps in the token-absent path. Out of scope for this fix (the token path now agrees).
+
 ## [2.9.29] - 2026-08-05
 
 **Feature: hyperparameter-tuning step — a new `Tuning` construction verb (a SageMaker `TuningStep` wrapping the training estimator).**

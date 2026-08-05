@@ -370,12 +370,30 @@ class PipelineAssembler:
         # Check if config has job_type (e.g., training, validation, testing, calibration)
         job_type = getattr(builder.config, "job_type", None)
 
+        # OPT-IN fixed-folder override: when the step's contract declares an `output_path_token`,
+        # an external consumer keys off a FIXED S3 folder name (e.g. PIPER scans
+        # <pipeline>/Model_Metric_Generation_Step/ for .metric files). In that case the token is the
+        # SINGLE path segment under the base — no `step_type`, no `job_type`, and no per-output
+        # `logical_name` subfolder — so every output lands flat in <base>/<token>/. When the token is
+        # absent (the default for ~all steps), the historical `<base>/<step_type>[/<job_type>]/<logical_name>`
+        # derivation is used UNCHANGED. Mirrors the handler's contract.output_path_token escape hatch
+        # (builder_templates.py get_outputs) so the assembler-pre-generated path and the handler agree.
+        contract = getattr(builder, "contract", None)
+        output_path_token = (
+            getattr(contract, "output_path_token", None) if contract else None
+        )
+
         # Use each output specification to generate standard output path
         for logical_name, output_spec in builder.spec.outputs.items():
             # Standard path pattern using Join instead of f-string to ensure proper parameter substitution
             from sagemaker.workflow.functions import Join
 
-            if job_type:
+            if output_path_token:
+                # Fixed-folder override: single token segment, flat (no job_type / logical_name subfolders).
+                outputs[logical_name] = Join(
+                    on="/", values=[base_s3_loc, output_path_token]
+                )
+            elif job_type:
                 # Include job_type in path for steps that have it (e.g., DummyDataLoading, CradleDataLoading)
                 outputs[logical_name] = Join(
                     on="/", values=[base_s3_loc, step_type, job_type, logical_name]

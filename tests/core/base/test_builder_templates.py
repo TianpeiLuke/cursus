@@ -52,7 +52,9 @@ class TestResolveHandler:
         assert h.knobs.get("use_step_args") is True
 
     def test_processing_delegation_routes_to_sdk_handler(self):
-        assert isinstance(resolve_handler("Processing", "delegation"), SDKDelegationHandler)
+        assert isinstance(
+            resolve_handler("Processing", "delegation"), SDKDelegationHandler
+        )
 
     def test_no_builder_types_raise(self):
         with pytest.raises(NoBuilderError):
@@ -136,7 +138,9 @@ class TestTemplateStepBuilderContract:
 # --- ProcessingHandler I/O against a mock builder ---
 
 
-def _mock_builder(dependencies, outputs_spec, input_paths, output_paths, job_type="training"):
+def _mock_builder(
+    dependencies, outputs_spec, input_paths, output_paths, job_type="training"
+):
     """A minimal stand-in exposing the surface ProcessingHandler reads."""
     spec = SimpleNamespace(
         step_type="TabularPreprocessing",
@@ -146,9 +150,7 @@ def _mock_builder(dependencies, outputs_spec, input_paths, output_paths, job_typ
             )
             for d in dependencies
         },
-        outputs={
-            o: SimpleNamespace(logical_name=o) for o in outputs_spec
-        },
+        outputs={o: SimpleNamespace(logical_name=o) for o in outputs_spec},
     )
     contract = SimpleNamespace(
         expected_input_paths=input_paths, expected_output_paths=output_paths
@@ -276,7 +278,9 @@ class TestOutputTokenIsCanonicalSnakeByDefault:
     def test_output_token_is_NOT_overridable(self):
         # FZ 31e1d3f1b: output_path_token was removed — the S3 prefix is ALWAYS
         # canonical_to_snake(step_type), even if an output_path_token knob is (wrongly) injected.
-        h = ProcessingHandler(knobs={"output_path_token": "model_evaluation"})  # ignored
+        h = ProcessingHandler(
+            knobs={"output_path_token": "model_evaluation"}
+        )  # ignored
         b = _mock_builder(
             dependencies=[],
             outputs_spec=["eval_output"],
@@ -285,7 +289,9 @@ class TestOutputTokenIsCanonicalSnakeByDefault:
         )
         b.spec.step_type = "XGBoostModelEval"
         pos = h.get_outputs(b, {})
-        assert pos[0].destination.values[1] == "xgboost_model_eval"  # derived, knob ignored
+        assert (
+            pos[0].destination.values[1] == "xgboost_model_eval"
+        )  # derived, knob ignored
 
 
 class TestAllHandlersImplemented:
@@ -395,7 +401,9 @@ class TestProcessingStepArgsProcessorXor:
     ):
         h = ProcessingHandler(knobs={"use_step_args": True})
         b = _build_step_mock_builder(use_step_args=True, script_path=_script_file)
-        h.knobs = b.knobs  # handler reads its own knobs; align with the builder's make_compute
+        h.knobs = (
+            b.knobs
+        )  # handler reads its own knobs; align with the builder's make_compute
         step = h.build_step(
             b, inputs={"DATA": "s3://src/data"}, outputs={}, dependencies=[]
         )
@@ -414,3 +422,85 @@ class TestProcessingStepArgsProcessorXor:
         )
         assert getattr(step, "processor", None) is not None
         assert getattr(step, "step_args", None) is None
+
+
+class TestProcessingHandlerOutputPathToken:
+    """ProcessingHandler.get_outputs honors contract.output_path_token.
+
+    When the handler computes the destination itself (no assembler-pre-supplied outputs), a set
+    token yields a single flat <base>/<token> segment — matching PipelineAssembler._generate_outputs
+    — and an absent token keeps the historical <base>/<canonical_snake>[/<job_type>]/<logical_name>.
+    """
+
+    def _builder(
+        self,
+        *,
+        step_type,
+        logical,
+        job_type=None,
+        output_path_token=None,
+        include_job_type_in_path=True,
+    ):
+        spec = SimpleNamespace(
+            step_type=step_type,
+            outputs={logical: SimpleNamespace(logical_name=logical)},
+        )
+        contract = SimpleNamespace(
+            output_path_token=output_path_token,
+            include_job_type_in_path=include_job_type_in_path,
+            expected_output_paths={logical: "/opt/ml/processing/output"},
+        )
+        config = (
+            SimpleNamespace(job_type=job_type)
+            if job_type is not None
+            else SimpleNamespace()
+        )
+        b = SimpleNamespace(
+            spec=spec,
+            contract=contract,
+            config=config,
+            _get_base_output_path=lambda: "s3://bucket/PIPELINE",
+        )
+        b.log_info = lambda *a, **k: None
+        return b
+
+    def test_token_present_flat_single_segment(self):
+        h = resolve_handler("Processing")
+        b = self._builder(
+            step_type="PiperMetricGeneration",
+            logical="metric_output",
+            job_type="calibration",
+            output_path_token="Model_Metric_Generation_Step",
+            include_job_type_in_path=False,
+        )
+        outs = h.get_outputs(b, {})
+        assert outs[0].destination.values == [
+            "s3://bucket/PIPELINE",
+            "Model_Metric_Generation_Step",
+        ]
+
+    def test_token_absent_uses_canonical_snake_with_job_type(self):
+        h = resolve_handler("Processing")
+        b = self._builder(
+            step_type="TabularPreprocessing",
+            logical="processed_data",
+            job_type="training",
+        )
+        outs = h.get_outputs(b, {})
+        assert outs[0].destination.values == [
+            "s3://bucket/PIPELINE",
+            "tabular_preprocessing",
+            "training",
+            "processed_data",
+        ]
+
+    def test_assembler_presupplied_output_is_passed_through(self):
+        h = resolve_handler("Processing")
+        b = self._builder(
+            step_type="PiperMetricGeneration",
+            logical="metric_output",
+            output_path_token="Model_Metric_Generation_Step",
+        )
+        pre = "s3://bucket/PIPELINE/Model_Metric_Generation_Step"
+        outs = h.get_outputs(b, {"metric_output": pre})
+        assert outs[0].destination == pre

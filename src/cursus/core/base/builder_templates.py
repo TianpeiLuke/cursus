@@ -311,15 +311,20 @@ class ProcessingHandler(PatternHandler):
 
         # The output-destination S3 prefix segment is DERIVED from the step name —
         # canonical_to_snake(step_type) (the package's PascalCase->snake util, acronyms handled) — the
-        # convention for ~all steps. OPT-IN override: contract.output_path_token, when set, is used
-        # VERBATIM instead (FZ 31e1d3f1b re-introduced as an escape hatch, default-off) — needed when
-        # an external consumer keys off a fixed S3 folder name that does not match the cursus step name
-        # (e.g. PIPER scans <pipeline>/Model_Metric_Generation_Step/ for .metric files).
-        # include_job_type_in_path STAYS a per-step knob (genuinely variable: some steps segment the
-        # path by job_type, some don't), read knob->contract->default.
-        token = getattr(b.contract, "output_path_token", None) or canonical_to_snake(
-            b.spec.step_type
-        )
+        # convention for ~all steps, yielding <base>/<step_type>[/<job_type>]/<logical_name>.
+        #
+        # OPT-IN fixed-folder override: contract.output_path_token, when set (FZ 31e1d3f1b escape
+        # hatch, default-off), pins the output to a SINGLE fixed segment <base>/<token>/ — flat, with
+        # NO step_type, NO job_type, and NO per-output logical_name subfolder — needed when an external
+        # consumer keys off a fixed S3 folder name (e.g. PIPER scans
+        # <pipeline>/Model_Metric_Generation_Step/ for .metric files). This mirrors the identical
+        # override in PipelineAssembler._generate_outputs so the assembler-pre-generated path (which
+        # this method passes through when `logical_name in outputs`) and this fallback agree.
+        #
+        # When the token is ABSENT, include_job_type_in_path STAYS a per-step knob (genuinely variable:
+        # some steps segment the path by job_type, some don't), read knob->contract->default.
+        output_path_token = getattr(b.contract, "output_path_token", None)
+        token = output_path_token or canonical_to_snake(b.spec.step_type)
         include_job_type = self.knobs.get("include_job_type_in_path")
         if include_job_type is None:
             include_job_type = getattr(b.contract, "include_job_type_in_path", True)
@@ -332,6 +337,15 @@ class ProcessingHandler(PatternHandler):
             container_path = b.contract.expected_output_paths[logical_name]
             if logical_name in outputs:
                 destination = outputs[logical_name]
+            elif output_path_token:
+                # Fixed-folder override: single token segment, flat (no job_type / logical_name).
+                base = b._get_base_output_path()
+                destination = Join(on="/", values=[base, output_path_token])
+                b.log_info(
+                    "Using fixed output_path_token destination for '%s': %s",
+                    logical_name,
+                    destination,
+                )
             else:
                 base = b._get_base_output_path()
                 values = [base, token]

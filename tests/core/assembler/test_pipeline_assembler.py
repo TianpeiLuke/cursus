@@ -1072,3 +1072,89 @@ class TestPipelineAssembler:
 
             # Verify debug logging was called (tests integration with safe_value_for_logging)
             mock_logger.debug.assert_called()
+
+
+class TestGenerateOutputsPathToken:
+    """_generate_outputs honors contract.output_path_token.
+
+    - token ABSENT  -> the historical <base>/<step_type>[/<job_type>]/<logical_name> path, UNCHANGED.
+    - token PRESENT -> a single flat <base>/<token> segment (no step_type, no job_type, no
+      per-output logical_name subfolder) so an external consumer (e.g. PIPER scanning
+      <pipeline>/Model_Metric_Generation_Step/) finds the files.
+    """
+
+    def _stub_builder(
+        self, *, step_type, outputs, job_type=None, output_path_token=None
+    ):
+        from types import SimpleNamespace
+
+        spec = SimpleNamespace(
+            step_type=step_type,
+            outputs={o: SimpleNamespace(logical_name=o) for o in outputs},
+        )
+        contract = SimpleNamespace(output_path_token=output_path_token)
+        config = (
+            SimpleNamespace(job_type=job_type)
+            if job_type is not None
+            else SimpleNamespace()
+        )
+        return SimpleNamespace(
+            spec=spec,
+            contract=contract,
+            config=config,
+            _get_base_output_path=lambda: "s3://bucket/PIPELINE",
+        )
+
+    def _gen(self, builder):
+        asm = PipelineAssembler.__new__(PipelineAssembler)
+        asm.step_builders = {"s": builder}
+        return PipelineAssembler._generate_outputs(asm, "s")
+
+    def test_token_absent_with_job_type_is_unchanged_four_part(self):
+        b = self._stub_builder(
+            step_type="TabularPreprocessing",
+            outputs=["processed_data"],
+            job_type="training",
+        )
+        out = self._gen(b)["processed_data"]
+        assert out.values == [
+            "s3://bucket/PIPELINE",
+            "tabularpreprocessing",
+            "training",
+            "processed_data",
+        ]
+
+    def test_token_absent_without_job_type_is_unchanged_three_part(self):
+        b = self._stub_builder(
+            step_type="GraphStormGNNTraining", outputs=["model_output"]
+        )
+        out = self._gen(b)["model_output"]
+        assert out.values == [
+            "s3://bucket/PIPELINE",
+            "graphstormgnntraining",
+            "model_output",
+        ]
+
+    def test_token_present_is_single_flat_segment_no_jobtype_no_logical(self):
+        b = self._stub_builder(
+            step_type="PiperMetricGeneration",
+            outputs=["metric_output"],
+            job_type="calibration",
+            output_path_token="Model_Metric_Generation_Step",
+        )
+        out = self._gen(b)["metric_output"]
+        assert out.values == ["s3://bucket/PIPELINE", "Model_Metric_Generation_Step"]
+
+    def test_token_present_multiple_outputs_all_land_flat_under_token(self):
+        b = self._stub_builder(
+            step_type="PiperMetricGeneration",
+            outputs=["metric_output", "aux_output"],
+            job_type="calibration",
+            output_path_token="Model_Metric_Generation_Step",
+        )
+        out = self._gen(b)
+        for name in ("metric_output", "aux_output"):
+            assert out[name].values == [
+                "s3://bucket/PIPELINE",
+                "Model_Metric_Generation_Step",
+            ]
