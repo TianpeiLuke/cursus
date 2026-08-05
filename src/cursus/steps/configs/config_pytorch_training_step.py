@@ -224,7 +224,16 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             "ml.m5.8xlarge",
             "ml.m5.12xlarge",
             "ml.m5.24xlarge",
+            "ml.g4dn.xlarge",
+            "ml.g4dn.2xlarge",
+            "ml.g4dn.4xlarge",
+            "ml.g4dn.8xlarge",
+            "ml.g4dn.12xlarge",
             "ml.g4dn.16xlarge",
+            "ml.g5.xlarge",
+            "ml.g5.2xlarge",
+            "ml.g5.4xlarge",
+            "ml.g5.8xlarge",
             "ml.g5.12xlarge",
             "ml.g5.16xlarge",
             "ml.g5.24xlarge",
@@ -233,6 +242,9 @@ class PyTorchTrainingConfig(BasePipelineConfig):
             "ml.p3.16xlarge",
             "ml.p4d.24xlarge",
             "ml.p4de.24xlarge",
+            "ml.p5.48xlarge",
+            "ml.p5e.48xlarge",
+            "ml.p5en.48xlarge",
         ]
         if v not in valid_instances:
             raise ValueError(

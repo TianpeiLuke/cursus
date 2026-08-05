@@ -1079,7 +1079,18 @@ def create_dataloader(
         attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
     )
 
-    batch_size = config.get("batch_size", 32)
+    # Eval batch size = training batch_size * eval_batch_size_multiplier (both from the loaded
+    # hyperparameters.json — the single source of truth, set per-pipeline in generate_config).
+    # Eval runs without gradients, so a >1 multiplier fits a bigger batch and is much faster.
+    # Mirrors the in-training convention (pytorch_training.py eval loaders) so train + standalone
+    # eval agree. Default multiplier 2.0 matches the base ModelHyperparameters default.
+    train_batch_size = config.get("batch_size", 32)
+    eval_multiplier = config.get("eval_batch_size_multiplier", 2.0)
+    batch_size = int(train_batch_size * eval_multiplier)
+    logger.info(
+        f"Eval batch size: {batch_size} (train batch_size={train_batch_size} "
+        f"* eval_batch_size_multiplier={eval_multiplier})"
+    )
 
     # ===================================================================
     # WORKER CONFIGURATION (matches pytorch_training.py logic)

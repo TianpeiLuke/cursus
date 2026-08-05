@@ -1009,14 +1009,24 @@ def create_dataloader(
         attention_mask_key=config.get("text_attention_mask_key", "attention_mask"),
     )
 
-    batch_size = config.get("batch_size", 32)
+    # Inference batch size = training batch_size * eval_batch_size_multiplier (both from the loaded
+    # hyperparameters.json — the single source of truth, set per-pipeline in generate_config).
+    # Inference runs without gradients, so a >1 multiplier fits a bigger batch and is much faster.
+    # Mirrors the standalone-eval + in-training convention. Default multiplier 2.0 matches the base
+    # ModelHyperparameters default.
+    train_batch_size = config.get("batch_size", 32)
+    eval_multiplier = config.get("eval_batch_size_multiplier", 2.0)
+    batch_size = int(train_batch_size * eval_multiplier)
     dataloader = DataLoader(
         pipeline_dataset,
         collate_fn=collate_batch,
         batch_size=batch_size,
         shuffle=False,
     )
-    logger.info(f"Created DataLoader with batch_size={batch_size}")
+    logger.info(
+        f"Created DataLoader with inference batch_size={batch_size} "
+        f"(train batch_size={train_batch_size} * eval_batch_size_multiplier={eval_multiplier})"
+    )
 
     return dataloader
 
