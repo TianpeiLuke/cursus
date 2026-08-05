@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.27] - 2026-08-04
+
+**Feature: per-step VPC / `NetworkConfig` injection — declarative `network_mode` across compute kinds.**
+
+Adds a per-step network axis so a step can run in its OWN VPC (its own subnets / security
+groups) instead of only the session-wide `sagemaker_config` default. Enables steps that must
+reach a VPC-only data source (e.g. a private graph/warehouse endpoint), plus Training-in-VPC
+(which no compute kind had before). Completes the compute-model extension pair with
+`byo_container` (2.9.26): a non-DLC framework can now run its own image AND reach its own VPC.
+
+### Added
+- `core/base/step_interface.py` (`ComputeSpec`): new `network_mode: none|shared|config`
+  (default `none`) + `subnets_field` / `security_group_ids_field` /
+  `enable_network_isolation_field` pointers, with a `_NETWORK_MODES` classvar and validation —
+  `config` is wired for `byo_container` / `estimator`; `shared` is not a standalone selector
+  (the shared config is still reached via `kms_network` on `kind=script`, unchanged); the
+  `*_field` pointers require `config`.
+- `core/base/config_base.py` (`BasePipelineConfig`): new optional `subnets` /
+  `security_group_ids` / `enable_network_isolation` fields, inherited by both Processing
+  (`byo_container`) and Training (`estimator`) configs. `None` when the step is
+  `network_mode='none'`.
+- `core/base/builder_base.py`: a `_resolve_network_config(spec)` helper (returns a
+  `sagemaker.network.NetworkConfig` for `mode='config'`, `None` for `none`), wired into
+  `_create_byo_container_compute` — Processing sets `ScriptProcessor.network_config`; Training
+  sets estimator `subnets` / `security_group_ids` + `encrypt_inter_container_traffic=True`.
+  `mode='config'` leaves `volume_kms_key` unset (NVMe rejects a volume KMS key).
+- `tests/core/base/test_compute_spec.py`: a `TestPerStepVpc` class asserting the `config`-mode
+  `NetworkConfig` is built from the step's own subnets, `none` sets nothing, a missing-subnets
+  `config` raises, and a reactive NVMe security patch DEFERS to a per-step `network_config` on a
+  GPU instance (its `not processor.network_config` guard holds).
+
+### Notes
+- **Non-invasive by construction:** the `script`/`kms_network` block, the assembler, and all
+  existing steps are byte-identical. `network_mode='none'` (the default) preserves the
+  session-wide `sagemaker_config` default path verbatim. A `config` override wins because an
+  explicit `NetworkConfig`/`subnets` on the SDK object takes precedence over the
+  `sagemaker_config` gap-fill default.
+
 ## [2.9.26] - 2026-08-04
 
 **Feature: `byo_container` compute kind — run a user-supplied ECR image verbatim on the Processing or Training verb.**

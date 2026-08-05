@@ -57,6 +57,18 @@ class TestComputeSpecValidation:
                 "framework_version_field": "framework_version",
                 "retrieve_framework": "huggingface",
             },
+            # per-step VPC (network_mode='config') on byo_container + estimator (FZ 31e1d3o).
+            {
+                "kind": "byo_container",
+                "image_uri_field": "image_uri",
+                "network_mode": "config",
+            },
+            {
+                "kind": "estimator",
+                "sdk_class": "PyTorch",
+                "framework_version_field": "framework_version",
+                "network_mode": "config",
+            },
         ],
     )
     def test_valid_descriptors(self, kwargs):
@@ -142,6 +154,22 @@ class TestComputeSpecValidation:
                 "framework_version_field": "v",
                 "retrieve_framework": "huggingface",
             },  # retrieve_framework is estimator-only
+            {"kind": "byo_container", "image_uri_field": "i", "network_mode": "bogus"},
+            {
+                "kind": "sklearn",
+                "framework_version_field": "v",
+                "network_mode": "config",
+            },  # config wired for byo_container/estimator only
+            {
+                "kind": "byo_container",
+                "image_uri_field": "i",
+                "network_mode": "shared",
+            },  # shared not a standalone selector (use kms_network)
+            {
+                "kind": "byo_container",
+                "image_uri_field": "i",
+                "enable_network_isolation_field": "eni",
+            },  # eni pointer requires network_mode='config'
         ],
     )
     def test_invalid_descriptors_raise(self, kwargs):
@@ -251,6 +279,9 @@ class TestByoContainerCompute:
             training_entry_point="train.py",
             effective_source_dir="/tmp/src",
             aws_region="us-east-1",
+            subnets=None,
+            security_group_ids=None,
+            enable_network_isolation=None,
         )
         b.role = "arn:aws:iam::123456789012:role/x"
         sess = Mock()
@@ -339,3 +370,112 @@ class TestByoContainerCompute:
         with contextlib.redirect_stdout(io.StringIO()):
             with pytest.raises(ValueError, match="image_uri"):
                 b._create_compute(verb="Processing")
+
+
+class TestPerStepVpc:
+    """Per-step VPC / NetworkConfig (FZ 31e1d3o) — network_mode='config' builds the step's own
+    NetworkConfig; the legacy shared/nvme SAIS paths are untouched (additive)."""
+
+    _SUBNETS = ["subnet-0123456789abcdef0"]
+    _SGS = ["sg-0123456789abcdef0"]
+
+    def _builder(self, **cfg_over):
+        # Reuse the BYO fixture's builder, then override the VPC config fields.
+        b, contextlib, io = TestByoContainerCompute._builder(TestByoContainerCompute())
+        for k, v in cfg_over.items():
+            setattr(b.config, k, v)
+        return b, contextlib, io
+
+    def test_config_mode_processing_builds_vpc_networkconfig(self):
+        # A5-VPC-a: network_mode='config' Processing → ScriptProcessor.network_config from the
+        # step's own subnets/SGs, and NO volume_kms_key.
+        b, contextlib, io = self._builder(
+            subnets=self._SUBNETS, security_group_ids=self._SGS
+        )
+        b.contract.compute = ComputeSpec(
+            kind="byo_container",
+            image_uri_field="image_uri",
+            network_mode="config",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            comp = b._create_compute(verb="Processing")
+        assert type(comp).__name__ == "ScriptProcessor"
+        assert list(comp.network_config.subnets) == self._SUBNETS
+        assert list(comp.network_config.security_group_ids) == self._SGS
+        assert getattr(comp, "volume_kms_key", None) is None
+
+    def test_config_mode_training_sets_estimator_vpc(self):
+        # A5-VPC-a (Training): network_mode='config' Training → estimator subnets/SGs +
+        # encrypt_inter_container_traffic (matches the SAIS-secured baseline).
+        b, contextlib, io = self._builder(
+            subnets=self._SUBNETS, security_group_ids=self._SGS
+        )
+        b.contract.compute = ComputeSpec(
+            kind="byo_container",
+            image_uri_field="image_uri",
+            network_mode="config",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            comp = b._create_compute(output_path="s3://b/out", verb="Training")
+        assert list(comp.subnets) == self._SUBNETS
+        assert list(comp.security_group_ids) == self._SGS
+        assert comp.encrypt_inter_container_traffic is True
+
+    def test_config_mode_missing_subnets_raises(self):
+        # network_mode='config' with no subnets is a loud error (cannot silently no-op the VPC).
+        b, contextlib, io = self._builder(subnets=None)
+        b.contract.compute = ComputeSpec(
+            kind="byo_container",
+            image_uri_field="image_uri",
+            network_mode="config",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            with pytest.raises(ValueError, match="subnets"):
+                b._create_compute(verb="Processing")
+
+    def test_none_mode_sets_no_network_config(self):
+        # A5-VPC-b (regression): default network_mode='none' attaches NO network_config, so the
+        # reactive nvme_security SAIS patch still applies at upsert (its not-network_config guard).
+        b, contextlib, io = self._builder()
+        b.contract.compute = ComputeSpec(
+            kind="byo_container", image_uri_field="image_uri"
+        )  # network_mode defaults to 'none'
+        with contextlib.redirect_stdout(io.StringIO()):
+            comp = b._create_compute(verb="Processing")
+        assert not getattr(comp, "network_config", None)
+
+    def test_nvme_patch_defers_to_per_step_config(self, monkeypatch):
+        # A5-VPC-c: the nvme_security W2 patch must NOT overwrite a build-time per-step
+        # network_config on a GPU instance — its `not processor.network_config` guard holds.
+        from cursus.core.utils import nvme_security
+
+        b, contextlib, io = self._builder(
+            subnets=self._SUBNETS, security_group_ids=self._SGS
+        )
+        b.contract.compute = ComputeSpec(
+            kind="byo_container",
+            image_uri_field="image_uri",
+            network_mode="config",
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            comp = b._create_compute(verb="Processing")
+
+        # Reproduce the W2 processing patch's guard against our per-step config on a GPU instance
+        # (instance_supports_kms False ⇒ skip branch ⇒ would inject SAIS config only if empty).
+        from sagemaker.network import NetworkConfig
+
+        class _Sec:
+            security_group = "sg-SAIS"
+            vpc_subnets = ["subnet-SAIS"]
+            kms_key = "arn:aws:kms:us-east-1:123456789012:key/x"
+
+        # emulate the exact guard from nvme_security._patch_processing_step_nvme_aware
+        if hasattr(comp, "network_config") and not comp.network_config:
+            comp.network_config = NetworkConfig(
+                enable_network_isolation=False,
+                security_group_ids=[_Sec.security_group],
+                subnets=_Sec.vpc_subnets,
+            )
+        # our per-step subnets survived — the SAIS fallback did NOT overwrite them.
+        assert list(comp.network_config.subnets) == self._SUBNETS
+        assert nvme_security.install_nvme_aware_security_patch is not None

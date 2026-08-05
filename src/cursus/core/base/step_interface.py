@@ -189,6 +189,21 @@ class ComputeSpec(BaseModel):
     #: ``["bash", "run.sh"]``) so the image runs its OWN entrypoint instead of the default
     #: ``["python3"]``. ``None`` ⇒ the container is invoked as a normal script container (``python3``).
     container_entrypoint: Optional[List[str]] = None
+    #: Per-step VPC / NetworkConfig mode (FZ 31e1d3o) — an ADDITIVE axis wired only for
+    #: ``byo_container`` (Processing + Training) and ``estimator`` (Training-in-VPC); the existing
+    #: ``script``/``kms_network`` path is untouched. ``none`` (default) ⇒ no VpcConfig; ``shared`` ⇒
+    #: the ``mods_workflow_core`` ``PROCESSING_JOB_SHARED_NETWORK_CONFIG`` + KMS (the ``kms_network``
+    #: behavior, now selectable independently); ``config`` ⇒ a NetworkConfig built from the step's OWN
+    #: ``subnets``/``security_group_ids`` config fields (e.g. a subnet reaching a VPC-only source). A
+    #: build-time per-step config wins over the reactive ``nvme_security`` NVMe patch (whose
+    #: ``not processor.network_config`` guard then defers to it), so it does not clobber working steps.
+    network_mode: str = "none"
+    #: ``network_mode='config'`` : the config attrs holding the per-step VPC subnets / security groups.
+    subnets_field: Optional[str] = "subnets"
+    security_group_ids_field: Optional[str] = "security_group_ids"
+    #: ``network_mode='config'`` : optional config attr for ``enable_network_isolation``. ``None`` ⇒
+    #: not the pointer (SDK default False); only meaningful for VPC-isolated steps.
+    enable_network_isolation_field: Optional[str] = None
     #: ``model`` kind: the framework NAME passed to ``image_uris.retrieve`` for the INFERENCE image
     #: (``xgboost`` / ``pytorch``). Distinct from ``sdk_class`` (the model CLASS, e.g. ``XGBoostModel``):
     #: the class instantiates the model, this names the container image to retrieve.
@@ -234,6 +249,10 @@ class ComputeSpec(BaseModel):
     )
     #: The only 3rd-party package a compute pattern can require (the script/kms_network path).
     _REQUIRES: ClassVar = ("none", "mods_workflow_core")
+    #: Per-step network modes (FZ 31e1d3o). ``config`` is wired for byo_container + estimator; the
+    #: legacy ``shared`` config stays reachable via ``kms_network`` on ``kind=script`` (not a
+    #: standalone selector in this increment).
+    _NETWORK_MODES: ClassVar = ("none", "shared", "config")
 
     @model_validator(mode="after")
     def _validate_compute(self) -> "ComputeSpec":
@@ -244,6 +263,34 @@ class ComputeSpec(BaseModel):
             return self
         if self.kind not in self._KINDS:
             raise ValueError(f"compute.kind {self.kind!r} not in {self._KINDS}")
+        # --- Per-step network mode (FZ 31e1d3o), an ADDITIVE axis. Validate here so it applies to
+        # every kind uniformly (incl. byo_container's early-return below). The existing
+        # script/kms_network shared path is untouched; `config` is wired for byo_container +
+        # estimator (the verbs _resolve_network_config threads through). ---
+        if self.network_mode not in self._NETWORK_MODES:
+            raise ValueError(
+                f"compute.network_mode {self.network_mode!r} not in {self._NETWORK_MODES}"
+            )
+        if self.network_mode == "shared":
+            # `shared` is not a standalone selector in this increment — the shared config is bound by
+            # kms_network on kind=script (unchanged). This keeps the one live consumer byte-identical.
+            raise ValueError(
+                "compute.network_mode='shared' is reached via kms_network on kind='script'; "
+                "set network_mode='config' for a per-step VPC or keep 'none'"
+            )
+        if self.network_mode == "config" and self.kind not in (
+            "byo_container",
+            "estimator",
+        ):
+            raise ValueError(
+                f"compute.network_mode='config' is wired for byo_container/estimator, not "
+                f"kind={self.kind!r} (FZ 31e1d3o)"
+            )
+        # the *_field pointers are only meaningful under network_mode='config'.
+        if self.network_mode != "config" and self.enable_network_isolation_field:
+            raise ValueError(
+                "compute.enable_network_isolation_field requires network_mode='config'"
+            )
         # BYO container owns its own image — it takes image_uri_field (+ optional entrypoint) and
         # NONE of the DLC/retrieve knobs. Validate + return early so the DLC-oriented rules below
         # (which key on the other kinds) never apply to it. FZ 31e1d3m.

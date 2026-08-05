@@ -945,12 +945,14 @@ class StepBuilderBase(ABC):
                 f"(the verbatim ECR image URI); got {image_uri!r}"
             )
 
+        net = self._resolve_network_config(spec)
+
         if verb == "Processing":
             # ScriptProcessor with the verbatim image (reuses the existing processing SDK object; the
             # only difference from the `script` kind is the image source — config, not role-derived).
             from sagemaker.processing import ScriptProcessor
 
-            return ScriptProcessor(
+            kwargs = dict(
                 image_uri=image_uri,
                 role=self.role,
                 instance_count=cfg.processing_instance_count,
@@ -961,6 +963,12 @@ class StepBuilderBase(ABC):
                 base_job_name=job_name,
                 env=env,
             )
+            # Per-step VPC (network_mode='config'): set the built NetworkConfig. Left unset when
+            # 'none', so the reactive nvme_security patch still applies its SAIS config at upsert
+            # (its `not processor.network_config` guard defers to a value we set here). FZ 31e1d3o.
+            if net is not None:
+                kwargs["network_config"] = net
+            return ScriptProcessor(**kwargs)
 
         if verb == "Training":
             # Generic Estimator (NOT PyTorch/SKLearn) — no framework_version/py_version (a raw
@@ -982,10 +990,60 @@ class StepBuilderBase(ABC):
             if spec.container_entrypoint is None:
                 est_kwargs["entry_point"] = cfg.training_entry_point
                 est_kwargs["source_dir"] = cfg.effective_source_dir
+            # Training-in-VPC (network_mode='config'): estimators take subnets/SGs directly (not a
+            # NetworkConfig object). encrypt_inter_container_traffic mirrors what nvme_security sets
+            # so a per-step VPC estimator matches the SAIS-secured baseline. FZ 31e1d3o.
+            if net is not None:
+                est_kwargs["subnets"] = net.subnets
+                est_kwargs["security_group_ids"] = net.security_group_ids
+                est_kwargs["encrypt_inter_container_traffic"] = True
+                if net.enable_network_isolation is not None:
+                    est_kwargs["enable_network_isolation"] = (
+                        net.enable_network_isolation
+                    )
             return Estimator(**est_kwargs)
 
         raise ValueError(
             f"compute.kind='byo_container' supports Processing/Training verbs, got {verb!r}"
+        )
+
+    def _resolve_network_config(self, spec: Any) -> Any:
+        """Return a ``sagemaker.network.NetworkConfig`` for a per-step VPC (``network_mode='config'``),
+        or ``None`` for ``network_mode='none'`` (FZ 31e1d3o).
+
+        ADDITIVE — this does NOT replace the two existing SAIS network paths:
+          * ``kms_network`` on ``kind='script'`` still binds the ``mods_workflow_core``
+            ``PROCESSING_JOB_SHARED_NETWORK_CONFIG`` in ``_create_compute`` (untouched);
+          * the reactive ``nvme_security`` patch still injects the SAIS ``secure_config`` VPC for
+            NVMe instances at upsert time (untouched). Its ``not processor.network_config`` guard
+            means a per-step config set HERE simply wins; a step that stays ``network_mode='none'``
+            keeps the exact old behavior.
+
+        The config is built from the step's OWN ``subnets``/``security_group_ids`` config fields —
+        used when the platform's shared VPC is not the one that reaches the target (e.g. a step
+        that must reach a VPC-only data source on a specific subnet).
+        """
+        mode = getattr(spec, "network_mode", "none")
+        if mode != "config":
+            return None
+        from sagemaker.network import NetworkConfig
+
+        subnets = getattr(self.config, spec.subnets_field, None)
+        sgs = getattr(self.config, spec.security_group_ids_field, None)
+        if not subnets:
+            raise ValueError(
+                f"compute.network_mode='config' requires config.{spec.subnets_field} to be set "
+                f"(the VPC subnets for this step); got {subnets!r}"
+            )
+        eni = (
+            getattr(self.config, spec.enable_network_isolation_field, None)
+            if spec.enable_network_isolation_field
+            else None
+        )
+        return NetworkConfig(
+            subnets=subnets,
+            security_group_ids=sgs,
+            enable_network_isolation=bool(eni) if eni is not None else False,
         )
 
     @staticmethod

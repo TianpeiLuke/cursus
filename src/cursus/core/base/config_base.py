@@ -101,6 +101,31 @@ class BasePipelineConfig(BaseModel, ABC):
         ),
     )
 
+    # ===== Per-step VPC / NetworkConfig (Tier 2, FZ 31e1d3o) =====
+    # Read only when a step's compute.network_mode == "config"; None everywhere else (the
+    # default 'none' mode attaches no VpcConfig, so existing steps are unaffected). Lives on the
+    # base so both Processing (byo_container) and Training (estimator) configs inherit it.
+    subnets: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "VPC subnets for this step's SageMaker job (required when compute.network_mode == "
+            "'config', e.g. a subnet that reaches a VPC-only data source). None = no per-step VpcConfig."
+        ),
+    )
+
+    security_group_ids: Optional[List[str]] = Field(
+        default=None,
+        description="VPC security groups for this step's SageMaker job (compute.network_mode == 'config').",
+    )
+
+    enable_network_isolation: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Set enable_network_isolation on the job; None = SDK default (False). Independent of "
+            "volume KMS (skip_volume_kms). Only meaningful under compute.network_mode == 'config'."
+        ),
+    )
+
     source_dir: Optional[str] = Field(
         default=None,
         description="Common source directory for scripts if applicable. Can be overridden by step configs.",
