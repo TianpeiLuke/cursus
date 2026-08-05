@@ -1,0 +1,80 @@
+step_type: GraphStormGNNInferenceEval
+node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  requires: none
+  description: GraphStorm/DGL GNN out-of-time inference + evaluation on a custom GraphStorm GPU container (online-inference simulator → ROC-AUC / PR-AUC / Recall@Precision report + plots).
+patterns:
+  direct_input_keys: [model_input, eval_seeds]
+compute:
+  kind: byo_container
+  image_uri_field: image_uri
+  container_entrypoint: [bash, /opt/ml/processing/input/code/entrypoint.sh]
+contract:
+  entry_point: graphstorm_gnn_inference_eval.py
+  inputs:
+    model_input:
+      path: /opt/ml/processing/input/model
+      required: true
+    eval_seeds:
+      path: /opt/ml/processing/input/seeds
+      required: true
+  outputs:
+    eval_results:
+      path: /opt/ml/processing/output
+  arguments: {}
+  job_arguments:
+  - flag: --subgraph-s3-uri
+    source: subgraph_s3_uri
+  - flag: --query-type
+    source: query_type
+  - flag: --checkpoint
+    source: checkpoint
+  - flag: --model-type
+    source: model_type
+  env_vars:
+    required:
+    - ID_FIELD
+    - LABEL_FIELDS
+    optional:
+      QUERY_TYPE: baseline
+      MAX_WORKERS_PER_GPU: '8'
+      MAX_RUNTIME_SECONDS: '86400'
+      AUTO_TUNE: 'true'
+  framework_requirements:
+    graphstorm: '>=0.4'
+    dgl: '==1.1.3'
+    torch: '==2.1.0'
+    polars: '>=0.20.0'
+    scikit-learn: '>=1.3.0'
+    matplotlib: '>=3.7.0'
+    numpy: '>=1.21.0'
+  description: 'GraphStorm GNN inference + out-of-time evaluation (ports Nexus run_evaluation.py):
+    selects a checkpoint, converts multi-task→single-task if needed, auto-tunes GPU workers via live
+    nvidia-smi VRAM probing, runs the online-inference simulator over the eval subgraph S3 folder,
+    then computes ROC-AUC / PR-AUC / Recall@Precision and emits a report + plots. subgraph_s3_uri is
+    a raw S3 folder streamed by the simulator (a job-arg, not a mounted channel).
+
+    '
+spec:
+  dependencies:
+    model_input:
+      type: model_artifacts
+      required: true
+      compatible_sources: [GraphStormGNNTraining]
+      semantic_keywords: [model, artifacts, graphstorm, gnn, checkpoint, trained]
+    eval_seeds:
+      type: processing_output
+      required: true
+      compatible_sources: [GraphSubgraphExtraction, CradleDataLoading]
+      semantic_keywords: [seeds, orders, labels, evaluation, out_of_time]
+  outputs:
+    eval_results:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['eval_results'].S3Output.S3Uri
+      semantic_keywords: [evaluation, metrics, predictions, report]
+      aliases:
+      - metrics_output
+      - evaluation_report
+      - predictions
+      data_type: S3Uri

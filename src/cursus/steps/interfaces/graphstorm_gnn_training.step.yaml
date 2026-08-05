@@ -1,0 +1,78 @@
+step_type: GraphStormGNNTraining
+node_type: internal
+registry:
+  sagemaker_step_type: Training
+  requires: none
+  description: GraphStorm/DGL R-GCN GNN training on a partitioned heterograph, run in a bring-your-own GraphStorm ECR container.
+patterns:
+  direct_input_keys: [graph_data]
+compute:
+  kind: byo_container
+  image_uri_field: training_image_uri
+  container_entrypoint: [python3, /opt/ml/input/data/code/train.py]
+  lock_training_region: true
+contract:
+  entry_point: graphstorm_gnn_training.py
+  inputs:
+    graph_data:
+      path: /opt/ml/input/data/graph
+      required: true
+      channels: [graph]
+    training_config:
+      path: /opt/ml/input/data/config
+      required: true
+      channels: [config]
+    code:
+      path: /opt/ml/input/data/code
+      required: false
+      channels: [code]
+  outputs:
+    model_output:
+      path: /opt/ml/model
+    prediction_output:
+      path: /opt/ml/output/data
+  arguments: {}
+  job_arguments: []
+  env_vars:
+    required: []
+    optional:
+      TRAINING_MODE: multi_task
+      NUM_SERVERS: '1'
+      BATCH_SIZE_OVERRIDE: ''
+  framework_requirements: {}
+  description: 'GraphStorm R-GCN node-classification / multi-task training over a partitioned DGL
+    heterograph. Discovers the partition-config JSON and training YAML from the graph/config
+    channels, applies HPO dot-path overrides, auto-tunes batch size from GPU VRAM + graph metadata,
+    then launches graphstorm.run.gs_multi_task_learning (or gs_node_classification). The real entry
+    is the bundled train.py via ContainerEntrypoint; graphstorm/dgl/torch are baked into the BYO image.
+
+    '
+spec:
+  dependencies:
+    graph_data:
+      type: processing_output
+      required: true
+      compatible_sources: [GraphConstruction]
+      semantic_keywords: [graph, partitioned, dgl, partition_config, gconstruct, heterograph]
+    training_config:
+      type: hyperparameters
+      required: true
+      compatible_sources: [GraphFeatureProcessing, GraphConstruction]
+      semantic_keywords: [config, yaml, graphstorm, training_config, hyperparameters]
+    code:
+      type: processing_output
+      required: false
+      compatible_sources: [DummyDataLoading, ProcessingStep]
+      semantic_keywords: [code, bundle, entrypoint, train_script]
+  outputs:
+    model_output:
+      type: model_artifacts
+      property_path: properties.ModelArtifacts.S3ModelArtifacts
+      semantic_keywords: [model, gnn, graphstorm, checkpoint, rgcn]
+      aliases: [ModelArtifacts, model_data, model_input]
+      data_type: S3Uri
+    prediction_output:
+      type: processing_output
+      property_path: properties.OutputDataConfig.S3OutputPath
+      semantic_keywords: [predictions, embeddings, eval, node_scores]
+      data_type: S3Uri

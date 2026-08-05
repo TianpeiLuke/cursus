@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.28] - 2026-08-04
+
+**Feature: a 5-step graph-ML (GraphStorm/DGL GNN) step family — the first graph-native pipeline steps.**
+
+Adds the five steps of a graph node-classification pipeline, all built on the `byo_container`
+compute kind (2.9.26) + per-step VPC (2.9.27): a non-DLC graph-ML stack (GraphStorm/DGL) now runs
+end-to-end in cursus with no new framework code. Each step is the standard 3 artifacts (interface +
+config + script), auto-discovered into the registry; the heavy graph-ML logic lives in the BYO
+image's code bundle, so cursus vendors thin contract-driven entry points.
+
+### Added
+- `GraphSubgraphExtraction` (Processing, `byo_container` + `network_mode: config`): point-in-time
+  k-hop subgraph pull from a property-graph DB for seed IDs; VPC-bound to reach the graph cluster;
+  writes per-seed pickles directly to S3. Cluster identity (name/account/endpoint) is env-driven
+  with placeholder fallbacks.
+- `GraphFeatureProcessing` (Processing): turns subgraph pickles + labelled seeds into the GraphStorm
+  GConstruct input (per-type node/edge parquets, reverse edges, node-ID-keyed multi-task masks,
+  `gconstruct_config.json`); a nested `config.yaml` payload carries the structured knobs.
+- `GraphConstruction` (Processing, `container_entrypoint`): runs `graphstorm.gconstruct` to build a
+  partitioned DGL heterograph — path-rewrite + an idempotent GraphStorm bug-patch guard.
+- `GraphStormGNNTraining` (Training, `byo_container`): R-GCN node-classification / multi-task
+  training over the partitioned heterograph; batch-size auto-tune heuristic; the first `byo_container`
+  Training-verb step (verbatim `AlgorithmSpecification.TrainingImage`, no `image_uris.retrieve`).
+- `GraphStormGNNInferenceEval` (Processing): out-of-time GNN inference + ROC-AUC/PR-AUC eval; emits
+  `ID_FIELD`/`LABEL_FIELDS` required env vars via its config collector.
+- `docs/gen_step_catalog.py`: now renders a **Compute** section per step page (compute kind,
+  BYO image, container entrypoint, `network_mode` VPC) + a Compute column in the index; the
+  `docs/steps-catalog/` catalog is (re)generated to disk (60 steps).
+
+### Changed
+- Re-baselined `tests/registry/step_names_registry_snapshot.json` (+6 rows: the 5 graph steps and
+  a pre-existing `SlipboxKnowledgeRouting` gap; plus the pre-existing `BedrockPromptTemplateGeneration`
+  description drift).
+
+### Notes
+- Additive — no existing step or the 7 prior compute kinds change. Framework deps (graphstorm/dgl/
+  torch) are baked into the BYO image; the steps' `framework_requirements` are documentation-only.
+
 ## [2.9.27] - 2026-08-04
 
 **Feature: per-step VPC / `NetworkConfig` injection — declarative `network_mode` across compute kinds.**

@@ -37,7 +37,7 @@
   "BedrockPromptTemplateGeneration": {
     "builder_step_name": "BedrockPromptTemplateGenerationStepBuilder",
     "config_class": "BedrockPromptTemplateGenerationConfig",
-    "description": "Bedrock prompt template generation step that creates structured prompt templates for classification tasks using the 5-component architecture pattern",
+    "description": "Bedrock prompt template generation step that assembles the prompt-config bundle (system prompt, category rules, output schema) into ONE standardized prompts.json prompt ruleset ({ruleset, rules} shape) with the output schema embedded in the prompt \u2014 the same contract the knowledge-routing producer emits, consumed by the Bedrock processing steps",
     "sagemaker_step_type": "Processing",
     "spec_type": "BedrockPromptTemplateGeneration"
   },
@@ -89,6 +89,41 @@
     "description": "Feature selection step using multiple statistical and ML-based methods with ensemble combination strategies",
     "sagemaker_step_type": "Processing",
     "spec_type": "FeatureSelection"
+  },
+  "GraphConstruction": {
+    "builder_step_name": "GraphConstructionStepBuilder",
+    "config_class": "GraphConstructionConfig",
+    "description": "GraphStorm gconstruct \u2014 build a partitioned DGL heterograph from the node/edge parquets + gconstruct schema emitted by GraphFeatureProcessing. BYO GraphStorm image.",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "GraphConstruction"
+  },
+  "GraphFeatureProcessing": {
+    "builder_step_name": "GraphFeatureProcessingStepBuilder",
+    "config_class": "GraphFeatureProcessingConfig",
+    "description": "Turn per-seed subgraph pickles + labelled seeds into the GraphStorm GConstruct input (per-type node/edge parquets, reverse edges, node-ID-keyed masks, gconstruct_config.json). BYO GraphStorm image.",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "GraphFeatureProcessing"
+  },
+  "GraphStormGNNInferenceEval": {
+    "builder_step_name": "GraphStormGNNInferenceEvalStepBuilder",
+    "config_class": "GraphStormGNNInferenceEvalConfig",
+    "description": "GraphStorm/DGL GNN out-of-time inference + evaluation on a custom GraphStorm GPU container (online-inference simulator \u2192 ROC-AUC / PR-AUC / Recall@Precision report + plots).",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "GraphStormGNNInferenceEval"
+  },
+  "GraphStormGNNTraining": {
+    "builder_step_name": "GraphStormGNNTrainingStepBuilder",
+    "config_class": "GraphStormGNNTrainingConfig",
+    "description": "GraphStorm/DGL R-GCN GNN training on a partitioned heterograph, run in a bring-your-own GraphStorm ECR container.",
+    "sagemaker_step_type": "Training",
+    "spec_type": "GraphStormGNNTraining"
+  },
+  "GraphSubgraphExtraction": {
+    "builder_step_name": "GraphSubgraphExtractionStepBuilder",
+    "config_class": "GraphSubgraphExtractionConfig",
+    "description": "Point-in-time k-hop subgraph pull from a property-graph DB for seed order IDs (BYO GraphStorm image, VPC-bound).",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "GraphSubgraphExtraction"
   },
   "HyperparameterPrep": {
     "builder_step_name": "HyperparameterPrepStepBuilder",
@@ -278,6 +313,13 @@
     "description": "SOPA Stage 2 instruction fine-tuning step for BLIP2-based model (Q-Former + Phi-3 LLM) with tabular-to-text instruction following",
     "sagemaker_step_type": "Training",
     "spec_type": "SOPAInstructionTuning"
+  },
+  "SlipboxKnowledgeRouting": {
+    "builder_step_name": "SlipboxKnowledgeRoutingStepBuilder",
+    "config_class": "SlipboxKnowledgeRoutingConfig",
+    "description": "Slipbox knowledge routing step that hosts the DKS knowledge+ruleset corpus and runs compile\u2192index\u2192route internally, emitting a compiled prompt ruleset plus per-record routed rule names and routing confidence for downstream Bedrock processing",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "SlipboxKnowledgeRouting"
   },
   "StratifiedSampling": {
     "builder_step_name": "StratifiedSamplingStepBuilder",

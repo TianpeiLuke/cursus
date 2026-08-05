@@ -1,0 +1,83 @@
+step_type: GraphConstruction
+node_type: internal
+registry:
+  sagemaker_step_type: Processing
+  requires: none
+  description: GraphStorm gconstruct — build a partitioned DGL heterograph from the node/edge parquets + gconstruct schema emitted by GraphFeatureProcessing. BYO GraphStorm image.
+patterns:
+  direct_input_keys: [graph_data]
+compute:
+  kind: byo_container
+  image_uri_field: image_uri
+  container_entrypoint: [bash, /opt/ml/processing/input/code/entrypoint.sh]
+contract:
+  entry_point: run_gconstruct.py
+  inputs:
+    graph_data:
+      path: /opt/ml/processing/input/data
+      required: true
+  outputs:
+    dgl_graph:
+      path: /opt/ml/processing/output
+  arguments: {}
+  job_arguments:
+  - flag: --graph-name
+    source: graph_name
+  - flag: --num-processes
+    source: num_processes
+  - flag: --num-parts
+    source: num_parts
+  env_vars:
+    required: []
+    optional:
+      SKIP_NONEXIST_EDGES: 'true'
+      RUN_SANITY_CHECK: 'true'
+      SANITY_CHECK_FULL: 'false'
+  framework_requirements:
+    graphstorm: '>=0.3'
+    dgl: '>=1.1'
+    pyarrow: '>=12.0.0'
+    pandas: '>=1.3.0'
+    numpy: '>=1.21.0'
+    pyyaml: '>=6.0'
+    tqdm: '>=4.0'
+  description: 'GraphStorm gconstruct wrapper (ports Nexus run_gconstruct.sh): rewrites the Step-2
+    output paths in gconstruct_config.json to the Step-3 input mount, patches a known GraphStorm
+    gconstruct unbound-variable bug (idempotent guard), runs
+    python3 -m graphstorm.gconstruct.construct_graph with multi-process partitioning, then an
+    optional graph-integrity sanity check. Emits a partitioned DGL heterograph (not parquet).
+
+    '
+spec:
+  dependencies:
+    graph_data:
+      type: processing_output
+      required: true
+      compatible_sources: [GraphFeatureProcessing]
+      semantic_keywords:
+      - graph
+      - nodes
+      - edges
+      - parquet
+      - gconstruct_config
+      - node_features
+      - edge_features
+      - masks
+      - labels
+  outputs:
+    dgl_graph:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['dgl_graph'].S3Output.S3Uri
+      semantic_keywords:
+      - dgl
+      - partitioned_graph
+      - heterograph
+      - partitions
+      - graph
+      aliases:
+      - partitioned_graph
+      - dgl_graph_path
+      - graph_data
+      - input_graph
+      - part_config
+      data_type: S3Uri

@@ -1,0 +1,99 @@
+step_type: GraphSubgraphExtraction
+node_type: source
+registry:
+  sagemaker_step_type: Processing
+  requires: none
+  description: Point-in-time k-hop subgraph pull from a property-graph DB for seed order IDs (BYO GraphStorm image, VPC-bound).
+patterns:
+  direct_input_keys: []
+compute:
+  kind: byo_container
+  image_uri_field: image_uri
+  container_entrypoint: [bash, /opt/ml/processing/input/code/entrypoint.sh]
+  network_mode: config
+  subnets_field: subnets
+  security_group_ids_field: security_group_ids
+contract:
+  entry_point: graph_subgraph_extraction.py
+  inputs:
+    seeds:
+      path: /opt/ml/processing/input/seeds
+      required: true
+    code:
+      path: /opt/ml/processing/input/code
+      required: true
+  outputs:
+    subgraphs:
+      path: /opt/ml/processing/output
+  arguments: {}
+  job_arguments:
+  - flag: --order-ids-file
+    source: seeds_local_file
+  - flag: --bucket-name
+    source: output_bucket
+  - flag: --traversal-out-dir
+    source: output_key_prefix
+  - flag: --cluster
+    source: nebula_cluster
+  env_vars:
+    required: []
+    optional:
+      MAX_WORKERS: '100'
+      SESSION_POOL_MIN_SIZE: '100'
+      SESSION_POOL_MAX_SIZE: '300'
+      NEBULA_TIMEOUT_MS: '10000'
+  framework_requirements:
+    nebula3-python: '>=3.4'
+    polars: '>=0.20'
+    pandas: '>=1.5'
+    boto3: '>=1.28'
+    tqdm: '>=4.65'
+  description: 'Graph subgraph extraction script that opens an authenticated property-graph
+    session pool and runs a point-in-time k-hop traversal per seed order ID, writing one
+    pickled subgraph per seed directly to S3. Runs the custom GraphStorm image via a
+    ContainerEntrypoint bypass; VPC-bound to reach the graph cluster.
+
+    '
+spec:
+  dependencies:
+    seeds:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - StratifiedSampling
+      - TabularPreprocessing
+      - CradleDataLoading
+      - ProcessingStep
+      semantic_keywords:
+      - seeds
+      - order_ids
+      - object_ids
+      - seed
+      - ids
+    code:
+      type: processing_output
+      required: false
+      compatible_sources:
+      - DummyDataLoading
+      - ProcessingStep
+      semantic_keywords:
+      - code
+      - bundle
+      - entrypoint
+      - scripts
+  outputs:
+    subgraphs:
+      type: processing_output
+      property_path: properties.ProcessingOutputConfig.Outputs['subgraphs'].S3Output.S3Uri
+      semantic_keywords:
+      - subgraph
+      - traversal
+      - graph
+      - khop
+      - per_order
+      - pickle
+      aliases:
+      - traversals
+      - order_subgraphs
+      - graph_data
+      data_type: S3Uri
