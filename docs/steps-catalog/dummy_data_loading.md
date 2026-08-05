@@ -40,6 +40,7 @@ Steps that declare this step as a compatible input source:
 - [BedrockBatchProcessing](bedrock_batch_processing.md)
 - [BedrockProcessing](bedrock_processing.md)
 - [GraphStormGNNTraining](graphstorm_gnn_training.md)
+- [GraphStormGNNTuning](graphstorm_gnn_tuning.md)
 - [GraphSubgraphExtraction](graph_subgraph_extraction.md)
 - [SlipboxKnowledgeRouting](slipbox_knowledge_routing.md)
 - [TSAPreprocessing](tsa_preprocessing.md)

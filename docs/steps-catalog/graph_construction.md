@@ -39,6 +39,7 @@ GraphStorm gconstruct wrapper (ports Nexus run_gconstruct.sh): rewrites the Step
 Steps that declare this step as a compatible input source:
 
 - [GraphStormGNNTraining](graphstorm_gnn_training.md)
+- [GraphStormGNNTuning](graphstorm_gnn_tuning.md)
 
 ## Framework requirements
 

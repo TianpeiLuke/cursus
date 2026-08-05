@@ -1,6 +1,6 @@
 # Step Catalog
 
-Every pipeline step that cursus supports — **60 steps** — generated directly from the `.step.yaml` interface files. Each row links to that step's page: its purpose, its inputs (with the upstream steps that can produce them), its outputs, and the downstream steps that consume it.
+Every pipeline step that cursus supports — **61 steps** — generated directly from the `.step.yaml` interface files. Each row links to that step's page: its purpose, its inputs (with the upstream steps that can produce them), its outputs, and the downstream steps that consume it.
 
 A cursus pipeline is a DAG of these steps. An edge is valid when a downstream step's input **type** matches an upstream step's output, and the upstream step is listed among the input's *compatible producers* — see [The DAG + Config → Pipeline model](../concepts/dag_and_compilation.md) and [Registry and Step Catalog](../concepts/registry_and_discovery.md).
 
@@ -114,6 +114,14 @@ _Model registration — register a model with MIMS._
 | Step | Node | Compute | Purpose | Consumes | Produces |
 |------|------|---------|---------|----------|----------|
 | [Registration](registration.md) | sink | `—` | Model registration step. | `model_artifacts`, `payload_samples` | — |
+
+## Tuning
+
+_Hyperparameter tuning jobs — search a training step's hyperparameters for the best model._
+
+| Step | Node | Compute | Purpose | Consumes | Produces |
+|------|------|---------|---------|----------|----------|
+| [GraphStormGNNTuning](graphstorm_gnn_tuning.md) | internal | `byo_container` | GraphStorm/DGL R-GCN hyperparameter tuning — a HyperparameterTuner search over the GNN training estimator, run in a bring-your-own GraphStorm ECR container. | `hyperparameters`, `processing_output` | `model_artifacts` |
 
 ---
 

@@ -39,6 +39,7 @@ OUT_DIR = HERE / "steps-catalog"
 STEP_TYPE_BLURB = {
     "Processing": "Processing jobs — data prep, feature engineering, evaluation, packaging.",
     "Training": "Training jobs — fit a model from prepared data + hyperparameters.",
+    "Tuning": "Hyperparameter tuning jobs — search a training step's hyperparameters for the best model.",
     "Transform": "Batch transform jobs — run inference over a dataset with a model.",
     "CreateModel": "Model creation — wrap trained artifacts into a deployable SageMaker model.",
     "CradleDataLoading": "Cradle data loading — pull source data via the SAIS/Cradle SDK.",

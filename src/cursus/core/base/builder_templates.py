@@ -1106,6 +1106,143 @@ class SDKDelegationHandler(PatternHandler):
         return self._attach_spec(b, step)
 
 
+@register_strategy(
+    axis="sagemaker_step_type",
+    name="Tuning",
+    verb="Tuning",
+    knobs=(
+        KnobSpec(
+            "make_compute",
+            "callable",
+            doc="estimator factory the tuner wraps; defaults to builder._create_compute(verb='Training')",
+        ),
+        KnobSpec("direct_input_keys", "list", ["input_path"], doc="direct input keys"),
+    ),
+)
+class TuningHandler(TrainingHandler):
+    """Tuning verb — wraps the training estimator in a ``HyperparameterTuner`` and builds a
+    ``TuningStep`` (SDK v2.x).
+
+    A hyperparameter-tuning job *is* a training job with a search wrapper, so this handler REUSES
+    the ``TrainingHandler`` behavior axes verbatim: ``get_inputs`` (the train/val/test channel
+    dict), ``get_outputs`` (the single ``output_path`` derivation), and the ``make_compute``
+    estimator factory (``_create_compute(verb='Training')`` — including a ``byo_container`` estimator
+    for GraphStorm). The ONLY new behavior is the search wrapper (FZ 31e1d3p): the estimator Cursus
+    already builds is handed to a ``HyperparameterTuner`` whose search config comes from the tuning
+    config fields, and the step becomes a ``TuningStep(step_args=tuner.fit(inputs=channels))``.
+
+    Under a ``PipelineSession`` (the builder's ``self.session``), ``tuner.fit(inputs=...)`` returns
+    deferred ``step_args`` rather than launching a job — the same lazy-construction shape the 2B
+    Processing steps use with ``processor.run(...)``. Downstream steps read the winner via
+    ``TuningStep.get_top_model_s3_uri`` / ``.properties.BestTrainingJob`` (property paths already
+    recognized by ``property_path_validator``).
+    """
+
+    def build_step(self, b, **kwargs):
+        from sagemaker.tuner import (
+            HyperparameterTuner,
+            ContinuousParameter,
+            IntegerParameter,
+            CategoricalParameter,
+        )
+        from sagemaker.workflow.steps import TuningStep
+
+        inputs = self._merge_inputs(b, kwargs)
+        input_path = kwargs.get("input_path")
+        if input_path is not None:
+            inputs["input_path"] = input_path
+        dependencies = kwargs.get("dependencies", [])
+        enable_caching = kwargs.get("enable_caching", True)
+
+        step_name = b._get_step_name()
+        # ORDER (inherited from TrainingHandler): inputs -> empty-guard -> outputs -> make_compute
+        # (the estimator is created WITH output_path threaded in), then WRAP in the tuner.
+        training_inputs = (
+            b._get_inputs(inputs)
+            if _overrides(b, "_get_inputs")
+            else self.get_inputs(b, inputs)
+        )
+        if len(training_inputs) == 0:
+            raise ValueError(
+                "No tuning inputs available. Provide input_path or ensure dependencies "
+                "supply necessary outputs."
+            )
+        output_path = (
+            b._get_outputs({})
+            if _overrides(b, "_get_outputs")
+            else self.get_outputs(b, {})
+        )
+        make_compute = self.knobs.get("make_compute")
+        if make_compute is None:
+            if _overrides(b, "_create_estimator") or "_create_estimator" in vars(b):
+                make_compute = lambda _b, op: _b._create_estimator(op)  # noqa: E731
+            elif getattr(getattr(b, "contract", None), "compute", None) and getattr(
+                b.contract.compute, "kind", None
+            ):
+                make_compute = lambda _b, op: _b._create_compute(op, verb="Training")  # noqa: E731
+            else:
+                raise NotImplementedError(
+                    "TuningHandler needs a `make_compute` knob, a builder _create_estimator(), "
+                    "or a contract.compute descriptor."
+                )
+        estimator = make_compute(
+            b, output_path
+        )  # the SAME estimator TrainingHandler would build
+
+        # --- the one new axis: the HyperparameterTuner search wrapper ---
+        cfg = b.config
+        tuner = HyperparameterTuner(
+            estimator=estimator,
+            objective_metric_name=cfg.objective_metric_name,
+            objective_type=getattr(cfg, "objective_type", "Maximize"),
+            hyperparameter_ranges=self._build_parameter_ranges(
+                cfg, ContinuousParameter, IntegerParameter, CategoricalParameter
+            ),
+            metric_definitions=getattr(cfg, "metric_definitions", None),
+            strategy=getattr(cfg, "tuning_strategy", "Bayesian"),
+            max_jobs=getattr(cfg, "max_jobs", 20),
+            max_parallel_jobs=getattr(cfg, "max_parallel_jobs", 1),
+            early_stopping_type=getattr(cfg, "early_stopping_type", "Off"),
+        )
+        try:
+            step = TuningStep(
+                name=step_name,
+                step_args=tuner.fit(inputs=training_inputs),
+                depends_on=dependencies,
+                cache_config=b._get_cache_config(enable_caching),
+            )
+        except Exception as e:
+            b.log_warning("Error creating TuningStep: %s", str(e))
+            raise ValueError(f"Failed to create TuningStep: {str(e)}") from e
+        return self._attach_spec(b, step)
+
+    @staticmethod
+    def _build_parameter_ranges(cfg, Continuous, Integer, Categorical):
+        """Convert the config ``search_space`` dict into SDK ParameterRange objects.
+
+        The SDK analog of the Nexus launcher's ``_build_param_ranges`` (launch_hpo.py). Shape::
+
+            search_space = {
+              "continuous":  [{"name": "gsf.hyperparam.lr", "min": 1e-4, "max": 1e-2, "scaling": "Logarithmic"}],
+              "integer":     [{"name": "gsf.hyperparam.num_layers", "min": 1, "max": 3}],
+              "categorical": [{"name": "gsf.hyperparam.aggregator", "values": ["mean", "pool"]}],
+            }
+        """
+        space = getattr(cfg, "search_space", None) or {}
+        ranges = {}
+        for p in space.get("continuous", []) or []:
+            ranges[p["name"]] = Continuous(
+                p["min"], p["max"], scaling_type=p.get("scaling", "Auto")
+            )
+        for p in space.get("integer", []) or []:
+            ranges[p["name"]] = Integer(
+                p["min"], p["max"], scaling_type=p.get("scaling", "Auto")
+            )
+        for p in space.get("categorical", []) or []:
+            ranges[p["name"]] = Categorical(p["values"])
+        return ranges
+
+
 # ---------------------------------------------------------------------------
 # Routing — delegates to the strategy_registry (the single source of truth).
 # The handler classes above self-register via @register_strategy decorations (below the class

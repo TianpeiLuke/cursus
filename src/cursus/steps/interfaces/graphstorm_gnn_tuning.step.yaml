@@ -1,0 +1,73 @@
+step_type: GraphStormGNNTuning
+node_type: internal
+registry:
+  sagemaker_step_type: Tuning
+  requires: none
+  description: GraphStorm/DGL R-GCN hyperparameter tuning — a HyperparameterTuner search over the GNN training estimator, run in a bring-your-own GraphStorm ECR container.
+patterns:
+  direct_input_keys: [graph_data]
+compute:
+  kind: byo_container
+  image_uri_field: training_image_uri
+  container_entrypoint: [python3, /opt/ml/input/data/code/train.py]
+  lock_training_region: true
+contract:
+  entry_point: graphstorm_gnn_training.py
+  inputs:
+    graph_data:
+      path: /opt/ml/input/data/graph
+      required: true
+      channels: [graph]
+    training_config:
+      path: /opt/ml/input/data/config
+      required: true
+      channels: [config]
+    code:
+      path: /opt/ml/input/data/code
+      required: false
+      channels: [code]
+  outputs:
+    best_model:
+      path: /opt/ml/model
+  arguments: {}
+  job_arguments: []
+  env_vars:
+    required: []
+    optional:
+      TRAINING_MODE: multi_task
+      NUM_SERVERS: '1'
+      BATCH_SIZE_OVERRIDE: ''
+  framework_requirements: {}
+  description: 'GraphStorm R-GCN hyperparameter tuning. Wraps the same GraphStorm training estimator
+    the GraphStormGNNTraining step builds (byo_container, verbatim TrainingImage) in a SageMaker
+    HyperparameterTuner, searching the configured search_space over the objective metric (regex-
+    scraped from the container''s stdout via metric_definitions, as no SDK-managed metrics exist for
+    a custom image). Emits N training trials and selects the best; downstream steps read the winner
+    via get_top_model_s3_uri / properties.BestTrainingJob. The estimator, channels, and container
+    entrypoint are identical to GraphStormGNNTraining — only the search wrapper is added.
+
+    '
+spec:
+  dependencies:
+    graph_data:
+      type: processing_output
+      required: true
+      compatible_sources: [GraphConstruction]
+      semantic_keywords: [graph, partitioned, dgl, partition_config, gconstruct, heterograph]
+    training_config:
+      type: hyperparameters
+      required: true
+      compatible_sources: [GraphFeatureProcessing, GraphConstruction]
+      semantic_keywords: [config, yaml, graphstorm, training_config, hyperparameters]
+    code:
+      type: processing_output
+      required: false
+      compatible_sources: [DummyDataLoading, ProcessingStep]
+      semantic_keywords: [code, bundle, entrypoint, train_script]
+  outputs:
+    best_model:
+      type: model_artifacts
+      property_path: properties.BestTrainingJob.TrainingJobName
+      semantic_keywords: [model, gnn, graphstorm, checkpoint, rgcn, best, tuned]
+      aliases: [BestTrainingJob, model_data, model_input]
+      data_type: String

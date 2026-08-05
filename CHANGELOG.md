@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.29] - 2026-08-05
+
+**Feature: hyperparameter-tuning step — a new `Tuning` construction verb (a SageMaker `TuningStep` wrapping the training estimator).**
+
+The first new construction verb since the 5-handler set was defined. A tuning job *is* a training
+job with a search wrapper, so the verb REUSES `TrainingHandler`'s five behavior axes (estimator /
+channels / output_path / env / job_args) and adds exactly ONE new axis — the `HyperparameterTuner`
+search wrapper. A pipeline that tunes hyperparameters — e.g. the HPO-composable GraphStorm GNN
+training step — is now natively expressible. Purely additive: no existing step / verb / compute
+kind changes.
+
+### Added
+- `core/base/builder_templates.py` (`TuningHandler(TrainingHandler)`): a 6th `@register_strategy`
+  handler on `axis="sagemaker_step_type", name="Tuning"`. `build_step` builds the SAME estimator
+  `TrainingHandler` would (`make_compute` → `_create_compute(verb="Training")`, incl.
+  `byo_container`), wraps it in a `HyperparameterTuner`, and emits
+  `TuningStep(step_args=tuner.fit(inputs=channels))`. Under a `PipelineSession`, `tuner.fit(...)`
+  returns deferred `step_args` (no live job) — the same lazy-construction shape the 2B Processing
+  steps use. Includes `_build_parameter_ranges` (config `search_space` → SDK ParameterRange objects).
+- `steps/configs/config_tuning_step_base.py` (`TuningStepConfigMixin`): the search-axis fields
+  (`objective_metric_name`, `search_space`, `objective_type`, `tuning_strategy`, `max_jobs`,
+  `max_parallel_jobs`, `early_stopping_type`, `metric_definitions`) — each maps to a
+  `HyperparameterTuner` argument. Validator enforces a non-empty search space and requires
+  `metric_definitions` for a `byo_container` (a custom image's objective must be regex-scraped from
+  stdout).
+- `steps/configs/config_graphstorm_gnn_tuning_step.py` (`GraphStormGNNTuningConfig`): the first
+  Tuning interface's config — the idiomatic composition
+  `GraphStormGNNTrainingConfig + TuningStepConfigMixin` (inherits every estimator field, adds the
+  search fields).
+- `steps/interfaces/graphstorm_gnn_tuning.step.yaml` (`GraphStormGNNTuning`): the first `Tuning`
+  interface — wraps the GraphStorm GNN training estimator (`byo_container`, verbatim
+  `AlgorithmSpecification.TrainingImage`, graph/config/code channels); the best model is
+  downstream-consumable via `get_top_model_s3_uri` / `properties.BestTrainingJob`. Zero builder
+  Python (facade-synthesized). Image identity is a config field with a placeholder default.
+- `Tuning` added to the step-type floor + `RegistrySection._SAGEMAKER_STEP_TYPES` (kept in sync).
+- `docs/gen_step_catalog.py`: `Tuning` verb blurb; `docs/steps-catalog/` regenerated (62 pages).
+- Registry golden snapshot re-baselined (+1 row `GraphStormGNNTuning`, zero churn).
+- Tests: `tests/core/base/test_tuning_step.py` (13) — search-axis config, range conversion, BYO
+  metric-definitions validator, `TuningHandler` builds a `TuningStep` wrapping the verbatim-image
+  estimator (no `image_uris.retrieve`), property-path resolution, conformance, and an end-to-end
+  GraphStorm GNN tuning shape.
+
+### Notes
+- The `property_path_validator.py` `Tuning`/`hyperparameter` branch (dormant `BestTrainingJob.*`
+  paths) was already present — this release activates it by making `Tuning` a live step type; no
+  edit was needed there.
+- v3 forward-compat: the SDK-facing construction lives inside `TuningHandler.build_step`, so the
+  v3 import move (`sagemaker.tuner` → `sagemaker.train.tuner`) is a one-file change.
+
 ## [2.9.28] - 2026-08-04
 
 **Feature: a 5-step graph-ML (GraphStorm/DGL GNN) step family — the first graph-native pipeline steps.**

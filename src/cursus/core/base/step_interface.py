@@ -464,6 +464,7 @@ class RegistrySection(BaseModel):
         "RegisterModel",
         "Training",
         "Transform",
+        "Tuning",
         "Utility",
     )
 

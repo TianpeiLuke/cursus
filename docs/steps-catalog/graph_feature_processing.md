@@ -41,6 +41,7 @@ Steps that declare this step as a compatible input source:
 
 - [GraphConstruction](graph_construction.md)
 - [GraphStormGNNTraining](graphstorm_gnn_training.md)
+- [GraphStormGNNTuning](graphstorm_gnn_tuning.md)
 
 ## Framework requirements
 

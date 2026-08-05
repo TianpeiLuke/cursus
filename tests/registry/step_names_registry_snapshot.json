@@ -118,6 +118,13 @@
     "sagemaker_step_type": "Training",
     "spec_type": "GraphStormGNNTraining"
   },
+  "GraphStormGNNTuning": {
+    "builder_step_name": "GraphStormGNNTuningStepBuilder",
+    "config_class": "GraphStormGNNTuningConfig",
+    "description": "GraphStorm/DGL R-GCN hyperparameter tuning \u2014 a HyperparameterTuner search over the GNN training estimator, run in a bring-your-own GraphStorm ECR container.",
+    "sagemaker_step_type": "Tuning",
+    "spec_type": "GraphStormGNNTuning"
+  },
   "GraphSubgraphExtraction": {
     "builder_step_name": "GraphSubgraphExtractionStepBuilder",
     "config_class": "GraphSubgraphExtractionConfig",

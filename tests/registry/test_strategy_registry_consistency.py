@@ -19,6 +19,7 @@ from cursus.core.base.builder_templates import resolve_handler
 
 _ROUTABLE_VERB_TYPES = {
     "Training",
+    "Tuning",
     "CreateModel",
     "Transform",
     "CradleDataLoading",

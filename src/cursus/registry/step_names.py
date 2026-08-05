@@ -465,7 +465,7 @@ def get_all_sagemaker_step_types(workspace_id: str = None) -> List[str]:
 # under-accepting a new step's own type during its own registration. FZ 31e1d3g3 Phase C3 (#12):
 # this is the ONLY hardcoded set — the single source below unions it with the live types, replacing
 # the two previously-divergent hand-maintained sets (this one + validation_utils.VALID_SAGEMAKER_TYPES).
-_SAGEMAKER_STEP_TYPE_FLOOR = {"Base", "Utility", "RegisterModel", "Lambda"}
+_SAGEMAKER_STEP_TYPE_FLOOR = {"Base", "Utility", "RegisterModel", "Lambda", "Tuning"}
 
 
 def get_valid_sagemaker_step_types(workspace_id: str = None) -> set:
