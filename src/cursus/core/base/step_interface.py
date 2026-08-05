@@ -173,6 +173,22 @@ class ComputeSpec(BaseModel):
     kms_network: bool = False
     #: ``estimator`` kind only: explicitly retrieve the training image_uri (PyTorch-for-LightGBM).
     retrieve_image: bool = False
+    #: ``estimator`` kind only: the framework NAME passed to ``image_uris.retrieve`` for the TRAINING
+    #: image (``retrieve_image`` path). ``None`` ⇒ ``pytorch`` (the historical hardcoded default), so
+    #: existing estimator steps are unchanged; a step retrieving a different DLC (e.g. ``huggingface``)
+    #: sets it here — no code change. Distinct from ``framework_name`` (that is the MODEL-inference
+    #: image framework; this is the TRAINING-image framework).
+    retrieve_framework: Optional[str] = None
+    #: ``byo_container`` kind: the config attr holding a user-supplied ECR ``image_uri`` that flows
+    #: VERBATIM to ``AppSpecification.ImageUri`` (Processing) / ``AlgorithmSpecification.TrainingImage``
+    #: (Training) with NO ``image_uris.retrieve``. This is how a non-DLC framework (GraphStorm/DGL,
+    #: custom CUDA/runtime images) enters Cursus without a new ``_KINDS``/``_SDK_CLASSES`` entry — the
+    #: family is expressed as interface DATA, not framework code (FZ 31e1d3m/n).
+    image_uri_field: Optional[str] = None
+    #: ``byo_container`` kind: optional ``ContainerEntrypoint`` bypass — a command list (e.g.
+    #: ``["bash", "run.sh"]``) so the image runs its OWN entrypoint instead of the default
+    #: ``["python3"]``. ``None`` ⇒ the container is invoked as a normal script container (``python3``).
+    container_entrypoint: Optional[List[str]] = None
     #: ``model`` kind: the framework NAME passed to ``image_uris.retrieve`` for the INFERENCE image
     #: (``xgboost`` / ``pytorch``). Distinct from ``sdk_class`` (the model CLASS, e.g. ``XGBoostModel``):
     #: the class instantiates the model, this names the container image to retrieve.
@@ -205,6 +221,9 @@ class ComputeSpec(BaseModel):
         "estimator",
         "model",
         "transformer",
+        # BYO container: user-supplied image_uri run verbatim on the Processing or Training verb the
+        # handler already selected (no image_uris.retrieve, no sdk_class). FZ 31e1d3m.
+        "byo_container",
     )
     _SDK_CLASSES: ClassVar = (
         "PyTorch",
@@ -225,6 +244,61 @@ class ComputeSpec(BaseModel):
             return self
         if self.kind not in self._KINDS:
             raise ValueError(f"compute.kind {self.kind!r} not in {self._KINDS}")
+        # BYO container owns its own image — it takes image_uri_field (+ optional entrypoint) and
+        # NONE of the DLC/retrieve knobs. Validate + return early so the DLC-oriented rules below
+        # (which key on the other kinds) never apply to it. FZ 31e1d3m.
+        if self.kind == "byo_container":
+            if not self.image_uri_field:
+                raise ValueError(
+                    "compute.kind='byo_container' requires image_uri_field"
+                )
+            forbidden = {
+                "sdk_class": self.sdk_class,
+                "framework_version_field": self.framework_version_field,
+                "py_version_field": self.py_version_field,
+                "framework_name": self.framework_name,
+                "retrieve_framework": self.retrieve_framework,
+            }
+            offending = [k for k, v in forbidden.items() if v]
+            if offending:
+                raise ValueError(
+                    f"compute.kind='byo_container' owns its image; these DLC knobs are invalid: "
+                    f"{', '.join(sorted(offending))}"
+                )
+            if self.retrieve_image:
+                raise ValueError(
+                    "compute.retrieve_image is invalid for kind='byo_container' (image is verbatim)"
+                )
+            if self.kms_network:
+                raise ValueError(
+                    "compute.kms_network is only valid for kind='script'; byo_container uses "
+                    "network_mode (FZ 31e1d3o) for VPC access"
+                )
+            if self.instance_size_mode not in ("large_or_small", "fixed"):
+                raise ValueError(
+                    f"compute.instance_size_mode {self.instance_size_mode!r} invalid"
+                )
+            # BYO is pure SageMaker SDK — no build-time 3rd-party import.
+            if self.requires not in self._REQUIRES:
+                raise ValueError(
+                    f"compute.requires {self.requires!r} not in {self._REQUIRES}"
+                )
+            if self.requires != "none":
+                raise ValueError(
+                    "compute.requires must be 'none' for kind='byo_container'"
+                )
+            return self
+        # image_uri_field / container_entrypoint are byo_container-only knobs.
+        if self.image_uri_field or self.container_entrypoint is not None:
+            raise ValueError(
+                "compute.image_uri_field / container_entrypoint are only valid for "
+                "kind='byo_container'"
+            )
+        # retrieve_framework is an estimator-only knob (the retrieve_image training path).
+        if self.retrieve_framework and self.kind != "estimator":
+            raise ValueError(
+                "compute.retrieve_framework is only valid for kind='estimator'"
+            )
         if self.sdk_class is not None and self.sdk_class not in self._SDK_CLASSES:
             raise ValueError(
                 f"compute.sdk_class {self.sdk_class!r} not in {self._SDK_CLASSES}"

@@ -92,6 +92,15 @@ class BasePipelineConfig(BaseModel, ABC):
 
     py_version: str = Field(default="py310", description="Default Python version.")
 
+    image_uri: Optional[str] = Field(
+        default=None,
+        description=(
+            "Verbatim ECR image URI for compute.kind=byo_container steps (run as-is, no "
+            "image_uris.retrieve). None for DLC-managed kinds (sklearn/xgboost/framework/"
+            "estimator/model), which derive their image from framework_version. FZ 31e1d3m."
+        ),
+    )
+
     source_dir: Optional[str] = Field(
         default=None,
         description="Common source directory for scripts if applicable. Can be overridden by step configs.",

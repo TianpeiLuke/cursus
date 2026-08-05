@@ -372,7 +372,7 @@ class ProcessingHandler(PatternHandler):
             elif getattr(getattr(b, "contract", None), "compute", None) and getattr(
                 b.contract.compute, "kind", None
             ):
-                make_compute = lambda _b: _b._create_compute()  # noqa: E731
+                make_compute = lambda _b: _b._create_compute(verb="Processing")  # noqa: E731
             else:
                 raise NotImplementedError(
                     "ProcessingHandler needs a `make_compute` knob, a builder _create_processor(), "
@@ -616,7 +616,7 @@ class TrainingHandler(PatternHandler):
             elif getattr(getattr(b, "contract", None), "compute", None) and getattr(
                 b.contract.compute, "kind", None
             ):
-                make_compute = lambda _b, op: _b._create_compute(op)  # noqa: E731
+                make_compute = lambda _b, op: _b._create_compute(op, verb="Training")  # noqa: E731
             else:
                 raise NotImplementedError(
                     "TrainingHandler needs a `make_compute` knob, a builder _create_estimator(), "

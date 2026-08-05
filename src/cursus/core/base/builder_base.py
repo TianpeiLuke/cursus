@@ -712,6 +712,7 @@ class StepBuilderBase(ABC):
         *,
         model_data: Optional[Any] = None,
         model_name: Optional[Any] = None,
+        verb: Optional[str] = None,
     ) -> Any:
         """Build the step's compute object (processor / estimator / model / transformer) from the
         declarative ``contract.compute`` descriptor + config (FZ 31e1d3k).
@@ -725,6 +726,11 @@ class StepBuilderBase(ABC):
         Extra runtime args are threaded per verb: ``output_path`` (estimator/transformer),
         ``model_data`` (model — from ModelCreationHandler), ``model_name`` (transformer — from
         TransformHandler). Each handler passes only what its verb produces.
+
+        ``verb`` disambiguates the ``byo_container`` kind, which is the only kind that serves BOTH
+        Processing and Training (the Processing/Training handlers pass ``verb="Processing"``/
+        ``"Training"``). For all other kinds the kind alone determines the verb, so ``verb`` is
+        ignored.
         """
         spec = getattr(self.contract, "compute", None)
         kind = getattr(spec, "kind", None)
@@ -748,6 +754,19 @@ class StepBuilderBase(ABC):
         py = getattr(cfg, spec.py_version_field) if spec.py_version_field else None
         job_name = self._generate_job_name()
         env = self._get_environment_variables()
+
+        if kind == "byo_container":
+            # BYO container: the image is a config field, run verbatim on whichever verb the handler
+            # selected (Processing → ScriptProcessor; Training → generic Estimator). No
+            # image_uris.retrieve, no sdk_class. FZ 31e1d3m. `verb` is passed explicitly by the
+            # Processing/Training handler lambdas; when absent, infer from output_path (only Training
+            # threads it for a BYO step — Model/Transform are never byo_container).
+            resolved_verb = verb or (
+                "Training" if output_path is not None else "Processing"
+            )
+            return self._create_byo_container_compute(
+                spec, cfg, resolved_verb, job_name, env, output_path
+            )
 
         if kind in ("sklearn", "xgboost", "framework", "script"):
             instance_type = self._processing_instance_type(spec)
@@ -840,7 +859,10 @@ class StepBuilderBase(ABC):
                     else (cfg.aws_region or "us-east-1")
                 )
                 est_kwargs["image_uri"] = image_uris.retrieve(
-                    framework="pytorch",
+                    # retrieve_framework un-hardcodes the historical "pytorch" so an estimator step
+                    # can pull a different DLC training image (e.g. huggingface) by declaring it in
+                    # the .step.yaml — None preserves the legacy default. FZ 31e1d3m.
+                    framework=(spec.retrieve_framework or "pytorch"),
                     region=region,
                     version=fw,
                     py_version=py,
@@ -898,6 +920,73 @@ class StepBuilderBase(ABC):
             )
 
         raise ValueError(f"compute.kind {kind!r} not built by _create_compute")
+
+    def _create_byo_container_compute(
+        self,
+        spec: Any,
+        cfg: Any,
+        verb: str,
+        job_name: str,
+        env: Dict[str, str],
+        output_path: Optional[str],
+    ) -> Any:
+        """Build a BYO-container compute object — a user-supplied ECR ``image_uri`` run verbatim on
+        the Processing or Training verb the handler selected (FZ 31e1d3m).
+
+        This is how a non-DLC framework (GraphStorm/DGL, custom CUDA/runtime images) enters Cursus:
+        the image is a config field (``spec.image_uri_field``), passed straight through with NO
+        ``image_uris.retrieve`` and NO ``sdk_class``. ``container_entrypoint`` optionally bypasses the
+        default ``["python3"]`` command so the container runs its own entrypoint.
+        """
+        image_uri = getattr(cfg, spec.image_uri_field, None)
+        if not image_uri:
+            raise ValueError(
+                f"compute.kind='byo_container' requires config.{spec.image_uri_field} to be set "
+                f"(the verbatim ECR image URI); got {image_uri!r}"
+            )
+
+        if verb == "Processing":
+            # ScriptProcessor with the verbatim image (reuses the existing processing SDK object; the
+            # only difference from the `script` kind is the image source — config, not role-derived).
+            from sagemaker.processing import ScriptProcessor
+
+            return ScriptProcessor(
+                image_uri=image_uri,
+                role=self.role,
+                instance_count=cfg.processing_instance_count,
+                instance_type=self._processing_instance_type(spec),
+                volume_size_in_gb=cfg.processing_volume_size,
+                command=(spec.container_entrypoint or ["python3"]),
+                sagemaker_session=self.session,
+                base_job_name=job_name,
+                env=env,
+            )
+
+        if verb == "Training":
+            # Generic Estimator (NOT PyTorch/SKLearn) — no framework_version/py_version (a raw
+            # Estimator does not accept them), image passed verbatim. entry_point is None when the
+            # container runs its own entrypoint (ContainerEntrypoint bypass), else the training script.
+            from sagemaker.estimator import Estimator
+
+            est_kwargs = dict(
+                image_uri=image_uri,
+                role=self.role,
+                instance_type=cfg.training_instance_type,
+                instance_count=cfg.training_instance_count,
+                volume_size=cfg.training_volume_size,
+                base_job_name=job_name,
+                sagemaker_session=self.session,
+                output_path=output_path,
+                environment=env,
+            )
+            if spec.container_entrypoint is None:
+                est_kwargs["entry_point"] = cfg.training_entry_point
+                est_kwargs["source_dir"] = cfg.effective_source_dir
+            return Estimator(**est_kwargs)
+
+        raise ValueError(
+            f"compute.kind='byo_container' supports Processing/Training verbs, got {verb!r}"
+        )
 
     @staticmethod
     def _resolve_sdk_class(name: Optional[str]):

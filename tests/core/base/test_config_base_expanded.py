@@ -776,6 +776,7 @@ class TestBasePipelineConfigExpanded:
             "current_date",
             "framework_version",
             "py_version",
+            "image_uri",
             "source_dir",
             "enable_caching",
             "use_secure_pypi",

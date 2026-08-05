@@ -5,6 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.26] - 2026-08-04
+
+**Feature: `byo_container` compute kind — run a user-supplied ECR image verbatim on the Processing or Training verb.**
+
+Expands the declarative compute model so a step can pass an arbitrary `image_uri` straight
+through to `AppSpecification.ImageUri` (Processing) / `AlgorithmSpecification.TrainingImage`
+(Training) with **no `image_uris.retrieve`**. This lets a non-DLC framework (e.g. a graph-ML
+stack like GraphStorm/DGL, or any custom CUDA/runtime image) enter Cursus without a new
+`_KINDS` / `_SDK_CLASSES` entry — the framework family is expressed as interface DATA (a
+`.step.yaml` compute descriptor + a config field), not framework code.
+
+### Added
+- `core/base/step_interface.py` (`ComputeSpec`): new `byo_container` value in `_KINDS`, plus
+  three fields — `image_uri_field` (config attr whose value is the verbatim image URI),
+  `container_entrypoint` (optional `ContainerEntrypoint` bypass so the image runs its own
+  entrypoint instead of `["python3"]`), and `retrieve_framework` (un-hardcodes the estimator
+  retrieve path, below). `_validate_compute` gains a self-contained `byo_container` block that
+  requires `image_uri_field` and forbids the DLC/retrieve knobs (`sdk_class`,
+  `framework_version_field`, `py_version_field`, `framework_name`, `retrieve_image`,
+  `kms_network`); `requires` must stay `none` (pure SageMaker SDK).
+- `core/base/config_base.py` (`BasePipelineConfig`): new optional `image_uri` field (default
+  `None`) inherited by every step config, so both Processing and Training BYO steps read one
+  field. `None` for the DLC-managed kinds.
+- `core/base/builder_base.py`: `_create_compute` gains a `verb` parameter and a
+  `_create_byo_container_compute(spec, cfg, verb, ...)` helper — Processing builds a
+  `ScriptProcessor` with the verbatim image + `command=container_entrypoint or ["python3"]`;
+  Training builds a **generic `sagemaker.estimator.Estimator`** (not `PyTorch`) with
+  `image_uri` verbatim and `entry_point` omitted when the container runs its own entrypoint.
+- `core/base/builder_templates.py`: the Processing/Training handler `make_compute` lambdas now
+  pass `verb="Processing"` / `verb="Training"` so the one dual-verb kind dispatches
+  unambiguously.
+- `tests/core/base/test_compute_spec.py`: BYO valid/invalid descriptor cases + round-trip
+  construction tests asserting the verbatim image, the `container_entrypoint` bypass, the
+  generic-`Estimator` Training path, and that **`image_uris.retrieve` is never called** on the
+  BYO path (image placeholder `111122223333`).
+
+### Changed
+- `core/base/builder_base.py`: the `estimator` `retrieve_image` path no longer hardcodes
+  `framework="pytorch"` — it now uses `spec.retrieve_framework or "pytorch"`, so an estimator
+  step can pull a different DLC training image (e.g. `huggingface`) by declaring it in the
+  `.step.yaml`. `None` preserves the historical default (all existing estimator steps unchanged).
+
+### Notes
+- Purely additive: the 7 existing compute kinds and every current step are byte-identical
+  (regression-guarded). BYO deliberately trades DLC reproducibility for framework freedom —
+  Cursus neither builds nor scans the image, and `.step.yaml framework_requirements` become
+  documentation-only for BYO steps (real deps live in the Dockerfile).
+
+## [2.9.25] - 2026-08-04
+
+**Fix: mark the ONNX output batch axis dynamic across all model types.**
+
+### Fixed
+- `torch.onnx.export(...)` omitted the output tensor from `dynamic_axes`, freezing its batch
+  dim at the traced size (e.g. 32), so a batch=1 serving request computed a full batch
+  (~485ms/request). Every export now marks the output batch axis dynamic — var-form
+  `dynamic_axes["probs"] = {0: "batch"}` before the call, or the `"logits"`/`"probs"` key
+  added to an inline `dynamic_axes={...}` literal — across the bimodal/trimodal/text model
+  families and the standalone trainers.
+
+## [2.9.24] - 2026-08-04
+
+**Feature: full g4dn/g5/p5 training-instance whitelist + eval/inference honor `eval_batch_size_multiplier`.**
+
+### Added
+- `steps/configs/config_pytorch_training_step.py`: `_validate_sagemaker_training_instance_type`
+  now accepts the full g4dn (xlarge→16xlarge) and g5 (xlarge→48xlarge) families plus
+  p3.8/16xlarge, p4d/p4de.24xlarge, and p5/p5e/p5en.48xlarge (was a narrow subset).
+
+### Changed
+- `steps/scripts/pytorch_model_eval.py` + `pytorch_model_inference.py`: the eval/inference
+  batch size now honors `eval_batch_size_multiplier` from `hyperparameters.json`
+  (`batch_size * eval_batch_size_multiplier`, default 2.0) instead of a fixed value.
+
 ## [2.9.23] - 2026-07-29
 
 **Fix: harden `tabular_preprocessing` fully-parallel mode against worker-death hangs and a `float`-env crash.**

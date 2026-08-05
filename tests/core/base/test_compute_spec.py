@@ -18,7 +18,10 @@ class TestComputeSpecValidation:
     @pytest.mark.parametrize(
         "kwargs",
         [
-            {"kind": "sklearn", "framework_version_field": "processing_framework_version"},
+            {
+                "kind": "sklearn",
+                "framework_version_field": "processing_framework_version",
+            },
             {"kind": "xgboost", "framework_version_field": "xgboost_framework_version"},
             {
                 "kind": "framework",
@@ -40,6 +43,20 @@ class TestComputeSpecValidation:
                 "py_version_field": "py_version",
             },
             {"kind": "transformer"},
+            # BYO container: image is a config field, no DLC knobs (FZ 31e1d3m).
+            {"kind": "byo_container", "image_uri_field": "image_uri"},
+            {
+                "kind": "byo_container",
+                "image_uri_field": "training_image_uri",
+                "container_entrypoint": ["bash", "run.sh"],
+            },
+            # estimator may now declare a non-pytorch retrieve framework.
+            {
+                "kind": "estimator",
+                "sdk_class": "PyTorch",
+                "framework_version_field": "framework_version",
+                "retrieve_framework": "huggingface",
+            },
         ],
     )
     def test_valid_descriptors(self, kwargs):
@@ -49,15 +66,82 @@ class TestComputeSpecValidation:
         "kwargs",
         [
             {"kind": "bogus"},  # unknown kind
-            {"kind": "framework", "framework_version_field": "x"},  # framework needs sdk_class
+            {
+                "kind": "framework",
+                "framework_version_field": "x",
+            },  # framework needs sdk_class
             {"kind": "sklearn"},  # processor needs framework_version_field
-            {"kind": "script", "sdk_class": "PyTorch"},  # script must not take sdk_class
-            {"kind": "sklearn", "framework_version_field": "x", "py_version_field": "py_version"},  # py invalid for sklearn
-            {"kind": "script", "kms_network": True, "sdk_class": "X"},  # bad sdk_class value + script+sdk_class
-            {"kind": "sklearn", "framework_version_field": "x", "kms_network": True},  # kms only for script
-            {"kind": "model", "sdk_class": "XGBoostModel", "framework_version_field": "v"},  # model needs framework_name
-            {"kind": "model", "sdk_class": "XGBoostModel", "framework_name": "xgboost"},  # model needs framework_version_field
-            {"kind": "sklearn", "framework_version_field": "v", "framework_name": "x"},  # framework_name model-only
+            {
+                "kind": "script",
+                "sdk_class": "PyTorch",
+            },  # script must not take sdk_class
+            {
+                "kind": "sklearn",
+                "framework_version_field": "x",
+                "py_version_field": "py_version",
+            },  # py invalid for sklearn
+            {
+                "kind": "script",
+                "kms_network": True,
+                "sdk_class": "X",
+            },  # bad sdk_class value + script+sdk_class
+            {
+                "kind": "sklearn",
+                "framework_version_field": "x",
+                "kms_network": True,
+            },  # kms only for script
+            {
+                "kind": "model",
+                "sdk_class": "XGBoostModel",
+                "framework_version_field": "v",
+            },  # model needs framework_name
+            {
+                "kind": "model",
+                "sdk_class": "XGBoostModel",
+                "framework_name": "xgboost",
+            },  # model needs framework_version_field
+            {
+                "kind": "sklearn",
+                "framework_version_field": "v",
+                "framework_name": "x",
+            },  # framework_name model-only
+            {"kind": "byo_container"},  # byo needs image_uri_field
+            {
+                "kind": "byo_container",
+                "image_uri_field": "image_uri",
+                "sdk_class": "PyTorch",
+            },  # byo forbids sdk_class
+            {
+                "kind": "byo_container",
+                "image_uri_field": "image_uri",
+                "framework_version_field": "framework_version",
+            },  # byo forbids DLC framework knobs
+            {
+                "kind": "byo_container",
+                "image_uri_field": "image_uri",
+                "kms_network": True,
+            },  # byo uses network_mode not kms_network
+            {
+                "kind": "byo_container",
+                "image_uri_field": "image_uri",
+                "requires": "mods_workflow_core",
+            },  # byo is pure sagemaker sdk
+            {
+                "kind": "sklearn",
+                "framework_version_field": "v",
+                "image_uri_field": "image_uri",
+            },  # image_uri_field is byo-only
+            {
+                "kind": "sklearn",
+                "framework_version_field": "v",
+                "container_entrypoint": ["bash"],
+            },  # container_entrypoint is byo-only
+            {
+                "kind": "framework",
+                "sdk_class": "PyTorch",
+                "framework_version_field": "v",
+                "retrieve_framework": "huggingface",
+            },  # retrieve_framework is estimator-only
         ],
     )
     def test_invalid_descriptors_raise(self, kwargs):
@@ -85,23 +169,37 @@ class TestCreateComputeFoundation:
         tmp = tempfile.mkdtemp()
         open(os.path.join(tmp, "d.py"), "w").write("#\n")
         kw = dict(
-            author="t", bucket="b", role="arn:aws:iam::123456789012:role/test", region="NA",
-            service_name="s", pipeline_version="1.0.0", project_root_folder="p",
-            job_type="training", source_dir=tmp, processing_entry_point="d.py",
+            author="t",
+            bucket="b",
+            role="arn:aws:iam::123456789012:role/test",
+            region="NA",
+            service_name="s",
+            pipeline_version="1.0.0",
+            project_root_folder="p",
+            job_type="training",
+            source_dir=tmp,
+            processing_entry_point="d.py",
         )
         for f, fl in TabularPreprocessingConfig.model_fields.items():
             if f in kw:
                 continue
             if fl.is_required() if hasattr(fl, "is_required") else (fl.default is None):
                 s = str(fl.annotation)
-                kw[f] = False if "bool" in s else (1 if "int" in s and "str" not in s else "x")
+                kw[f] = (
+                    False
+                    if "bool" in s
+                    else (1 if "int" in s and "str" not in s else "x")
+                )
         cfg = TabularPreprocessingConfig.model_construct(**kw)
         sess = Mock()
         sess.boto_region_name = "us-east-1"
         sess.local_mode = False
         sess.sagemaker_config = None
 
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+        with (
+            contextlib.redirect_stdout(io.StringIO()),
+            contextlib.redirect_stderr(io.StringIO()),
+        ):
             comp_b = B.__new__(B)
             comp_b.config = cfg
             comp_b.role = "arn:aws:iam::123:role/x"
@@ -116,5 +214,128 @@ class TestCreateComputeFoundation:
         # The compute resolver builds an SKLearnProcessor with the config-derived values (the
         # _create_processor factory it replaced is now deleted; this asserts the resolver's output).
         assert type(comp).__name__ == "SKLearnProcessor"
-        assert comp.instance_type == cfg.processing_instance_type_small  # use_large=False sentinel
+        assert (
+            comp.instance_type == cfg.processing_instance_type_small
+        )  # use_large=False sentinel
         assert str(comp.instance_count) == str(cfg.processing_instance_count)
+
+
+class TestByoContainerCompute:
+    """BYO container: a user-supplied image_uri is run verbatim on the Processing/Training verb,
+    with NO image_uris.retrieve — the general non-DLC / custom-image capability."""
+
+    _IMG = "111122223333.dkr.ecr.us-east-1.amazonaws.com/graphstorm-gnn:sagemaker-gpu"
+
+    def _builder(self):
+        import contextlib
+        import io
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+
+        from cursus.step_catalog.step_catalog import StepCatalog
+
+        # _create_compute lives on the base; use a concrete loaded builder to satisfy the ABC.
+        B = StepCatalog().load_builder_class("TabularPreprocessing")
+        b = B.__new__(B)
+        b.config = SimpleNamespace(
+            image_uri=self._IMG,
+            processing_instance_count=1,
+            processing_instance_type=None,
+            processing_instance_type_small="ml.m5.large",
+            processing_instance_type_large="ml.m5.4xlarge",
+            use_large_processing_instance=False,
+            processing_volume_size=30,
+            training_instance_type="ml.g5.12xlarge",
+            training_instance_count=1,
+            training_volume_size=125,
+            training_entry_point="train.py",
+            effective_source_dir="/tmp/src",
+            aws_region="us-east-1",
+        )
+        b.role = "arn:aws:iam::123456789012:role/x"
+        sess = Mock()
+        sess.boto_region_name = "us-east-1"
+        sess.local_mode = False
+        sess.sagemaker_config = None  # avoid SDK jsonschema validation of a Mock config
+        b.session = sess
+        b._get_environment_variables = lambda: {}
+        b._generate_job_name = lambda: "job"
+        b.contract = Mock()
+        return b, contextlib, io
+
+    def test_byo_processing_uses_verbatim_image_no_retrieve(self, monkeypatch):
+        b, contextlib, io = self._builder()
+        b.contract.compute = ComputeSpec(
+            kind="byo_container", image_uri_field="image_uri"
+        )
+
+        # Assert image_uris.retrieve is NEVER called on the BYO path.
+        import sagemaker
+
+        called = {"n": 0}
+        monkeypatch.setattr(
+            sagemaker.image_uris,
+            "retrieve",
+            lambda *a, **k: called.__setitem__("n", called["n"] + 1),
+        )
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            comp = b._create_compute(verb="Processing")
+
+        assert type(comp).__name__ == "ScriptProcessor"
+        assert comp.image_uri == self._IMG
+        assert comp.command == ["python3"]
+        assert called["n"] == 0
+
+    def test_byo_processing_container_entrypoint(self):
+        b, contextlib, io = self._builder()
+        b.contract.compute = ComputeSpec(
+            kind="byo_container",
+            image_uri_field="image_uri",
+            container_entrypoint=["bash", "run_gconstruct.sh"],
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            comp = b._create_compute(verb="Processing")
+        assert comp.command == ["bash", "run_gconstruct.sh"]
+
+    def test_byo_training_uses_generic_estimator_verbatim_image(self, monkeypatch):
+        b, contextlib, io = self._builder()
+        b.contract.compute = ComputeSpec(
+            kind="byo_container", image_uri_field="image_uri"
+        )
+        import sagemaker
+
+        called = {"n": 0}
+        monkeypatch.setattr(
+            sagemaker.image_uris,
+            "retrieve",
+            lambda *a, **k: called.__setitem__("n", called["n"] + 1),
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            comp = b._create_compute(output_path="s3://b/out", verb="Training")
+        # A generic sagemaker.estimator.Estimator (NOT PyTorch), image verbatim, no retrieve.
+        assert type(comp).__name__ == "Estimator"
+        assert comp.image_uri == self._IMG
+        assert called["n"] == 0
+
+    def test_byo_training_entrypoint_bypass_omits_entry_point(self):
+        b, contextlib, io = self._builder()
+        b.contract.compute = ComputeSpec(
+            kind="byo_container",
+            image_uri_field="image_uri",
+            container_entrypoint=["bash", "entrypoint.sh"],
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            comp = b._create_compute(output_path="s3://b/out", verb="Training")
+        # entry_point is not set when the container runs its own entrypoint.
+        assert getattr(comp, "entry_point", None) is None
+
+    def test_byo_missing_image_uri_raises(self):
+        b, contextlib, io = self._builder()
+        b.config.image_uri = None
+        b.contract.compute = ComputeSpec(
+            kind="byo_container", image_uri_field="image_uri"
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            with pytest.raises(ValueError, match="image_uri"):
+                b._create_compute(verb="Processing")
