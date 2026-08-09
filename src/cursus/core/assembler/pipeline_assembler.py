@@ -235,7 +235,14 @@ class PipelineAssembler:
         # Get dependency resolver
         resolver = self._get_dependency_resolver()
 
-        # Process each edge in the DAG
+        # PHASE 1 — collect every viable (dependency <- producer output) candidate.
+        # Keyed by dst_step -> dep_name -> list of candidate dicts. We gather across ALL
+        # incoming edges first, then assign in PHASE 2, so assignment can enforce a
+        # one-output-per-consumer constraint globally rather than edge-by-edge.
+        candidates: DefaultDict[str, DefaultDict[str, List[Dict[str, Any]]]] = (
+            defaultdict(lambda: defaultdict(list))
+        )
+
         for src_step, dst_step in self.dag.edges:
             # Skip if builders don't exist
             if src_step not in self.step_builders or dst_step not in self.step_builders:
@@ -254,47 +261,77 @@ class PipelineAssembler:
             ):
                 continue
 
-            # Let resolver match outputs to inputs
+            # Let resolver score each producer output against each dependency.
             for dep_name, dep_spec in dst_builder.spec.dependencies.items():
-                matches = []
-
-                # Check if source step can provide this dependency
                 for out_name, out_spec in src_builder.spec.outputs.items():
                     compatibility = resolver._calculate_compatibility(
                         dep_spec, out_spec, src_builder.spec
                     )
                     if compatibility > 0.5:  # Same threshold as resolver
-                        matches.append((out_name, out_spec, compatibility))
-
-                # Use best match if found
-                if matches:
-                    # Sort by compatibility score
-                    matches.sort(key=lambda x: x[2], reverse=True)
-                    best_match = matches[0]
-
-                    # Check if there's already a better match
-                    existing_match = self.step_messages.get(dst_step, {}).get(dep_name)
-                    should_update = True
-
-                    if existing_match:
-                        existing_score = existing_match.get("compatibility", 0)
-                        if existing_score >= best_match[2]:
-                            should_update = False
-                            logger.debug(
-                                f"Skipping lower-scoring match for {dst_step}.{dep_name}: {src_step}.{best_match[0]} (score: {best_match[2]:.2f} < existing: {existing_score:.2f})"
-                            )
-
-                    if should_update:
-                        # Store in step_messages
-                        self.step_messages[dst_step][dep_name] = {
-                            "source_step": src_step,
-                            "source_output": best_match[0],
-                            "match_type": "specification_match",
-                            "compatibility": best_match[2],
-                        }
-                        logger.info(
-                            f"Matched {dst_step}.{dep_name} to {src_step}.{best_match[0]} (score: {best_match[2]:.2f})"
+                        candidates[dst_step][dep_name].append(
+                            {
+                                "source_step": src_step,
+                                "source_output": out_name,
+                                "compatibility": compatibility,
+                                "required": bool(getattr(dep_spec, "required", False)),
+                            }
                         )
+
+        # PHASE 2 — greedy assignment per consumer with DUAL uniqueness:
+        # each dependency binds to at most one producer output, and each producer output
+        # (source_step, source_output) binds to at most one dependency of that consumer.
+        # Without this, a lone producer (e.g. one CradleDataLoading with a single
+        # `processed_data` output) would satisfy BOTH `DATA` and the optional
+        # `DATA_SECONDARY` of TabularPreprocessing — silently wiring the same S3 URI to
+        # two input channels. Ordering the greedy walk by (required-first, score) means the
+        # higher-priority dependency keeps a contested output and the other falls through to
+        # its next-best DISTINCT producer, or stays unmatched (fine when it is optional).
+        for dst_step, dep_candidates in candidates.items():
+            # Build a global work list of (dep_name, candidate) and sort by priority.
+            work_list: List[tuple] = []
+            for dep_name, cand_list in dep_candidates.items():
+                for cand in cand_list:
+                    work_list.append((dep_name, cand))
+
+            # Sort: required dependencies first, then by descending compatibility. Stable so
+            # equal-priority ties keep spec/edge declaration order.
+            work_list.sort(
+                key=lambda item: (
+                    0 if item[1]["required"] else 1,
+                    -float(item[1]["compatibility"]),
+                )
+            )
+
+            assigned_deps: set = set()
+            claimed_outputs: set = set()  # {(source_step, source_output)}
+            for dep_name, cand in work_list:
+                if dep_name in assigned_deps:
+                    continue  # dependency already bound to its best-scoring output
+                output_key = (cand["source_step"], cand["source_output"])
+                if output_key in claimed_outputs:
+                    # This producer output is already feeding another input of this consumer.
+                    # Skip so we don't duplicate-wire; this dep will take its next-best
+                    # distinct candidate (later in work_list) or remain unmatched.
+                    logger.debug(
+                        f"Skipping already-claimed output for {dst_step}.{dep_name}: "
+                        f"{cand['source_step']}.{cand['source_output']} "
+                        f"(claimed by another input of {dst_step})"
+                    )
+                    continue
+
+                assigned_deps.add(dep_name)
+                claimed_outputs.add(output_key)
+                self.step_messages[dst_step][dep_name] = {
+                    "source_step": cand["source_step"],
+                    "source_output": cand["source_output"],
+                    "match_type": "specification_match",
+                    "compatibility": cand["compatibility"],
+                }
+                logger.info(
+                    f"Matched {dst_step}.{dep_name} to "
+                    f"{cand['source_step']}.{cand['source_output']} "
+                    f"(score: {cand['compatibility']:.2f})"
+                )
 
         # Log final assignments for all steps
         logger.info("=" * 80)

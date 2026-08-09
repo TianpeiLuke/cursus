@@ -1045,6 +1045,223 @@ class TestPipelineAssembler:
         # Verify resolver was called (tests actual threshold logic)
         assert mock_dependency_resolver._calculate_compatibility.called
 
+    def test_propagate_messages_one_output_per_consumer(
+        self,
+        simple_dag,
+        simple_config_map,
+        mock_step_catalog,
+        mock_registry_manager,
+        mock_dependency_resolver,
+    ):
+        """A single producer output must not wire to two inputs of one consumer.
+
+        MockStepBuilder declares 2 dependencies (input1, input2) and 2 outputs
+        (output1, output2). With the resolver scoring EVERY (dep, output) pair at 0.8
+        (>0.5), a naive per-dependency argmax would bind BOTH inputs to the same
+        best output. The one-output-per-consumer guard in _propagate_messages must
+        instead give each input a DISTINCT source output.
+
+        This reproduces the TabularPreprocessing DATA / DATA_SECONDARY duplicate-wiring
+        bug where one CradleDataLoading.processed_data fed both input channels.
+        """
+        mock_dependency_resolver._calculate_compatibility.return_value = 0.8
+
+        assembler = PipelineAssembler(
+            dag=simple_dag,
+            config_map=simple_config_map,
+            step_catalog=mock_step_catalog,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver,
+        )
+        assembler._propagate_messages()
+
+        # step2 is the consumer (edge step1 -> step2). Both of its inputs should be
+        # matched, but to two DIFFERENT source outputs (no output claimed twice).
+        step2_msgs = assembler.step_messages.get("step2", {})
+        assert set(step2_msgs.keys()) == {"input1", "input2"}, (
+            f"expected both inputs matched, got {set(step2_msgs.keys())}"
+        )
+
+        claimed = [(m["source_step"], m["source_output"]) for m in step2_msgs.values()]
+        assert len(claimed) == len(set(claimed)), (
+            f"same producer output wired to multiple inputs of one consumer: {claimed}"
+        )
+        # Both must come from step1 (the only producer), on distinct outputs.
+        assert all(src == "step1" for src, _ in claimed)
+        assert {out for _, out in claimed} == {"output1", "output2"}
+
+    def test_propagate_messages_single_output_leaves_optional_unmatched(
+        self,
+        mock_step_catalog,
+        mock_registry_manager,
+        mock_dependency_resolver,
+    ):
+        """When the producer has only ONE compatible output, the second consumer input
+        stays unmatched rather than duplicate-wiring to the same output.
+
+        This is the exact TabularPreprocessing shape: a lone CradleDataLoading with a
+        single `processed_data` output must fill DATA but leave the optional
+        DATA_SECONDARY unmatched (not point it at the same output).
+        """
+
+        # A producer builder exposing exactly ONE output; consumer with TWO inputs.
+        class SingleOutputBuilder(MockStepBuilder):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                # Replace spec with a one-output producer.
+                self.spec = StepInterface(
+                    step_type="MockProducer",
+                    node_type=NodeType.INTERNAL,
+                    contract={},
+                    spec={
+                        "dependencies": {},
+                        "outputs": {
+                            "only_output": {
+                                "type": DependencyType.PROCESSING_OUTPUT,
+                                "description": "single output",
+                                "property_path": "properties.X.S3Uri",
+                            }
+                        },
+                    },
+                )
+
+        # step1 = single-output producer; step2 = two-input consumer (MockStepBuilder).
+        def builder_selector(config, step_name=None):
+            return SingleOutputBuilder if step_name == "step1" else MockStepBuilder
+
+        mock_step_catalog.get_builder_for_config.side_effect = builder_selector
+
+        mock_dependency_resolver._calculate_compatibility.return_value = 0.8
+        assembler = PipelineAssembler(
+            dag=PipelineDAG(nodes=["step1", "step2"], edges=[("step1", "step2")]),
+            config_map={"step1": MockConfig(), "step2": MockConfig()},
+            step_catalog=mock_step_catalog,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=mock_dependency_resolver,
+        )
+        assembler._propagate_messages()
+
+        step2_msgs = assembler.step_messages.get("step2", {})
+        # Exactly ONE input bound (to the single output); the other left unmatched.
+        assert len(step2_msgs) == 1, (
+            f"one output must feed only one input, got {step2_msgs}"
+        )
+        (only_match,) = step2_msgs.values()
+        assert only_match["source_output"] == "only_output"
+
+    def test_propagate_messages_two_producers_wire_to_distinct_inputs(
+        self,
+        mock_step_catalog,
+        mock_registry_manager,
+    ):
+        """Two distinct producers each fill a DIFFERENT input of one consumer.
+
+        Reproduces a two-source topology where a preprocessing step consumes two
+        separate data-loading producers:
+            CradleDataLoading_primary   -> TabularPreprocessing.DATA
+            CradleDataLoading_secondary -> TabularPreprocessing.DATA_SECONDARY
+
+        Uses the REAL UnifiedDependencyResolver (not a mock) so genuine scoring decides
+        the assignment. The guard must give the required primary (DATA) the higher-scoring
+        producer and route the SECOND distinct producer to DATA_SECONDARY — never wiring one
+        producer to both inputs, and never leaving DATA_SECONDARY pointed at DATA's source.
+        """
+        from cursus.core.deps.dependency_resolver import UnifiedDependencyResolver
+        from cursus.core.deps.registry_manager import RegistryManager
+        from cursus.core.deps.semantic_matcher import SemanticMatcher
+
+        def producer_spec():
+            return StepInterface(
+                step_type="CradleDataLoading",
+                node_type=NodeType.INTERNAL,
+                contract={},
+                spec={
+                    "dependencies": {},
+                    "outputs": {
+                        "processed_data": {
+                            "type": DependencyType.PROCESSING_OUTPUT,
+                            "description": "cradle output",
+                            "property_path": "properties.ProcessingOutputConfig.Outputs['processed_data'].S3Output.S3Uri",
+                        }
+                    },
+                },
+            )
+
+        # Consumer mirrors tabular_preprocessing.step.yaml: DATA (required) + DATA_SECONDARY (optional),
+        # identical compatible_sources, overlapping keywords — the degenerate spec that caused the bug.
+        tp_spec = StepInterface(
+            step_type="TabularPreprocessing",
+            node_type=NodeType.INTERNAL,
+            contract={},
+            spec={
+                "dependencies": {
+                    "DATA": {
+                        "type": DependencyType.PROCESSING_OUTPUT,
+                        "required": True,
+                        "description": "primary",
+                        "compatible_sources": ["CradleDataLoading"],
+                        "semantic_keywords": ["data", "input", "raw"],
+                    },
+                    "DATA_SECONDARY": {
+                        "type": DependencyType.PROCESSING_OUTPUT,
+                        "required": False,
+                        "description": "secondary",
+                        "compatible_sources": ["CradleDataLoading"],
+                        "semantic_keywords": ["data", "secondary", "additional"],
+                    },
+                },
+                "outputs": {},
+            },
+        )
+
+        class PrimaryProducerBuilder(MockStepBuilder):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.spec = producer_spec()
+
+        class TPBuilder(MockStepBuilder):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.spec = tp_spec
+
+        def builder_selector(config, step_name=None):
+            return TPBuilder if step_name == "tp" else PrimaryProducerBuilder
+
+        mock_step_catalog.get_builder_for_config.side_effect = builder_selector
+
+        # Real resolver so scoring is genuine (no forced 0.8 mock).
+        real_resolver = UnifiedDependencyResolver(
+            RegistryManager().get_registry("two_producer_test"), SemanticMatcher()
+        )
+
+        assembler = PipelineAssembler(
+            dag=PipelineDAG(
+                nodes=["cradle_primary", "cradle_secondary", "tp"],
+                edges=[("cradle_primary", "tp"), ("cradle_secondary", "tp")],
+            ),
+            config_map={
+                "cradle_primary": MockConfig(),
+                "cradle_secondary": MockConfig(),
+                "tp": MockConfig(),
+            },
+            step_catalog=mock_step_catalog,
+            registry_manager=mock_registry_manager,
+            dependency_resolver=real_resolver,
+        )
+        assembler._propagate_messages()
+
+        tp_msgs = assembler.step_messages.get("tp", {})
+        # Both inputs bound.
+        assert set(tp_msgs.keys()) == {"DATA", "DATA_SECONDARY"}, (
+            f"expected both inputs matched, got {set(tp_msgs.keys())}"
+        )
+        # Distinct producers — base and delta go to different channels.
+        sources = {dep: m["source_step"] for dep, m in tp_msgs.items()}
+        assert sources["DATA"] != sources["DATA_SECONDARY"], (
+            f"base and delta must wire to distinct inputs, got {sources}"
+        )
+        assert set(sources.values()) == {"cradle_primary", "cradle_secondary"}
+
     def test_generate_outputs_uses_safe_value_for_logging(
         self,
         simple_dag,

@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.31] - 2026-08-08
+
+**Fix: a single producer output could be wired to two inputs of the same consumer (duplicate wiring).**
+
+`PipelineAssembler._propagate_messages` resolved each dependency of a consumer independently with no
+cross-dependency uniqueness constraint. A step that declares two data inputs — one required and one
+optional — with identical `compatible_sources` and an overlapping semantic keyword would bind BOTH
+inputs to the same producer output when only one producer edge existed. DAG edges carry no port, so
+input→output binding is decided entirely by spec scoring, and the structural score floor (dependency
+type 0.4 + data_type 0.2 + compatible_source 0.1 = 0.7) let the optional secondary match the same
+output regardless of keywords.
+
+### Fixed
+- `core/assembler/pipeline_assembler.py` (`_propagate_messages`): refactored to a two-phase assignment
+  with a **one-output-per-consumer uniqueness guard**. Phase 1 collects every viable
+  `(dependency ← producer output)` candidate across all incoming edges. Phase 2 greedily assigns per
+  consumer with **dual uniqueness** — each dependency binds to at most one output, and each
+  `(source_step, source_output)` binds to at most one dependency of that consumer. The work list is
+  ordered required-first then by descending compatibility, so a required input keeps a contested
+  output and an optional input falls through to its next-best DISTINCT producer (or stays unmatched).
+
+### Behavior
+- Single-producer consumers: the required input is wired; the optional secondary input is left
+  unmatched instead of duplicate-wired.
+- Multi-producer consumers (two distinct data-loading producers into one preprocessing step): each
+  producer wires to a distinct input — unchanged.
+
+### Tests
+- `tests/core/assembler/test_pipeline_assembler.py`: added `test_propagate_messages_one_output_per_consumer`,
+  `test_propagate_messages_single_output_leaves_optional_unmatched`, and
+  `test_propagate_messages_two_producers_wire_to_distinct_inputs` (real resolver).
+
 ## [2.9.30] - 2026-08-05
 
 **Fix: `output_path_token` is now honored at compile time — it was silently overwritten by the assembler's own output-path derivation.**
