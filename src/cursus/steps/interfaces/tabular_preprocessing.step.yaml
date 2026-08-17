@@ -4,7 +4,7 @@ registry:
   sagemaker_step_type: Processing
   description: Tabular data preprocessing step
 patterns:
-  direct_input_keys: [DATA, METADATA, SIGNATURE]
+  direct_input_keys: [DATA, DATA_SECONDARY, METADATA, SIGNATURE]
 compute:
   kind: sklearn
   framework_version_field: processing_framework_version

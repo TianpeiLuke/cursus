@@ -443,6 +443,38 @@ def _combine_shards_streaming(
     return result_df
 
 
+def _dir_has_data_shards(input_dir: Optional[str]) -> bool:
+    """True iff ``input_dir`` is set, exists, and holds at least one non-empty data shard.
+
+    Used to gate the OPTIONAL second input (DATA_SECONDARY). SageMaker mounts a
+    processing channel's directory even when nothing is wired to it (or it resolves
+    to an empty prefix), so ``Path.exists()`` is true for an unused channel. Gating
+    the two-source merge on directory existence therefore mis-reports an unwired
+    channel as "present" and, in variants that read the secondary in isolation, hard
+    fails with "No shards found". Gate on shard PRESENCE instead so a single-source
+    run proceeds and the merge fires only when the secondary is genuinely populated.
+    """
+    if not input_dir:
+        return False
+    input_path = Path(input_dir)
+    if not input_path.is_dir():
+        return False
+    patterns = [
+        "part-*.csv",
+        "part-*.csv.gz",
+        "part-*.json",
+        "part-*.json.gz",
+        "part-*.parquet",
+        "part-*.snappy.parquet",
+        "part-*.parquet.gz",
+    ]
+    return any(
+        p.is_file() and p.stat().st_size > 0
+        for pat in patterns
+        for p in input_path.glob(pat)
+    )
+
+
 def combine_shards(
     input_dir,
     signature_columns: Optional[list] = None,
@@ -2094,12 +2126,19 @@ def main(
         log(f"[WARNING] Invalid OUTPUT_FORMAT '{output_format}', defaulting to CSV")
         output_format = "csv"
 
-    # Build input directory list (primary + optional secondary)
+    # Build input directory list (primary + optional secondary). Append the secondary
+    # ONLY when it actually carries data shards — an unwired-but-mounted channel exists
+    # on disk but is empty, so gate on shard presence, not directory existence.
     input_dirs = [input_data_dir]
-    if input_data_secondary_dir and Path(input_data_secondary_dir).exists():
+    if _dir_has_data_shards(input_data_secondary_dir):
         input_dirs.append(input_data_secondary_dir)
         log(
             f"[INFO] DATA_SECONDARY present: combining from {len(input_dirs)} input directories"
+        )
+    elif input_data_secondary_dir:
+        log(
+            f"[INFO] DATA_SECONDARY channel present but has no data shards "
+            f"({input_data_secondary_dir}); proceeding single-source."
         )
 
     # 4. ROUTING: Choose between batch mode and fully parallel streaming mode

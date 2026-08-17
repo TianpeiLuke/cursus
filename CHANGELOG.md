@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.32] - 2026-08-17
+
+**Fix: TabularPreprocessing's optional DATA_SECONDARY input — interface alignment + unwired-channel safety.**
+
+Companion to the [2.9.31] assembler fix. Two gaps remained around the optional second input:
+`patterns.direct_input_keys` did not list `DATA_SECONDARY`, so a template or assembler could not pass
+it as a direct keyword even though the contract and spec both declare it (`required: false`). And the
+`main()` guard appended the secondary directory whenever it merely *existed* — but SageMaker mounts a
+processing channel's directory even when nothing is wired to it, so an unwired-but-mounted channel was
+mis-reported as "present" (and, in downstream variants that read the secondary in isolation, hard
+failed with "No shards found"). The two-source merge should fire only when the secondary genuinely
+carries data.
+
+### Fixed
+- `steps/interfaces/tabular_preprocessing.step.yaml` (`patterns.direct_input_keys`): added
+  `DATA_SECONDARY` so the optional second input can be wired directly, matching the contract/spec
+  declaration.
+- `steps/scripts/tabular_preprocessing.py`: added `_dir_has_data_shards()` and gate the
+  `DATA_SECONDARY` merge on shard PRESENCE rather than directory existence; an empty/unwired channel
+  now logs a "proceeding single-source" notice instead of being appended to the input directory list.
+
+### Behavior
+- Single-source runs (no secondary wired, or wired to an empty prefix): proceed on `DATA` alone.
+- Two-source runs (secondary populated): unchanged — both directories are combined as before.
+
 ## [2.9.31] - 2026-08-08
 
 **Fix: a single producer output could be wired to two inputs of the same consumer (duplicate wiring).**
