@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.33] - 2026-08-26
+
+**Feature: new `TabularLookupModelBuilding` step — a general non-parametric "the dataset IS the model" builder.**
+
+A shared Processing step that turns a tabular dataset from an upstream data-loading step
+into a non-parametric model artifact (a `key -> [values]` lookup map, or a de-duplicated
+key set) and packages it into `model.tar.gz` for downstream `Package` + `Payload`. No
+training and no learned parameters — the dataset itself is the model. The build transform,
+serialization, and match logic are parameterized through config (`model_kind` /
+`key_columns` / `value_columns` / `shard_count`) plus a project-supplied inference handler
+bundled by the `Package` step, so the build script never generates an inference handler at
+runtime.
+
+Aligns to the `CradleDataLoading → TabularLookupModelBuilding → {Package, Payload} → Registration`
+DAG: the `input_data` dependency (`processing_output`) resolves against the data-loading
+`DATA` output, and the `model_output` (`model_artifacts`) resolves against both `Package`
+and `Payload`'s `model_input`. All three edges score 1.000 via the dependency resolver.
+
+### Added
+- `steps/interfaces/tabular_lookup_model_building.step.yaml` — the interface (registry +
+  contract + spec); registers by construction, builder synthesized at runtime (Processing /
+  `step_assembly: step_args` / SKLearn framework).
+- `steps/configs/config_tabular_lookup_model_building_step.py` — `TabularLookupModelBuildingConfig`
+  (three-tier; `model_kind` / `key_columns` / `value_columns` / `dedup` / `shard_count`).
+- `steps/scripts/tabular_lookup_model_building.py` — `main(input_paths, output_paths, environ_vars, job_args)`
+  building the lookup/keyset artifact and tarring its own `model.tar.gz`.
+
+### Changed
+- `steps/interfaces/package.step.yaml` + `steps/interfaces/payload.step.yaml`
+  (`model_input.compatible_sources`): additively added `TabularLookupModelBuilding` so the
+  new step's `model_artifacts` output wires into both consumers (existing types unchanged).
+- `steps/configs/__init__.py`: export `TabularLookupModelBuildingConfig`.
+
 ## [2.9.32] - 2026-08-17
 
 **Fix: TabularPreprocessing's optional DATA_SECONDARY input — interface alignment + unwired-channel safety.**

@@ -49,6 +49,7 @@ spec:
       - PyTorchTraining
       - XgboostMtTraining
       - LightGBMMTTraining
+      - TabularLookupModelBuilding
       semantic_keywords:
       - model
       - artifacts

@@ -64,6 +64,7 @@ from .config_registration_step import (
     create_inference_variable_list,
 )
 from .config_risk_table_mapping_step import RiskTableMappingConfig
+from .config_tabular_lookup_model_building_step import TabularLookupModelBuildingConfig
 from .config_tabular_preprocessing_step import TabularPreprocessingConfig
 from .config_pytorch_training_step import PyTorchTrainingConfig
 from .config_xgboost_training_step import XGBoostTrainingConfig
@@ -118,6 +119,7 @@ __all__ = [
     "PayloadConfig",
     "RegistrationConfig",
     "RiskTableMappingConfig",
+    "TabularLookupModelBuildingConfig",
     "TabularPreprocessingConfig",
     "PyTorchTrainingConfig",
     "XGBoostTrainingConfig",

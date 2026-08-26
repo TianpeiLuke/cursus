@@ -53,6 +53,7 @@ spec:
       - TrainingStep
       - ModelStep
       - XgboostMtTraining
+      - TabularLookupModelBuilding
       semantic_keywords:
       - model
       - artifacts
