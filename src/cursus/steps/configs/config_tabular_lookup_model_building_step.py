@@ -135,7 +135,9 @@ class TabularLookupModelBuildingConfig(ProcessingStepConfigBase):
         """Require at least one non-empty key column."""
         cleaned = [c for c in (v or []) if isinstance(c, str) and c.strip()]
         if not cleaned:
-            raise ValueError("key_columns must contain at least one non-empty column name")
+            raise ValueError(
+                "key_columns must contain at least one non-empty column name"
+            )
         return cleaned
 
     @field_validator("processing_entry_point")
@@ -165,14 +167,18 @@ class TabularLookupModelBuildingConfig(ProcessingStepConfigBase):
             )
 
         if not self.processing_entry_point:
-            raise ValueError("TabularLookupModelBuilding step requires a processing_entry_point")
+            raise ValueError(
+                "TabularLookupModelBuilding step requires a processing_entry_point"
+            )
 
         contract = self.get_script_contract()
         if not contract:
             raise ValueError("Failed to load script contract")
 
         if "model_output" not in contract.expected_output_paths:
-            raise ValueError("Script contract missing required output path: model_output")
+            raise ValueError(
+                "Script contract missing required output path: model_output"
+            )
 
         return self
 

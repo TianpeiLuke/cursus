@@ -73,7 +73,9 @@ def load_data(input_dir: str) -> pd.DataFrame:
     input_path = Path(input_dir)
     parquet_files = list(input_path.rglob("*.parquet"))
     if not parquet_files:
-        logger.info("No .parquet files found via rglob; trying pd.read_parquet on the directory")
+        logger.info(
+            "No .parquet files found via rglob; trying pd.read_parquet on the directory"
+        )
         df = pd.read_parquet(input_dir)
     else:
         logger.info(f"Found {len(parquet_files)} parquet files in {input_dir}")
@@ -85,7 +87,9 @@ def load_data(input_dir: str) -> pd.DataFrame:
 def _require_columns(df: pd.DataFrame, columns: List[str]) -> None:
     missing = [c for c in columns if c not in df.columns]
     if missing:
-        raise ValueError(f"Missing required column(s) {missing}. Got: {list(df.columns)}")
+        raise ValueError(
+            f"Missing required column(s) {missing}. Got: {list(df.columns)}"
+        )
 
 
 def _key_str(row_key) -> str:
@@ -95,12 +99,16 @@ def _key_str(row_key) -> str:
     return "" if row_key is None else str(row_key)
 
 
-def build_lookup(df: pd.DataFrame, key_columns: List[str], value_columns: List[str], dedup: bool) -> List[dict]:
+def build_lookup(
+    df: pd.DataFrame, key_columns: List[str], value_columns: List[str], dedup: bool
+) -> List[dict]:
     """Group value_columns by key_columns into a list of {key, values} records."""
     _require_columns(df, key_columns + value_columns)
     df = df.dropna(subset=key_columns)
     records: List[dict] = []
-    for key, group in df.groupby(key_columns if len(key_columns) > 1 else key_columns[0]):
+    for key, group in df.groupby(
+        key_columns if len(key_columns) > 1 else key_columns[0]
+    ):
         key_list = list(key) if isinstance(key, tuple) else [key]
         values = []
         for _, r in group[value_columns].iterrows():
@@ -114,8 +122,12 @@ def build_lookup(df: pd.DataFrame, key_columns: List[str], value_columns: List[s
                     seen.add(marker)
                     deduped.append(v)
             values = deduped
-        records.append({"key": [None if pd.isna(k) else k for k in key_list], "values": values})
-    logger.info(f"Built lookup: {len(records)} keys, {sum(len(r['values']) for r in records)} total values")
+        records.append(
+            {"key": [None if pd.isna(k) else k for k in key_list], "values": values}
+        )
+    logger.info(
+        f"Built lookup: {len(records)} keys, {sum(len(r['values']) for r in records)} total values"
+    )
     return records
 
 
@@ -163,7 +175,9 @@ def build_model_directory(
         shard_dir.mkdir(parents=True, exist_ok=True)
         shards: Dict[str, list] = {}
         for rec in records:
-            shards.setdefault(_shard_for(_key_str(tuple(rec["key"])), shard_count), []).append(rec)
+            shards.setdefault(
+                _shard_for(_key_str(tuple(rec["key"])), shard_count), []
+            ).append(rec)
         for shard_name, recs in shards.items():
             with open(shard_dir / f"{shard_name}.json", "w") as f:
                 json.dump({"records": recs}, f)
@@ -174,7 +188,9 @@ def build_model_directory(
         shard_dir.mkdir(parents=True, exist_ok=True)
         shards = {}
         for key_list in records:
-            shards.setdefault(_shard_for(_key_str(tuple(key_list)), shard_count), []).append(key_list)
+            shards.setdefault(
+                _shard_for(_key_str(tuple(key_list)), shard_count), []
+            ).append(key_list)
         for shard_name, keys in shards.items():
             with open(shard_dir / f"{shard_name}.json", "w") as f:
                 json.dump({"keys": keys}, f)
@@ -206,7 +222,9 @@ def create_model_tarball(model_dir: Path, output_path: Path) -> None:
         for item in model_dir.rglob("*"):
             if item.is_file():
                 tar.add(item, arcname=item.relative_to(model_dir))
-    logger.info(f"model.tar.gz created: {output_path.stat().st_size / 1024 / 1024:.2f} MB")
+    logger.info(
+        f"model.tar.gz created: {output_path.stat().st_size / 1024 / 1024:.2f} MB"
+    )
 
 
 # ============================================================================
@@ -257,7 +275,9 @@ def main(
     shard_count = int(environ_vars.get("SHARD_COUNT", "1") or "1")
 
     if model_kind not in ("lookup", "set_membership"):
-        raise ValueError(f"MODEL_KIND must be 'lookup' or 'set_membership', got '{model_kind}'")
+        raise ValueError(
+            f"MODEL_KIND must be 'lookup' or 'set_membership', got '{model_kind}'"
+        )
     if not key_columns:
         raise ValueError("KEY_COLUMNS must be a non-empty list")
 
@@ -278,7 +298,9 @@ def main(
     with tempfile.TemporaryDirectory() as temp_dir:
         model_dir = Path(temp_dir) / "model"
         model_dir.mkdir()
-        build_model_directory(model_dir, model_kind, key_columns, value_columns, records, shard_count)
+        build_model_directory(
+            model_dir, model_kind, key_columns, value_columns, records, shard_count
+        )
         output_dir.mkdir(parents=True, exist_ok=True)
         create_model_tarball(model_dir, output_dir / "model.tar.gz")
 
@@ -295,7 +317,9 @@ if __name__ == "__main__":
             "MODEL_OUTPUT": "/opt/ml/processing/output/model",
         }
 
-        parser = argparse.ArgumentParser(description="Tabular lookup/membership model building")
+        parser = argparse.ArgumentParser(
+            description="Tabular lookup/membership model building"
+        )
         job_args = parser.parse_args()
 
         input_paths = {"input_data": CONTAINER_PATHS["INPUT_DATA"]}
@@ -309,7 +333,9 @@ if __name__ == "__main__":
         }
 
         if not os.path.exists(CONTAINER_PATHS["INPUT_DATA"]):
-            raise FileNotFoundError(f"Input directory not found: {CONTAINER_PATHS['INPUT_DATA']}")
+            raise FileNotFoundError(
+                f"Input directory not found: {CONTAINER_PATHS['INPUT_DATA']}"
+            )
 
         main(input_paths, output_paths, environ_vars, job_args)
         logger.info("Script completed successfully")
