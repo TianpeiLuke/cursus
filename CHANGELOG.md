@@ -437,7 +437,7 @@ experience, applied to the canonical `src/cursus/steps/scripts/tabular_preproces
   Batch mode only — a streaming `PipelineIterableDataset` (no in-memory `DataReader`) is left
   unbounded. `0` = uncapped.
 
-Backward-compatible opt-out (0 = full data). Mirrors AmazonCursus 2.9.27. Validated:
+Backward-compatible opt-out (0 = full data). Mirrors the internal 2.9.27 revision. Validated:
 cap / uncap(0) / streaming-skip / cross-rank determinism.
 
 ## [2.9.21] - 2026-07-23

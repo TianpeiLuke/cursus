@@ -370,6 +370,13 @@
     "sagemaker_step_type": "Training",
     "spec_type": "TSATraining"
   },
+  "TabularLookupModelBuilding": {
+    "builder_step_name": "TabularLookupModelBuildingStepBuilder",
+    "config_class": "TabularLookupModelBuildingConfig",
+    "description": "Build a non-parametric lookup/membership model from a tabular dataset (the dataset IS the model)",
+    "sagemaker_step_type": "Processing",
+    "spec_type": "TabularLookupModelBuilding"
+  },
   "TabularPreprocessing": {
     "builder_step_name": "TabularPreprocessingStepBuilder",
     "config_class": "TabularPreprocessingConfig",
