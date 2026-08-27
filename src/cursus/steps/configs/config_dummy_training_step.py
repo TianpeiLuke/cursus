@@ -213,3 +213,25 @@ class DummyTrainingConfig(ProcessingStepConfigBase):
             )
 
         return self
+
+    # ===== Input-source resolver (config-sourced input wiring) =====
+
+    def get_pretrained_model_uri(self) -> str:
+        """Resolve ``pretrained_model_path`` to the source URI for the ``model_artifacts_input``
+        channel (referenced by ``contract.input_source_overrides``).
+
+        The contract maps ``model_artifacts_input -> get_pretrained_model_uri`` so an EXPLICIT
+        ``pretrained_model_path`` (S3 URI or local path) is mounted as a ProcessingInput — the
+        step's SOURCE mode, where the model comes from config rather than an upstream training
+        step. Previously this field was stored but never wired, so the script fell back to
+        ``source_dir/models/model.tar.gz`` and failed when the model lived in S3.
+
+        Returns "" when ``pretrained_model_path`` is None/empty. The builder treats a falsy
+        override source as "not supplied" and falls through to the normal dependency-based
+        mounting, so INTERNAL mode (model_artifacts_input fed by an upstream producer) is
+        preserved unchanged.
+        """
+        p = self.pretrained_model_path
+        if p is None:
+            return ""
+        return str(p)

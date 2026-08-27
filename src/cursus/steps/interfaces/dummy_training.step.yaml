@@ -12,6 +12,11 @@ compute:
 contract:
   entry_point: dummy_training.py
   source_dir: true
+  input_source_overrides:
+    # Mount config.pretrained_model_path (SOURCE mode) as the model_artifacts_input channel.
+    # get_pretrained_model_uri() returns "" when unset, so the builder falls through to the
+    # normal dependency path (INTERNAL mode: model fed by an upstream training step).
+    model_artifacts_input: get_pretrained_model_uri
   inputs:
     model_artifacts_input:
       path: /opt/ml/processing/input/model_artifacts_input

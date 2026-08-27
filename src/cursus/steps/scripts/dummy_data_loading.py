@@ -39,6 +39,83 @@ SIGNATURE_OUTPUT_DIR = "/opt/ml/processing/output/signature"
 METADATA_OUTPUT_DIR = "/opt/ml/processing/output/metadata"
 DATA_OUTPUT_DIR = "/opt/ml/processing/output/data"
 
+# Rows per batch for chunked parquet read/write (see _read_parquet_chunked below).
+PARQUET_CHUNK_ROWS = 250_000
+
+
+# ============================================================================
+# CHUNKED PARQUET IO — Arrow's 2 GB per-array cap workaround
+# ============================================================================
+# pyarrow caps a single Arrow array at 2**31 - 2 (2,147,483,646) bytes. A parquet file
+# with a fat string column in one row group materializes that column as ONE Arrow array
+# on a plain `pd.read_parquet()` and raises `ArrowCapacityError: array cannot contain
+# more than 2147483646 bytes`. The same cap bites on WRITE (`df.to_parquet()` → one row
+# group → one array). Reading/writing in row batches keeps each Arrow array under the
+# cap; the resulting pandas frame is object-dtype (NumPy pointer array), not subject to it.
+
+
+def _read_parquet_chunked(
+    file_path: Path, batch_rows: int = PARQUET_CHUNK_ROWS
+) -> pd.DataFrame:
+    """Read a parquet file in row batches, immune to Arrow's 2 GB per-array cap.
+
+    Falls back to a plain ``pd.read_parquet`` if pyarrow's batch API is unavailable.
+    """
+    try:
+        import pyarrow.parquet as pq
+    except Exception:
+        return pd.read_parquet(file_path)
+
+    pf = pq.ParquetFile(str(file_path))
+    frames = []
+    total = 0
+    for batch in pf.iter_batches(batch_size=batch_rows):
+        frames.append(batch.to_pandas())
+        total += batch.num_rows
+    logger.info(
+        f"Chunked parquet read: {total} rows in {len(frames)} batch(es) of {batch_rows}"
+    )
+    if not frames:
+        # Empty file — return an empty frame with the correct columns.
+        return pf.read().to_pandas()
+    return pd.concat(frames, ignore_index=True)
+
+
+def _write_parquet_chunked(
+    df: pd.DataFrame, out_path: Path, batch_rows: int = PARQUET_CHUNK_ROWS
+) -> None:
+    """Write a DataFrame to parquet in row-group slices, immune to the 2 GB write cap.
+
+    Uses ``pyarrow.parquet.ParquetWriter`` and writes ``batch_rows``-sized slices as
+    successive row groups. Falls back to ``df.to_parquet`` if pyarrow is unavailable
+    (small frames only — a fat single column would still overflow on the fallback).
+    """
+    try:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+    except Exception:
+        df.to_parquet(out_path, index=False)
+        return
+
+    n = len(df)
+    if n == 0:
+        df.to_parquet(out_path, index=False)
+        return
+    writer = None
+    try:
+        for start in range(0, n, batch_rows):
+            slice_df = df.iloc[start : start + batch_rows]
+            table = pa.Table.from_pandas(slice_df, preserve_index=False)
+            if writer is None:
+                writer = pq.ParquetWriter(str(out_path), table.schema)
+            writer.write_table(table)
+    finally:
+        if writer is not None:
+            writer.close()
+    logger.info(
+        f"Chunked parquet write: {n} rows in {((n - 1) // batch_rows) + 1} row group(s) → {out_path}"
+    )
+
 
 # ============================================================================
 # SHARED UTILITY FUNCTIONS (Used by both Batch and Streaming modes)
@@ -92,7 +169,9 @@ def optimize_dtypes(
         num_total = len(df[col])
         # Guard num_total==0 (empty shard reaching the fully-parallel path) →
         # previously ZeroDivisionError crashed the whole pool.map.
-        if num_total > 0 and num_unique / num_total < 0.5:  # Less than 50% unique values
+        if (
+            num_total > 0 and num_unique / num_total < 0.5
+        ):  # Less than 50% unique values
             df[col] = df[col].astype("category")
 
     final_memory = df.memory_usage(deep=True).sum() / 1024**2
@@ -306,7 +385,9 @@ def read_data_file(file_path: Path, file_format: str) -> pd.DataFrame:
         if file_format == "csv":
             df = pd.read_csv(file_path)
         elif file_format == "parquet":
-            df = pd.read_parquet(file_path)
+            # Chunked read — a fat single-row-group string column overflows Arrow's 2 GB
+            # per-array cap on a plain pd.read_parquet.
+            df = _read_parquet_chunked(file_path)
         elif file_format == "json":
             df = pd.read_json(file_path, lines=True)
         else:
@@ -721,7 +802,9 @@ def write_single_shard(
         elif output_format == "JSON":
             df.to_json(shard_path, orient="records", lines=True)
         elif output_format == "PARQUET":
-            df.to_parquet(shard_path, index=False)
+            # Chunked write — a fat string column would overflow Arrow's 2 GB cap on a
+            # single-row-group df.to_parquet.
+            _write_parquet_chunked(df, shard_path)
 
         logger.info(f"Successfully wrote {len(df)} rows to {shard_path}")
         return shard_path
@@ -816,7 +899,9 @@ def write_single_data_file(
         elif output_format == "JSON":
             df.to_json(data_path, orient="records", lines=True)
         elif output_format == "PARQUET":
-            df.to_parquet(data_path, index=False)
+            # Chunked write — a fat string column would overflow Arrow's 2 GB cap on a
+            # single-row-group df.to_parquet.
+            _write_parquet_chunked(df, data_path)
 
         logger.info(f"Successfully wrote {len(df)} rows to {data_path}")
         return data_path

@@ -266,15 +266,24 @@ class ProcessingHandler(PatternHandler):
                 attr = source_overrides[logical_name]
                 resolved = getattr(b.config, attr)
                 source = resolved() if callable(resolved) else resolved
-                processing_inputs.append(
-                    ProcessingInput(
-                        input_name=logical_name,
-                        source=source,
-                        destination=b.contract.expected_input_paths[logical_name],
-                        **extra,
+                # A config-sourced override that resolves to a FALSY value (None / "") means the
+                # config did not supply this input — fall through to the normal dependency path so
+                # the same optional input can still be fed by an upstream producer (INTERNAL mode).
+                # Without this, a blanket override would hijack a not-provided optional input and
+                # mount source=None (e.g. DummyTraining.model_artifacts_input when pretrained_model_path
+                # is unset but a training step feeds the model). A required input with no source still
+                # fails below with the usual "Required input not provided" error.
+                if source:
+                    processing_inputs.append(
+                        ProcessingInput(
+                            input_name=logical_name,
+                            source=source,
+                            destination=b.contract.expected_input_paths[logical_name],
+                            **extra,
+                        )
                     )
-                )
-                continue
+                    continue
+                # else: fall through to the dependency-based mounting below.
             if not dependency_spec.required and logical_name not in inputs:
                 continue
             if dependency_spec.required and logical_name not in inputs:

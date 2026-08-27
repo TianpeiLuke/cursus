@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.35] - 2026-08-27
+
+**Fix: `DummyTraining` now mounts `pretrained_model_path` (SOURCE mode) + `DummyDataLoading` survives parquet columns >2 GB.**
+
+Two independent root causes from a comparison pipeline rooted at `DummyDataLoading`/
+`DummyTraining` feeding external artifacts from config.
+
+**A — DummyTraining model-artifact wiring.** `DummyTraining` is a DAG root meant to deliver
+a `model.tar.gz` from config, but its contract had no `input_source_overrides`, so
+`pretrained_model_path` was stored yet never turned into a `ProcessingInput` — the script
+fell back to `source_dir/models/model.tar.gz` and failed. Mirror of `DummyDataLoading`,
+which already had the override for its `data_source`.
+
+**B — Arrow 2 GB per-array cap in `DummyDataLoading`.** A parquet file with a fat string
+column in a single row group overflowed pyarrow's 2³¹-byte per-array cap on a plain
+`pd.read_parquet()` (and `df.to_parquet()` write).
+
+### Fixed
+- `steps/interfaces/dummy_training.step.yaml`: add
+  `contract.input_source_overrides: {model_artifacts_input: get_pretrained_model_uri}`.
+- `steps/configs/config_dummy_training_step.py`: add `get_pretrained_model_uri()` (returns the
+  configured path, or `""` when unset).
+- `core/base/builder_templates.py` (`ProcessingHandler.get_inputs`): a config-sourced override
+  resolving to a FALSY value falls through to the dependency path instead of mounting
+  `source=None`, so an optional input can still be fed by an upstream producer (INTERNAL mode).
+- `steps/scripts/dummy_data_loading.py`: add `_read_parquet_chunked` (`iter_batches`) +
+  `_write_parquet_chunked` (`ParquetWriter` row-groups); route the parquet read + both writes
+  through them. Falls back to plain pandas when pyarrow is unavailable.
+
 ## [2.9.34] - 2026-08-26
 
 **Fix: `TabularLookupModelBuilding` now emits the inference-input schema so the downstream `Payload` step generates a correct MIMS sample.**
