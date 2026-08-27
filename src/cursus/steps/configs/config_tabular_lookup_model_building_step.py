@@ -81,6 +81,18 @@ class TabularLookupModelBuildingConfig(ProcessingStepConfigBase):
         "model.tar.gz (keeps individual files a reasonable size). Emitted as SHARD_COUNT.",
     )
 
+    inference_fields: List[list] = Field(
+        default_factory=list,
+        description="The model's INFERENCE input schema as [name, type] pairs "
+        "(type NUMERIC|TEXT), e.g. [['normalizedAddress','TEXT'],['saddr','TEXT']]. "
+        "Written into model.tar.gz's hyperparameters.json (tab_field_list / "
+        "cat_field_list / full_field_list) so the downstream Payload step generates a "
+        "MIMS load-testing sample whose keys match the inference handler's request "
+        "fields. These are the INFERENCE fields (what the served model reads), NOT the "
+        "build key_columns/value_columns. Emitted as INFERENCE_FIELDS (JSON). Should "
+        "match the Registration source_model_inference_input_variable_list.",
+    )
+
     processing_entry_point: str = Field(
         default="tabular_lookup_model_building.py",
         description="Relative path (within processing_source_dir) to the model-building script.",
@@ -111,6 +123,7 @@ class TabularLookupModelBuildingConfig(ProcessingStepConfigBase):
                 "VALUE_COLUMNS": json.dumps(self.value_columns),
                 "DEDUP": "true" if self.dedup else "false",
                 "SHARD_COUNT": str(self.shard_count),
+                "INFERENCE_FIELDS": json.dumps(self.inference_fields),
             }
             self._lookup_environment_variables = env_vars
 
@@ -193,6 +206,7 @@ class TabularLookupModelBuildingConfig(ProcessingStepConfigBase):
             "value_columns": self.value_columns,
             "dedup": self.dedup,
             "shard_count": self.shard_count,
+            "inference_fields": self.inference_fields,
             "processing_entry_point": self.processing_entry_point,
         }
         return {**base_fields, **lookup_fields}

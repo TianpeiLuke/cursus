@@ -155,8 +155,18 @@ def build_model_directory(
     value_columns: List[str],
     records,
     shard_count: int,
+    inference_fields: List[list] = None,
 ) -> None:
-    """Write the model manifest + sharded JSON into the model directory."""
+    """Write the model manifest + sharded JSON into the model directory.
+
+    ``inference_fields`` is the model's INFERENCE input schema — a list of
+    ``[field_name, field_type]`` pairs (type ``NUMERIC`` | ``TEXT``) describing the
+    request keys the serving handler reads (e.g. ``[["normalizedAddress","TEXT"],
+    ["saddr","TEXT"]]``). It is emitted into ``hyperparameters.json`` as the
+    ``tab_field_list`` / ``cat_field_list`` / ``full_field_list`` that the downstream
+    ``Payload`` step (``payload.py``) reads to generate MIMS load-testing samples.
+    These are the INFERENCE fields, NOT the build ``key_columns``/``value_columns``
+    (which are the source dataset's columns and generally differ)."""
     code_dir = model_dir / "code"
     code_dir.mkdir(parents=True, exist_ok=True)
 
@@ -199,6 +209,19 @@ def build_model_directory(
 
     logger.info(f"Wrote {len(shards)} shard file(s) under {shard_dir.name}/")
 
+    # Derive the payload-generation field lists from the INFERENCE schema, NOT the
+    # build columns. payload.py builds the MIMS sample from tab_field_list +
+    # cat_field_list, so map NUMERIC-> tab, everything else -> cat, and set
+    # full_field_list to the inference field order. If inference_fields is not
+    # provided, fall back to the build columns (all TEXT) so the tarball is still
+    # self-describing.
+    inference_fields = inference_fields or [
+        [c, "TEXT"] for c in (key_columns + value_columns)
+    ]
+    tab_field_list = [f[0] for f in inference_fields if str(f[1]).upper() == "NUMERIC"]
+    cat_field_list = [f[0] for f in inference_fields if str(f[1]).upper() != "NUMERIC"]
+    full_field_list = [f[0] for f in inference_fields]
+
     hyperparams = {
         "model_class": "non_parametric",
         "model_type": f"tabular_{model_kind}",
@@ -207,11 +230,16 @@ def build_model_directory(
         "shard_count": shard_count,
         "total_keys": n_keys,
         "total_values": total,
-        "full_field_list": key_columns + value_columns,
+        # Payload-generation contract (read by payload.py): inference input schema.
+        "full_field_list": full_field_list,
+        "tab_field_list": tab_field_list,
+        "cat_field_list": cat_field_list,
     }
     with open(model_dir / "hyperparameters.json", "w") as f:
         json.dump(hyperparams, f, indent=2)
-    logger.info("Saved hyperparameters.json")
+    logger.info(
+        f"Saved hyperparameters.json (inference fields: tab={tab_field_list}, cat={cat_field_list})"
+    )
 
 
 def create_model_tarball(model_dir: Path, output_path: Path) -> None:
@@ -246,6 +274,34 @@ def _parse_list(env_value: str) -> List[str]:
         return [tok.strip() for tok in env_value.split(",") if tok.strip()]
 
 
+def _parse_inference_fields(env_value: str) -> List[list]:
+    """Parse INFERENCE_FIELDS into a list of ``[field_name, field_type]`` pairs.
+
+    Accepts a JSON list of pairs ``[["normalizedAddress","TEXT"],["saddr","TEXT"]]``
+    (the canonical form), a JSON dict ``{"normalizedAddress":"TEXT","saddr":"TEXT"}``,
+    or a bare JSON/CSV list of names (defaulting each to TEXT). Returns [] if empty."""
+    env_value = (env_value or "").strip()
+    if not env_value:
+        return []
+    try:
+        parsed = json.loads(env_value)
+    except json.JSONDecodeError:
+        return [[tok.strip(), "TEXT"] for tok in env_value.split(",") if tok.strip()]
+    if isinstance(parsed, dict):
+        return [[str(k), str(v)] for k, v in parsed.items()]
+    if isinstance(parsed, list):
+        out = []
+        for item in parsed:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                out.append([str(item[0]), str(item[1])])
+            elif isinstance(item, (list, tuple)) and len(item) == 1:
+                out.append([str(item[0]), "TEXT"])
+            else:
+                out.append([str(item), "TEXT"])
+        return out
+    return []
+
+
 def main(
     input_paths: Dict[str, str],
     output_paths: Dict[str, str],
@@ -259,6 +315,7 @@ def main(
         input_paths:  {"input_data": "/opt/ml/processing/input/data"}
         output_paths: {"model_output": "/opt/ml/processing/output/model"}
         environ_vars: MODEL_KIND / KEY_COLUMNS / VALUE_COLUMNS / DEDUP / SHARD_COUNT
+                      / INFERENCE_FIELDS
         job_args:     parsed CLI args (unused; kept for the standard signature)
     """
     logger.info("=" * 70)
@@ -273,6 +330,8 @@ def main(
     value_columns = _parse_list(environ_vars.get("VALUE_COLUMNS", "[]"))
     dedup = (environ_vars.get("DEDUP", "true") or "true").lower() == "true"
     shard_count = int(environ_vars.get("SHARD_COUNT", "1") or "1")
+    # Inference input schema for downstream payload-sample generation (payload.py).
+    inference_fields = _parse_inference_fields(environ_vars.get("INFERENCE_FIELDS", ""))
 
     if model_kind not in ("lookup", "set_membership"):
         raise ValueError(
@@ -283,7 +342,8 @@ def main(
 
     logger.info(
         f"model_kind={model_kind} key_columns={key_columns} "
-        f"value_columns={value_columns} dedup={dedup} shard_count={shard_count}"
+        f"value_columns={value_columns} dedup={dedup} shard_count={shard_count} "
+        f"inference_fields={inference_fields}"
     )
 
     df = load_data(input_dir)
@@ -299,7 +359,13 @@ def main(
         model_dir = Path(temp_dir) / "model"
         model_dir.mkdir()
         build_model_directory(
-            model_dir, model_kind, key_columns, value_columns, records, shard_count
+            model_dir,
+            model_kind,
+            key_columns,
+            value_columns,
+            records,
+            shard_count,
+            inference_fields,
         )
         output_dir.mkdir(parents=True, exist_ok=True)
         create_model_tarball(model_dir, output_dir / "model.tar.gz")
@@ -330,6 +396,7 @@ if __name__ == "__main__":
             "VALUE_COLUMNS": os.environ.get("VALUE_COLUMNS", "[]"),
             "DEDUP": os.environ.get("DEDUP", "true"),
             "SHARD_COUNT": os.environ.get("SHARD_COUNT", "1"),
+            "INFERENCE_FIELDS": os.environ.get("INFERENCE_FIELDS", ""),
         }
 
         if not os.path.exists(CONTAINER_PATHS["INPUT_DATA"]):

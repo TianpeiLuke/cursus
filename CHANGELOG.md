@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.34] - 2026-08-26
+
+**Fix: `TabularLookupModelBuilding` now emits the inference-input schema so the downstream `Payload` step generates a correct MIMS sample.**
+
+The `Payload` step (`payload.py`) builds its load-testing sample from `tab_field_list` /
+`cat_field_list` in the model's `hyperparameters.json`. `TabularLookupModelBuilding`
+previously wrote only `full_field_list` set to the *build* columns
+(`key_columns + value_columns`), so `Payload` produced an empty/misaligned sample whose
+keys did not match the served model's request fields. The step now takes an explicit
+`inference_fields` config (the INFERENCE input schema — `[name, type]` pairs, distinct
+from the build columns) and writes `full_field_list` / `tab_field_list` / `cat_field_list`
+accordingly, so the generated payload matches the inference handler + the Registration
+input variable list.
+
+### Added
+- `config_tabular_lookup_model_building_step.py`: `inference_fields: List[list]` (Tier-2,
+  default `[]`), emitted as the `INFERENCE_FIELDS` env var.
+- `tabular_lookup_model_building.step.yaml`: `INFERENCE_FIELDS` optional env var.
+
+### Changed
+- `tabular_lookup_model_building.py`: parse `INFERENCE_FIELDS` and write
+  `full_field_list` / `tab_field_list` / `cat_field_list` into `hyperparameters.json` from
+  the inference schema (falls back to the build columns as all-TEXT when unset).
+
 ## [2.9.33] - 2026-08-26
 
 **Feature: new `TabularLookupModelBuilding` step — a general non-parametric "the dataset IS the model" builder.**
