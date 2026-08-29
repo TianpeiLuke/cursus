@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.37] - 2026-08-28
+
+**Fix: `XGBoostModelInference.processed_data` now accepts `PyTorchModelInference` — the two-stage calibration edge resolves by a solid margin instead of a razor-thin one.**
+
+In a two-stage stacked model (encoder → XGBoost head), the calibration branch runs
+`PyTorchModelInference_calibration` (`encode()` → `[tabular | embedding]`) and feeds it into
+`XGBoostModelInference_calibration.processed_data`. But `PyTorchModelInference` was missing from
+that dependency's `compatible_sources` (it was only listed on `model_input`), so the edge resolved
+only by a ~0.009 margin over the semantically-wrong `XGBoostTraining.evaluation_output` (both are
+`processing_output`). A small spec/keyword change could silently flip it, fitting the percentile
+calibration map on the wrong distribution.
+
+### Fixed
+- `steps/interfaces/xgboost_model_inference.step.yaml`: add `PyTorchModelInference` to
+  `processed_data.compatible_sources`. The correct source now wins **0.846 vs 0.636 (margin +0.209)**,
+  up from ~+0.009. (`model_input` already listed it; this adds it to the data channel where it belongs.)
+- `tests/core/deps/test_xgboost_inference_processed_data_source.py`: guards the spec entry, the
+  resolved binding (`processed_data ← PyTorchModelInference`, `model_input ← XGBoostTraining`), and
+  the score margin.
+
 ## [2.9.36] - 2026-08-28
 
 **Feature: per-dependency `compatible_output_types` opt-in so a dependency can accept producer output types beyond the base type-compatibility matrix (enables two-stage encoder→XGBoost co-location).**

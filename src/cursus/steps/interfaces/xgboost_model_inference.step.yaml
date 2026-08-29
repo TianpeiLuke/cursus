@@ -68,6 +68,7 @@ spec:
       - CradleDataLoading
       - RiskTableMapping
       - CurrencyConversion
+      - PyTorchModelInference
       semantic_keywords:
       - data
       - evaluation
