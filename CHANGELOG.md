@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.36] - 2026-08-28
+
+**Feature: per-dependency `compatible_output_types` opt-in so a dependency can accept producer output types beyond the base type-compatibility matrix (enables two-stage encoder→XGBoost co-location).**
+
+The dependency resolver's type gate (40% weight) hard-rejects (score 0.0) any producer output whose
+`output_type` is not matrix-compatible with a dependency's declared `type`. This blocked a legitimate
+two-stage-stack edge: `XGBoostTraining.model_artifacts_input` (type `processing_output`, normally fed
+loose imputation/risk/feature-selection artifacts from Processing steps) could not accept a Stage-1
+`PyTorchTraining.model_output` (type `model_artifacts` = `S3ModelArtifacts`), so the trained encoder
+could never be co-located into the XGBoost `model_output` for single-`model.tar.gz` packaging.
+
+### Added
+- `DependencyDecl.compatible_output_types: List[DependencyType]` (default empty) — a per-dependency
+  allowlist of ADDITIONAL producer output types to accept beyond the base matrix. Scoped to the
+  declaring dependency, so it has no global blast radius. YAML string values (e.g. `["model_artifacts"]`)
+  are coerced to the shared enum.
+- `steps/interfaces/xgboost_training.step.yaml`: `model_artifacts_input` now declares
+  `compatible_output_types: [model_artifacts]`, adds `PyTorchTraining` to `compatible_sources`, and
+  adds the `encoder` semantic keyword — so a Stage-1 encoder's `model_output` binds to it (measured
+  score 0.8, well above the 0.5 bind threshold).
+- `tests/core/deps/test_compatible_output_types.py`: covers the opt-in bind, the required/optional
+  no-opt-in rejection (control scores 0.0), and the scoring branch.
+
+### Changed
+- `UnifiedDependencyResolver._calculate_compatibility` / `_get_score_breakdown`: after the exact-match
+  and matrix-compatible checks, also accept `output_type in dep.compatible_output_types` as a
+  compatible (0.2) type match; otherwise unchanged (still returns 0.0). The default-empty field means
+  existing dependencies are unaffected.
+- `SpecificationRegistry._are_compatible`: mirrors the same opt-in in its basic type check.
+
 ## [2.9.35] - 2026-08-27
 
 **Fix: `DummyTraining` now mounts `pretrained_model_path` (SOURCE mode) + `DummyDataLoading` survives parquet columns >2 GB.**

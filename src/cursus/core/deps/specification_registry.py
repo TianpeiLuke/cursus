@@ -88,8 +88,13 @@ class SpecificationRegistry:
 
     def _are_compatible(self, dep_spec: Any, out_spec: Any) -> bool:
         """Check basic compatibility between dependency and output."""
-        # Type compatibility
-        if dep_spec.dependency_type != out_spec.output_type:
+        # Type compatibility (allow a per-dependency opt-in via compatible_output_types, so a
+        # dependency can accept producer output types beyond its own declared type).
+        if (
+            dep_spec.dependency_type != out_spec.output_type
+            and out_spec.output_type
+            not in (getattr(dep_spec, "compatible_output_types", None) or [])
+        ):
             return False
 
         # Data type compatibility

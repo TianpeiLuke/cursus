@@ -683,6 +683,12 @@ class DependencyDecl(BaseModel):
     semantic_keywords: List[str] = Field(default_factory=list)
     data_type: str = "S3Uri"
     description: str = ""
+    # Optional: additional producer output types this dependency will ALSO accept beyond its own
+    # declared `type`. Default empty = no change in behavior. Lets a dependency opt into a
+    # cross-type edge the base type-compatibility matrix does not allow — e.g. a processing_output
+    # artifacts input that also accepts a training step's model_artifacts output (two-stage stacks
+    # co-locating an encoder). Scoped per-dependency, so it has no global blast radius.
+    compatible_output_types: List[DependencyType] = Field(default_factory=list)
 
     @field_validator("type", mode="before")
     @classmethod
@@ -690,6 +696,16 @@ class DependencyDecl(BaseModel):
         # Accept the YAML string (e.g. "training_data") and map to the shared enum.
         if isinstance(v, str):
             return _DEP_TYPE_BY_VALUE.get(v, v)
+        return v
+
+    @field_validator("compatible_output_types", mode="before")
+    @classmethod
+    def coerce_compatible_output_types(cls, v: object) -> object:
+        # Accept a YAML list of strings (e.g. ["model_artifacts"]) and map each to the shared enum.
+        if isinstance(v, list):
+            return [
+                _DEP_TYPE_BY_VALUE.get(i, i) if isinstance(i, str) else i for i in v
+            ]
         return v
 
     @property

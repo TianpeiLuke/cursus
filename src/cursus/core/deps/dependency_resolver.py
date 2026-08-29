@@ -286,6 +286,12 @@ class UnifiedDependencyResolver:
             dep_spec.dependency_type, output_spec.output_type
         ):
             breakdown["type_compatibility"] = 0.2
+        elif output_spec.output_type in (
+            getattr(dep_spec, "compatible_output_types", None) or []
+        ):
+            breakdown["type_compatibility"] = (
+                0.2  # per-dependency opt-in (compatible_output_types)
+            )
         else:
             breakdown["type_compatibility"] = 0.0
 
@@ -459,6 +465,14 @@ class UnifiedDependencyResolver:
         elif self._are_types_compatible(
             dep_spec.dependency_type, output_spec.output_type
         ):
+            score += 0.2
+        elif output_spec.output_type in (
+            getattr(dep_spec, "compatible_output_types", None) or []
+        ):
+            # Per-dependency opt-in: this dependency explicitly accepts this producer output type
+            # beyond the base matrix (e.g. a processing_output artifacts input that also accepts a
+            # training step's model_artifacts output for two-stage stacks). Scored as a compatible
+            # (not exact) type match. Empty by default → no effect on other dependencies.
             score += 0.2
         else:
             # If types are not compatible at all, return 0

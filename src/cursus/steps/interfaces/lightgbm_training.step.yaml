@@ -92,9 +92,15 @@ spec:
       - settings
     model_artifacts_input:
       type: processing_output
+      # Also accept a training step's model_artifacts output (e.g. a Stage-1 PyTorch encoder in a
+      # two-stage stack), in addition to the processing_output artifacts (imputation/risk/feature
+      # selection) this channel normally carries. Per-dependency opt-in; no global blast radius.
+      compatible_output_types:
+      - model_artifacts
       required: false
       compatible_sources:
       - LightGBMTraining
+      - PyTorchTraining
       - MissingValueImputation
       - RiskTableMapping
       - FeatureSelection
@@ -105,6 +111,7 @@ spec:
       - imputation
       - risk_tables
       - pretrained
+      - encoder
   outputs:
     model_output:
       type: model_artifacts
