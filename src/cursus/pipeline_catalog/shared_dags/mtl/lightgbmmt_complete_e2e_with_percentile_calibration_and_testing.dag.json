@@ -1,0 +1,175 @@
+{
+  "dag": {
+    "description": "Multi-task LightGBM (MTGBM) end-to-end pipeline with three independent data branches: training, calibration (feeding percentile calibration), and a hold-out testing branch for out-of-sample evaluation. The calibrated model is packaged, payloaded, and registered for deployment.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "LightGBMMTTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "LightGBMMTModelEval_calibration",
+      "PercentileModelCalibration_calibration",
+      "CradleDataLoading_testing",
+      "TabularPreprocessing_testing",
+      "LightGBMMTModelEval_testing",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "LightGBMMTTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "LightGBMMTTraining",
+        "LightGBMMTModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "LightGBMMTModelEval_calibration"
+      ],
+      [
+        "LightGBMMTModelEval_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "CradleDataLoading_testing",
+        "TabularPreprocessing_testing"
+      ],
+      [
+        "LightGBMMTTraining",
+        "LightGBMMTModelEval_testing"
+      ],
+      [
+        "TabularPreprocessing_testing",
+        "LightGBMMTModelEval_testing"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "LightGBMMTTraining",
+        "Package"
+      ],
+      [
+        "LightGBMMTTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "lightgbmmt_complete_e2e_with_percentile_calibration_and_testing",
+    "framework": "lightgbmmt",
+    "complexity": "comprehensive",
+    "task_type": "multi_task_classification",
+    "features": [
+      "multi_task_learning",
+      "hold_out_testing",
+      "percentile_calibration",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 13,
+    "edge_count": 14,
+    "used_by_projects": [
+      "transportation_risk_mtl"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": true,
+      "output_type": "multi_task_binary",
+      "data_source": "cradle",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.4xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-4 (CPU multi-task LightGBM, three data branches)",
+      "cost_driver": "cpu_training",
+      "instance_cost_tier": "low",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Train a multi-task LightGBM (MTGBM) model that learns several correlated transportation-risk targets jointly, then normalize raw scores with percentile calibration and independently validate on a hold-out testing dataset before deployment. Best when you need a distinct out-of-sample test branch separate from the calibration data.",
+      "when_not_to_use": "If you train a single target (use lightgbm/xgboost complete_e2e). If you do not need an independent hold-out test branch (use lightgbmmt_complete_e2e). If the testing branch must emit model-metrics and a wiki page (use the lightgbm percentile+testing variant with ModelMetricsComputation + ModelWikiGenerator). If raw model scores are fine and no percentile normalization is required (use lightgbmmt_complete_e2e with ModelCalibration).",
+      "differentiators": [
+        "Multi-task LightGBM (MTGBM): LightGBMMTTraining + LightGBMMTModelEval learn correlated targets jointly",
+        "Adds an independent hold-out testing branch (CradleDataLoading_testing -> TabularPreprocessing_testing -> LightGBMMTModelEval_testing) on top of the calibration-eval branch",
+        "Uses PercentileModelCalibration (score-rank normalization) instead of the ModelCalibration used by lightgbmmt_complete_e2e",
+        "Testing branch is a metrics-only leaf: it neither feeds calibration nor deployment, and has no ModelMetricsComputation/ModelWikiGenerator"
+      ],
+      "prerequisites": [
+        {
+          "check": "Multiple correlated labels available for joint training",
+          "how": "Cradle SQL (training) returns more than one target column for MTGBM"
+        },
+        {
+          "check": "Separate hold-out testing dataset",
+          "how": "Cradle SQL (testing) covers a period/split disjoint from both training and calibration"
+        },
+        {
+          "check": "Calibration dataset for percentile buckets",
+          "how": "Cradle SQL (calibration) returns labels and features matching the training schema"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "cradle_sql (calibration)",
+          "cradle_sql (testing)",
+          "label_columns (multi-task target list)",
+          "tabular_features"
+        ],
+        "safe_defaults": [
+          "percentile_buckets=[10,25,50,75,90]",
+          "lightgbmmt_params=default",
+          "num_tasks inferred from label_columns"
+        ],
+        "common_pitfalls": [
+          "All three branches (training/calibration/testing) must share an identical TabularPreprocessing feature schema",
+          "Package consumes LightGBMMTTraining + PercentileModelCalibration outputs, not the testing eval output",
+          "The testing branch is evaluation-only and does not gate registration; scores are calibrated from the calibration branch"
+        ]
+      },
+      "decision_tree": {
+        "multi_task_targets?": {
+          "yes": "Continue",
+          "no": "Use lightgbm/xgboost single-task DAG"
+        },
+        "need_holdout_test_branch?": {
+          "yes": "Continue",
+          "no": "Use lightgbmmt_complete_e2e"
+        },
+        "need_percentile_scores?": {
+          "yes": "USE THIS DAG",
+          "no": "Use lightgbmmt_complete_e2e (ModelCalibration)"
+        }
+      }
+    }
+  }
+}

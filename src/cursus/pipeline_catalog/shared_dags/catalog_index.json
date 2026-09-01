@@ -1,7 +1,7 @@
 {
   "version": "3.1",
   "generated": "2026-06-24T23:57:14Z",
-  "total_dags": 46,
+  "total_dags": 62,
   "frameworks": [
     "bedrock",
     "dummy",
@@ -471,6 +471,195 @@
       }
     },
     {
+      "id": "bedrock_cradle_label_ruleset_labeling",
+      "path": "bedrock/bedrock_cradle_label_ruleset_labeling.dag.json",
+      "description": "Terminal Bedrock LLM labeling / audit pipeline over a Cradle-sourced dataset. Cradle SQL loads the audit population, TabularPreprocessing shapes it, BedrockProcessing scores/annotates each record under a generated prompt template, and LabelRulesetExecution applies a generated label ruleset to emit final labels or audit decisions. No model training, packaging, or registration \u2014 the output is the labeled/decisioned dataset.",
+      "framework": "bedrock",
+      "complexity": "standard",
+      "task_type": "data_labeling",
+      "node_count": 6,
+      "edge_count": 5,
+      "features": [
+        "cradle_data_loading",
+        "bedrock_processing",
+        "prompt_template_generation",
+        "label_ruleset",
+        "llm_weak_supervision",
+        "terminal_labeling"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "labels_or_decisions",
+        "data_source": "cradle_mds",
+        "requires_llm": true
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": false,
+        "requires_bedrock": true
+      },
+      "cost": {
+        "estimated_hours": "1-6 (Bedrock inference over the audit population)",
+        "cost_driver": "bedrock_inference",
+        "instance_cost_tier": "low_to_medium",
+        "scalability": "row_count_linear"
+      },
+      "used_by_projects": [
+        "rnr_audit_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "Generate LLM-derived labels or audit decisions over a Cradle-sourced dataset using Bedrock (gated by a generated prompt template) and a declarative label ruleset, WITHOUT training a model. Use for weak-supervision label generation, audit/QA sampling, or offline LLM scoring where the deliverable is the labeled dataset. This is the rnr_audit_bedrock NA DAG.",
+        "when_not_to_use": "If you then train a model in the same DAG, use bedrock_pytorch_with_label_ruleset_e2e or bedrock_pytorch_with_label_ruleset_percentile_e2e. If you do not need a label ruleset (plain LLM enrichment/scoring), use bedrock_data_processing_with_prompt_template. If input is pre-staged/Dummy rather than a live Cradle SQL, adjust the loader accordingly.",
+        "differentiators": [
+          "Terminal labeling/audit DAG \u2014 no training, packaging, or registration tail",
+          "Cradle-sourced (live SQL) rather than Dummy/pre-staged",
+          "Combines Bedrock LLM scoring (prompt-template-gated) with a generated label ruleset to emit labels/decisions",
+          "Smallest Cradle + Bedrock + label-ruleset pattern"
+        ],
+        "prerequisites": [
+          {
+            "check": "Cradle SQL for the audit population",
+            "how": "CradleDataLoading_training profile returns the rows to label"
+          },
+          {
+            "check": "Bedrock model access + prompt template",
+            "how": "BedrockPromptTemplateGeneration feeds BedrockProcessing_training"
+          },
+          {
+            "check": "Label ruleset definition",
+            "how": "LabelRulesetGeneration emits the ruleset applied by LabelRulesetExecution_training"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (audit population)",
+            "bedrock_model_id",
+            "prompt_template_spec",
+            "label_ruleset",
+            "text_column",
+            "tabular_features"
+          ],
+          "safe_defaults": [
+            "bedrock_batch=false (synchronous BedrockProcessing)"
+          ],
+          "common_pitfalls": [
+            "LabelRulesetExecution depends on BOTH BedrockProcessing output and the generated ruleset",
+            "Prompt template output fields must align with the fields the ruleset expects",
+            "This DAG has no registration \u2014 downstream consumers read the emitted labeled dataset, not a MIMS model"
+          ]
+        },
+        "decision_tree": {
+          "train_model_in_same_dag?": {
+            "yes": "Use bedrock_pytorch_with_label_ruleset_e2e / _percentile",
+            "no": "Continue"
+          },
+          "need_label_ruleset?": {
+            "yes": "USE THIS DAG",
+            "no": "Use bedrock_data_processing_with_prompt_template"
+          }
+        }
+      }
+    },
+    {
+      "id": "bedrock_data_processing_with_prompt_template",
+      "path": "bedrock/bedrock_data_processing_with_prompt_template.dag.json",
+      "description": "Minimal synchronous Bedrock LLM data-processing / scoring building block. Pre-staged (Dummy-loaded) data is preprocessed and then scored/enriched by BedrockProcessing under a generated prompt template. Terminal \u2014 the output is the LLM-processed dataset; no label ruleset, training, packaging, or registration.",
+      "framework": "bedrock",
+      "complexity": "simple",
+      "task_type": "data_processing",
+      "node_count": 4,
+      "edge_count": 3,
+      "features": [
+        "dummy_data_loading",
+        "tabular_preprocessing",
+        "prompt_template_generation",
+        "bedrock_processing",
+        "synchronous_llm_scoring",
+        "terminal_processing"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "scored_data",
+        "data_source": "dummy_prestaged",
+        "requires_llm": true
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": false,
+        "requires_bedrock": true
+      },
+      "cost": {
+        "estimated_hours": "0.5-4 (synchronous Bedrock inference over the input batch)",
+        "cost_driver": "bedrock_inference",
+        "instance_cost_tier": "low",
+        "scalability": "row_count_linear"
+      },
+      "used_by_projects": [
+        "rnr_pytorch_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "Run synchronous Bedrock LLM processing (scoring, enrichment, or feature generation) over pre-staged (Dummy-loaded) tabular+text data, gated by a generated prompt template. This is the smallest Bedrock scoring building block and is the rnr_pytorch_bedrock batch-scoring DAG (dag_batch.json) used to produce LLM-processed outputs without any downstream model.",
+        "when_not_to_use": "If you need asynchronous/batch Bedrock throughput, use bedrock_batch_data_processing (BedrockBatchProcessing). If you then apply a label ruleset to derive labels, use bedrock_cradle_label_ruleset_labeling. If you train a model downstream, use a full bedrock end-to-end DAG (bedrock_pytorch_e2e / bedrock_pytorch_with_label_ruleset_e2e).",
+        "differentiators": [
+          "Smallest Bedrock scoring DAG with an explicit BedrockPromptTemplateGeneration node feeding the processing step",
+          "Synchronous BedrockProcessing (vs asynchronous BedrockBatchProcessing in bedrock_batch_data_processing)",
+          "Terminal \u2014 emits LLM-processed data, no training / ruleset / packaging",
+          "Dummy/pre-staged input rather than live Cradle SQL"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock model access + prompt template",
+            "how": "BedrockPromptTemplateGeneration produces the template consumed by BedrockProcessing_training"
+          },
+          {
+            "check": "Pre-staged input data available",
+            "how": "DummyDataLoading_training points at the staged EDX/S3 dataset"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "dummy_data_source",
+            "bedrock_model_id",
+            "prompt_template_spec",
+            "text_column",
+            "tabular_features"
+          ],
+          "safe_defaults": [
+            "bedrock_batch=false (synchronous)"
+          ],
+          "common_pitfalls": [
+            "BedrockProcessing consumes BOTH the TabularPreprocessing output and the generated prompt template",
+            "Keep the prompt template schema in sync with the preprocessed columns",
+            "For very large populations prefer bedrock_batch_data_processing to avoid synchronous timeouts"
+          ]
+        },
+        "decision_tree": {
+          "sync_or_batch?": {
+            "sync": "Continue",
+            "batch": "Use bedrock_batch_data_processing"
+          },
+          "need_prompt_template?": {
+            "yes": "USE THIS DAG",
+            "no": "Use bedrock_batch_data_processing"
+          }
+        }
+      }
+    },
+    {
       "id": "bedrock_pytorch_e2e",
       "path": "bedrock/bedrock_pytorch_e2e.dag.json",
       "description": "Bedrock Real-time-enhanced PyTorch end-to-end pipeline with LLM-based data processing, training, calibration, packaging, registration, and evaluation",
@@ -666,247 +855,6 @@
           "need_new_labels?": {
             "yes": "USE THIS DAG (scores new data)",
             "no": "Use training-only DAG (dag_training_NA.json)"
-          }
-        }
-      }
-    },
-    {
-      "id": "bedrock_slipbox_routing_pytorch_incremental",
-      "path": "bedrock/bedrock_slipbox_routing_pytorch_incremental.dag.json",
-      "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock forced-tool-use scoring, EDX anti-join, and EDX write-back.",
-      "framework": "pytorch",
-      "complexity": "comprehensive",
-      "task_type": "incremental_training_with_dks_routed_llm_scoring",
-      "node_count": 15,
-      "edge_count": 16,
-      "features": [
-        "cradle_data_loading",
-        "tabular_preprocessing",
-        "slipbox_knowledge_routing",
-        "dks_compile_index_route",
-        "bedrock_forced_tool_use",
-        "edx_uploading",
-        "training",
-        "calibration",
-        "packaging",
-        "registration",
-        "edx_anti_join",
-        "incremental_scoring"
-      ],
-      "input_requirements": {
-        "data_types": [
-          "text",
-          "tabular"
-        ],
-        "text_support": true,
-        "multi_task": false,
-        "output_type": "binary_or_multiclass",
-        "data_source": "cradle_mds",
-        "requires_llm": true,
-        "llm_provider": "bedrock"
-      },
-      "constraints": {
-        "requires_gpu": true,
-        "min_instance": "ml.g5.xlarge",
-        "supports_multi_gpu": true,
-        "requires_edx_access": true,
-        "requires_mims": true,
-        "requires_bedrock_access": true
-      },
-      "cost": {
-        "estimated_hours": "6-16 (Bedrock delta scoring + routing dominate)",
-        "cost_driver": "bedrock_inference_plus_embedding_routing",
-        "instance_cost_tier": "high",
-        "scalability": "delta_size_linear"
-      },
-      "used_by_projects": [
-        "rnr_pytorch_bedrock"
-      ],
-      "agent_context": {
-        "when_to_use": "Incremental retraining of a DKS-routed LLM-labeled model (e.g. RnR): you have a prior scored-EDX label cache and need to score only NEW orders. The delta path routes each record against a bundled DKS knowledge corpus (SlipboxKnowledgeRouting: compile->index->route) then classifies with Bedrock forced tool-use, writes the labels back to EDX, and merges with the baseline cache for training.",
-        "when_not_to_use": "First-time training (no scored-EDX baseline exists) \u2014 use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_pytorch_incremental_edx (no SlipboxKnowledgeRouting step).",
-        "differentiators": [
-          "Only incremental DAG with a SlipboxKnowledgeRouting step (DKS compile->index->route) upstream of Bedrock",
-          "Bedrock runs forced tool-use (constrained decoding) on the routed rule set \u2014 schema-aligned labels, 0 parse failures",
-          "EDX anti-join skips already-scored orders; EDX write-back grows the label cache",
-          "Delta feeds BOTH the EDX write-back and the training merge"
-        ],
-        "prerequisites": [
-          {
-            "check": "Scored-EDX label cache exists from a prior run (or a prior backfill)",
-            "how": "Verify the the scored-label EDX ARN is accessible via Cradle"
-          },
-          {
-            "check": "Bedrock model access",
-            "how": "IAM role has bedrock:InvokeModel for the target model"
-          },
-          {
-            "check": "DKS knowledge corpus present",
-            "how": "SlipboxKnowledgeRouting bundles the rule_*/pattern_*/behavior_* corpus in its source_dir (default), or mount it via the optional knowledge_corpus channel (DummyDataLoading S3)"
-          },
-          {
-            "check": "MDS data for new period",
-            "how": "Cradle date range covers a period NOT already in the scored EDX"
-          }
-        ],
-        "config_guidance": {
-          "user_must_provide": [
-            "edx_scored_arn",
-            "mds_date_range",
-            "bedrock_model_id",
-            "author",
-            "service_name"
-          ],
-          "safe_defaults": [
-            "routing_scoring_mode",
-            "routing_threshold",
-            "routing_top_k",
-            "embedding_model_name",
-            "bedrock_use_structured_output",
-            "instance_types",
-            "train_ratio"
-          ],
-          "common_pitfalls": [
-            "BedrockProcessing_delta MUST set bedrock_use_structured_output=true (forced tool-use) or the delta labels drift from the baseline labels",
-            "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX \u2014 count+order must match)",
-            "knowledge_corpus is OPTIONAL (bundled default) \u2014 do NOT wire it unless overriding the corpus via DummyDataLoading",
-            "MDS date range must NOT overlap the scored EDX period \u2014 causes an empty anti-join result",
-            "Cradle transform_sql final projection must equal output_schema (no SELECT *; window/helper columns projected away)"
-          ]
-        },
-        "decision_tree": {
-          "has_prior_scored_edx?": {
-            "yes": "USE THIS DAG (scores only new orders)",
-            "no": "Use the baseline dag.json first to seed the EDX cache"
-          },
-          "labeling_uses_dks_routing?": {
-            "yes": "USE THIS DAG (SlipboxKnowledgeRouting)",
-            "no": "Use bedrock_pytorch_incremental_edx (no routing step)"
-          }
-        }
-      }
-    },
-    {
-      "id": "bedrock_slipbox_routing_batch_pytorch_incremental",
-      "path": "bedrock/bedrock_slipbox_routing_batch_pytorch_incremental.dag.json",
-      "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock BATCH forced-tool-use scoring, EDX anti-join, and EDX write-back.",
-      "framework": "pytorch",
-      "complexity": "comprehensive",
-      "task_type": "incremental_training_with_dks_routed_batch_llm_scoring",
-      "node_count": 15,
-      "edge_count": 16,
-      "features": [
-        "cradle_data_loading",
-        "tabular_preprocessing",
-        "slipbox_knowledge_routing",
-        "dks_compile_index_route",
-        "bedrock_batch_processing",
-        "bedrock_forced_tool_use",
-        "edx_uploading",
-        "training",
-        "calibration",
-        "packaging",
-        "registration",
-        "edx_anti_join",
-        "incremental_scoring",
-        "cost_optimization"
-      ],
-      "input_requirements": {
-        "data_types": [
-          "text",
-          "tabular"
-        ],
-        "text_support": true,
-        "multi_task": false,
-        "output_type": "binary_or_multiclass",
-        "data_source": "cradle_mds",
-        "requires_llm": true,
-        "llm_provider": "bedrock"
-      },
-      "constraints": {
-        "requires_gpu": true,
-        "min_instance": "ml.g5.xlarge",
-        "supports_multi_gpu": true,
-        "requires_edx_access": true,
-        "requires_mims": true,
-        "requires_bedrock_access": true
-      },
-      "cost": {
-        "estimated_hours": "4-24 (Bedrock batch delta scoring is async; routing + batch turnaround dominate)",
-        "cost_driver": "bedrock_batch_inference_plus_embedding_routing",
-        "instance_cost_tier": "high",
-        "scalability": "delta_size_linear"
-      },
-      "used_by_projects": [
-        "rnr_pytorch_bedrock"
-      ],
-      "agent_context": {
-        "when_to_use": "Same as bedrock_slipbox_routing_pytorch_incremental (incremental retraining of a DKS-routed LLM-labeled model, e.g. RnR) BUT the delta is LARGE (>~100K new orders) and the realtime BedrockProcessing path is bound by the account's per-minute Sonnet quota (ThrottlingException, multi-day wall). BedrockBatchProcessing_delta submits the routed records as an async Bedrock batch job (off the online RPM/TPM quota, ~50% cheaper for large volumes) then merges the scored labels back exactly like the realtime variant.",
-        "when_not_to_use": "Small delta (<~100K orders) or when you need low-latency turnaround \u2014 use the realtime bedrock_slipbox_routing_pytorch_incremental (no async batch wall). First-time training (no scored-EDX baseline) \u2014 use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_batch_pytorch_e2e (no SlipboxKnowledgeRouting step).",
-        "differentiators": [
-          "Only incremental DAG that pairs SlipboxKnowledgeRouting (DKS compile->index->route) with Bedrock BATCH inference",
-          "Async batch scoring escapes the realtime per-minute quota that caps the online BedrockProcessing_delta delta size",
-          "BedrockBatchProcessing_delta consumes BOTH SlipboxKnowledgeRouting outputs (routed processed_data + the {ruleset,rules} prompt_templates)",
-          "EDX anti-join skips already-scored orders; EDX write-back grows the label cache",
-          "Delta feeds BOTH the EDX write-back and the training merge"
-        ],
-        "prerequisites": [
-          {
-            "check": "Scored-EDX label cache exists from a prior run (or a prior backfill)",
-            "how": "Verify the scored-label EDX ARN is accessible via Cradle"
-          },
-          {
-            "check": "Bedrock batch model access",
-            "how": "IAM role has bedrock:CreateModelInvocationJob for the target model"
-          },
-          {
-            "check": "DKS knowledge corpus present",
-            "how": "SlipboxKnowledgeRouting bundles the rule_*/pattern_*/behavior_* corpus in its source_dir (default), or mount it via the optional knowledge_corpus channel (DummyDataLoading S3)"
-          },
-          {
-            "check": "MDS data for new period",
-            "how": "Cradle date range covers a period NOT already in the scored EDX"
-          }
-        ],
-        "config_guidance": {
-          "user_must_provide": [
-            "edx_scored_arn",
-            "mds_date_range",
-            "bedrock_model_id",
-            "author",
-            "service_name"
-          ],
-          "safe_defaults": [
-            "routing_scoring_mode",
-            "routing_threshold",
-            "routing_top_k",
-            "embedding_model_name",
-            "bedrock_use_structured_output",
-            "instance_types",
-            "train_ratio"
-          ],
-          "common_pitfalls": [
-            "BedrockBatchProcessing_delta MUST set bedrock_use_structured_output=true (forced tool-use) or the delta labels drift from the baseline labels",
-            "Batch jobs are async \u2014 the delta scoring step's wall-clock time is 4-24h; size the step max_runtime accordingly",
-            "Batch output is JSONL (differs from the realtime response) \u2014 ensure the batch result parser handles the batch response format; if a batch job fails mid-way partial results may exist in S3, handle idempotently",
-            "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX \u2014 count+order must match)",
-            "knowledge_corpus is OPTIONAL (bundled default) \u2014 do NOT wire it unless overriding the corpus via DummyDataLoading",
-            "MDS date range must NOT overlap the scored EDX period \u2014 causes an empty anti-join result",
-            "Cradle transform_sql final projection must equal output_schema (no SELECT *; window/helper columns projected away)"
-          ]
-        },
-        "decision_tree": {
-          "has_prior_scored_edx?": {
-            "yes": "USE THIS DAG (scores only new orders)",
-            "no": "Use the baseline dag.json first to seed the EDX cache"
-          },
-          "labeling_uses_dks_routing?": {
-            "yes": "Use a SlipboxKnowledgeRouting DAG",
-            "no": "Use bedrock_batch_pytorch_e2e (no routing step)"
-          },
-          "delta_volume_large_or_quota_bound?": {
-            "yes": "USE THIS DAG (async Bedrock batch escapes the realtime per-minute quota)",
-            "no": "Use bedrock_slipbox_routing_pytorch_incremental (realtime, lower latency)"
           }
         }
       }
@@ -1115,6 +1063,109 @@
       }
     },
     {
+      "id": "bedrock_pytorch_with_label_ruleset_percentile_e2e",
+      "path": "bedrock/bedrock_pytorch_with_label_ruleset_percentile_e2e.dag.json",
+      "description": "Bedrock LLM weak-supervision labeling feeding a PyTorch classifier with percentile (rank) score calibration. Pre-staged (Dummy-loaded) data is preprocessed, enriched/scored by Bedrock under a generated prompt template, then labeled by a generated label ruleset before PyTorch training. A mirrored calibration branch threads through Bedrock + label-ruleset execution, is scored by PyTorchModelEval, calibrated with PercentileModelCalibration, then packaged and registered.",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "binary_classification",
+      "node_count": 16,
+      "edge_count": 19,
+      "features": [
+        "llm_weak_supervision",
+        "bedrock_processing",
+        "prompt_template_generation",
+        "label_ruleset",
+        "pytorch_training",
+        "percentile_calibration",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "dummy_prestaged",
+        "requires_llm": true
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true,
+        "requires_bedrock": true
+      },
+      "cost": {
+        "estimated_hours": "4-14 (Bedrock labeling on both branches + GPU PyTorch training)",
+        "cost_driver": "gpu_training_plus_bedrock_inference",
+        "instance_cost_tier": "high",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "rnr_pytorch_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "You need LLM-derived (weak-supervision) labels via Bedrock plus a declarative label ruleset to train a PyTorch classifier, AND you want percentile/rank-based score calibration for percentile-threshold enforcement rather than probability calibration. This is the rnr_pytorch_bedrock EU training DAG: Bedrock scores/enriches pre-staged data under a generated prompt template, a generated label ruleset derives labels, PyTorch trains, and PercentileModelCalibration produces rank-bucketed scores for the enforcement threshold.",
+        "when_not_to_use": "If you need standard probability calibration, use bedrock_pytorch_with_label_ruleset_e2e (ModelCalibration). If you already have ground-truth labels, drop the Bedrock+LabelRuleset front-end and use pytorch_percentile_e2e. If you do not need any LLM labeling, use a plain PyTorch or XGBoost DAG. If data is Cradle-sourced and you only want to emit labels (no training), use bedrock_cradle_label_ruleset_labeling.",
+        "differentiators": [
+          "LLM weak-supervision: Bedrock (prompt-template-gated) + LabelRulesetGeneration/Execution derive the training labels",
+          "Percentile (rank) calibration instead of probability calibration \u2014 for percentile-threshold enforcement",
+          "Both training and calibration branches are threaded through Bedrock + label-ruleset execution",
+          "16 nodes / 19 edges \u2014 the percentile-calibrated sibling of bedrock_pytorch_with_label_ruleset_e2e"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock model access + prompt template",
+            "how": "BedrockPromptTemplateGeneration produces the template consumed by both BedrockProcessing steps"
+          },
+          {
+            "check": "Label ruleset definition available",
+            "how": "LabelRulesetGeneration emits the ruleset applied by both LabelRulesetExecution steps"
+          },
+          {
+            "check": "GPU quota for PyTorch encoder",
+            "how": "ml.g5.xlarge+ available"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "bedrock_model_id",
+            "prompt_template_spec",
+            "label_ruleset",
+            "dummy_data_source (training)",
+            "dummy_data_source (calibration)",
+            "label_column",
+            "text_column",
+            "tabular_features",
+            "percentile_buckets"
+          ],
+          "safe_defaults": [
+            "percentile_buckets=[10,25,50,75,90]",
+            "bedrock_batch=false (synchronous BedrockProcessing)"
+          ],
+          "common_pitfalls": [
+            "Prompt template and label ruleset must be identical/consistent across the training and calibration branches",
+            "Package consumes PyTorchTraining output (the model), not PercentileModelCalibration output",
+            "LabelRulesetExecution depends on BOTH BedrockProcessing output and the generated ruleset"
+          ]
+        },
+        "decision_tree": {
+          "llm_derived_labels_needed?": {
+            "yes": "Continue",
+            "no": "Use pytorch_percentile_e2e / complete_e2e"
+          },
+          "calibration_type?": {
+            "percentile": "USE THIS DAG",
+            "probability": "Use bedrock_pytorch_with_label_ruleset_e2e"
+          }
+        }
+      }
+    },
+    {
       "id": "bedrock_simple_training",
       "path": "bedrock/bedrock_simple_training.dag.json",
       "description": "Shared DAG definition for Bedrock-Enhanced Simple Training Pipeline",
@@ -1191,6 +1242,360 @@
           "need_batch_efficiency?": {
             "yes": "Use bedrock_batch_simple_training",
             "no": "USE THIS DAG (realtime, faster feedback)"
+          }
+        }
+      }
+    },
+    {
+      "id": "bedrock_slipbox_routing_batch_pytorch_incremental",
+      "path": "bedrock/bedrock_slipbox_routing_batch_pytorch_incremental.dag.json",
+      "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock BATCH forced-tool-use scoring, EDX anti-join, and EDX write-back.",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "incremental_training_with_dks_routed_batch_llm_scoring",
+      "node_count": 15,
+      "edge_count": 16,
+      "features": [
+        "cradle_data_loading",
+        "tabular_preprocessing",
+        "slipbox_knowledge_routing",
+        "dks_compile_index_route",
+        "bedrock_batch_processing",
+        "bedrock_forced_tool_use",
+        "edx_uploading",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "edx_anti_join",
+        "incremental_scoring",
+        "cost_optimization"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_edx_access": true,
+        "requires_mims": true,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "4-24 (Bedrock batch delta scoring is async; routing + batch turnaround dominate)",
+        "cost_driver": "bedrock_batch_inference_plus_embedding_routing",
+        "instance_cost_tier": "high",
+        "scalability": "delta_size_linear"
+      },
+      "used_by_projects": [
+        "rnr_pytorch_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "Same as bedrock_slipbox_routing_pytorch_incremental (incremental retraining of a DKS-routed LLM-labeled model, e.g. RnR) BUT the delta is LARGE (>~100K new orders) and the realtime BedrockProcessing path is bound by the account's per-minute Sonnet quota (ThrottlingException, multi-day wall). BedrockBatchProcessing_delta submits the routed records as an async Bedrock batch job (off the online RPM/TPM quota, ~50% cheaper for large volumes) then merges the scored labels back exactly like the realtime variant.",
+        "when_not_to_use": "Small delta (<~100K orders) or when you need low-latency turnaround \u2014 use the realtime bedrock_slipbox_routing_pytorch_incremental (no async batch wall). First-time training (no scored-EDX baseline) \u2014 use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_batch_pytorch_e2e (no SlipboxKnowledgeRouting step).",
+        "differentiators": [
+          "Only incremental DAG that pairs SlipboxKnowledgeRouting (DKS compile->index->route) with Bedrock BATCH inference",
+          "Async batch scoring escapes the realtime per-minute quota that caps the online BedrockProcessing_delta delta size",
+          "BedrockBatchProcessing_delta consumes BOTH SlipboxKnowledgeRouting outputs (routed processed_data + the {ruleset,rules} prompt_templates)",
+          "EDX anti-join skips already-scored orders; EDX write-back grows the label cache",
+          "Delta feeds BOTH the EDX write-back and the training merge"
+        ],
+        "prerequisites": [
+          {
+            "check": "Scored-EDX label cache exists from a prior run (or a prior backfill)",
+            "how": "Verify the scored-label EDX ARN is accessible via Cradle"
+          },
+          {
+            "check": "Bedrock batch model access",
+            "how": "IAM role has bedrock:CreateModelInvocationJob for the target model"
+          },
+          {
+            "check": "DKS knowledge corpus present",
+            "how": "SlipboxKnowledgeRouting bundles the rule_*/pattern_*/behavior_* corpus in its source_dir (default), or mount it via the optional knowledge_corpus channel (DummyDataLoading S3)"
+          },
+          {
+            "check": "MDS data for new period",
+            "how": "Cradle date range covers a period NOT already in the scored EDX"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "edx_scored_arn",
+            "mds_date_range",
+            "bedrock_model_id",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "routing_scoring_mode",
+            "routing_threshold",
+            "routing_top_k",
+            "embedding_model_name",
+            "bedrock_use_structured_output",
+            "instance_types",
+            "train_ratio"
+          ],
+          "common_pitfalls": [
+            "BedrockBatchProcessing_delta MUST set bedrock_use_structured_output=true (forced tool-use) or the delta labels drift from the baseline labels",
+            "Batch jobs are async \u2014 the delta scoring step's wall-clock time is 4-24h; size the step max_runtime accordingly",
+            "Batch output is JSONL (differs from the realtime response) \u2014 ensure the batch result parser handles the batch response format; if a batch job fails mid-way partial results may exist in S3, handle idempotently",
+            "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX \u2014 count+order must match)",
+            "knowledge_corpus is OPTIONAL (bundled default) \u2014 do NOT wire it unless overriding the corpus via DummyDataLoading",
+            "MDS date range must NOT overlap the scored EDX period \u2014 causes an empty anti-join result",
+            "Cradle transform_sql final projection must equal output_schema (no SELECT *; window/helper columns projected away)"
+          ]
+        },
+        "decision_tree": {
+          "has_prior_scored_edx?": {
+            "yes": "USE THIS DAG (scores only new orders)",
+            "no": "Use the baseline dag.json first to seed the EDX cache"
+          },
+          "labeling_uses_dks_routing?": {
+            "yes": "Use a SlipboxKnowledgeRouting DAG",
+            "no": "Use bedrock_batch_pytorch_e2e (no routing step)"
+          },
+          "delta_volume_large_or_quota_bound?": {
+            "yes": "USE THIS DAG (async Bedrock batch escapes the realtime per-minute quota)",
+            "no": "Use bedrock_slipbox_routing_pytorch_incremental (realtime, lower latency)"
+          }
+        }
+      }
+    },
+    {
+      "id": "bedrock_slipbox_routing_pytorch_incremental",
+      "path": "bedrock/bedrock_slipbox_routing_pytorch_incremental.dag.json",
+      "description": "Incremental PyTorch training with a SlipboxKnowledgeRouting step (DKS compile->index->route) feeding Bedrock forced-tool-use scoring, EDX anti-join, and EDX write-back.",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "incremental_training_with_dks_routed_llm_scoring",
+      "node_count": 15,
+      "edge_count": 16,
+      "features": [
+        "cradle_data_loading",
+        "tabular_preprocessing",
+        "slipbox_knowledge_routing",
+        "dks_compile_index_route",
+        "bedrock_forced_tool_use",
+        "edx_uploading",
+        "training",
+        "calibration",
+        "packaging",
+        "registration",
+        "edx_anti_join",
+        "incremental_scoring"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": true,
+        "llm_provider": "bedrock"
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_edx_access": true,
+        "requires_mims": true,
+        "requires_bedrock_access": true
+      },
+      "cost": {
+        "estimated_hours": "6-16 (Bedrock delta scoring + routing dominate)",
+        "cost_driver": "bedrock_inference_plus_embedding_routing",
+        "instance_cost_tier": "high",
+        "scalability": "delta_size_linear"
+      },
+      "used_by_projects": [
+        "rnr_pytorch_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "Incremental retraining of a DKS-routed LLM-labeled model (e.g. RnR): you have a prior scored-EDX label cache and need to score only NEW orders. The delta path routes each record against a bundled DKS knowledge corpus (SlipboxKnowledgeRouting: compile->index->route) then classifies with Bedrock forced tool-use, writes the labels back to EDX, and merges with the baseline cache for training.",
+        "when_not_to_use": "First-time training (no scored-EDX baseline exists) \u2014 use the baseline dag.json first. If the labeling is a simple prompt with no DKS knowledge corpus / semantic routing, use bedrock_pytorch_incremental_edx (no SlipboxKnowledgeRouting step).",
+        "differentiators": [
+          "Only incremental DAG with a SlipboxKnowledgeRouting step (DKS compile->index->route) upstream of Bedrock",
+          "Bedrock runs forced tool-use (constrained decoding) on the routed rule set \u2014 schema-aligned labels, 0 parse failures",
+          "EDX anti-join skips already-scored orders; EDX write-back grows the label cache",
+          "Delta feeds BOTH the EDX write-back and the training merge"
+        ],
+        "prerequisites": [
+          {
+            "check": "Scored-EDX label cache exists from a prior run (or a prior backfill)",
+            "how": "Verify the the scored-label EDX ARN is accessible via Cradle"
+          },
+          {
+            "check": "Bedrock model access",
+            "how": "IAM role has bedrock:InvokeModel for the target model"
+          },
+          {
+            "check": "DKS knowledge corpus present",
+            "how": "SlipboxKnowledgeRouting bundles the rule_*/pattern_*/behavior_* corpus in its source_dir (default), or mount it via the optional knowledge_corpus channel (DummyDataLoading S3)"
+          },
+          {
+            "check": "MDS data for new period",
+            "how": "Cradle date range covers a period NOT already in the scored EDX"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "edx_scored_arn",
+            "mds_date_range",
+            "bedrock_model_id",
+            "author",
+            "service_name"
+          ],
+          "safe_defaults": [
+            "routing_scoring_mode",
+            "routing_threshold",
+            "routing_top_k",
+            "embedding_model_name",
+            "bedrock_use_structured_output",
+            "instance_types",
+            "train_ratio"
+          ],
+          "common_pitfalls": [
+            "BedrockProcessing_delta MUST set bedrock_use_structured_output=true (forced tool-use) or the delta labels drift from the baseline labels",
+            "EdxUploading_scored must write the SAME 16-field reversal_predict.json schema the anti-join reads (positional headerless EDX \u2014 count+order must match)",
+            "knowledge_corpus is OPTIONAL (bundled default) \u2014 do NOT wire it unless overriding the corpus via DummyDataLoading",
+            "MDS date range must NOT overlap the scored EDX period \u2014 causes an empty anti-join result",
+            "Cradle transform_sql final projection must equal output_schema (no SELECT *; window/helper columns projected away)"
+          ]
+        },
+        "decision_tree": {
+          "has_prior_scored_edx?": {
+            "yes": "USE THIS DAG (scores only new orders)",
+            "no": "Use the baseline dag.json first to seed the EDX cache"
+          },
+          "labeling_uses_dks_routing?": {
+            "yes": "USE THIS DAG (SlipboxKnowledgeRouting)",
+            "no": "Use bedrock_pytorch_incremental_edx (no routing step)"
+          }
+        }
+      }
+    },
+    {
+      "id": "bedrock_slipbox_routing_pytorch_stratified_incremental",
+      "path": "bedrock/bedrock_slipbox_routing_pytorch_stratified_incremental.dag.json",
+      "description": "Incremental PyTorch pipeline that auto-labels a fresh delta partition via slipbox-routed Bedrock scoring (persisted to EDX), merges it with a stable labeled baseline, rebalances classes with StratifiedSampling, trains PyTorch, then runs inference-based percentile calibration before packaging and registration.",
+      "framework": "pytorch",
+      "complexity": "comprehensive",
+      "task_type": "binary_classification",
+      "node_count": 16,
+      "edge_count": 17,
+      "features": [
+        "incremental_training",
+        "slipbox_knowledge_routing",
+        "bedrock_llm_scoring",
+        "edx_label_persistence",
+        "stratified_sampling",
+        "inference_percentile_calibration",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "text",
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary",
+        "data_source": "cradle",
+        "requires_llm": true
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true,
+        "requires_bedrock": true,
+        "requires_edx": true
+      },
+      "cost": {
+        "estimated_hours": "6-16 (Bedrock delta scoring + GPU PyTorch training)",
+        "cost_driver": "bedrock_inference_and_gpu_training",
+        "instance_cost_tier": "high",
+        "scalability": "delta_size_linear"
+      },
+      "used_by_projects": [
+        "rnr_pytorch_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "Incremental retraining of a PyTorch abuse/risk model where a fresh, unlabeled delta partition must be auto-labeled by an LLM before it joins a stable labeled baseline. The delta rows are routed through slipbox knowledge retrieval, scored by Bedrock, persisted to EDX for reuse, and merged with the baseline; StratifiedSampling then rebalances the combined training set before PyTorch training, and inference-based percentile calibration produces deployment scores. Used by rnr_pytorch_bedrock (dag_incremental).",
+        "when_not_to_use": "If your training data is already fully labeled (no LLM auto-labeling needed) use pytorch_stratified_percentile_e2e. If you do not need class rebalancing use bedrock_slipbox_routing_pytorch_incremental. If the delta should be scored with Bedrock batch inference rather than real-time use bedrock_slipbox_routing_batch_pytorch_incremental. Not for tabular-only models (use an XGBoost DAG).",
+        "differentiators": [
+          "Only pattern combining slipbox-routed Bedrock incremental labeling (delta path) with StratifiedSampling class rebalancing before PyTorch training",
+          "Delta partition fans out to BOTH EdxUploading_scored (label persistence) and TabularPreprocessing_training (merge with baseline)",
+          "Uses PyTorchModelInference_calibration feeding PercentileModelCalibration, not PyTorchModelEval",
+          "Two Cradle sources: CradleDataLoading_baseline (stable labeled) + CradleDataLoading_delta (fresh unlabeled)"
+        ],
+        "prerequisites": [
+          {
+            "check": "Bedrock model access for delta scoring",
+            "how": "Bedrock inference profile provisioned in the pipeline account"
+          },
+          {
+            "check": "Slipbox knowledge routing endpoint available",
+            "how": "SlipboxKnowledgeRouting step configured with a retrieval index"
+          },
+          {
+            "check": "EDX dataset for scored-label persistence",
+            "how": "EdxUploading target dataset/provider registered"
+          },
+          {
+            "check": "GPU quota for PyTorch training",
+            "how": "ml.g5.xlarge+ available"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (baseline)",
+            "cradle_sql (delta)",
+            "cradle_sql (calibration)",
+            "bedrock_model_id / prompt",
+            "slipbox_routing_index",
+            "edx_target",
+            "label_column",
+            "stratify_column",
+            "percentile_buckets"
+          ],
+          "safe_defaults": [
+            "stratified_sampling strategy=balanced",
+            "percentile_buckets=[10,25,50,75,90]",
+            "pytorch epochs=default"
+          ],
+          "common_pitfalls": [
+            "BedrockProcessing_delta must complete before TabularPreprocessing_training so freshly scored delta labels are merged with the baseline",
+            "StratifiedSampling sits AFTER the baseline+delta merge (between TabularPreprocessing_training and PyTorchTraining), not on the delta path",
+            "Calibration path uses inference (not eval); ensure the calibration Cradle source is labeled so percentile buckets can be fit"
+          ]
+        },
+        "decision_tree": {
+          "need_llm_autolabeling_of_fresh_delta?": {
+            "yes": "Continue",
+            "no": "Use pytorch_stratified_percentile_e2e"
+          },
+          "need_class_rebalancing?": {
+            "yes": "USE THIS DAG",
+            "no": "Use bedrock_slipbox_routing_pytorch_incremental"
+          },
+          "bedrock_realtime_or_batch?": {
+            "realtime": "USE THIS DAG",
+            "batch": "Use bedrock_slipbox_routing_batch_pytorch_incremental"
           }
         }
       }
@@ -1344,6 +1749,101 @@
           "testing_pipeline?": {
             "yes": "USE THIS DAG",
             "no": "Use real training DAG (xgboost/lightgbm/pytorch)"
+          }
+        }
+      }
+    },
+    {
+      "id": "tabular_lookup_model_e2e",
+      "path": "dummy/tabular_lookup_model_e2e.dag.json",
+      "description": "Non-parametric tabular lookup / set-membership model builder: Cradle load -> TabularLookupModelBuilding (the dataset itself becomes the model, either a key->values lookup map or a de-duplicated key set) -> MIMS Package/Payload -> Registration. No training and no learned parameters.",
+      "framework": "dummy",
+      "complexity": "simple",
+      "task_type": "lookup_or_set_membership",
+      "node_count": 5,
+      "edge_count": 5,
+      "features": [
+        "tabular_lookup_model_building",
+        "set_membership_model",
+        "non_parametric",
+        "no_training",
+        "packaging",
+        "payload_generation",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "lookup_or_membership",
+        "data_source": "cradle_edx",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "<1 (no training; group-by/dedup only)",
+        "cost_driver": "data_size",
+        "instance_cost_tier": "low",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "buying_club_pipeline",
+        "ffoc_pipeline"
+      ],
+      "agent_context": {
+        "when_to_use": "Ship a non-parametric lookup as a MIMS-registered model where the dataset IS the model. Use for set-membership checks (is this normalizedAddress a known buying-club address? -> buying_club_pipeline) or key->value lookups (map an FF code to its attributes -> ffoc_pipeline) that must be served through the standard MIMS Package/Payload/Registration bookends like any ML model.",
+        "when_not_to_use": "If the decision requires a learned/parametric model (use an XGBoost/PyTorch/LightGBM DAG). If no MIMS registration is needed (a plain Cradle export suffices). If the lookup must update in real time (this builds a static model.tar.gz snapshot).",
+        "differentiators": [
+          "No training step and no learned parameters: TabularLookupModelBuilding turns the dataset into model.tar.gz (a lookup map or a set_membership set)",
+          "Model producer is a Processing step, not a Training step; XGBoost/PyTorch training nodes are absent",
+          "5 nodes / 5 edges: Cradle -> lookup-build -> {Package, Payload} -> Registration"
+        ],
+        "prerequisites": [
+          {
+            "check": "Key (and optional value) columns exist in the Cradle/EDX dataset",
+            "how": "Cradle SQL returns key_columns (e.g. normalizedAddress) and any value_columns"
+          },
+          {
+            "check": "Per-project inference handler prepared",
+            "how": "dockers inference script is bundled via Package inference_scripts_input; the build step does not emit one"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql / edx_manifest (training)",
+            "model_kind ('lookup' or 'set_membership')",
+            "key_columns",
+            "inference_fields ([name,type] pairs)",
+            "region",
+            "registration inference input variable list"
+          ],
+          "safe_defaults": [
+            "dedup=true",
+            "shard_count=1",
+            "value_columns=[] (set_membership)",
+            "processing_entry_point=tabular_lookup_model_building.py"
+          ],
+          "common_pitfalls": [
+            "inference_fields must match the Registration source_model_inference_input_variable_list and the handler's request keys, NOT the build key_columns/value_columns",
+            "value_columns is ignored for set_membership",
+            "Package must bundle the project inference handler; the build step does not generate one"
+          ]
+        },
+        "decision_tree": {
+          "model_is_learned_parametric?": {
+            "yes": "Use an XGBoost/PyTorch/LightGBM DAG",
+            "no": "Continue"
+          },
+          "need_MIMS_registration_of_a_lookup_or_set?": {
+            "yes": "USE THIS DAG",
+            "no": "Plain Cradle export"
           }
         }
       }
@@ -1635,6 +2135,105 @@
       }
     },
     {
+      "id": "lightgbmmt_complete_e2e_with_percentile_calibration_and_testing",
+      "path": "mtl/lightgbmmt_complete_e2e_with_percentile_calibration_and_testing.dag.json",
+      "description": "Multi-task LightGBM (MTGBM) end-to-end pipeline with three independent data branches: training, calibration (feeding percentile calibration), and a hold-out testing branch for out-of-sample evaluation. The calibrated model is packaged, payloaded, and registered for deployment.",
+      "framework": "lightgbmmt",
+      "complexity": "comprehensive",
+      "task_type": "multi_task_classification",
+      "node_count": 13,
+      "edge_count": 14,
+      "features": [
+        "multi_task_learning",
+        "hold_out_testing",
+        "percentile_calibration",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": true,
+        "output_type": "multi_task_binary",
+        "data_source": "cradle",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.4xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-4 (CPU multi-task LightGBM, three data branches)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "low",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "transportation_risk_mtl"
+      ],
+      "agent_context": {
+        "when_to_use": "Train a multi-task LightGBM (MTGBM) model that learns several correlated transportation-risk targets jointly, then normalize raw scores with percentile calibration and independently validate on a hold-out testing dataset before deployment. Best when you need a distinct out-of-sample test branch separate from the calibration data.",
+        "when_not_to_use": "If you train a single target (use lightgbm/xgboost complete_e2e). If you do not need an independent hold-out test branch (use lightgbmmt_complete_e2e). If the testing branch must emit model-metrics and a wiki page (use the lightgbm percentile+testing variant with ModelMetricsComputation + ModelWikiGenerator). If raw model scores are fine and no percentile normalization is required (use lightgbmmt_complete_e2e with ModelCalibration).",
+        "differentiators": [
+          "Multi-task LightGBM (MTGBM): LightGBMMTTraining + LightGBMMTModelEval learn correlated targets jointly",
+          "Adds an independent hold-out testing branch (CradleDataLoading_testing -> TabularPreprocessing_testing -> LightGBMMTModelEval_testing) on top of the calibration-eval branch",
+          "Uses PercentileModelCalibration (score-rank normalization) instead of the ModelCalibration used by lightgbmmt_complete_e2e",
+          "Testing branch is a metrics-only leaf: it neither feeds calibration nor deployment, and has no ModelMetricsComputation/ModelWikiGenerator"
+        ],
+        "prerequisites": [
+          {
+            "check": "Multiple correlated labels available for joint training",
+            "how": "Cradle SQL (training) returns more than one target column for MTGBM"
+          },
+          {
+            "check": "Separate hold-out testing dataset",
+            "how": "Cradle SQL (testing) covers a period/split disjoint from both training and calibration"
+          },
+          {
+            "check": "Calibration dataset for percentile buckets",
+            "how": "Cradle SQL (calibration) returns labels and features matching the training schema"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "cradle_sql (testing)",
+            "label_columns (multi-task target list)",
+            "tabular_features"
+          ],
+          "safe_defaults": [
+            "percentile_buckets=[10,25,50,75,90]",
+            "lightgbmmt_params=default",
+            "num_tasks inferred from label_columns"
+          ],
+          "common_pitfalls": [
+            "All three branches (training/calibration/testing) must share an identical TabularPreprocessing feature schema",
+            "Package consumes LightGBMMTTraining + PercentileModelCalibration outputs, not the testing eval output",
+            "The testing branch is evaluation-only and does not gate registration; scores are calibrated from the calibration branch"
+          ]
+        },
+        "decision_tree": {
+          "multi_task_targets?": {
+            "yes": "Continue",
+            "no": "Use lightgbm/xgboost single-task DAG"
+          },
+          "need_holdout_test_branch?": {
+            "yes": "Continue",
+            "no": "Use lightgbmmt_complete_e2e"
+          },
+          "need_percentile_scores?": {
+            "yes": "USE THIS DAG",
+            "no": "Use lightgbmmt_complete_e2e (ModelCalibration)"
+          }
+        }
+      }
+    },
+    {
       "id": "lightgbmmt_with_label_ruleset_e2e",
       "path": "mtl/lightgbmmt_with_label_ruleset_e2e.dag.json",
       "description": "LightGBMMT multi-task end-to-end pipeline with label ruleset generation/execution for transparent rule-based label transformation, training, calibration, packaging, and registration",
@@ -1848,6 +2447,310 @@
       }
     },
     {
+      "id": "lightgbmmt_temporal_split_e2e",
+      "path": "mtl/temporal_split_e2e.dag.json",
+      "description": "LightGBMMT multi-task end-to-end pipeline with TEMPORAL-SPLIT preprocessing (time-based train split), dual evaluation (testing + calibration paths), model calibration, packaging, and registration.",
+      "framework": "lightgbmmt",
+      "complexity": "comprehensive",
+      "task_type": "multi_task_temporal_split_end_to_end",
+      "node_count": 11,
+      "edge_count": 13,
+      "features": [
+        "temporal_split",
+        "training",
+        "calibration",
+        "testing",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular",
+          "temporal"
+        ],
+        "text_support": false,
+        "multi_task": true,
+        "output_type": "multi_label",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "pfw_mtgbm_na"
+      ],
+      "agent_context": {
+        "when_to_use": "Multi-task learning on time-series/temporal data where the train/test boundary MUST be split chronologically (no future data leaks into training). Predict multiple related labels simultaneously with a time-ordered split and a dedicated held-out testing evaluation path.",
+        "when_not_to_use": "Non-temporal data where a random split is appropriate (use mtl/complete_e2e). Single binary classification (use xgboost or pytorch). Unrelated tasks (train separately).",
+        "differentiators": [
+          "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing \u2014 prevents temporal leakage",
+          "Separate LightGBMMTModelEval_testing path (held-out chronological test) in addition to the calibration eval path",
+          "Dual evaluation: testing (from the temporal split) + calibration (from a separate Cradle query)",
+          "Multi-task output (multiple labels) with shared feature representation",
+          "LightGBMMT framework, CPU-only"
+        ],
+        "prerequisites": [
+          {
+            "check": "Temporal ordering column",
+            "how": "Data has a timestamp/date column to define the chronological train/test boundary"
+          },
+          {
+            "check": "Multiple correlated label columns",
+            "how": "Data has 2+ label columns that benefit from joint training"
+          },
+          {
+            "check": "Tabular features",
+            "how": "Structured data, not raw text"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "task_definitions",
+            "label_columns",
+            "feature_columns",
+            "temporal_split_column",
+            "temporal_split_boundary",
+            "author"
+          ],
+          "safe_defaults": [
+            "n_estimators",
+            "task_weights"
+          ],
+          "common_pitfalls": [
+            "Temporal split boundary must be set so the test window has enough data for meaningful evaluation",
+            "Do not shuffle across the temporal boundary \u2014 that reintroduces leakage",
+            "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
+          ]
+        },
+        "decision_tree": {
+          "temporal_data?": {
+            "yes": "USE THIS DAG (chronological split prevents leakage)",
+            "no": "Use mtl/complete_e2e (random split)"
+          },
+          "multiple_outputs?": {
+            "yes": "USE THIS DAG",
+            "no": "Use single-task XGBoost or PyTorch"
+          },
+          "text_input?": {
+            "yes": "No MTL for text yet \u2014 use PyTorch with multi-head",
+            "no": "USE THIS DAG"
+          }
+        }
+      }
+    },
+    {
+      "id": "xgboost_mt_temporal_split_e2e",
+      "path": "mtl/xgboost_mt_temporal_split_e2e.dag.json",
+      "description": "XGBoost multi-task end-to-end pipeline with TEMPORAL-SPLIT preprocessing (time-based train split), dual evaluation (testing + calibration paths), model calibration, packaging, and registration.",
+      "framework": "xgboost_mt",
+      "complexity": "comprehensive",
+      "task_type": "multi_task_temporal_split_end_to_end",
+      "node_count": 11,
+      "edge_count": 13,
+      "features": [
+        "temporal_split",
+        "multi_task",
+        "training",
+        "calibration",
+        "testing",
+        "packaging",
+        "registration",
+        "evaluation"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular",
+          "temporal"
+        ],
+        "text_support": false,
+        "multi_task": true,
+        "output_type": "multi_label",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training)",
+        "cost_driver": "cpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "pfw_xgboost_mt"
+      ],
+      "agent_context": {
+        "when_to_use": "XGBoost multi-task learning (one_output_per_tree) on time-series/temporal data where the train/test boundary MUST be split chronologically (no future data leaks into training). Predict multiple related labels simultaneously with a time-ordered split and a dedicated held-out testing evaluation path.",
+        "when_not_to_use": "Non-temporal data where a random split is appropriate. Single-task XGBoost (use xgboost/complete_e2e). Unrelated tasks (train separately). LightGBM-family MTL (use mtl/temporal_split_e2e).",
+        "differentiators": [
+          "XgboostMt framework \u2014 multi-task XGBoost (one_output_per_tree) predicting multiple labels simultaneously",
+          "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing \u2014 prevents temporal leakage",
+          "Separate XgboostMtModelEval_testing path (held-out chronological test) in addition to the calibration eval path",
+          "Dual evaluation: testing (from the temporal split) + calibration (from a separate Cradle query)",
+          "CPU-only \u2014 no GPU required"
+        ],
+        "prerequisites": [
+          {
+            "check": "Temporal ordering column",
+            "how": "Data has a timestamp/date column to define the chronological train/test boundary"
+          },
+          {
+            "check": "Multiple correlated label columns",
+            "how": "Data has 2+ label columns that benefit from joint training"
+          },
+          {
+            "check": "Tabular features",
+            "how": "Structured data, not raw text"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "task_definitions",
+            "label_columns",
+            "feature_columns",
+            "temporal_split_column",
+            "temporal_split_boundary",
+            "author"
+          ],
+          "safe_defaults": [
+            "n_estimators",
+            "max_depth",
+            "learning_rate",
+            "multi_strategy (one_output_per_tree)"
+          ],
+          "common_pitfalls": [
+            "Temporal split boundary must be set so the test window has enough data for meaningful evaluation",
+            "Do not shuffle across the temporal boundary \u2014 that reintroduces leakage",
+            "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
+          ]
+        },
+        "decision_tree": {
+          "temporal_data?": {
+            "yes": "USE THIS DAG (chronological split prevents leakage)",
+            "no": "Use xgboost/complete_e2e (single-task) or a random-split MTL DAG"
+          },
+          "multiple_outputs?": {
+            "yes": "USE THIS DAG",
+            "no": "Use single-task xgboost/complete_e2e"
+          },
+          "xgboost_family?": {
+            "yes": "USE THIS DAG",
+            "no": "Use mtl/temporal_split_e2e (LightGBMMT)"
+          }
+        }
+      }
+    },
+    {
+      "id": "pytorch_comparison_eval",
+      "path": "pytorch/comparison_eval.dag.json",
+      "description": "Offline model-comparison / evaluation-only harness: DummyDataLoading loads a fixed comparison dataset -> TabularPreprocessing -> PyTorchModelEval (comparison_mode); DummyTraining injects an already-trained PyTorch model (pretrained_model_path) into the eval, which diffs the model's scores against a previous/production score field. No Package/Payload/Registration.",
+      "framework": "pytorch",
+      "complexity": "simple",
+      "task_type": "model_comparison_eval",
+      "node_count": 4,
+      "edge_count": 3,
+      "features": [
+        "model_comparison",
+        "evaluation_only",
+        "bring_your_own_model",
+        "pretrained_model_injection",
+        "no_training",
+        "no_registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular",
+          "text"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "metrics_and_plots",
+        "data_source": "s3_parquet",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": false
+      },
+      "cost": {
+        "estimated_hours": "<1 (single eval pass, no training)",
+        "cost_driver": "eval_dataset_size",
+        "instance_cost_tier": "low",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "neat_spam_pytorch"
+      ],
+      "agent_context": {
+        "when_to_use": "Validate a candidate/locally-trained PyTorch model against a baseline before promotion, e.g. confirm a MODS-migrated model reproduces the incumbent production model's scores (neat_spam_pytorch local-vs-MODS comparison). DummyTraining injects an already-trained model.tar.gz via pretrained_model_path (bring-your-own-model), and PyTorchModelEval runs comparison_mode=true to diff its scores against a previous_score_field on a fixed comparison dataset.",
+        "when_not_to_use": "If you need to train a model (use a training DAG). If you need to package/register/deploy (this DAG intentionally ends at evaluation). If you only want single-model metrics without a baseline comparison (use a standard eval branch).",
+        "differentiators": [
+          "Evaluation-only: no Package/Payload/Registration, terminates at PyTorchModelEval",
+          "DummyTraining is a model-injection shim (pretrained_model_path), not a real training step",
+          "comparison_mode=true diffs candidate scores against a previous/production score field (previous_score_field)",
+          "4 nodes / 3 edges: a data branch and an injected-model branch converge on the eval"
+        ],
+        "prerequisites": [
+          {
+            "check": "An already-trained PyTorch model.tar.gz is available",
+            "how": "DummyTraining.pretrained_model_path points to the model artifact in S3"
+          },
+          {
+            "check": "Comparison dataset with the baseline score column",
+            "how": "DummyDataLoading parquet includes features + the previous/production score field"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "DummyDataLoading.data_source (comparison parquet in S3)",
+            "DummyTraining.pretrained_model_path",
+            "PyTorchModelEval.previous_score_field",
+            "eval_metric_choices",
+            "comparison_mode=true",
+            "region"
+          ],
+          "safe_defaults": [
+            "comparison_metrics=all",
+            "comparison_plots=true",
+            "job_type=comparison",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "pretrained_model_path must point to a model.tar.gz whose schema matches the comparison dataset's preprocessing",
+            "previous_score_field must exist in the loaded dataset for the diff to compute",
+            "Large comparison parquets can hit array-size caps; shard the input, and a GPU eval instance speeds up large runs"
+          ]
+        },
+        "decision_tree": {
+          "comparing_against_a_baseline_score?": {
+            "yes": "Continue",
+            "no": "Use a standard single-model eval"
+          },
+          "model_already_trained_no_train_needed?": {
+            "yes": "USE THIS DAG (DummyTraining injects it)",
+            "no": "Use a training+eval DAG"
+          }
+        }
+      }
+    },
+    {
       "id": "complete_e2e",
       "path": "pytorch/complete_e2e.dag.json",
       "description": "Shared DAG definition for PyTorch Complete End-to-End Pipeline",
@@ -2015,6 +2918,104 @@
       }
     },
     {
+      "id": "pytorch_complete_e2e_with_percentile_calibration",
+      "path": "pytorch/complete_e2e_with_percentile_calibration.dag.json",
+      "description": "End-to-end PyTorch pipeline with percentile score calibration: train a PyTorch classifier on a Cradle training split, tabular-preprocess a separate Cradle calibration split, evaluate the model on that holdout via PyTorchModelEval, map raw scores to percentile buckets via PercentileModelCalibration, then Package, build Payload, and Register a model that emits a score-percentile output variable. Direct PyTorch analog of xgboost_percentile_e2e (no tokenizer and no stratified-sampling stage).",
+      "framework": "pytorch",
+      "complexity": "standard",
+      "task_type": "binary_classification",
+      "node_count": 10,
+      "edge_count": 11,
+      "features": [
+        "deep_learning_training",
+        "held_out_calibration_eval",
+        "percentile_calibration",
+        "packaging",
+        "payload_generation",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular",
+          "text"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_score_with_percentile",
+        "data_source": "cradle",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "2-6 (GPU training + CPU eval/calibration)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "medium_high",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "abuse_polygraph",
+        "atoz_bsm_pytorch",
+        "atoz_nexus_pytorch"
+      ],
+      "agent_context": {
+        "when_to_use": "Deploy a PyTorch (deep-learning) classifier whose raw scores must be mapped to percentile buckets for downstream threshold-based decisioning. Train on a Cradle training split, hold out a separate Cradle calibration split for PyTorchModelEval, and register a model that emits a score-percentile NUMERIC output variable. Fits abuse-detection models such as abuse_polygraph (ContactEvaluation / PolygraphModel), atoz_bsm_pytorch and atoz_nexus_pytorch (AtoZ-claims Buyer-Seller-Messaging).",
+        "when_not_to_use": "Use pytorch complete_e2e if you need standard probability calibration (ModelCalibration / isotonic-Platt) instead of percentile bucketing. Use pytorch_tokenizer_percentile_e2e if a learned TokenizerTraining stage is required before PyTorchTraining. Use pytorch_stratified_percentile_e2e if class imbalance requires a StratifiedSampling stage. Use xgboost_percentile_e2e for a tabular-only tree model with the same percentile shape.",
+        "differentiators": [
+          "Vanilla PyTorch + percentile calibration e2e - no tokenizer and no stratified-sampling stage",
+          "PyTorchModelEval on a dedicated Cradle calibration split feeds PercentileModelCalibration (score -> percentile bucket mapping)",
+          "Direct PyTorch analog of xgboost_percentile_e2e: identical 10-node / 11-edge topology with PyTorch swapped for XGBoost",
+          "Registration emits a score-percentile NUMERIC output variable consumed by downstream rules"
+        ],
+        "prerequisites": [
+          {
+            "check": "Two Cradle SQL sources (training split + disjoint calibration split)",
+            "how": "Cradle profiles for the training window and a separate holdout/calibration window"
+          },
+          {
+            "check": "GPU quota for PyTorch training",
+            "how": "ml.g5.xlarge+ available in the target account/region"
+          },
+          {
+            "check": "Percentile bucket definition",
+            "how": "PercentileModelCalibration config lists the percentile cut points"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_name",
+            "tab_field_list / feature list",
+            "pytorch model hyperparameters"
+          ],
+          "safe_defaults": [
+            "percentile_buckets follow team default cut points",
+            "framework_version=2.3.0"
+          ],
+          "common_pitfalls": [
+            "Calibration data must be a separate holdout/temporal split, not the training split",
+            "PercentileModelCalibration consumes PyTorchModelEval_calibration output, not PyTorchTraining directly",
+            "Package takes PyTorchTraining output while the percentile calibration artifact is wired into Registration"
+          ]
+        },
+        "decision_tree": {
+          "pytorch_and_percentile_scores?": {
+            "yes": "Continue",
+            "no": "Use xgboost_percentile_e2e (tabular) or pytorch complete_e2e (probability calibration)"
+          },
+          "need_tokenizer_or_stratified_stage?": {
+            "yes": "Use pytorch_tokenizer_percentile_e2e or pytorch_stratified_percentile_e2e",
+            "no": "USE THIS DAG"
+          }
+        }
+      }
+    },
+    {
       "id": "pytorch_hybrid_xgboost_e2e",
       "path": "pytorch/hybrid_xgboost_e2e.dag.json",
       "description": "Two-stage hybrid pipeline: PyTorch encoder (Stage-1) produces embeddings, then XGBoost (Stage-2) stacks on [tabular | embedding]. Calibration path threads through both stages.",
@@ -2102,6 +3103,99 @@
           "need_embedding_stacking?": {
             "yes": "USE THIS DAG",
             "no": "Use standard complete_e2e"
+          }
+        }
+      }
+    },
+    {
+      "id": "pytorch_inference_percentile_e2e",
+      "path": "pytorch/inference_percentile_e2e.dag.json",
+      "description": "Base PyTorch end-to-end with percentile (rank) score calibration. A Cradle baseline dataset is preprocessed and used to train a PyTorch classifier; a separate Cradle calibration dataset is preprocessed and scored by the trained model via PyTorchModelInference, then PercentileModelCalibration produces rank-bucketed scores for threshold enforcement. The model is packaged (Package) and payload-tested (Payload) and registered. This is the plain percentile pipeline \u2014 no stratified sampling, tokenizer training, Bedrock labeling, or hybrid stacking.",
+      "framework": "pytorch",
+      "complexity": "standard",
+      "task_type": "binary_classification",
+      "node_count": 10,
+      "edge_count": 11,
+      "features": [
+        "cradle_data_loading",
+        "pytorch_training",
+        "model_inference",
+        "percentile_calibration",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular",
+          "text"
+        ],
+        "text_support": true,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true,
+        "requires_bedrock": false
+      },
+      "cost": {
+        "estimated_hours": "3-10 (GPU PyTorch training + CPU calibration)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "medium_to_high",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "munged_address_pytorch",
+        "rnr_pytorch_bedrock"
+      ],
+      "agent_context": {
+        "when_to_use": "Standard end-to-end PyTorch classifier with percentile (rank) score calibration for threshold-based enforcement, sourced from Cradle. Use as the base pattern when you do NOT need stratified sampling, tokenizer training, Bedrock/LLM labeling, or hybrid XGBoost stacking \u2014 e.g. the steady-state retrain DAG for munged_address_pytorch and rnr_pytorch_bedrock (dag.json). Calibration scoring uses PyTorchModelInference on a held-out Cradle calibration set.",
+        "when_not_to_use": "If you need class-balanced training, use pytorch_stratified_percentile_e2e (adds StratifiedSampling). If you need a learned tokenizer, use pytorch_tokenizer_percentile_e2e. If you want probability calibration rather than percentile buckets, use complete_e2e (PyTorchModelEval + ModelCalibration). If you need LLM-derived labels or embeddings, use a bedrock e2e or pytorch_hybrid_xgboost_e2e.",
+        "differentiators": [
+          "Minimal PyTorch percentile-calibration E2E \u2014 no stratified sampling / tokenizer / Bedrock front-end",
+          "Calibration scoring via PyTorchModelInference (not PyTorchModelEval)",
+          "Percentile (rank) calibration for percentile-threshold enforcement",
+          "Training loader is a Cradle baseline set (CradleDataLoading_baseline); calibration uses a separate Cradle set"
+        ],
+        "prerequisites": [
+          {
+            "check": "Cradle SQL for training baseline and calibration",
+            "how": "CradleDataLoading_baseline and CradleDataLoading_calibration profiles return labeled rows"
+          },
+          {
+            "check": "GPU quota for PyTorch",
+            "how": "ml.g5.xlarge+ available"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (baseline/training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "features",
+            "percentile_buckets"
+          ],
+          "safe_defaults": [
+            "percentile_buckets=[10,25,50,75,90]"
+          ],
+          "common_pitfalls": [
+            "Package consumes PyTorchTraining output (the model), not the PercentileModelCalibration output",
+            "PyTorchModelInference_calibration needs BOTH the trained model and the preprocessed calibration data",
+            "Use the same preprocessing config for the baseline and calibration branches"
+          ]
+        },
+        "decision_tree": {
+          "need_stratified_sampling?": {
+            "yes": "Use pytorch_stratified_percentile_e2e",
+            "no": "Continue"
+          },
+          "calibration_type?": {
+            "percentile": "USE THIS DAG",
+            "probability": "Use complete_e2e"
           }
         }
       }
@@ -2313,7 +3407,8 @@
         "scalability": "data_size_linear"
       },
       "used_by_projects": [
-        "neat_spam_pytorch"
+        "neat_spam_pytorch",
+        "rnr_pytorch_bedrock"
       ],
       "agent_context": {
         "when_to_use": "PyTorch text classification with imbalanced labels (need stratified sampling) and percentile-based calibration for rank-ordered output scores.",
@@ -2449,6 +3544,194 @@
           "need_percentile_scores?": {
             "yes": "USE THIS DAG",
             "no": "Custom variant without percentile"
+          }
+        }
+      }
+    },
+    {
+      "id": "pytorch_train_register_e2e",
+      "path": "pytorch/train_register_e2e.dag.json",
+      "description": "Minimal deployable PyTorch pipeline: load Cradle training data, tabular-preprocess, train a PyTorch model, then Package, build Payload, and Register - with no offline evaluation or calibration stage. Smallest train-to-registration PyTorch flow.",
+      "framework": "pytorch",
+      "complexity": "simple",
+      "task_type": "classification",
+      "node_count": 6,
+      "edge_count": 6,
+      "features": [
+        "deep_learning_training",
+        "packaging",
+        "payload_generation",
+        "registration",
+        "no_evaluation",
+        "no_calibration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular",
+          "image"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "classification",
+        "data_source": "cradle",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-4 (GPU training only)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "seller_grading"
+      ],
+      "agent_context": {
+        "when_to_use": "Train a PyTorch model on Cradle data and register it directly, with no offline evaluation or calibration step in the pipeline. Best for first bring-up / initial deployment, or when model quality is validated out-of-band and only a deployable, registered artifact is needed. Used by seller_grading (MfnReturns / SellerGradingImageValidation, NA Cradle path).",
+        "when_not_to_use": "Use pytorch standard_e2e if you need a PyTorchModelEval on a validation split before registration. Use pytorch complete_e2e or pytorch_percentile_e2e if the model needs probability or percentile calibration. Use pytorch_train_register_e2e_dummy if training data is pre-staged/uploaded (DummyDataLoading) rather than queried from Cradle.",
+        "differentiators": [
+          "Smallest PyTorch train-to-registration flow: 6 nodes, no eval and no calibration branch",
+          "Cradle-sourced training data only (single data split)",
+          "Package and Payload both fan out directly from PyTorchTraining and converge at Registration"
+        ],
+        "prerequisites": [
+          {
+            "check": "Cradle SQL for training data",
+            "how": "Cradle profile for the training window"
+          },
+          {
+            "check": "GPU quota for PyTorch training",
+            "how": "ml.g5.xlarge+ available"
+          },
+          {
+            "check": "Registration metadata (model_domain, model_objective, owner)",
+            "how": "RegistrationConfig fields populated"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "label_name",
+            "pytorch model hyperparameters",
+            "registration model_domain / model_objective"
+          ],
+          "safe_defaults": [
+            "no calibration or eval steps to configure",
+            "framework_version=1.11.0"
+          ],
+          "common_pitfalls": [
+            "No offline metrics are produced - validate model quality separately before promoting",
+            "Payload default_text_value must point at a representative inference input (seller_grading uses an image URL)"
+          ]
+        },
+        "decision_tree": {
+          "need_eval_or_calibration_before_register?": {
+            "yes": "Use standard_e2e / complete_e2e / pytorch_percentile_e2e",
+            "no": "Continue"
+          },
+          "data_from_cradle?": {
+            "yes": "USE THIS DAG",
+            "no": "Use pytorch_train_register_e2e_dummy"
+          }
+        }
+      }
+    },
+    {
+      "id": "pytorch_train_register_e2e_dummy",
+      "path": "pytorch/train_register_e2e_dummy.dag.json",
+      "description": "Pre-staged-data variant of the minimal PyTorch train-to-registration flow: DummyDataLoading supplies a pre-built/uploaded dataset (the MDS manifest build path) instead of a live Cradle query, followed by tabular preprocessing, PyTorch training, Package, Payload, and Registration - no evaluation or calibration stage.",
+      "framework": "pytorch",
+      "complexity": "simple",
+      "task_type": "classification",
+      "node_count": 6,
+      "edge_count": 6,
+      "features": [
+        "deep_learning_training",
+        "dummy_data_loading",
+        "pre_staged_data",
+        "packaging",
+        "payload_generation",
+        "registration",
+        "no_evaluation",
+        "no_calibration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular",
+          "image"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "classification",
+        "data_source": "pre_staged_dummy",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": true,
+        "min_instance": "ml.g5.xlarge",
+        "supports_multi_gpu": true,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-4 (GPU training only)",
+        "cost_driver": "gpu_training",
+        "instance_cost_tier": "medium",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "seller_grading"
+      ],
+      "agent_context": {
+        "when_to_use": "Same minimal PyTorch train-to-registration flow as pytorch_train_register_e2e, but training data is supplied by DummyDataLoading from a pre-built/uploaded dataset or manifest (the MDS build path) instead of a live Cradle query. Use for local/offline reproducible builds or when the dataset is materialized ahead of time. Used by seller_grading (SellerGradingImageValidation, mds NA build path).",
+        "when_not_to_use": "Use pytorch_train_register_e2e when training data should be loaded from Cradle at pipeline time. Use standard_e2e / complete_e2e / pytorch_percentile_e2e if evaluation or calibration is required before registration.",
+        "differentiators": [
+          "Dummy / pre-staged data-loading twin of pytorch_train_register_e2e (DummyDataLoading replaces CradleDataLoading_training)",
+          "No Cradle dependency - data comes from a pre-built manifest / upload (MDS path)",
+          "Minimal 6-node train-to-registration flow, no eval and no calibration"
+        ],
+        "prerequisites": [
+          {
+            "check": "Pre-staged training dataset/manifest available to DummyDataLoading",
+            "how": "MDS / manifest or uploaded dataset path configured in DummyDataLoadingConfig"
+          },
+          {
+            "check": "GPU quota for PyTorch training",
+            "how": "ml.g5.xlarge+ available"
+          },
+          {
+            "check": "Registration metadata",
+            "how": "RegistrationConfig model_domain / model_objective populated"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "dummy data source path / manifest",
+            "label_name",
+            "pytorch model hyperparameters",
+            "registration model_domain / model_objective"
+          ],
+          "safe_defaults": [
+            "no calibration or eval steps to configure"
+          ],
+          "common_pitfalls": [
+            "The data-loading node is bare 'DummyDataLoading' with no job_type suffix - match the config key exactly",
+            "Pre-staged data must already be compatible with TabularPreprocessing_training",
+            "No offline metrics are produced - validate model quality separately"
+          ]
+        },
+        "decision_tree": {
+          "data_pre_staged_not_cradle?": {
+            "yes": "Continue",
+            "no": "Use pytorch_train_register_e2e"
+          },
+          "need_eval_or_calibration?": {
+            "yes": "Use standard_e2e / complete_e2e / pytorch_percentile_e2e",
+            "no": "USE THIS DAG"
           }
         }
       }
@@ -3500,6 +4783,97 @@
       }
     },
     {
+      "id": "xgboost_train_register_e2e",
+      "path": "xgboost/train_register_e2e.dag.json",
+      "description": "Minimal XGBoost train-and-register pipeline: Cradle load -> tabular preprocessing -> XGBoost training -> MIMS Package/Payload -> Registration. No inline evaluation or calibration; the freshly trained model is packaged and registered directly.",
+      "framework": "xgboost",
+      "complexity": "simple",
+      "task_type": "tabular_classification",
+      "node_count": 6,
+      "edge_count": 6,
+      "features": [
+        "xgboost_training",
+        "packaging",
+        "payload_generation",
+        "registration",
+        "no_inline_eval"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-3 (CPU training + packaging)",
+        "cost_driver": "data_size",
+        "instance_cost_tier": "low",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "ucm_regional_xgboost"
+      ],
+      "agent_context": {
+        "when_to_use": "Regional XGBoost retraining/redeployment where model quality is validated out-of-band (or already qualified) and you only need to (re)train on fresh Cradle data, package, and register with MIMS. The fastest path from Cradle data to a registered, deployable XGBoost model; used by ucm_regional_xgboost.",
+        "when_not_to_use": "If you need inline evaluation metrics before registration (use xgboost_complete_e2e or xgboost_percentile_e2e). If you need score calibration (use a DAG with ModelCalibration/PercentileModelCalibration). If text/embedding features are involved (use a PyTorch or hybrid DAG).",
+        "differentiators": [
+          "No calibration and no evaluation subgraph: train -> package -> register only",
+          "6 nodes / 6 edges, the minimal deployable XGBoost pipeline",
+          "XGBoostTraining fans out directly to both Package and Payload from a single training artifact"
+        ],
+        "prerequisites": [
+          {
+            "check": "Tabular features + label available from Cradle",
+            "how": "Cradle SQL returns numeric/categorical features and a label column"
+          },
+          {
+            "check": "Offline/out-of-band model validation acceptable",
+            "how": "Team qualifies model quality separately, not inside this pipeline"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "label_column",
+            "tabular_features",
+            "xgboost_hyperparameters",
+            "region",
+            "registration model domain/objective"
+          ],
+          "safe_defaults": [
+            "xgboost_params=default",
+            "framework_version=1.2-1",
+            "instance_type=ml.m5.xlarge"
+          ],
+          "common_pitfalls": [
+            "No eval step means regressions are not caught in-pipeline; validate offline",
+            "Package and Payload both consume XGBoostTraining output; bundle the inference handler via Package inference_scripts_input",
+            "Registration input variable list must match the training feature schema"
+          ]
+        },
+        "decision_tree": {
+          "need_inline_eval_or_calibration?": {
+            "yes": "Use xgboost_complete_e2e / xgboost_percentile_e2e",
+            "no": "Continue"
+          },
+          "tabular_only_xgboost?": {
+            "yes": "USE THIS DAG",
+            "no": "Use a framework-appropriate DAG"
+          }
+        }
+      }
+    },
+    {
       "id": "xgboost_training_with_calibration",
       "path": "xgboost/training_with_calibration.dag.json",
       "description": "XGBoost training pipeline with model calibration",
@@ -4145,31 +5519,27 @@
       }
     },
     {
-      "id": "lightgbmmt_temporal_split_e2e",
-      "path": "mtl/temporal_split_e2e.dag.json",
-      "description": "LightGBMMT multi-task end-to-end pipeline with TEMPORAL-SPLIT preprocessing (time-based train split), dual evaluation (testing + calibration paths), model calibration, packaging, and registration.",
-      "framework": "lightgbmmt",
-      "complexity": "comprehensive",
-      "task_type": "multi_task_temporal_split_end_to_end",
+      "id": "xgboost_complete_e2e_with_piper_and_model_calibration",
+      "path": "xgboost/xgboost_complete_e2e_with_piper_and_model_calibration.dag.json",
+      "description": "XGBoost complete end-to-end pipeline for a US DNR/contact-risk model (e.g. crm_us). A single calibration-split inference fans out to (a) PiperMetricGeneration that publishes model metrics to PIPER and (b) ModelCalibration (sigmoid/isotonic) that feeds Package -> Registration. No held-out testing branch and no model wiki.",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "task_type": "binary_classification",
       "node_count": 11,
-      "edge_count": 13,
+      "edge_count": 12,
       "features": [
-        "temporal_split",
-        "training",
-        "calibration",
-        "testing",
+        "model_calibration",
+        "piper_metrics",
         "packaging",
-        "registration",
-        "evaluation"
+        "registration"
       ],
       "input_requirements": {
         "data_types": [
-          "tabular",
-          "temporal"
+          "tabular"
         ],
         "text_support": false,
-        "multi_task": true,
-        "output_type": "multi_label",
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
         "data_source": "cradle_mds",
         "requires_llm": false
       },
@@ -4180,100 +5550,85 @@
         "requires_mims": true
       },
       "cost": {
-        "estimated_hours": "1-3 (CPU training)",
-        "cost_driver": "cpu_training",
-        "instance_cost_tier": "medium",
+        "estimated_hours": "1-4 (CPU XGBoost)",
+        "cost_driver": "cradle_data_loading",
+        "instance_cost_tier": "low",
         "scalability": "data_size_linear"
       },
       "used_by_projects": [
-        "pfw_mtgbm_na"
+        "crm_us_xgboost"
       ],
       "agent_context": {
-        "when_to_use": "Multi-task learning on time-series/temporal data where the train/test boundary MUST be split chronologically (no future data leaks into training). Predict multiple related labels simultaneously with a time-ordered split and a dedicated held-out testing evaluation path.",
-        "when_not_to_use": "Non-temporal data where a random split is appropriate (use mtl/complete_e2e). Single binary classification (use xgboost or pytorch). Unrelated tasks (train separately).",
+        "when_to_use": "XGBoost tabular classifier (e.g. crm_us US DNR contact-risk model) that publishes calibration-split metrics to PIPER for monitoring and applies sigmoid/isotonic ModelCalibration before packaging. Use when you have only training + calibration splits (no separate testing split) and consume metrics through PIPER.",
+        "when_not_to_use": "If you have a separate held-out testing split (use xgboost_complete_e2e_with_piper_testing). If you publish a model wiki instead of PIPER metrics (use xgboost_complete_e2e_with_wiki_and_model_calibration). If you calibrate with percentile bucketing.",
         "differentiators": [
-          "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing \u2014 prevents temporal leakage",
-          "Separate LightGBMMTModelEval_testing path (held-out chronological test) in addition to the calibration eval path",
-          "Dual evaluation: testing (from the temporal split) + calibration (from a separate Cradle query)",
-          "Multi-task output (multiple labels) with shared feature representation",
-          "LightGBMMT framework, CPU-only"
+          "Metrics published via PiperMetricGeneration_calibration (PIPER) instead of ModelMetricsComputation/ModelWikiGenerator",
+          "Metrics computed on the calibration split (no separate testing branch)",
+          "Single XGBoostModelInference_calibration forks to PIPER metrics AND ModelCalibration"
         ],
         "prerequisites": [
           {
-            "check": "Temporal ordering column",
-            "how": "Data has a timestamp/date column to define the chronological train/test boundary"
+            "check": "Training + calibration Cradle SQL / dataset splits",
+            "how": "two Cradle SQL blocks (or two job_type splits)"
           },
           {
-            "check": "Multiple correlated label columns",
-            "how": "Data has 2+ label columns that benefit from joint training"
-          },
-          {
-            "check": "Tabular features",
-            "how": "Structured data, not raw text"
+            "check": "PIPER metric group configured",
+            "how": "PiperMetricGeneration config points at a valid PIPER metric namespace"
           }
         ],
         "config_guidance": {
           "user_must_provide": [
-            "task_definitions",
-            "label_columns",
-            "feature_columns",
-            "temporal_split_column",
-            "temporal_split_boundary",
-            "author"
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "tabular_features",
+            "piper_metric_config"
           ],
           "safe_defaults": [
-            "n_estimators",
-            "task_weights"
+            "calibration_method=isotonic",
+            "xgboost_params=default"
           ],
           "common_pitfalls": [
-            "Temporal split boundary must be set so the test window has enough data for meaningful evaluation",
-            "Do not shuffle across the temporal boundary \u2014 that reintroduces leakage",
-            "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
+            "PiperMetricGeneration and ModelCalibration share the same XGBoostModelInference_calibration output",
+            "Package registers the ModelCalibration output, not raw XGBoostTraining",
+            "No testing branch - metrics reflect the calibration split"
           ]
         },
         "decision_tree": {
-          "temporal_data?": {
-            "yes": "USE THIS DAG (chronological split prevents leakage)",
-            "no": "Use mtl/complete_e2e (random split)"
+          "metrics_sink?": {
+            "piper": "Continue",
+            "wiki": "Use xgboost_complete_e2e_with_wiki_and_model_calibration"
           },
-          "multiple_outputs?": {
-            "yes": "USE THIS DAG",
-            "no": "Use single-task XGBoost or PyTorch"
-          },
-          "text_input?": {
-            "yes": "No MTL for text yet \u2014 use PyTorch with multi-head",
-            "no": "USE THIS DAG"
+          "have_holdout_testing_split?": {
+            "no": "USE THIS DAG",
+            "yes": "Use xgboost_complete_e2e_with_piper_testing"
           }
         }
       }
     },
     {
-      "id": "xgboost_mt_temporal_split_e2e",
-      "path": "mtl/xgboost_mt_temporal_split_e2e.dag.json",
-      "description": "XGBoost multi-task end-to-end pipeline with TEMPORAL-SPLIT preprocessing (time-based train split), dual evaluation (testing + calibration paths), model calibration, packaging, and registration.",
-      "framework": "xgboost_mt",
+      "id": "xgboost_complete_e2e_with_piper_testing",
+      "path": "xgboost/xgboost_complete_e2e_with_piper_testing.dag.json",
+      "description": "XGBoost complete end-to-end pipeline for a tabular abuse-risk model (e.g. Active Queueing MFN/PFW manual-review queueing). Trains XGBoost, percentile-calibrates scores on a calibration split, and additionally scores a separate held-out testing split whose metrics are published to PIPER for model monitoring. Package consumes the percentile-calibrated model; the testing branch is metrics-only and does not feed Package/Registration.",
+      "framework": "xgboost",
       "complexity": "comprehensive",
-      "task_type": "multi_task_temporal_split_end_to_end",
-      "node_count": 11,
-      "edge_count": 13,
+      "task_type": "binary_classification",
+      "node_count": 14,
+      "edge_count": 15,
       "features": [
-        "temporal_split",
-        "multi_task",
-        "training",
-        "calibration",
-        "testing",
+        "percentile_calibration",
+        "holdout_testing",
+        "piper_metrics",
         "packaging",
-        "registration",
-        "evaluation"
+        "registration"
       ],
       "input_requirements": {
         "data_types": [
-          "tabular",
-          "temporal"
+          "tabular"
         ],
         "text_support": false,
-        "multi_task": true,
-        "output_type": "multi_label",
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
         "data_source": "cradle_mds",
         "requires_llm": false
       },
@@ -4284,71 +5639,236 @@
         "requires_mims": true
       },
       "cost": {
-        "estimated_hours": "1-3 (CPU training)",
-        "cost_driver": "cpu_training",
-        "instance_cost_tier": "medium",
+        "estimated_hours": "1-4 (CPU XGBoost, three data branches)",
+        "cost_driver": "cradle_data_loading",
+        "instance_cost_tier": "low",
         "scalability": "data_size_linear"
       },
       "used_by_projects": [
-        "pfw_xgboost_mt"
+        "active_queueing_mfn_pfw_cursus"
       ],
       "agent_context": {
-        "when_to_use": "XGBoost multi-task learning (one_output_per_tree) on time-series/temporal data where the train/test boundary MUST be split chronologically (no future data leaks into training). Predict multiple related labels simultaneously with a time-ordered split and a dedicated held-out testing evaluation path.",
-        "when_not_to_use": "Non-temporal data where a random split is appropriate. Single-task XGBoost (use xgboost/complete_e2e). Unrelated tasks (train separately). LightGBM-family MTL (use mtl/temporal_split_e2e).",
+        "when_to_use": "XGBoost tabular risk model (e.g. Active Queueing MFN/PFW manual-review queueing) that trains and percentile-calibrates on a calibration split AND evaluates a separate held-out testing split whose metrics are published to PIPER for monitoring/dashboards. Use when your team consumes model-quality metrics through PIPER rather than a generated model wiki.",
+        "when_not_to_use": "If you publish metrics as a model wiki instead of PIPER (use xgboost_complete_e2e_with_calibration_and_testing). If you have no separate held-out testing split (use xgboost_percentile_e2e). If you need sigmoid/isotonic ModelCalibration instead of percentile bucketing.",
         "differentiators": [
-          "XgboostMt framework \u2014 multi-task XGBoost (one_output_per_tree) predicting multiple labels simultaneously",
-          "TemporalSplitPreprocessing on the training path (time-ordered split) instead of TabularPreprocessing \u2014 prevents temporal leakage",
-          "Separate XgboostMtModelEval_testing path (held-out chronological test) in addition to the calibration eval path",
-          "Dual evaluation: testing (from the temporal split) + calibration (from a separate Cradle query)",
-          "CPU-only \u2014 no GPU required"
+          "Testing branch terminates in PiperMetricGeneration_testing (metrics to PIPER) instead of ModelMetricsComputation_testing + ModelWikiGenerator",
+          "First catalog pattern to use the PiperMetricGeneration step",
+          "Three data branches: training, calibration (percentile), and held-out testing (PIPER metrics)",
+          "Package consumes the PercentileModelCalibration output; the testing branch is metrics-only"
         ],
         "prerequisites": [
           {
-            "check": "Temporal ordering column",
-            "how": "Data has a timestamp/date column to define the chronological train/test boundary"
+            "check": "Separate training, calibration, and testing Cradle SQL / dataset splits",
+            "how": "three Cradle SQL blocks (or three job_type splits)"
           },
           {
-            "check": "Multiple correlated label columns",
-            "how": "Data has 2+ label columns that benefit from joint training"
-          },
-          {
-            "check": "Tabular features",
-            "how": "Structured data, not raw text"
+            "check": "PIPER metric group configured",
+            "how": "PiperMetricGeneration step config points at a valid PIPER metric namespace"
           }
         ],
         "config_guidance": {
           "user_must_provide": [
-            "task_definitions",
-            "label_columns",
-            "feature_columns",
-            "temporal_split_column",
-            "temporal_split_boundary",
-            "author"
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "cradle_sql (testing)",
+            "label_column",
+            "tabular_features",
+            "piper_metric_config"
           ],
           "safe_defaults": [
-            "n_estimators",
-            "max_depth",
-            "learning_rate",
-            "multi_strategy (one_output_per_tree)"
+            "percentile_buckets=[10,25,50,75,90]",
+            "xgboost_params=default"
           ],
           "common_pitfalls": [
-            "Temporal split boundary must be set so the test window has enough data for meaningful evaluation",
-            "Do not shuffle across the temporal boundary \u2014 that reintroduces leakage",
-            "Tasks must be correlated for MTL benefit \u2014 independent tasks train better separately"
+            "Testing branch does not feed Package/Registration - it only emits metrics",
+            "PercentileModelCalibration output (not raw XGBoostTraining) is what Package registers",
+            "PiperMetricGeneration_testing consumes the XGBoostModelInference_testing scored output"
           ]
         },
         "decision_tree": {
-          "temporal_data?": {
-            "yes": "USE THIS DAG (chronological split prevents leakage)",
-            "no": "Use xgboost/complete_e2e (single-task) or a random-split MTL DAG"
+          "need_holdout_testing_metrics?": {
+            "yes": "Continue",
+            "no": "Use xgboost_percentile_e2e"
           },
-          "multiple_outputs?": {
-            "yes": "USE THIS DAG",
-            "no": "Use single-task xgboost/complete_e2e"
+          "publish_to_piper_or_wiki?": {
+            "piper": "USE THIS DAG",
+            "wiki": "Use xgboost_complete_e2e_with_calibration_and_testing"
+          }
+        }
+      }
+    },
+    {
+      "id": "xgboost_complete_e2e_with_wiki_and_model_calibration",
+      "path": "xgboost/xgboost_complete_e2e_with_wiki_and_model_calibration.dag.json",
+      "description": "XGBoost complete end-to-end pipeline for a tabular DNR/contact-risk model (e.g. cap_na, covering CA/MX/BR). A single calibration-split inference fans out to (a) ModelMetricsComputation -> ModelWikiGenerator for a published model wiki and (b) ModelCalibration (sigmoid/isotonic) that feeds Package -> Registration. No separate held-out testing branch.",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "task_type": "binary_classification",
+      "node_count": 12,
+      "edge_count": 13,
+      "features": [
+        "model_calibration",
+        "metrics_computation",
+        "model_wiki",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-4 (CPU XGBoost)",
+        "cost_driver": "cradle_data_loading",
+        "instance_cost_tier": "low",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "cap_na_xgboost"
+      ],
+      "agent_context": {
+        "when_to_use": "XGBoost tabular classifier (e.g. cap_na DNR contact-risk model for CA/MX/BR) that needs BOTH a published model wiki (metrics + plots) AND sigmoid/isotonic score calibration before packaging. One inference on the calibration split feeds both the metrics/wiki branch and the calibration branch.",
+        "when_not_to_use": "If you calibrate with percentile bucketing instead of ModelCalibration (use xgboost_complete_e2e_with_wiki_and_percentile_calibration). If you do not need a model wiki (use xgboost_complete_e2e). If metrics go to PIPER instead of a wiki (use xgboost_complete_e2e_with_piper_and_model_calibration).",
+        "differentiators": [
+          "Single XGBoostModelInference_calibration forks to metrics/wiki AND ModelCalibration - no redundant second inference node (unlike xgboost_complete_e2e_with_wiki)",
+          "Uses ModelCalibration (sigmoid/isotonic), not PercentileModelCalibration",
+          "Emits a ModelWikiGenerator wiki from calibration-split metrics"
+        ],
+        "prerequisites": [
+          {
+            "check": "Training + calibration Cradle SQL / dataset splits",
+            "how": "two Cradle SQL blocks (or two job_type splits)"
           },
-          "xgboost_family?": {
-            "yes": "USE THIS DAG",
-            "no": "Use mtl/temporal_split_e2e (LightGBMMT)"
+          {
+            "check": "Calibration split has ground-truth labels",
+            "how": "ModelMetricsComputation and ModelCalibration both require labels on the calibration split"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "tabular_features"
+          ],
+          "safe_defaults": [
+            "calibration_method=isotonic",
+            "xgboost_params=default"
+          ],
+          "common_pitfalls": [
+            "ModelWikiGenerator consumes ModelMetricsComputation output, not raw inference",
+            "Package registers the ModelCalibration output, not raw XGBoostTraining",
+            "Both branches share the one XGBoostModelInference_calibration - do not duplicate the inference step"
+          ]
+        },
+        "decision_tree": {
+          "need_model_wiki?": {
+            "yes": "Continue",
+            "no": "Use xgboost_complete_e2e"
+          },
+          "calibration_type?": {
+            "sigmoid_or_isotonic": "USE THIS DAG",
+            "percentile": "Use xgboost_complete_e2e_with_wiki_and_percentile_calibration"
+          }
+        }
+      }
+    },
+    {
+      "id": "xgboost_complete_e2e_with_wiki_and_percentile_calibration",
+      "path": "xgboost/xgboost_complete_e2e_with_wiki_and_percentile_calibration.dag.json",
+      "description": "XGBoost complete end-to-end pipeline for a regional Returns-and-Refunds reversal-reclassification model (e.g. rnr_regional). A single calibration-split inference fans out to (a) ModelMetricsComputation -> ModelWikiGenerator for a published model wiki and (b) PercentileModelCalibration that feeds Package -> Registration. No separate held-out testing branch.",
+      "framework": "xgboost",
+      "complexity": "standard",
+      "task_type": "classification",
+      "node_count": 12,
+      "edge_count": 13,
+      "features": [
+        "percentile_calibration",
+        "metrics_computation",
+        "model_wiki",
+        "packaging",
+        "registration"
+      ],
+      "input_requirements": {
+        "data_types": [
+          "tabular"
+        ],
+        "text_support": false,
+        "multi_task": false,
+        "output_type": "binary_or_multiclass",
+        "data_source": "cradle_mds",
+        "requires_llm": false
+      },
+      "constraints": {
+        "requires_gpu": false,
+        "min_instance": "ml.m5.xlarge",
+        "supports_multi_gpu": false,
+        "requires_mims": true
+      },
+      "cost": {
+        "estimated_hours": "1-4 (CPU XGBoost)",
+        "cost_driver": "cradle_data_loading",
+        "instance_cost_tier": "low",
+        "scalability": "data_size_linear"
+      },
+      "used_by_projects": [
+        "rnr_regional_xgboost"
+      ],
+      "agent_context": {
+        "when_to_use": "XGBoost tabular classifier (e.g. rnr_regional reversal-reclassification model) that needs BOTH a published model wiki AND percentile-bucket score calibration before packaging. One inference on the calibration split feeds both the metrics/wiki branch and the percentile-calibration branch.",
+        "when_not_to_use": "If you calibrate with sigmoid/isotonic ModelCalibration (use xgboost_complete_e2e_with_wiki_and_model_calibration). If you do not need a wiki (use xgboost_percentile_e2e). If you also run a separate held-out testing branch (use xgboost_complete_e2e_with_calibration_and_testing).",
+        "differentiators": [
+          "Uses PercentileModelCalibration (bucketed scores) together with a ModelWikiGenerator wiki on the same calibration split",
+          "Single XGBoostModelInference_calibration forks to metrics/wiki AND percentile calibration - no redundant second inference",
+          "No separate held-out testing branch: wiki metrics come from the calibration split"
+        ],
+        "prerequisites": [
+          {
+            "check": "Training + calibration Cradle SQL / dataset splits",
+            "how": "two Cradle SQL blocks (or two job_type splits)"
+          },
+          {
+            "check": "Calibration split has ground-truth labels",
+            "how": "ModelMetricsComputation requires labels on the calibration split"
+          }
+        ],
+        "config_guidance": {
+          "user_must_provide": [
+            "cradle_sql (training)",
+            "cradle_sql (calibration)",
+            "label_column",
+            "tabular_features"
+          ],
+          "safe_defaults": [
+            "percentile_buckets=[10,25,50,75,90]",
+            "xgboost_params=default"
+          ],
+          "common_pitfalls": [
+            "Package registers the PercentileModelCalibration output, not raw XGBoostTraining",
+            "ModelWikiGenerator consumes the ModelMetricsComputation output",
+            "Both branches share the one XGBoostModelInference_calibration - do not duplicate the inference step"
+          ]
+        },
+        "decision_tree": {
+          "need_model_wiki?": {
+            "yes": "Continue",
+            "no": "Use xgboost_percentile_e2e"
+          },
+          "calibration_type?": {
+            "percentile": "USE THIS DAG",
+            "sigmoid_or_isotonic": "Use xgboost_complete_e2e_with_wiki_and_model_calibration"
           }
         }
       }

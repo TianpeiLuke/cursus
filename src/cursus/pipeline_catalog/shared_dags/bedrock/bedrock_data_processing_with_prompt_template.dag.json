@@ -1,0 +1,115 @@
+{
+  "dag": {
+    "description": "Minimal synchronous Bedrock LLM data-processing / scoring building block. Pre-staged (Dummy-loaded) data is preprocessed and then scored/enriched by BedrockProcessing under a generated prompt template. Terminal \u2014 the output is the LLM-processed dataset; no label ruleset, training, packaging, or registration.",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "BedrockPromptTemplateGeneration",
+      "BedrockProcessing_training"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "BedrockProcessing_training"
+      ],
+      [
+        "BedrockPromptTemplateGeneration",
+        "BedrockProcessing_training"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_data_processing_with_prompt_template",
+    "framework": "bedrock",
+    "complexity": "simple",
+    "task_type": "data_processing",
+    "features": [
+      "dummy_data_loading",
+      "tabular_preprocessing",
+      "prompt_template_generation",
+      "bedrock_processing",
+      "synchronous_llm_scoring",
+      "terminal_processing"
+    ],
+    "node_count": 4,
+    "edge_count": 3,
+    "used_by_projects": [
+      "rnr_pytorch_bedrock"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "scored_data",
+      "data_source": "dummy_prestaged",
+      "requires_llm": true
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": false,
+      "requires_bedrock": true
+    },
+    "cost": {
+      "estimated_hours": "0.5-4 (synchronous Bedrock inference over the input batch)",
+      "cost_driver": "bedrock_inference",
+      "instance_cost_tier": "low",
+      "scalability": "row_count_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Run synchronous Bedrock LLM processing (scoring, enrichment, or feature generation) over pre-staged (Dummy-loaded) tabular+text data, gated by a generated prompt template. This is the smallest Bedrock scoring building block and is the rnr_pytorch_bedrock batch-scoring DAG (dag_batch.json) used to produce LLM-processed outputs without any downstream model.",
+      "when_not_to_use": "If you need asynchronous/batch Bedrock throughput, use bedrock_batch_data_processing (BedrockBatchProcessing). If you then apply a label ruleset to derive labels, use bedrock_cradle_label_ruleset_labeling. If you train a model downstream, use a full bedrock end-to-end DAG (bedrock_pytorch_e2e / bedrock_pytorch_with_label_ruleset_e2e).",
+      "differentiators": [
+        "Smallest Bedrock scoring DAG with an explicit BedrockPromptTemplateGeneration node feeding the processing step",
+        "Synchronous BedrockProcessing (vs asynchronous BedrockBatchProcessing in bedrock_batch_data_processing)",
+        "Terminal \u2014 emits LLM-processed data, no training / ruleset / packaging",
+        "Dummy/pre-staged input rather than live Cradle SQL"
+      ],
+      "prerequisites": [
+        {
+          "check": "Bedrock model access + prompt template",
+          "how": "BedrockPromptTemplateGeneration produces the template consumed by BedrockProcessing_training"
+        },
+        {
+          "check": "Pre-staged input data available",
+          "how": "DummyDataLoading_training points at the staged EDX/S3 dataset"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "dummy_data_source",
+          "bedrock_model_id",
+          "prompt_template_spec",
+          "text_column",
+          "tabular_features"
+        ],
+        "safe_defaults": [
+          "bedrock_batch=false (synchronous)"
+        ],
+        "common_pitfalls": [
+          "BedrockProcessing consumes BOTH the TabularPreprocessing output and the generated prompt template",
+          "Keep the prompt template schema in sync with the preprocessed columns",
+          "For very large populations prefer bedrock_batch_data_processing to avoid synchronous timeouts"
+        ]
+      },
+      "decision_tree": {
+        "sync_or_batch?": {
+          "sync": "Continue",
+          "batch": "Use bedrock_batch_data_processing"
+        },
+        "need_prompt_template?": {
+          "yes": "USE THIS DAG",
+          "no": "Use bedrock_batch_data_processing"
+        }
+      }
+    }
+  }
+}

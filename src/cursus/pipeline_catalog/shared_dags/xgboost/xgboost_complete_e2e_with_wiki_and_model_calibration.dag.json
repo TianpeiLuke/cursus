@@ -1,0 +1,159 @@
+{
+  "dag": {
+    "description": "XGBoost complete end-to-end pipeline for a tabular DNR/contact-risk model (e.g. cap_na, covering CA/MX/BR). A single calibration-split inference fans out to (a) ModelMetricsComputation -> ModelWikiGenerator for a published model wiki and (b) ModelCalibration (sigmoid/isotonic) that feeds Package -> Registration. No separate held-out testing branch.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_training",
+      "TabularPreprocessing_calibration",
+      "XGBoostTraining",
+      "XGBoostModelInference_calibration",
+      "ModelMetricsComputation_calibration",
+      "ModelWikiGenerator",
+      "ModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelInference_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XGBoostModelInference_calibration"
+      ],
+      [
+        "XGBoostModelInference_calibration",
+        "ModelMetricsComputation_calibration"
+      ],
+      [
+        "ModelMetricsComputation_calibration",
+        "ModelWikiGenerator"
+      ],
+      [
+        "XGBoostModelInference_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_complete_e2e_with_wiki_and_model_calibration",
+    "framework": "xgboost",
+    "complexity": "standard",
+    "task_type": "binary_classification",
+    "features": [
+      "model_calibration",
+      "metrics_computation",
+      "model_wiki",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 12,
+    "edge_count": 13,
+    "used_by_projects": [
+      "cap_na_xgboost"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-4 (CPU XGBoost)",
+      "cost_driver": "cradle_data_loading",
+      "instance_cost_tier": "low",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "XGBoost tabular classifier (e.g. cap_na DNR contact-risk model for CA/MX/BR) that needs BOTH a published model wiki (metrics + plots) AND sigmoid/isotonic score calibration before packaging. One inference on the calibration split feeds both the metrics/wiki branch and the calibration branch.",
+      "when_not_to_use": "If you calibrate with percentile bucketing instead of ModelCalibration (use xgboost_complete_e2e_with_wiki_and_percentile_calibration). If you do not need a model wiki (use xgboost_complete_e2e). If metrics go to PIPER instead of a wiki (use xgboost_complete_e2e_with_piper_and_model_calibration).",
+      "differentiators": [
+        "Single XGBoostModelInference_calibration forks to metrics/wiki AND ModelCalibration - no redundant second inference node (unlike xgboost_complete_e2e_with_wiki)",
+        "Uses ModelCalibration (sigmoid/isotonic), not PercentileModelCalibration",
+        "Emits a ModelWikiGenerator wiki from calibration-split metrics"
+      ],
+      "prerequisites": [
+        {
+          "check": "Training + calibration Cradle SQL / dataset splits",
+          "how": "two Cradle SQL blocks (or two job_type splits)"
+        },
+        {
+          "check": "Calibration split has ground-truth labels",
+          "how": "ModelMetricsComputation and ModelCalibration both require labels on the calibration split"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "cradle_sql (calibration)",
+          "label_column",
+          "tabular_features"
+        ],
+        "safe_defaults": [
+          "calibration_method=isotonic",
+          "xgboost_params=default"
+        ],
+        "common_pitfalls": [
+          "ModelWikiGenerator consumes ModelMetricsComputation output, not raw inference",
+          "Package registers the ModelCalibration output, not raw XGBoostTraining",
+          "Both branches share the one XGBoostModelInference_calibration - do not duplicate the inference step"
+        ]
+      },
+      "decision_tree": {
+        "need_model_wiki?": {
+          "yes": "Continue",
+          "no": "Use xgboost_complete_e2e"
+        },
+        "calibration_type?": {
+          "sigmoid_or_isotonic": "USE THIS DAG",
+          "percentile": "Use xgboost_complete_e2e_with_wiki_and_percentile_calibration"
+        }
+      }
+    }
+  }
+}

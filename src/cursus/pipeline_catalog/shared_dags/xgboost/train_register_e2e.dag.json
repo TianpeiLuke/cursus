@@ -1,0 +1,128 @@
+{
+  "dag": {
+    "description": "Minimal XGBoost train-and-register pipeline: Cradle load -> tabular preprocessing -> XGBoost training -> MIMS Package/Payload -> Registration. No inline evaluation or calibration; the freshly trained model is packaged and registered directly.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "XGBoostTraining",
+      "Package",
+      "Registration",
+      "Payload"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "XGBoostTraining",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_train_register_e2e",
+    "framework": "xgboost",
+    "complexity": "simple",
+    "task_type": "tabular_classification",
+    "features": [
+      "xgboost_training",
+      "packaging",
+      "payload_generation",
+      "registration",
+      "no_inline_eval"
+    ],
+    "node_count": 6,
+    "edge_count": 6,
+    "used_by_projects": [
+      "ucm_regional_xgboost"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-3 (CPU training + packaging)",
+      "cost_driver": "data_size",
+      "instance_cost_tier": "low",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Regional XGBoost retraining/redeployment where model quality is validated out-of-band (or already qualified) and you only need to (re)train on fresh Cradle data, package, and register with MIMS. The fastest path from Cradle data to a registered, deployable XGBoost model; used by ucm_regional_xgboost.",
+      "when_not_to_use": "If you need inline evaluation metrics before registration (use xgboost_complete_e2e or xgboost_percentile_e2e). If you need score calibration (use a DAG with ModelCalibration/PercentileModelCalibration). If text/embedding features are involved (use a PyTorch or hybrid DAG).",
+      "differentiators": [
+        "No calibration and no evaluation subgraph: train -> package -> register only",
+        "6 nodes / 6 edges, the minimal deployable XGBoost pipeline",
+        "XGBoostTraining fans out directly to both Package and Payload from a single training artifact"
+      ],
+      "prerequisites": [
+        {
+          "check": "Tabular features + label available from Cradle",
+          "how": "Cradle SQL returns numeric/categorical features and a label column"
+        },
+        {
+          "check": "Offline/out-of-band model validation acceptable",
+          "how": "Team qualifies model quality separately, not inside this pipeline"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "label_column",
+          "tabular_features",
+          "xgboost_hyperparameters",
+          "region",
+          "registration model domain/objective"
+        ],
+        "safe_defaults": [
+          "xgboost_params=default",
+          "framework_version=1.2-1",
+          "instance_type=ml.m5.xlarge"
+        ],
+        "common_pitfalls": [
+          "No eval step means regressions are not caught in-pipeline; validate offline",
+          "Package and Payload both consume XGBoostTraining output; bundle the inference handler via Package inference_scripts_input",
+          "Registration input variable list must match the training feature schema"
+        ]
+      },
+      "decision_tree": {
+        "need_inline_eval_or_calibration?": {
+          "yes": "Use xgboost_complete_e2e / xgboost_percentile_e2e",
+          "no": "Continue"
+        },
+        "tabular_only_xgboost?": {
+          "yes": "USE THIS DAG",
+          "no": "Use a framework-appropriate DAG"
+        }
+      }
+    }
+  }
+}

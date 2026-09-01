@@ -1,0 +1,202 @@
+{
+  "dag": {
+    "description": "Bedrock LLM weak-supervision labeling feeding a PyTorch classifier with percentile (rank) score calibration. Pre-staged (Dummy-loaded) data is preprocessed, enriched/scored by Bedrock under a generated prompt template, then labeled by a generated label ruleset before PyTorch training. A mirrored calibration branch threads through Bedrock + label-ruleset execution, is scored by PyTorchModelEval, calibrated with PercentileModelCalibration, then packaged and registered.",
+    "nodes": [
+      "DummyDataLoading_training",
+      "TabularPreprocessing_training",
+      "BedrockPromptTemplateGeneration",
+      "BedrockProcessing_training",
+      "LabelRulesetGeneration",
+      "LabelRulesetExecution_training",
+      "PyTorchTraining",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "DummyDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "BedrockProcessing_calibration",
+      "LabelRulesetExecution_calibration",
+      "PyTorchModelEval_calibration"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "BedrockProcessing_training"
+      ],
+      [
+        "BedrockPromptTemplateGeneration",
+        "BedrockProcessing_training"
+      ],
+      [
+        "BedrockProcessing_training",
+        "LabelRulesetExecution_training"
+      ],
+      [
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ],
+      [
+        "LabelRulesetExecution_training",
+        "PyTorchTraining"
+      ],
+      [
+        "DummyDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "BedrockProcessing_calibration"
+      ],
+      [
+        "BedrockPromptTemplateGeneration",
+        "BedrockProcessing_calibration"
+      ],
+      [
+        "BedrockProcessing_calibration",
+        "LabelRulesetExecution_calibration"
+      ],
+      [
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "LabelRulesetExecution_calibration",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "PyTorchModelEval_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_pytorch_with_label_ruleset_percentile_e2e",
+    "framework": "pytorch",
+    "complexity": "comprehensive",
+    "task_type": "binary_classification",
+    "features": [
+      "llm_weak_supervision",
+      "bedrock_processing",
+      "prompt_template_generation",
+      "label_ruleset",
+      "pytorch_training",
+      "percentile_calibration",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 16,
+    "edge_count": 19,
+    "used_by_projects": [
+      "rnr_pytorch_bedrock"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "dummy_prestaged",
+      "requires_llm": true
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true,
+      "requires_bedrock": true
+    },
+    "cost": {
+      "estimated_hours": "4-14 (Bedrock labeling on both branches + GPU PyTorch training)",
+      "cost_driver": "gpu_training_plus_bedrock_inference",
+      "instance_cost_tier": "high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "You need LLM-derived (weak-supervision) labels via Bedrock plus a declarative label ruleset to train a PyTorch classifier, AND you want percentile/rank-based score calibration for percentile-threshold enforcement rather than probability calibration. This is the rnr_pytorch_bedrock EU training DAG: Bedrock scores/enriches pre-staged data under a generated prompt template, a generated label ruleset derives labels, PyTorch trains, and PercentileModelCalibration produces rank-bucketed scores for the enforcement threshold.",
+      "when_not_to_use": "If you need standard probability calibration, use bedrock_pytorch_with_label_ruleset_e2e (ModelCalibration). If you already have ground-truth labels, drop the Bedrock+LabelRuleset front-end and use pytorch_percentile_e2e. If you do not need any LLM labeling, use a plain PyTorch or XGBoost DAG. If data is Cradle-sourced and you only want to emit labels (no training), use bedrock_cradle_label_ruleset_labeling.",
+      "differentiators": [
+        "LLM weak-supervision: Bedrock (prompt-template-gated) + LabelRulesetGeneration/Execution derive the training labels",
+        "Percentile (rank) calibration instead of probability calibration \u2014 for percentile-threshold enforcement",
+        "Both training and calibration branches are threaded through Bedrock + label-ruleset execution",
+        "16 nodes / 19 edges \u2014 the percentile-calibrated sibling of bedrock_pytorch_with_label_ruleset_e2e"
+      ],
+      "prerequisites": [
+        {
+          "check": "Bedrock model access + prompt template",
+          "how": "BedrockPromptTemplateGeneration produces the template consumed by both BedrockProcessing steps"
+        },
+        {
+          "check": "Label ruleset definition available",
+          "how": "LabelRulesetGeneration emits the ruleset applied by both LabelRulesetExecution steps"
+        },
+        {
+          "check": "GPU quota for PyTorch encoder",
+          "how": "ml.g5.xlarge+ available"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "bedrock_model_id",
+          "prompt_template_spec",
+          "label_ruleset",
+          "dummy_data_source (training)",
+          "dummy_data_source (calibration)",
+          "label_column",
+          "text_column",
+          "tabular_features",
+          "percentile_buckets"
+        ],
+        "safe_defaults": [
+          "percentile_buckets=[10,25,50,75,90]",
+          "bedrock_batch=false (synchronous BedrockProcessing)"
+        ],
+        "common_pitfalls": [
+          "Prompt template and label ruleset must be identical/consistent across the training and calibration branches",
+          "Package consumes PyTorchTraining output (the model), not PercentileModelCalibration output",
+          "LabelRulesetExecution depends on BOTH BedrockProcessing output and the generated ruleset"
+        ]
+      },
+      "decision_tree": {
+        "llm_derived_labels_needed?": {
+          "yes": "Continue",
+          "no": "Use pytorch_percentile_e2e / complete_e2e"
+        },
+        "calibration_type?": {
+          "percentile": "USE THIS DAG",
+          "probability": "Use bedrock_pytorch_with_label_ruleset_e2e"
+        }
+      }
+    }
+  }
+}

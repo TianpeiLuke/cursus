@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.38] - 2026-08-31
+
+**Add 16 shared-DAG catalog patterns harvested from a downstream MODS pipeline fleet.**
+
+A sweep of 57 downstream pipeline projects (62 concrete DAGs) against `pipeline_catalog/shared_dags`
+found 40 DAGs already exactly covered by an existing pattern; the remaining distinct,
+Cursus-compilable topologies are added here as reusable `.dag.json` patterns with rich
+`agent_context` (when-to-use / differentiators / decision-tree) so the same architecture is
+discoverable via `search_dags` / `catalog_index.json` and reusable via `load_shared_dag`. Legacy
+non-Cursus pipelines (SageMaker step vocabulary not compilable by `PipelineDAGCompiler`) were
+intentionally excluded.
+
+### Added
+- `bedrock/bedrock_cradle_label_ruleset_labeling` — Cradle→preprocess→Bedrock prompt+process→label-ruleset generate/execute (labeling only, no training).
+- `bedrock/bedrock_data_processing_with_prompt_template` — load→preprocess→Bedrock prompt-template→batch process (enrichment only).
+- `bedrock/bedrock_pytorch_with_label_ruleset_percentile_e2e` — Bedrock label-ruleset + PyTorch train + percentile calibration + eval, packaged/registered.
+- `bedrock/bedrock_slipbox_routing_pytorch_stratified_incremental` — incremental baseline/delta with knowledge routing + EDX + stratified sampling + PyTorch + percentile.
+- `dummy/tabular_lookup_model_e2e` — Cradle→`TabularLookupModelBuilding`→package/payload/register (lookup model, no training).
+- `mtl/lightgbmmt_complete_e2e_with_percentile_calibration_and_testing` — LightGBM-MT with calibration + separate testing branch + percentile.
+- `pytorch/comparison_eval` — load→preprocess→`DummyTraining`→eval (offline model-comparison harness).
+- `pytorch/complete_e2e_with_percentile_calibration` — PyTorch train + `PyTorchModelEval` + percentile calibration, dual-cradle, packaged/registered.
+- `pytorch/inference_percentile_e2e` — PyTorch train + calibration scored via `PyTorchModelInference` + percentile.
+- `pytorch/train_register_e2e` — minimal Cradle→preprocess→PyTorch train→package/payload/register (no eval/calibration).
+- `pytorch/train_register_e2e_dummy` — same with `DummyDataLoading` (MDS/offline).
+- `xgboost/train_register_e2e` — minimal Cradle→preprocess→XGBoost train→package/payload/register.
+- `xgboost/xgboost_complete_e2e_with_piper_and_model_calibration` — XGBoost E2E with `PiperMetricGeneration` + model calibration.
+- `xgboost/xgboost_complete_e2e_with_piper_testing` — XGBoost E2E with percentile calibration + separate testing branch + `PiperMetricGeneration`.
+- `xgboost/xgboost_complete_e2e_with_wiki_and_model_calibration` — XGBoost E2E with metrics + `ModelWikiGenerator` + model calibration.
+- `xgboost/xgboost_complete_e2e_with_wiki_and_percentile_calibration` — XGBoost E2E with metrics + `ModelWikiGenerator` + percentile calibration.
+
+### Changed
+- `pytorch/stratified_percentile_e2e` — `used_by_projects` extended (its production DAG matches this pattern).
+- `shared_dags/catalog_index.json` regenerated: `total_dags` 46 → 62.
+
 ## [2.9.37] - 2026-08-28
 
 **Fix: `XGBoostModelInference.processed_data` now accepts `PyTorchModelInference` — the two-stage calibration edge resolves by a solid margin instead of a razor-thin one.**

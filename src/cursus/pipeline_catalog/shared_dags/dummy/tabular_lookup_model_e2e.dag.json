@@ -1,0 +1,127 @@
+{
+  "dag": {
+    "description": "Non-parametric tabular lookup / set-membership model builder: Cradle load -> TabularLookupModelBuilding (the dataset itself becomes the model, either a key->values lookup map or a de-duplicated key set) -> MIMS Package/Payload -> Registration. No training and no learned parameters.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularLookupModelBuilding",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularLookupModelBuilding"
+      ],
+      [
+        "TabularLookupModelBuilding",
+        "Package"
+      ],
+      [
+        "TabularLookupModelBuilding",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "tabular_lookup_model_e2e",
+    "framework": "dummy",
+    "complexity": "simple",
+    "task_type": "lookup_or_set_membership",
+    "features": [
+      "tabular_lookup_model_building",
+      "set_membership_model",
+      "non_parametric",
+      "no_training",
+      "packaging",
+      "payload_generation",
+      "registration"
+    ],
+    "node_count": 5,
+    "edge_count": 5,
+    "used_by_projects": [
+      "buying_club_pipeline",
+      "ffoc_pipeline"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "lookup_or_membership",
+      "data_source": "cradle_edx",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "<1 (no training; group-by/dedup only)",
+      "cost_driver": "data_size",
+      "instance_cost_tier": "low",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Ship a non-parametric lookup as a MIMS-registered model where the dataset IS the model. Use for set-membership checks (is this normalizedAddress a known buying-club address? -> buying_club_pipeline) or key->value lookups (map an FF code to its attributes -> ffoc_pipeline) that must be served through the standard MIMS Package/Payload/Registration bookends like any ML model.",
+      "when_not_to_use": "If the decision requires a learned/parametric model (use an XGBoost/PyTorch/LightGBM DAG). If no MIMS registration is needed (a plain Cradle export suffices). If the lookup must update in real time (this builds a static model.tar.gz snapshot).",
+      "differentiators": [
+        "No training step and no learned parameters: TabularLookupModelBuilding turns the dataset into model.tar.gz (a lookup map or a set_membership set)",
+        "Model producer is a Processing step, not a Training step; XGBoost/PyTorch training nodes are absent",
+        "5 nodes / 5 edges: Cradle -> lookup-build -> {Package, Payload} -> Registration"
+      ],
+      "prerequisites": [
+        {
+          "check": "Key (and optional value) columns exist in the Cradle/EDX dataset",
+          "how": "Cradle SQL returns key_columns (e.g. normalizedAddress) and any value_columns"
+        },
+        {
+          "check": "Per-project inference handler prepared",
+          "how": "dockers inference script is bundled via Package inference_scripts_input; the build step does not emit one"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql / edx_manifest (training)",
+          "model_kind ('lookup' or 'set_membership')",
+          "key_columns",
+          "inference_fields ([name,type] pairs)",
+          "region",
+          "registration inference input variable list"
+        ],
+        "safe_defaults": [
+          "dedup=true",
+          "shard_count=1",
+          "value_columns=[] (set_membership)",
+          "processing_entry_point=tabular_lookup_model_building.py"
+        ],
+        "common_pitfalls": [
+          "inference_fields must match the Registration source_model_inference_input_variable_list and the handler's request keys, NOT the build key_columns/value_columns",
+          "value_columns is ignored for set_membership",
+          "Package must bundle the project inference handler; the build step does not generate one"
+        ]
+      },
+      "decision_tree": {
+        "model_is_learned_parametric?": {
+          "yes": "Use an XGBoost/PyTorch/LightGBM DAG",
+          "no": "Continue"
+        },
+        "need_MIMS_registration_of_a_lookup_or_set?": {
+          "yes": "USE THIS DAG",
+          "no": "Plain Cradle export"
+        }
+      }
+    }
+  }
+}

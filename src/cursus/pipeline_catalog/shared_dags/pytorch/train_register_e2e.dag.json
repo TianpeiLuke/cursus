@@ -1,0 +1,130 @@
+{
+  "dag": {
+    "description": "Minimal deployable PyTorch pipeline: load Cradle training data, tabular-preprocess, train a PyTorch model, then Package, build Payload, and Register - with no offline evaluation or calibration stage. Smallest train-to-registration PyTorch flow.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "Package",
+      "Registration",
+      "Payload"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_train_register_e2e",
+    "framework": "pytorch",
+    "complexity": "simple",
+    "task_type": "classification",
+    "features": [
+      "deep_learning_training",
+      "packaging",
+      "payload_generation",
+      "registration",
+      "no_evaluation",
+      "no_calibration"
+    ],
+    "node_count": 6,
+    "edge_count": 6,
+    "used_by_projects": [
+      "seller_grading"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular",
+        "image"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "classification",
+      "data_source": "cradle",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-4 (GPU training only)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Train a PyTorch model on Cradle data and register it directly, with no offline evaluation or calibration step in the pipeline. Best for first bring-up / initial deployment, or when model quality is validated out-of-band and only a deployable, registered artifact is needed. Used by seller_grading (MfnReturns / SellerGradingImageValidation, NA Cradle path).",
+      "when_not_to_use": "Use pytorch standard_e2e if you need a PyTorchModelEval on a validation split before registration. Use pytorch complete_e2e or pytorch_percentile_e2e if the model needs probability or percentile calibration. Use pytorch_train_register_e2e_dummy if training data is pre-staged/uploaded (DummyDataLoading) rather than queried from Cradle.",
+      "differentiators": [
+        "Smallest PyTorch train-to-registration flow: 6 nodes, no eval and no calibration branch",
+        "Cradle-sourced training data only (single data split)",
+        "Package and Payload both fan out directly from PyTorchTraining and converge at Registration"
+      ],
+      "prerequisites": [
+        {
+          "check": "Cradle SQL for training data",
+          "how": "Cradle profile for the training window"
+        },
+        {
+          "check": "GPU quota for PyTorch training",
+          "how": "ml.g5.xlarge+ available"
+        },
+        {
+          "check": "Registration metadata (model_domain, model_objective, owner)",
+          "how": "RegistrationConfig fields populated"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "label_name",
+          "pytorch model hyperparameters",
+          "registration model_domain / model_objective"
+        ],
+        "safe_defaults": [
+          "no calibration or eval steps to configure",
+          "framework_version=1.11.0"
+        ],
+        "common_pitfalls": [
+          "No offline metrics are produced - validate model quality separately before promoting",
+          "Payload default_text_value must point at a representative inference input (seller_grading uses an image URL)"
+        ]
+      },
+      "decision_tree": {
+        "need_eval_or_calibration_before_register?": {
+          "yes": "Use standard_e2e / complete_e2e / pytorch_percentile_e2e",
+          "no": "Continue"
+        },
+        "data_from_cradle?": {
+          "yes": "USE THIS DAG",
+          "no": "Use pytorch_train_register_e2e_dummy"
+        }
+      }
+    }
+  }
+}

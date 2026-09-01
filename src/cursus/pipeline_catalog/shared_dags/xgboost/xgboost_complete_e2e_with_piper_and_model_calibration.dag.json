@@ -1,0 +1,154 @@
+{
+  "dag": {
+    "description": "XGBoost complete end-to-end pipeline for a US DNR/contact-risk model (e.g. crm_us). A single calibration-split inference fans out to (a) PiperMetricGeneration that publishes model metrics to PIPER and (b) ModelCalibration (sigmoid/isotonic) that feeds Package -> Registration. No held-out testing branch and no model wiki.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_training",
+      "TabularPreprocessing_calibration",
+      "XGBoostTraining",
+      "XGBoostModelInference_calibration",
+      "PiperMetricGeneration_calibration",
+      "ModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelInference_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XGBoostModelInference_calibration"
+      ],
+      [
+        "XGBoostModelInference_calibration",
+        "PiperMetricGeneration_calibration"
+      ],
+      [
+        "XGBoostModelInference_calibration",
+        "ModelCalibration_calibration"
+      ],
+      [
+        "ModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_complete_e2e_with_piper_and_model_calibration",
+    "framework": "xgboost",
+    "complexity": "standard",
+    "task_type": "binary_classification",
+    "features": [
+      "model_calibration",
+      "piper_metrics",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 11,
+    "edge_count": 12,
+    "used_by_projects": [
+      "crm_us_xgboost"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-4 (CPU XGBoost)",
+      "cost_driver": "cradle_data_loading",
+      "instance_cost_tier": "low",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "XGBoost tabular classifier (e.g. crm_us US DNR contact-risk model) that publishes calibration-split metrics to PIPER for monitoring and applies sigmoid/isotonic ModelCalibration before packaging. Use when you have only training + calibration splits (no separate testing split) and consume metrics through PIPER.",
+      "when_not_to_use": "If you have a separate held-out testing split (use xgboost_complete_e2e_with_piper_testing). If you publish a model wiki instead of PIPER metrics (use xgboost_complete_e2e_with_wiki_and_model_calibration). If you calibrate with percentile bucketing.",
+      "differentiators": [
+        "Metrics published via PiperMetricGeneration_calibration (PIPER) instead of ModelMetricsComputation/ModelWikiGenerator",
+        "Metrics computed on the calibration split (no separate testing branch)",
+        "Single XGBoostModelInference_calibration forks to PIPER metrics AND ModelCalibration"
+      ],
+      "prerequisites": [
+        {
+          "check": "Training + calibration Cradle SQL / dataset splits",
+          "how": "two Cradle SQL blocks (or two job_type splits)"
+        },
+        {
+          "check": "PIPER metric group configured",
+          "how": "PiperMetricGeneration config points at a valid PIPER metric namespace"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "cradle_sql (calibration)",
+          "label_column",
+          "tabular_features",
+          "piper_metric_config"
+        ],
+        "safe_defaults": [
+          "calibration_method=isotonic",
+          "xgboost_params=default"
+        ],
+        "common_pitfalls": [
+          "PiperMetricGeneration and ModelCalibration share the same XGBoostModelInference_calibration output",
+          "Package registers the ModelCalibration output, not raw XGBoostTraining",
+          "No testing branch - metrics reflect the calibration split"
+        ]
+      },
+      "decision_tree": {
+        "metrics_sink?": {
+          "piper": "Continue",
+          "wiki": "Use xgboost_complete_e2e_with_wiki_and_model_calibration"
+        },
+        "have_holdout_testing_split?": {
+          "no": "USE THIS DAG",
+          "yes": "Use xgboost_complete_e2e_with_piper_testing"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "dag": {
+    "description": "Terminal Bedrock LLM labeling / audit pipeline over a Cradle-sourced dataset. Cradle SQL loads the audit population, TabularPreprocessing shapes it, BedrockProcessing scores/annotates each record under a generated prompt template, and LabelRulesetExecution applies a generated label ruleset to emit final labels or audit decisions. No model training, packaging, or registration \u2014 the output is the labeled/decisioned dataset.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "BedrockPromptTemplateGeneration",
+      "BedrockProcessing_training",
+      "LabelRulesetGeneration",
+      "LabelRulesetExecution_training"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "BedrockProcessing_training"
+      ],
+      [
+        "BedrockPromptTemplateGeneration",
+        "BedrockProcessing_training"
+      ],
+      [
+        "BedrockProcessing_training",
+        "LabelRulesetExecution_training"
+      ],
+      [
+        "LabelRulesetGeneration",
+        "LabelRulesetExecution_training"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_cradle_label_ruleset_labeling",
+    "framework": "bedrock",
+    "complexity": "standard",
+    "task_type": "data_labeling",
+    "features": [
+      "cradle_data_loading",
+      "bedrock_processing",
+      "prompt_template_generation",
+      "label_ruleset",
+      "llm_weak_supervision",
+      "terminal_labeling"
+    ],
+    "node_count": 6,
+    "edge_count": 5,
+    "used_by_projects": [
+      "rnr_audit_bedrock"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "labels_or_decisions",
+      "data_source": "cradle_mds",
+      "requires_llm": true
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": false,
+      "requires_bedrock": true
+    },
+    "cost": {
+      "estimated_hours": "1-6 (Bedrock inference over the audit population)",
+      "cost_driver": "bedrock_inference",
+      "instance_cost_tier": "low_to_medium",
+      "scalability": "row_count_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Generate LLM-derived labels or audit decisions over a Cradle-sourced dataset using Bedrock (gated by a generated prompt template) and a declarative label ruleset, WITHOUT training a model. Use for weak-supervision label generation, audit/QA sampling, or offline LLM scoring where the deliverable is the labeled dataset. This is the rnr_audit_bedrock NA DAG.",
+      "when_not_to_use": "If you then train a model in the same DAG, use bedrock_pytorch_with_label_ruleset_e2e or bedrock_pytorch_with_label_ruleset_percentile_e2e. If you do not need a label ruleset (plain LLM enrichment/scoring), use bedrock_data_processing_with_prompt_template. If input is pre-staged/Dummy rather than a live Cradle SQL, adjust the loader accordingly.",
+      "differentiators": [
+        "Terminal labeling/audit DAG \u2014 no training, packaging, or registration tail",
+        "Cradle-sourced (live SQL) rather than Dummy/pre-staged",
+        "Combines Bedrock LLM scoring (prompt-template-gated) with a generated label ruleset to emit labels/decisions",
+        "Smallest Cradle + Bedrock + label-ruleset pattern"
+      ],
+      "prerequisites": [
+        {
+          "check": "Cradle SQL for the audit population",
+          "how": "CradleDataLoading_training profile returns the rows to label"
+        },
+        {
+          "check": "Bedrock model access + prompt template",
+          "how": "BedrockPromptTemplateGeneration feeds BedrockProcessing_training"
+        },
+        {
+          "check": "Label ruleset definition",
+          "how": "LabelRulesetGeneration emits the ruleset applied by LabelRulesetExecution_training"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (audit population)",
+          "bedrock_model_id",
+          "prompt_template_spec",
+          "label_ruleset",
+          "text_column",
+          "tabular_features"
+        ],
+        "safe_defaults": [
+          "bedrock_batch=false (synchronous BedrockProcessing)"
+        ],
+        "common_pitfalls": [
+          "LabelRulesetExecution depends on BOTH BedrockProcessing output and the generated ruleset",
+          "Prompt template output fields must align with the fields the ruleset expects",
+          "This DAG has no registration \u2014 downstream consumers read the emitted labeled dataset, not a MIMS model"
+        ]
+      },
+      "decision_tree": {
+        "train_model_in_same_dag?": {
+          "yes": "Use bedrock_pytorch_with_label_ruleset_e2e / _percentile",
+          "no": "Continue"
+        },
+        "need_label_ruleset?": {
+          "yes": "USE THIS DAG",
+          "no": "Use bedrock_data_processing_with_prompt_template"
+        }
+      }
+    }
+  }
+}

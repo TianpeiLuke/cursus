@@ -1,0 +1,132 @@
+{
+  "dag": {
+    "description": "Pre-staged-data variant of the minimal PyTorch train-to-registration flow: DummyDataLoading supplies a pre-built/uploaded dataset (the MDS manifest build path) instead of a live Cradle query, followed by tabular preprocessing, PyTorch training, Package, Payload, and Registration - no evaluation or calibration stage.",
+    "nodes": [
+      "DummyDataLoading",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "Package",
+      "Registration",
+      "Payload"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_train_register_e2e_dummy",
+    "framework": "pytorch",
+    "complexity": "simple",
+    "task_type": "classification",
+    "features": [
+      "deep_learning_training",
+      "dummy_data_loading",
+      "pre_staged_data",
+      "packaging",
+      "payload_generation",
+      "registration",
+      "no_evaluation",
+      "no_calibration"
+    ],
+    "node_count": 6,
+    "edge_count": 6,
+    "used_by_projects": [
+      "seller_grading"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular",
+        "image"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "classification",
+      "data_source": "pre_staged_dummy",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-4 (GPU training only)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "medium",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Same minimal PyTorch train-to-registration flow as pytorch_train_register_e2e, but training data is supplied by DummyDataLoading from a pre-built/uploaded dataset or manifest (the MDS build path) instead of a live Cradle query. Use for local/offline reproducible builds or when the dataset is materialized ahead of time. Used by seller_grading (SellerGradingImageValidation, mds NA build path).",
+      "when_not_to_use": "Use pytorch_train_register_e2e when training data should be loaded from Cradle at pipeline time. Use standard_e2e / complete_e2e / pytorch_percentile_e2e if evaluation or calibration is required before registration.",
+      "differentiators": [
+        "Dummy / pre-staged data-loading twin of pytorch_train_register_e2e (DummyDataLoading replaces CradleDataLoading_training)",
+        "No Cradle dependency - data comes from a pre-built manifest / upload (MDS path)",
+        "Minimal 6-node train-to-registration flow, no eval and no calibration"
+      ],
+      "prerequisites": [
+        {
+          "check": "Pre-staged training dataset/manifest available to DummyDataLoading",
+          "how": "MDS / manifest or uploaded dataset path configured in DummyDataLoadingConfig"
+        },
+        {
+          "check": "GPU quota for PyTorch training",
+          "how": "ml.g5.xlarge+ available"
+        },
+        {
+          "check": "Registration metadata",
+          "how": "RegistrationConfig model_domain / model_objective populated"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "dummy data source path / manifest",
+          "label_name",
+          "pytorch model hyperparameters",
+          "registration model_domain / model_objective"
+        ],
+        "safe_defaults": [
+          "no calibration or eval steps to configure"
+        ],
+        "common_pitfalls": [
+          "The data-loading node is bare 'DummyDataLoading' with no job_type suffix - match the config key exactly",
+          "Pre-staged data must already be compatible with TabularPreprocessing_training",
+          "No offline metrics are produced - validate model quality separately"
+        ]
+      },
+      "decision_tree": {
+        "data_pre_staged_not_cradle?": {
+          "yes": "Continue",
+          "no": "Use pytorch_train_register_e2e"
+        },
+        "need_eval_or_calibration?": {
+          "yes": "Use standard_e2e / complete_e2e / pytorch_percentile_e2e",
+          "no": "USE THIS DAG"
+        }
+      }
+    }
+  }
+}

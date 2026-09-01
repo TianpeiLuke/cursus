@@ -1,0 +1,159 @@
+{
+  "dag": {
+    "description": "End-to-end PyTorch pipeline with percentile score calibration: train a PyTorch classifier on a Cradle training split, tabular-preprocess a separate Cradle calibration split, evaluate the model on that holdout via PyTorchModelEval, map raw scores to percentile buckets via PercentileModelCalibration, then Package, build Payload, and Register a model that emits a score-percentile output variable. Direct PyTorch analog of xgboost_percentile_e2e (no tokenizer and no stratified-sampling stage).",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelEval_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "PyTorchModelEval_calibration"
+      ],
+      [
+        "PyTorchModelEval_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_complete_e2e_with_percentile_calibration",
+    "framework": "pytorch",
+    "complexity": "standard",
+    "task_type": "binary_classification",
+    "features": [
+      "deep_learning_training",
+      "held_out_calibration_eval",
+      "percentile_calibration",
+      "packaging",
+      "payload_generation",
+      "registration"
+    ],
+    "node_count": 10,
+    "edge_count": 11,
+    "used_by_projects": [
+      "abuse_polygraph",
+      "atoz_bsm_pytorch",
+      "atoz_nexus_pytorch"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular",
+        "text"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_score_with_percentile",
+      "data_source": "cradle",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "2-6 (GPU training + CPU eval/calibration)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "medium_high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Deploy a PyTorch (deep-learning) classifier whose raw scores must be mapped to percentile buckets for downstream threshold-based decisioning. Train on a Cradle training split, hold out a separate Cradle calibration split for PyTorchModelEval, and register a model that emits a score-percentile NUMERIC output variable. Fits abuse-detection models such as abuse_polygraph (ContactEvaluation / PolygraphModel), atoz_bsm_pytorch and atoz_nexus_pytorch (AtoZ-claims Buyer-Seller-Messaging).",
+      "when_not_to_use": "Use pytorch complete_e2e if you need standard probability calibration (ModelCalibration / isotonic-Platt) instead of percentile bucketing. Use pytorch_tokenizer_percentile_e2e if a learned TokenizerTraining stage is required before PyTorchTraining. Use pytorch_stratified_percentile_e2e if class imbalance requires a StratifiedSampling stage. Use xgboost_percentile_e2e for a tabular-only tree model with the same percentile shape.",
+      "differentiators": [
+        "Vanilla PyTorch + percentile calibration e2e - no tokenizer and no stratified-sampling stage",
+        "PyTorchModelEval on a dedicated Cradle calibration split feeds PercentileModelCalibration (score -> percentile bucket mapping)",
+        "Direct PyTorch analog of xgboost_percentile_e2e: identical 10-node / 11-edge topology with PyTorch swapped for XGBoost",
+        "Registration emits a score-percentile NUMERIC output variable consumed by downstream rules"
+      ],
+      "prerequisites": [
+        {
+          "check": "Two Cradle SQL sources (training split + disjoint calibration split)",
+          "how": "Cradle profiles for the training window and a separate holdout/calibration window"
+        },
+        {
+          "check": "GPU quota for PyTorch training",
+          "how": "ml.g5.xlarge+ available in the target account/region"
+        },
+        {
+          "check": "Percentile bucket definition",
+          "how": "PercentileModelCalibration config lists the percentile cut points"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "cradle_sql (calibration)",
+          "label_name",
+          "tab_field_list / feature list",
+          "pytorch model hyperparameters"
+        ],
+        "safe_defaults": [
+          "percentile_buckets follow team default cut points",
+          "framework_version=2.3.0"
+        ],
+        "common_pitfalls": [
+          "Calibration data must be a separate holdout/temporal split, not the training split",
+          "PercentileModelCalibration consumes PyTorchModelEval_calibration output, not PyTorchTraining directly",
+          "Package takes PyTorchTraining output while the percentile calibration artifact is wired into Registration"
+        ]
+      },
+      "decision_tree": {
+        "pytorch_and_percentile_scores?": {
+          "yes": "Continue",
+          "no": "Use xgboost_percentile_e2e (tabular) or pytorch complete_e2e (probability calibration)"
+        },
+        "need_tokenizer_or_stratified_stage?": {
+          "yes": "Use pytorch_tokenizer_percentile_e2e or pytorch_stratified_percentile_e2e",
+          "no": "USE THIS DAG"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "dag": {
+    "description": "Base PyTorch end-to-end with percentile (rank) score calibration. A Cradle baseline dataset is preprocessed and used to train a PyTorch classifier; a separate Cradle calibration dataset is preprocessed and scored by the trained model via PyTorchModelInference, then PercentileModelCalibration produces rank-bucketed scores for threshold enforcement. The model is packaged (Package) and payload-tested (Payload) and registered. This is the plain percentile pipeline \u2014 no stratified sampling, tokenizer training, Bedrock labeling, or hybrid stacking.",
+    "nodes": [
+      "CradleDataLoading_baseline",
+      "TabularPreprocessing_training",
+      "PyTorchTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelInference_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_baseline",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "PyTorchTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelInference_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "PyTorchModelInference_calibration"
+      ],
+      [
+        "PyTorchModelInference_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_inference_percentile_e2e",
+    "framework": "pytorch",
+    "complexity": "standard",
+    "task_type": "binary_classification",
+    "features": [
+      "cradle_data_loading",
+      "pytorch_training",
+      "model_inference",
+      "percentile_calibration",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 10,
+    "edge_count": 11,
+    "used_by_projects": [
+      "munged_address_pytorch",
+      "rnr_pytorch_bedrock"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular",
+        "text"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true,
+      "requires_bedrock": false
+    },
+    "cost": {
+      "estimated_hours": "3-10 (GPU PyTorch training + CPU calibration)",
+      "cost_driver": "gpu_training",
+      "instance_cost_tier": "medium_to_high",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Standard end-to-end PyTorch classifier with percentile (rank) score calibration for threshold-based enforcement, sourced from Cradle. Use as the base pattern when you do NOT need stratified sampling, tokenizer training, Bedrock/LLM labeling, or hybrid XGBoost stacking \u2014 e.g. the steady-state retrain DAG for munged_address_pytorch and rnr_pytorch_bedrock (dag.json). Calibration scoring uses PyTorchModelInference on a held-out Cradle calibration set.",
+      "when_not_to_use": "If you need class-balanced training, use pytorch_stratified_percentile_e2e (adds StratifiedSampling). If you need a learned tokenizer, use pytorch_tokenizer_percentile_e2e. If you want probability calibration rather than percentile buckets, use complete_e2e (PyTorchModelEval + ModelCalibration). If you need LLM-derived labels or embeddings, use a bedrock e2e or pytorch_hybrid_xgboost_e2e.",
+      "differentiators": [
+        "Minimal PyTorch percentile-calibration E2E \u2014 no stratified sampling / tokenizer / Bedrock front-end",
+        "Calibration scoring via PyTorchModelInference (not PyTorchModelEval)",
+        "Percentile (rank) calibration for percentile-threshold enforcement",
+        "Training loader is a Cradle baseline set (CradleDataLoading_baseline); calibration uses a separate Cradle set"
+      ],
+      "prerequisites": [
+        {
+          "check": "Cradle SQL for training baseline and calibration",
+          "how": "CradleDataLoading_baseline and CradleDataLoading_calibration profiles return labeled rows"
+        },
+        {
+          "check": "GPU quota for PyTorch",
+          "how": "ml.g5.xlarge+ available"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (baseline/training)",
+          "cradle_sql (calibration)",
+          "label_column",
+          "features",
+          "percentile_buckets"
+        ],
+        "safe_defaults": [
+          "percentile_buckets=[10,25,50,75,90]"
+        ],
+        "common_pitfalls": [
+          "Package consumes PyTorchTraining output (the model), not the PercentileModelCalibration output",
+          "PyTorchModelInference_calibration needs BOTH the trained model and the preprocessed calibration data",
+          "Use the same preprocessing config for the baseline and calibration branches"
+        ]
+      },
+      "decision_tree": {
+        "need_stratified_sampling?": {
+          "yes": "Use pytorch_stratified_percentile_e2e",
+          "no": "Continue"
+        },
+        "calibration_type?": {
+          "percentile": "USE THIS DAG",
+          "probability": "Use complete_e2e"
+        }
+      }
+    }
+  }
+}

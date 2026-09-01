@@ -1,0 +1,172 @@
+{
+  "dag": {
+    "description": "XGBoost complete end-to-end pipeline for a tabular abuse-risk model (e.g. Active Queueing MFN/PFW manual-review queueing). Trains XGBoost, percentile-calibrates scores on a calibration split, and additionally scores a separate held-out testing split whose metrics are published to PIPER for model monitoring. Package consumes the percentile-calibrated model; the testing branch is metrics-only and does not feed Package/Registration.",
+    "nodes": [
+      "CradleDataLoading_training",
+      "TabularPreprocessing_training",
+      "XGBoostTraining",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Registration",
+      "Payload",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "XGBoostModelInference_calibration",
+      "CradleDataLoading_testing",
+      "TabularPreprocessing_testing",
+      "XGBoostModelInference_testing",
+      "PiperMetricGeneration_testing"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_training",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "XGBoostTraining"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelInference_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "XGBoostModelInference_calibration"
+      ],
+      [
+        "XGBoostModelInference_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "CradleDataLoading_testing",
+        "TabularPreprocessing_testing"
+      ],
+      [
+        "XGBoostTraining",
+        "XGBoostModelInference_testing"
+      ],
+      [
+        "TabularPreprocessing_testing",
+        "XGBoostModelInference_testing"
+      ],
+      [
+        "XGBoostModelInference_testing",
+        "PiperMetricGeneration_testing"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Package"
+      ],
+      [
+        "XGBoostTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "xgboost_complete_e2e_with_piper_testing",
+    "framework": "xgboost",
+    "complexity": "comprehensive",
+    "task_type": "binary_classification",
+    "features": [
+      "percentile_calibration",
+      "holdout_testing",
+      "piper_metrics",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 14,
+    "edge_count": 15,
+    "used_by_projects": [
+      "active_queueing_mfn_pfw_cursus"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular"
+      ],
+      "text_support": false,
+      "multi_task": false,
+      "output_type": "binary_or_multiclass",
+      "data_source": "cradle_mds",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": true
+    },
+    "cost": {
+      "estimated_hours": "1-4 (CPU XGBoost, three data branches)",
+      "cost_driver": "cradle_data_loading",
+      "instance_cost_tier": "low",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "XGBoost tabular risk model (e.g. Active Queueing MFN/PFW manual-review queueing) that trains and percentile-calibrates on a calibration split AND evaluates a separate held-out testing split whose metrics are published to PIPER for monitoring/dashboards. Use when your team consumes model-quality metrics through PIPER rather than a generated model wiki.",
+      "when_not_to_use": "If you publish metrics as a model wiki instead of PIPER (use xgboost_complete_e2e_with_calibration_and_testing). If you have no separate held-out testing split (use xgboost_percentile_e2e). If you need sigmoid/isotonic ModelCalibration instead of percentile bucketing.",
+      "differentiators": [
+        "Testing branch terminates in PiperMetricGeneration_testing (metrics to PIPER) instead of ModelMetricsComputation_testing + ModelWikiGenerator",
+        "First catalog pattern to use the PiperMetricGeneration step",
+        "Three data branches: training, calibration (percentile), and held-out testing (PIPER metrics)",
+        "Package consumes the PercentileModelCalibration output; the testing branch is metrics-only"
+      ],
+      "prerequisites": [
+        {
+          "check": "Separate training, calibration, and testing Cradle SQL / dataset splits",
+          "how": "three Cradle SQL blocks (or three job_type splits)"
+        },
+        {
+          "check": "PIPER metric group configured",
+          "how": "PiperMetricGeneration step config points at a valid PIPER metric namespace"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (training)",
+          "cradle_sql (calibration)",
+          "cradle_sql (testing)",
+          "label_column",
+          "tabular_features",
+          "piper_metric_config"
+        ],
+        "safe_defaults": [
+          "percentile_buckets=[10,25,50,75,90]",
+          "xgboost_params=default"
+        ],
+        "common_pitfalls": [
+          "Testing branch does not feed Package/Registration - it only emits metrics",
+          "PercentileModelCalibration output (not raw XGBoostTraining) is what Package registers",
+          "PiperMetricGeneration_testing consumes the XGBoostModelInference_testing scored output"
+        ]
+      },
+      "decision_tree": {
+        "need_holdout_testing_metrics?": {
+          "yes": "Continue",
+          "no": "Use xgboost_percentile_e2e"
+        },
+        "publish_to_piper_or_wiki?": {
+          "piper": "USE THIS DAG",
+          "wiki": "Use xgboost_complete_e2e_with_calibration_and_testing"
+        }
+      }
+    }
+  }
+}

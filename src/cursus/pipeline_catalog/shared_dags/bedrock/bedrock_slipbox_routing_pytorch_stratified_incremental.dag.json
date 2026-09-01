@@ -1,0 +1,204 @@
+{
+  "dag": {
+    "description": "Incremental PyTorch pipeline that auto-labels a fresh delta partition via slipbox-routed Bedrock scoring (persisted to EDX), merges it with a stable labeled baseline, rebalances classes with StratifiedSampling, trains PyTorch, then runs inference-based percentile calibration before packaging and registration.",
+    "nodes": [
+      "CradleDataLoading_baseline",
+      "CradleDataLoading_delta",
+      "TabularPreprocessing_delta",
+      "SlipboxKnowledgeRouting_delta",
+      "BedrockProcessing_delta",
+      "EdxUploading_scored",
+      "TabularPreprocessing_training",
+      "StratifiedSampling_training",
+      "PyTorchTraining",
+      "CradleDataLoading_calibration",
+      "TabularPreprocessing_calibration",
+      "PyTorchModelInference_calibration",
+      "PercentileModelCalibration_calibration",
+      "Package",
+      "Payload",
+      "Registration"
+    ],
+    "edges": [
+      [
+        "CradleDataLoading_delta",
+        "TabularPreprocessing_delta"
+      ],
+      [
+        "TabularPreprocessing_delta",
+        "SlipboxKnowledgeRouting_delta"
+      ],
+      [
+        "SlipboxKnowledgeRouting_delta",
+        "BedrockProcessing_delta"
+      ],
+      [
+        "BedrockProcessing_delta",
+        "EdxUploading_scored"
+      ],
+      [
+        "BedrockProcessing_delta",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "CradleDataLoading_baseline",
+        "TabularPreprocessing_training"
+      ],
+      [
+        "CradleDataLoading_calibration",
+        "TabularPreprocessing_calibration"
+      ],
+      [
+        "PyTorchTraining",
+        "PyTorchModelInference_calibration"
+      ],
+      [
+        "TabularPreprocessing_calibration",
+        "PyTorchModelInference_calibration"
+      ],
+      [
+        "PyTorchModelInference_calibration",
+        "PercentileModelCalibration_calibration"
+      ],
+      [
+        "PercentileModelCalibration_calibration",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Package"
+      ],
+      [
+        "PyTorchTraining",
+        "Payload"
+      ],
+      [
+        "Package",
+        "Registration"
+      ],
+      [
+        "Payload",
+        "Registration"
+      ],
+      [
+        "TabularPreprocessing_training",
+        "StratifiedSampling_training"
+      ],
+      [
+        "StratifiedSampling_training",
+        "PyTorchTraining"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "bedrock_slipbox_routing_pytorch_stratified_incremental",
+    "framework": "pytorch",
+    "complexity": "comprehensive",
+    "task_type": "binary_classification",
+    "features": [
+      "incremental_training",
+      "slipbox_knowledge_routing",
+      "bedrock_llm_scoring",
+      "edx_label_persistence",
+      "stratified_sampling",
+      "inference_percentile_calibration",
+      "packaging",
+      "registration"
+    ],
+    "node_count": 16,
+    "edge_count": 17,
+    "used_by_projects": [
+      "rnr_pytorch_bedrock"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "text",
+        "tabular"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "binary",
+      "data_source": "cradle",
+      "requires_llm": true
+    },
+    "constraints": {
+      "requires_gpu": true,
+      "min_instance": "ml.g5.xlarge",
+      "supports_multi_gpu": true,
+      "requires_mims": true,
+      "requires_bedrock": true,
+      "requires_edx": true
+    },
+    "cost": {
+      "estimated_hours": "6-16 (Bedrock delta scoring + GPU PyTorch training)",
+      "cost_driver": "bedrock_inference_and_gpu_training",
+      "instance_cost_tier": "high",
+      "scalability": "delta_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Incremental retraining of a PyTorch abuse/risk model where a fresh, unlabeled delta partition must be auto-labeled by an LLM before it joins a stable labeled baseline. The delta rows are routed through slipbox knowledge retrieval, scored by Bedrock, persisted to EDX for reuse, and merged with the baseline; StratifiedSampling then rebalances the combined training set before PyTorch training, and inference-based percentile calibration produces deployment scores. Used by rnr_pytorch_bedrock (dag_incremental).",
+      "when_not_to_use": "If your training data is already fully labeled (no LLM auto-labeling needed) use pytorch_stratified_percentile_e2e. If you do not need class rebalancing use bedrock_slipbox_routing_pytorch_incremental. If the delta should be scored with Bedrock batch inference rather than real-time use bedrock_slipbox_routing_batch_pytorch_incremental. Not for tabular-only models (use an XGBoost DAG).",
+      "differentiators": [
+        "Only pattern combining slipbox-routed Bedrock incremental labeling (delta path) with StratifiedSampling class rebalancing before PyTorch training",
+        "Delta partition fans out to BOTH EdxUploading_scored (label persistence) and TabularPreprocessing_training (merge with baseline)",
+        "Uses PyTorchModelInference_calibration feeding PercentileModelCalibration, not PyTorchModelEval",
+        "Two Cradle sources: CradleDataLoading_baseline (stable labeled) + CradleDataLoading_delta (fresh unlabeled)"
+      ],
+      "prerequisites": [
+        {
+          "check": "Bedrock model access for delta scoring",
+          "how": "Bedrock inference profile provisioned in the pipeline account"
+        },
+        {
+          "check": "Slipbox knowledge routing endpoint available",
+          "how": "SlipboxKnowledgeRouting step configured with a retrieval index"
+        },
+        {
+          "check": "EDX dataset for scored-label persistence",
+          "how": "EdxUploading target dataset/provider registered"
+        },
+        {
+          "check": "GPU quota for PyTorch training",
+          "how": "ml.g5.xlarge+ available"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "cradle_sql (baseline)",
+          "cradle_sql (delta)",
+          "cradle_sql (calibration)",
+          "bedrock_model_id / prompt",
+          "slipbox_routing_index",
+          "edx_target",
+          "label_column",
+          "stratify_column",
+          "percentile_buckets"
+        ],
+        "safe_defaults": [
+          "stratified_sampling strategy=balanced",
+          "percentile_buckets=[10,25,50,75,90]",
+          "pytorch epochs=default"
+        ],
+        "common_pitfalls": [
+          "BedrockProcessing_delta must complete before TabularPreprocessing_training so freshly scored delta labels are merged with the baseline",
+          "StratifiedSampling sits AFTER the baseline+delta merge (between TabularPreprocessing_training and PyTorchTraining), not on the delta path",
+          "Calibration path uses inference (not eval); ensure the calibration Cradle source is labeled so percentile buckets can be fit"
+        ]
+      },
+      "decision_tree": {
+        "need_llm_autolabeling_of_fresh_delta?": {
+          "yes": "Continue",
+          "no": "Use pytorch_stratified_percentile_e2e"
+        },
+        "need_class_rebalancing?": {
+          "yes": "USE THIS DAG",
+          "no": "Use bedrock_slipbox_routing_pytorch_incremental"
+        },
+        "bedrock_realtime_or_batch?": {
+          "realtime": "USE THIS DAG",
+          "batch": "Use bedrock_slipbox_routing_batch_pytorch_incremental"
+        }
+      }
+    }
+  }
+}

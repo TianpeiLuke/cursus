@@ -1,0 +1,118 @@
+{
+  "dag": {
+    "description": "Offline model-comparison / evaluation-only harness: DummyDataLoading loads a fixed comparison dataset -> TabularPreprocessing -> PyTorchModelEval (comparison_mode); DummyTraining injects an already-trained PyTorch model (pretrained_model_path) into the eval, which diffs the model's scores against a previous/production score field. No Package/Payload/Registration.",
+    "nodes": [
+      "DummyDataLoading_comparison",
+      "TabularPreprocessing_comparison",
+      "DummyTraining",
+      "PyTorchModelEval_comparison"
+    ],
+    "edges": [
+      [
+        "DummyDataLoading_comparison",
+        "TabularPreprocessing_comparison"
+      ],
+      [
+        "TabularPreprocessing_comparison",
+        "PyTorchModelEval_comparison"
+      ],
+      [
+        "DummyTraining",
+        "PyTorchModelEval_comparison"
+      ]
+    ]
+  },
+  "metadata": {
+    "name": "pytorch_comparison_eval",
+    "framework": "pytorch",
+    "complexity": "simple",
+    "task_type": "model_comparison_eval",
+    "features": [
+      "model_comparison",
+      "evaluation_only",
+      "bring_your_own_model",
+      "pretrained_model_injection",
+      "no_training",
+      "no_registration"
+    ],
+    "node_count": 4,
+    "edge_count": 3,
+    "used_by_projects": [
+      "neat_spam_pytorch"
+    ],
+    "input_requirements": {
+      "data_types": [
+        "tabular",
+        "text"
+      ],
+      "text_support": true,
+      "multi_task": false,
+      "output_type": "metrics_and_plots",
+      "data_source": "s3_parquet",
+      "requires_llm": false
+    },
+    "constraints": {
+      "requires_gpu": false,
+      "min_instance": "ml.m5.xlarge",
+      "supports_multi_gpu": false,
+      "requires_mims": false
+    },
+    "cost": {
+      "estimated_hours": "<1 (single eval pass, no training)",
+      "cost_driver": "eval_dataset_size",
+      "instance_cost_tier": "low",
+      "scalability": "data_size_linear"
+    },
+    "agent_context": {
+      "when_to_use": "Validate a candidate/locally-trained PyTorch model against a baseline before promotion, e.g. confirm a MODS-migrated model reproduces the incumbent production model's scores (neat_spam_pytorch local-vs-MODS comparison). DummyTraining injects an already-trained model.tar.gz via pretrained_model_path (bring-your-own-model), and PyTorchModelEval runs comparison_mode=true to diff its scores against a previous_score_field on a fixed comparison dataset.",
+      "when_not_to_use": "If you need to train a model (use a training DAG). If you need to package/register/deploy (this DAG intentionally ends at evaluation). If you only want single-model metrics without a baseline comparison (use a standard eval branch).",
+      "differentiators": [
+        "Evaluation-only: no Package/Payload/Registration, terminates at PyTorchModelEval",
+        "DummyTraining is a model-injection shim (pretrained_model_path), not a real training step",
+        "comparison_mode=true diffs candidate scores against a previous/production score field (previous_score_field)",
+        "4 nodes / 3 edges: a data branch and an injected-model branch converge on the eval"
+      ],
+      "prerequisites": [
+        {
+          "check": "An already-trained PyTorch model.tar.gz is available",
+          "how": "DummyTraining.pretrained_model_path points to the model artifact in S3"
+        },
+        {
+          "check": "Comparison dataset with the baseline score column",
+          "how": "DummyDataLoading parquet includes features + the previous/production score field"
+        }
+      ],
+      "config_guidance": {
+        "user_must_provide": [
+          "DummyDataLoading.data_source (comparison parquet in S3)",
+          "DummyTraining.pretrained_model_path",
+          "PyTorchModelEval.previous_score_field",
+          "eval_metric_choices",
+          "comparison_mode=true",
+          "region"
+        ],
+        "safe_defaults": [
+          "comparison_metrics=all",
+          "comparison_plots=true",
+          "job_type=comparison",
+          "instance_type=ml.m5.xlarge"
+        ],
+        "common_pitfalls": [
+          "pretrained_model_path must point to a model.tar.gz whose schema matches the comparison dataset's preprocessing",
+          "previous_score_field must exist in the loaded dataset for the diff to compute",
+          "Large comparison parquets can hit array-size caps; shard the input, and a GPU eval instance speeds up large runs"
+        ]
+      },
+      "decision_tree": {
+        "comparing_against_a_baseline_score?": {
+          "yes": "Continue",
+          "no": "Use a standard single-model eval"
+        },
+        "model_already_trained_no_train_needed?": {
+          "yes": "USE THIS DAG (DummyTraining injects it)",
+          "no": "Use a training+eval DAG"
+        }
+      }
+    }
+  }
+}
